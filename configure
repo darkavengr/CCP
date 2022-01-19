@@ -1,0 +1,256 @@
+#!/bin/bash
+# Generates makefile
+
+function check_if_module_included {
+ for mod in "$module_names"; do 
+   for required_mod in "$1"; do
+    if [ "$required_mod" == "$mod" ]; then
+     return 1
+    fi
+   done
+ done
+
+ return 0
+}  
+   
+list_of_arches=`ls hwdep`
+module_names=""
+
+#
+# select the architecture
+#
+echo
+echo Interactive configure script
+echo
+
+while [ ${#response} == 0 ]; do			# no input, use default
+ echo "Choose which platform you want to compile for."
+ myp="Enter platform to compile for ["$list_of_arches"]:"
+ echo -n $myp
+ read response
+done
+
+ for f in $list_of_arches; do			# check if valid input
+  if [ "$f" == "$response" ]; then
+   compile_arch=$response
+   break
+  fi
+ done
+
+ if [ ${#compile_arch} == 0 ]; then		# not valid arch
+  echo configure: Unknown platform must be one of $list_of_arches
+  exit 1
+ fi
+ 
+if [ ! -e hwdep/$compile_arch/config ]; then			# check if config file exists
+ echo configure: Missing file hwdep/$compile_arch/config
+ exit 1
+fi
+
+echo Compiling for $compile_arch
+
+CC_OPT_COUNT=0
+# read options from config file
+#
+ while IFS= read -r var
+ do
+
+   IFS='=' read -r varname varval <<< "$var"
+
+  case $varname in
+   CC)
+   CC=$varval
+   ;;
+
+   ASM)
+   ASM=$varval
+   ;;
+
+   LD)
+   LD=$varval
+   ;;
+
+   LD_OPTS)
+   LDOPTS=$varval
+   ;;
+
+   CC_OPTS)   
+    CC_OPTS=$varval
+   ;;
+
+   ASM_OPTS)   
+    ASM_OPTS=$varval   
+   ;;
+
+   SEARCH)
+    SEARCH=$varval
+    ;;
+
+   CC_BASE_FILES)
+    CC_BASE_FILES=$varval
+    ;;
+
+   ASM_BASE_FILES)
+    ASM_BASE_FILES=$varval
+    ;;
+
+   CC_OPT_FILE)
+    OPT_FILES[optcount]=$varval
+    let "optcount++"
+    ;;
+
+  esac
+    
+ done < hwdep/$compile_arch/config
+
+ count=0;
+
+ while [ "$optcount" != 0 ]; do
+
+  IFS=':' read -r cc_desc cc_yes cc_no <<< "${OPT_FILES[count]}"
+ 
+  read -p "$cc_desc (Y/n)?" yesno
+
+  if [ $yesno == "y" ]; then
+   CC_OPT_FILES="$CC_OPT_FILES $cc_yes"
+   else
+    CC_OPT_FILES="$CC_OPT_FILES $cc_no"
+  fi
+
+  
+  let "optcount--"
+  let "count++"
+ done
+
+#
+# choose which modules to compile
+#
+echo
+echo "Select the modules you want to compile, enter y to compile the module, or"
+echo "enter n to not compile the module."
+echo
+
+#
+# go through each driver
+#
+for f in $SEARCH;do 
+
+ m=`echo $f | cut -d/ -f 1`
+ name=`echo $f | cut -d/ -f 2`
+ a=`echo $f | cut -d/ -f 3`
+
+let CC_OPT_COUNT=0
+ if [ $name == "drivers" ] || [ $name == "filesystems" ]; then  
+
+ #read driver config information
+
+         DRIVERNAME=""
+	 DESCRIPTION=""
+         COMPILE_DEFAULT_OPT=""
+	 REQUIRED=""
+
+ 	 while IFS= read -r var
+	  do
+
+	  IFS='=' read -r varname varval <<< "$var"
+
+	  case $varname in
+	   name)
+	    DRIVERNAME=$varval
+	    ;;
+
+	  description)
+	   DESCRIPTION=$varval
+	   ;;
+
+	  compile_default_opt)
+	   COMPILE_DEFAULT_OPT=$varval
+	   ;;
+
+	  requires)
+	   REQUIRED=$varval
+	   ;;
+
+	  esac
+    
+ done < $f/config
+
+#
+# prompt user
+#
+  
+ check_if_module_included "$DRIVERNAME"
+ rv=$?		# need to save it so it can be compared
+
+ if [ "$rv" == "0" ]; then
+  echo $DESCRIPTION		# display description
+  echo
+
+  printf "Include module $DRIVERNAME"	# prompt user
+
+  if [ "$COMPILE_DEFAULT_OPT" == "y" ]; then		# prompt if module is included by default
+   echo -n " (Y/n)?"
+  else
+   echo -n " (y/N)?"			# not by default
+  fi
+
+  read response
+
+  if [ ${#response} == 0 ]; then	# no input, use default
+   response=$COMPILE_DEFAULT_OPT
+  fi
+ 
+  if [ $response == "y" ] || [ $response == "Y" ]; then		# do response
+     modulelist="$modulelist $f"		# add to list
+     module_names="$module_names $DRIVERNAME"		# add to list     
+
+#
+# add dependencies
+#
+     if ! [ "$REQUIRED" = "" ]; then
+      check_if_module_included "$REQUIRED"
+
+      rv=$?		# need to save it so it can be compared
+      if [ "$rv" == "0" ]; then
+       echo
+       echo Including required dependency $REQUIRED
+       echo
+
+       modulelist="$modulelist modules/drivers/$REQUIRED"		# add to list
+       module_names="$module_names $REQUIRED"		# add to list     
+     fi
+   fi
+ fi
+
+ fi
+fi
+done
+
+echo Generating Makefiles
+
+for f in $SEARCH;do	
+ if [ ! -e $f/Makefile.in ]; then 
+  echo configure: Missing file $f/Makefile.in
+  exit 1
+ fi
+
+ echo Creating $f/Makefile
+
+echo $CC_BASE_FILES
+
+# Generate makefiles from templates
+
+ cat $f/Makefile.in | sed s/\@asm\@/$ASM/g | sed s/\@cc\@/$CC/g | sed s/\@arch\@/$compile_arch/g \
+		    | sed s/\@ld\@/"$LD"/g |  sed s/\@ldopts\@/$LDOPTS/g \
+		    | sed s:\@driverlist\@:"$modulelist":g | sed s/\@asm_opts\@/"$ASM_OPTS"/g \
+                    | sed s/\@cc_opts\@/"$CC_OPTS"/g \
+		    | sed s:\@cc_base_files\@:"$CC_BASE_FILES":g \
+ 	  	    | sed s:\@cc_opt_files\@:"$CC_OPT_FILES":g  > $f/Makefile
+
+ if [ $? != 0 ]; then
+  echo configure: Error creating output file $f/Makefile
+  exit 1
+ fi
+
+done
+

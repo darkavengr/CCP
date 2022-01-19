@@ -1,0 +1,7 @@
+name=pic
+description=Programmable interrupt controller. You need to include this or something like it to allow other device drivers to manage IRQs.
+compile_opt=y
+
+
+
+

@@ -1,0 +1,4 @@
+name=serial
+description=Serial port driver.
+compile_opt=y
+

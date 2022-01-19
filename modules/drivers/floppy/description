@@ -1,0 +1,4 @@
+Driver for floppy drives, include this driver if you want to
+support access to floppy drives.
+
+

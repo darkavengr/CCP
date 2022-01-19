@@ -1,0 +1,10 @@
+magic db "EXEC"
+entry dd 0x80000100
+type dd 2
+version 	dd 0
+arch		dd 0
+codesegsize dd 12216
+datasegsize 	dd 0
+bsssegsize	dd 0
+symboltableofs	dd 0
+symboltablesize dd 0

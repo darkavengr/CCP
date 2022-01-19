@@ -1,0 +1,4 @@
+#define ALLOC_NORMAL	0
+#define ALLOC_KERNEL	1
+#define ALLOC_NOPAGING 	2
+

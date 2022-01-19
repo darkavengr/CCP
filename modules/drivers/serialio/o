@@ -1,0 +1,7 @@
+  if(strcmp(op[0],"port") == 0) {		/* set port */
+  if(strcmp(op[0],"buffersize") == 0) {
+  if(strcmp(op[0],"baud") == 0) {		/* set baud */
+  if(strcmp(op[0],"databits") == 0) {		/* set databits */
+  if(strcmp(op[0],"stopbits") == 0) {		/* set stop bits */
+  if(strcmp(tokens[count],"parity") == 0) {		/* set baud */
+

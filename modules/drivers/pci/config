@@ -1,0 +1,8 @@
+name=pci
+description=PCI driver
+compile_opt=y
+
+
+
+
+

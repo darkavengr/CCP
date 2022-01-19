@@ -1,0 +1,9 @@
+atapi.c: In function 'atapi_init':
+atapi.c:138:6: error: 'physdiskcount' undeclared (first use in this function)
+  for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk */
+      ^
+atapi.c:138:6: note: each undeclared identifier is reported only once for each function it appears in
+atapi.c:140:31: error: 'ident' undeclared (first use in this function)
+   if(ata_ident(physdiskcount,&ident) == -1) continue;  /* get ata identify */
+                               ^
+make: *** [all] Error 1

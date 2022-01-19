@@ -1,0 +1,32 @@
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+extern ata_io();
+void driver_init(void) {
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+ata_io(NULL);
+}

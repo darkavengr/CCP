@@ -1,0 +1,33 @@
+64bit support
+uefi
+usb
+apic
+ioapic
+multi-cpu support
+
+filesystems:
+	ext
+	ext3
+	ext4
+	ntfs
+	extfat
+	Minix
+	AFFS
+	ADFS
+	LEAN
+	HPFS
+	HFS
+	HFS+
+	MFS
+	ReiserFS
+	FFS (Amiga)
+	FFS (BSD)/UFS
+	BeFS
+	BFS
+	XFS
+	SFS
+	ZDSFS
+	ZFS
+	USTAR
+video (vga driver)
+

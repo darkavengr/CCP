@@ -1,0 +1,21 @@
+#define ELF_MAGIC 	0
+#define ELF_BITS  	4
+#define ELF_ENDIAN 	5
+#define ELF_HEADER_VER	6
+#define	ELF_OS_ABI	7
+#define	ELF_PADDING5	8
+#define ELF_TYPE	16
+#define	ELF_MACHINE	18
+#define	ELF_VERSION	20
+#define	ELF_ENTRY	24
+#define ELF_PHDR	28
+#define ELF_SHDR	32
+#define ELF_FLAGS	36
+#define	ELF_HDRSIZE	40
+#define	ELF_PHDRSIZE	42
+#define	ELF_PHCOUNT	44
+#define	ELF_SHDRSIZE	46
+#define	ELF_SHCOUNT	48
+#define ELF_INDEX	50
+
+

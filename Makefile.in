@@ -1,0 +1,38 @@
+ASM=@asm@
+CC=@cc@
+LD=@cc@
+FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c processmanager/process.c header/string.c @cc_opt_files@
+
+all:
+	if [ ! -e bin ]; then mkdir bin;fi
+	if [ ! -e bin/@arch@ ]; then mkdir bin/@arch@;fi
+
+	if [ ! -e obj ]; then mkdir obj;fi
+	if [ ! -e obj/@arch@ ]; then mkdir obj/@arch@;fi
+
+	./gendrivelist  @driverlist@
+	echo $(OBJFILES)
+
+	for f in @driverlist@; do make -C $$f;done
+	$(foreach f,$(FILES),$(CC) -c -w -ffreestanding -nostdlib -lgcc  $f -o $(patsubst %.c,%.o, obj/@arch@/$(notdir $(f)));)
+
+	make -C hwdep/@arch@
+
+	$(CC) -T hwdep/@arch@/ld.script -o bin/@arch@/CCP.SYS -ffreestanding -nostdlib `ls obj/@arch@/*.o` -lgcc -Wl,-Map -Wl,ccp.map
+	make -C command
+clean:
+	rm bin/@arch@/*
+	rm obj/@arch@/*
+	rm *.map
+	rm drive.c
+	rm command/*.o
+
+distclean:
+	rm obj/@arch@/*
+	rm bin/@arch@/*
+	rm `find -iname Makefile`
+	rm drive.c
+	rm *.map
+	rm command/*.o
+
+

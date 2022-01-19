@@ -1,0 +1,14 @@
+OUTPUT_FORMAT("elf32-i386")
+
+SECTIONS
+{
+  . = 0x80100000;
+ kernel_begin = 0x80100000;
+ .text : { *(.text) }
+ .data : { *(.data) }
+ .rodata : { *(.rodata) }
+ .bss : { *(.bss) }
+end = .;
+}
+
+

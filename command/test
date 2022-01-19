@@ -1,0 +1,18 @@
+SET		*
+IF
+CD		*
+COPY
+DEL		*
+MKDIR		*
+RMDIR
+RENAME		*
+ECHO		*
+EXIT		*
+TYPE
+DIR		*
+PS		*
+KILL		*
+GOTO	
+
+
+

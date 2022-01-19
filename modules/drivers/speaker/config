@@ -1,0 +1,6 @@
+name=Speaker driver
+description=Enables speaker output
+compile_opt=m
+
+
+

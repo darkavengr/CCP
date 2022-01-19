@@ -1,0 +1,6 @@
+name=clock
+description=Clock driver. This is the driver for the real time clock (RTC).
+compile_opt=y
+
+
+

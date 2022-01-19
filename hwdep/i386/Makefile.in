@@ -1,0 +1,15 @@
+ASM=nasm
+CC=@arch@-elf-gcc
+LD=@arch@-elf-gcc
+
+all:
+		$(CC) -c -w -ffreestanding -nostdlib -lgcc  ex.c -o ../../obj/@arch@/ex.o
+		$(CC) -c -w -ffreestanding -nostdlib -lgcc  partition.c -o ../../obj/@arch@/partition.o
+		$(CC) -c -w -ffreestanding -nostdlib -lgcc  port.c -o ../../obj/@arch@/port.o
+		$(CC) -c -w -ffreestanding -nostdlib -lgcc  sched.c -o ../../obj/@arch@/sched.o
+		$(CC) -c -w -ffreestanding -nostdlib -lgcc  mutex.c -o ../../obj/@arch@/mutex.o
+		$(ASM) -felf32 init.asm -o ../../obj/@arch@/aainit.o
+		$(ASM) -felf32 yield.asm -o ../../obj/@arch@/yield.o
+		$(ASM) ccpload.asm -o ../../bin/@arch@/CCPLOAD.SYS
+		$(ASM) boot.asm -o ../../bin/@arch@/boot
+

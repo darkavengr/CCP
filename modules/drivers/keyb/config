@@ -1,0 +1,6 @@
+name=kb
+description=PS/2 Keyboard driver,This is for the non-USB standard keyboard and is recommended even if you have a USB keyboard.
+compile_opt=y
+
+
+

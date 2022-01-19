@@ -1,0 +1,9 @@
+#!/bin/bash
+OLDDIR=`pwd`
+cd ../../drivers
+for f in `cat ../config_info/driver_list`;do make -C $f;done
+cd $OLDDIR
+
+
+
+

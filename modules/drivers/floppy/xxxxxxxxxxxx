@@ -1,0 +1,34 @@
+
+unsigned int atapi_io(unsigned int op,unsigned int physdrive,size_t block,uint16_t *buf) {
+size_t count;
+ATAPI_PACKET ap;
+
+lowblock=((uint64_t) block & 0x000000000ffffffff);	/* get low block */
+
+if(ata_ident(physdrive,&result) == -1) return(-1);	/* get information */
+
+islba=0;
+
+if(result.lba28_size != 0) islba=28;	/* is 28bit lba */
+if(result.commands_and_feature_sets_supported2 & 1024) islba=48; /* is 48bit lba */
+
+memset(&ap,0,sizeof(ATAPI_PACKET);
+
+if(op == _READ) {
+  if(islba == 28) {
+  ap.opcode=ATAPI_READ10;
+ }
+ else
+ {
+  ap.opcode=ATAPI_READ12;
+ }
+
+ ap.lba=lowblock;		/* block to read */
+
+while(count++ < 512/2) { 
+ if(op == _READ) *bb++=inw(controller+ATA_DATA_PORT);			/* read data from harddisk */
+ if(op == _WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data to harddisk */
+}
+
+ return(NO_ERROR);
+}

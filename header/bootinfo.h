@@ -1,0 +1,7 @@
+#include <stddef.h>
+
+#define BOOT_INFO_DRIVE			0xAC
+#define BOOT_INFO_CURSOR		0xAD
+#define BOOT_INFO_INITRD_START		0xAE
+#define BOOT_INFO_SYMBOL_START		0xB2
+#define BOOT_INFO_INITRD_SIZE		0xB6

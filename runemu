@@ -1,0 +1,10 @@
+#!/bin/bash
+
+make 2>out
+if [ $? == 0 ]; then
+ sudo ./installccp
+ bochs -q &
+else
+ grep -i "error:" out
+fi
+

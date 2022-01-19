@@ -1,0 +1,10 @@
+ASM=@asm@
+CC=@cc@
+LD=@ld@
+FILES=pic.c
+ASMFILES=@arch@/pic.asm
+
+all:
+	$(ASM) @asm_opts@ -o ../../../obj/@arch@/pic386.o $(ASMFILES)
+	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
+

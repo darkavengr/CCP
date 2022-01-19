@@ -1,0 +1,9 @@
+ASM=@asm@
+CC=@cc@
+LD=@ld@
+
+all:
+$(CC) $CC_OPTS *.c
+$(ASM) $ASM_OPTS @arch@/*.asm
+$(CC) -T ld.script.command -o ../COMMAND.RUN -ffreestanding -nostdlib *.o `find @arch@/ -iname \*.o` -lgcc -Wl,-Map -Wl,../command.map
+

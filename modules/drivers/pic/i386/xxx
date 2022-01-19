@@ -1,0 +1,23 @@
+struc PROCESS
+ regs 		resb REG_SIZE
+ pid: 		resd 	1			
+ filename: 	resb MAX_PATH
+ args: 		resb MAX_PATH
+ parentprocess: resd 1
+ errorhandler: 	resd 1
+ signalhandler: resd 1
+ currentdir:	resd 1
+ rc: 		resd 1
+ flags:		resd 1
+ writeconsolehandle: resd 1
+ readconsolehandle: resd 1
+ lasterror:	resd 1
+ ticks:		resd 1	
+ maxticks:	resd 1
+ findptr:	resd 1
+ stackpointer:	resd 1
+ stackbase:	resd 1
+ kernelstackbase: resd 1
+ kernelstackpointer: resd 1
+ struct PROCESS *next;
+}  __attribute__((packed)) PROCESS;

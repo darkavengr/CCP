@@ -1,0 +1,4 @@
+Serial I/O port driver.
+
+Include this to support old-style serial ports.
+

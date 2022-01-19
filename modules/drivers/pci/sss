@@ -1,0 +1,14 @@
+#define CLASS_INTELLIGENT_CONTROLLER	0xe
+#define CLASS_SATELLITE_COMMUNICATION_CONTROLLER	0xf
+#define CLASS_ENCRYPTION_CONTROLLER	0x10
+#define CLASS_SIGNAL_PROCESSING		0x11
+#define CLASS_PROCESSOR_ACELERATOR	0x12
+#define CLASS_NON_ESSENTIAL_INSTRUMENTATION	0x13
+
+char *pciclasses[] = { "Unclassified PCI device","PCI Mass storage device","PCI Network device",\
+		       "PCI display device","PCI display controller","PCI multimedia controller",\
+		       "PCI memory controller","PCI bridge device","PCI communication controller",\
+		       "PCI base system","PCI input device controller","PCI docking station",\
+		       "PCI CPU","PCI serial bus controller","PCI wireless control",\
+		       "
+

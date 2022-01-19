@@ -1,0 +1,7 @@
+ASM=@asm@
+CC=@cc@
+LD=@ld@
+FILES=pci.c
+all:
+	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
+
