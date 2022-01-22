@@ -1,3 +1,0 @@
-unsigned int findfreevirtualpage(unsigned int size,unsigned int alloc,unsigned int process);
-unsigned int getphysicaladdress(unsigned int process,uint32_t virtaddr);
-

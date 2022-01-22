@@ -840,7 +840,7 @@ pop	rax
 push	rax
 pushfq
 pop	rax
-mov	[regbuf+80],tax			; save flags
+mov	[regbuf+80],rax			; save flags
 pop	rax
 
 mov	[regbuf+8],rsp			; save other registers

@@ -100,10 +100,11 @@ LITTLEENDIAN	equ 1
 ELF_32BIT	equ 1
 
 BOOT_INFO_DRIVE		equ	0xAC
-BOOT_INFO_CURSOR	equ	0xAD
-BOOT_INFO_INITRD_START	equ	0xAE
-BOOT_INFO_SYMBOL_START	equ	0xB2
-BOOT_INFO_INITRD_SIZE	equ	0xB6
+BOOT_INFO_CURSOR_ROW	equ	0xAD
+BOOT_INFO_CURSOR_COL	equ	0xAE
+BOOT_INFO_INITRD_START	equ	0xAF
+BOOT_INFO_SYMBOL_START	equ	0xB3
+BOOT_INFO_INITRD_SIZE	equ	0xB7
 
 org	BASE_OF_SECTION
 cli							; disable interrupts
@@ -227,10 +228,6 @@ mov	[blocksize],eax
 
 mov	esi,offset loading_ccp
 call	output16
-
-mov	ah,3h					; get cursor
-int	10h
-mov	[BOOT_INFO_CURSOR],dx
 
 mov	ebx,offset findbuf
 mov	edx,offset ccp_name

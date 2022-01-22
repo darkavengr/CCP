@@ -94,10 +94,11 @@ USER_DATA_SELECTOR	equ	23h			; user data selector
 TSS_SELECTOR 		equ	28h			; tss selector
 
 BOOT_INFO_DRIVE		equ	0xAC
-BOOT_INFO_CURSOR	equ	0xAD
-BOOT_INFO_INITRD_START	equ	0xAE
-BOOT_INFO_SYMBOL_START	equ	0xB2
-BOOT_INFO_INITRD_SIZE	equ	0xB6
+BOOT_INFO_CURSOR_ROW	equ	0xAD
+BOOT_INFO_CURSOR_COL	equ	0xAE
+BOOT_INFO_INITRD_START	equ	0xAF
+BOOT_INFO_SYMBOL_START	equ	0xB3
+BOOT_INFO_INITRD_SIZE	equ	0xB7
 
 _asm_init:
 ;
@@ -136,6 +137,29 @@ mov	ds,ax
 mov	es,ax
 mov	ss,ax
 
+mov	esi,starting_ccp
+sub	esi,KERNEL_HIGH
+
+next_banner_char:
+mov	ah,0eh					; output character
+mov	al,[esi]					; character
+int	10h
+
+inc	si					; point to next
+test	al,al					; loop until end
+jnz	next_banner_char
+
+jmp	short	over_msg
+
+starting_ccp db 10,13,"Starting CCP...",10,13,0
+over_msg:
+
+mov	ah,3h					; get cursor
+xor	bh,bh
+int	10h
+mov	[BOOT_INFO_CURSOR_ROW],dh
+mov	[BOOT_INFO_CURSOR_COL],dl
+
 ;
 ; enable a20 line
 ;
@@ -169,7 +193,6 @@ a20wait
 sti
 jmp 	short a20done
   			
-
 ;
 ; detect memory
 ; this must be done in real mode
@@ -747,10 +770,6 @@ push	offset outputconsole
 push	offset readconsole
 call	openfiles_init				; initialize device manager
 add	esp,12
-
-push	0 
-push	offset startingccp				; display banner
-call 	kprintf
 
 
 ; This block of code is a copy of the
