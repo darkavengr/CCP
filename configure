@@ -28,6 +28,11 @@ while [ ${#response} == 0 ]; do			# no input, use default
  myp="Enter platform to compile for ["$list_of_arches"]:"
  echo -n $myp
  read response
+
+ if [ -z "$response" ]; then
+  echo "Enter platform to compile for"
+ fi
+
 done
 
  for f in $list_of_arches; do			# check if valid input

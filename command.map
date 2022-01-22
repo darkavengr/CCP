@@ -1,0 +1,342 @@
+
+Allocating common symbols
+Common symbol       size              file
+
+directories         0x6798            ./command.o
+parsebuf            0x23dc            ./runcommand.o
+commandconsoleout   0x4               ./command.o
+readbuf             0x3fc             ./readline.o
+dirattribs          0x4               ./command.o
+handle              0x4               ./command.o
+direntry            0x251             ./command.o
+errorlevel          0x4               ./command.o
+commandconsolein    0x4               ./command.o
+status              0x4               ./command.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD ./string.o
+LOAD ./readline.o
+LOAD ./i386/call.o
+LOAD ./tokenize.o
+LOAD ./copyfile.o
+LOAD ./getfullpath.o
+LOAD ./command.o
+LOAD ./err.o
+LOAD ./addvar.o
+LOAD ./kprintf.o
+LOAD ./runcommand.o
+LOAD ./tohex.o
+LOAD /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a
+                0x0000000000000100                . = 0x100
+
+.text           0x0000000000000100     0x343a
+ *(.text)
+ .text          0x0000000000000100      0x80b ./string.o
+                0x0000000000000100                strlen
+                0x000000000000013f                strlen_unicode
+                0x000000000000019f                strcpy
+                0x00000000000001e2                strcat
+                0x0000000000000235                memcpy
+                0x000000000000027a                memcmp
+                0x00000000000002cb                strcmp
+                0x0000000000000326                memset
+                0x0000000000000366                itoa
+                0x00000000000003da                reverse
+                0x000000000000043f                wildcard
+                0x00000000000005ca                touppercase
+                0x000000000000060c                tolowercase
+                0x000000000000064e                wildcard_rename
+                0x000000000000078f                strtrunc
+                0x00000000000007b9                atoi
+ .text          0x000000000000090b      0x12e ./readline.o
+                0x000000000000090b                readline
+                0x000000000000096c                readlinefromfile
+ *fill*         0x0000000000000a39        0x7 
+ .text          0x0000000000000a40      0x244 ./i386/call.o
+                0x0000000000000a40                exit
+                0x0000000000000a45                seek
+                0x0000000000000a58                getfileattributes
+                0x0000000000000a70                getfiletimedate
+                0x0000000000000a7c                setfiletimedate
+                0x0000000000000a90                close
+                0x0000000000000a99                create
+                0x0000000000000aa2                open
+                0x0000000000000ab1                delete
+                0x0000000000000aba                exec
+                0x0000000000000aca                findfirst
+                0x0000000000000ad7                findnext
+                0x0000000000000ae4                getcwd
+                0x0000000000000aed                chdir
+                0x0000000000000af6                rename
+                0x0000000000000b03                write
+                0x0000000000000b14                read
+                0x0000000000000b25                mkdir
+                0x0000000000000b2e                rmdir
+                0x0000000000000b37                getargs
+                0x0000000000000b40                getvers
+                0x0000000000000b45                alloc
+                0x0000000000000b4e                free
+                0x0000000000000b57                shutdown
+                0x0000000000000b5f                restart
+                0x0000000000000b67                getlasterror
+                0x0000000000000b6c                findfirstprocess
+                0x0000000000000b78                findnextprocess
+                0x0000000000000b84                addblockdevice
+                0x0000000000000b9c                addcharacterdevice
+                0x0000000000000bb4                switchtonextprocess
+                0x0000000000000bf5                getcurrentprocess
+                0x0000000000000bfd                writeconsole
+                0x0000000000000c06                getfilesize
+                0x0000000000000c12                kill
+                0x0000000000000c1e                setconsolecolour
+                0x0000000000000c3a                dup
+                0x0000000000000c43                dup2
+                0x0000000000000c50                tell
+                0x0000000000000c5c                set_critical_error_handler
+ .text          0x0000000000000c84       0xc4 ./tokenize.o
+                0x0000000000000c84                tokenize_line
+ .text          0x0000000000000d48      0x152 ./copyfile.o
+                0x0000000000000d48                copyfile
+ .text          0x0000000000000e9a      0x34e ./getfullpath.o
+                0x0000000000000e9a                getfullpath
+ .text          0x00000000000011e8     0x17ed ./command.o
+                0x00000000000011e8                main
+                0x0000000000001360                doline
+                0x0000000000001a92                set_statement
+                0x0000000000001afd                if_statement
+                0x0000000000001dab                cd_statement
+                0x0000000000001dff                copy_statement
+                0x0000000000001fd9                for_statement
+                0x0000000000002153                del_statement
+                0x000000000000227d                mkdir_statement
+                0x00000000000022b6                rmdir_statement
+                0x00000000000022ef                rename_statement
+                0x0000000000002335                echo_statement
+                0x0000000000002389                exit_statement
+                0x000000000000239d                type_statement
+                0x000000000000245e                dir_statement
+                0x0000000000002738                ps_statement
+                0x00000000000027ca                kill_statement
+                0x0000000000002815                goto_statement
+                0x00000000000028e9                rem_statement
+                0x00000000000028ee                critical_error_handler
+ .text          0x00000000000029d5       0x3f ./err.o
+                0x00000000000029d5                writeerror
+ .text          0x0000000000002a14      0x1d2 ./addvar.o
+                0x0000000000002a14                setvar
+                0x0000000000002b2b                getvar
+                0x0000000000002b88                findvars
+ .text          0x0000000000002be6      0x55d ./kprintf.o
+                0x0000000000002be6                kprintf
+                0x0000000000002ecb                ksprintf
+ .text          0x0000000000003143      0x31b ./runcommand.o
+                0x0000000000003143                runcommand
+                0x0000000000003366                doscript
+ .text          0x000000000000345e       0xdc ./tohex.o
+                0x000000000000345e                tohex
+
+.iplt           0x0000000000003540        0x0
+ .iplt          0x0000000000000000        0x0 ./string.o
+
+.data           0x0000000000003540      0x198
+ *(.data)
+ .data          0x0000000000003540        0x0 ./string.o
+ .data          0x0000000000003540        0x0 ./readline.o
+ .data          0x0000000000003540        0x0 ./tokenize.o
+ .data          0x0000000000003540        0x0 ./copyfile.o
+ .data          0x0000000000003540        0x0 ./getfullpath.o
+ .data          0x0000000000003540       0xc8 ./command.o
+                0x0000000000003540                errty
+                0x0000000000003548                nolabel
+                0x000000000000354c                syntaxerror
+                0x0000000000003550                noparams
+                0x0000000000003554                presskey
+                0x0000000000003560                statements
+ *fill*         0x0000000000003608       0x18 
+ .data          0x0000000000003620       0xb8 ./err.o
+                0x0000000000003620                errs
+ .data          0x00000000000036d8        0x0 ./addvar.o
+ .data          0x00000000000036d8        0x0 ./kprintf.o
+ .data          0x00000000000036d8        0x0 ./runcommand.o
+ .data          0x00000000000036d8        0x0 ./tohex.o
+
+.igot.plt       0x00000000000036d8        0x0
+ .igot.plt      0x0000000000000000        0x0 ./string.o
+
+.rodata         0x00000000000036d8      0x80f
+ *(.rodata)
+ .rodata        0x00000000000036d8       0x39 ./copyfile.o
+ .rodata        0x0000000000003711       0x12 ./getfullpath.o
+ *fill*         0x0000000000003723        0x1 
+ .rodata        0x0000000000003724      0x26c ./command.o
+ .rodata        0x0000000000003990      0x27a ./err.o
+ *fill*         0x0000000000003c0a        0x2 
+ .rodata        0x0000000000003c0c      0x2a8 ./kprintf.o
+ .rodata        0x0000000000003eb4       0x13 ./runcommand.o
+ .rodata        0x0000000000003ec7       0x20 ./tohex.o
+
+.eh_frame       0x0000000000003ee8      0x678
+ .eh_frame      0x0000000000003ee8      0x21c ./string.o
+ .eh_frame      0x0000000000004104       0x40 ./readline.o
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000000004144       0x20 ./tokenize.o
+                                         0x38 (size before relaxing)
+ .eh_frame      0x0000000000004164       0x20 ./copyfile.o
+                                         0x38 (size before relaxing)
+ .eh_frame      0x0000000000004184       0x28 ./getfullpath.o
+                                         0x40 (size before relaxing)
+ .eh_frame      0x00000000000041ac      0x294 ./command.o
+                                        0x2ac (size before relaxing)
+ .eh_frame      0x0000000000004440       0x20 ./err.o
+                                         0x38 (size before relaxing)
+ .eh_frame      0x0000000000004460       0x60 ./addvar.o
+                                         0x78 (size before relaxing)
+ .eh_frame      0x00000000000044c0       0x40 ./kprintf.o
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000000004500       0x40 ./runcommand.o
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000000004540       0x20 ./tohex.o
+                                         0x38 (size before relaxing)
+
+.rel.dyn        0x0000000000004560        0x0
+ .rel.iplt      0x0000000000000000        0x0 ./string.o
+ .rel.text      0x0000000000000000        0x0 ./string.o
+
+.bss            0x0000000000004560     0x921c
+ *(.bss)
+ .bss           0x0000000000004560        0x0 ./string.o
+ .bss           0x0000000000004560        0x0 ./readline.o
+ .bss           0x0000000000004560        0x0 ./tokenize.o
+ .bss           0x0000000000004560        0x0 ./copyfile.o
+ .bss           0x0000000000004560        0x0 ./getfullpath.o
+ .bss           0x0000000000004560        0x0 ./command.o
+ .bss           0x0000000000004560        0x0 ./err.o
+ .bss           0x0000000000004560        0x8 ./addvar.o
+                0x0000000000004560                vars
+                0x0000000000004564                lastvar
+ .bss           0x0000000000004568        0x0 ./kprintf.o
+ .bss           0x0000000000004568        0x0 ./runcommand.o
+ .bss           0x0000000000004568        0x0 ./tohex.o
+ *fill*         0x0000000000004568       0x18 
+ COMMON         0x0000000000004580      0x3fc ./readline.o
+                0x0000000000004580                readbuf
+ *fill*         0x000000000000497c        0x4 
+ COMMON         0x0000000000004980     0x6a20 ./command.o
+                0x0000000000004980                directories
+                0x000000000000b118                commandconsoleout
+                0x000000000000b11c                dirattribs
+                0x000000000000b120                handle
+                0x000000000000b140                direntry
+                0x000000000000b394                errorlevel
+                0x000000000000b398                commandconsolein
+                0x000000000000b39c                status
+ COMMON         0x000000000000b3a0     0x23dc ./runcommand.o
+                0x000000000000b3a0                parsebuf
+OUTPUT(../bin/i386/COMMAND.RUN elf32-i386)
+
+.debug_info     0x0000000000000000     0x3270
+ .debug_info    0x0000000000000000      0x67b ./string.o
+ .debug_info    0x000000000000067b      0x1b1 ./readline.o
+ .debug_info    0x000000000000082c      0x133 ./tokenize.o
+ .debug_info    0x000000000000095f      0x215 ./copyfile.o
+ .debug_info    0x0000000000000b74      0x2a3 ./getfullpath.o
+ .debug_info    0x0000000000000e17     0x1a3a ./command.o
+ .debug_info    0x0000000000002851       0xe3 ./err.o
+ .debug_info    0x0000000000002934      0x274 ./addvar.o
+ .debug_info    0x0000000000002ba8      0x238 ./kprintf.o
+ .debug_info    0x0000000000002de0      0x350 ./runcommand.o
+ .debug_info    0x0000000000003130      0x140 ./tohex.o
+
+.debug_abbrev   0x0000000000000000      0xbac
+ .debug_abbrev  0x0000000000000000      0x19c ./string.o
+ .debug_abbrev  0x000000000000019c       0xd1 ./readline.o
+ .debug_abbrev  0x000000000000026d       0xb1 ./tokenize.o
+ .debug_abbrev  0x000000000000031e       0xd6 ./copyfile.o
+ .debug_abbrev  0x00000000000003f4       0xee ./getfullpath.o
+ .debug_abbrev  0x00000000000004e2      0x24d ./command.o
+ .debug_abbrev  0x000000000000072f       0xa8 ./err.o
+ .debug_abbrev  0x00000000000007d7      0x12c ./addvar.o
+ .debug_abbrev  0x0000000000000903      0x115 ./kprintf.o
+ .debug_abbrev  0x0000000000000a18       0xdc ./runcommand.o
+ .debug_abbrev  0x0000000000000af4       0xb8 ./tohex.o
+
+.debug_aranges  0x0000000000000000      0x160
+ .debug_aranges
+                0x0000000000000000       0x20 ./string.o
+ .debug_aranges
+                0x0000000000000020       0x20 ./readline.o
+ .debug_aranges
+                0x0000000000000040       0x20 ./tokenize.o
+ .debug_aranges
+                0x0000000000000060       0x20 ./copyfile.o
+ .debug_aranges
+                0x0000000000000080       0x20 ./getfullpath.o
+ .debug_aranges
+                0x00000000000000a0       0x20 ./command.o
+ .debug_aranges
+                0x00000000000000c0       0x20 ./err.o
+ .debug_aranges
+                0x00000000000000e0       0x20 ./addvar.o
+ .debug_aranges
+                0x0000000000000100       0x20 ./kprintf.o
+ .debug_aranges
+                0x0000000000000120       0x20 ./runcommand.o
+ .debug_aranges
+                0x0000000000000140       0x20 ./tohex.o
+
+.debug_line     0x0000000000000000      0xd95
+ .debug_line    0x0000000000000000      0x286 ./string.o
+ .debug_line    0x0000000000000286       0x6d ./readline.o
+ .debug_line    0x00000000000002f3       0x6f ./tokenize.o
+ .debug_line    0x0000000000000362       0x7e ./copyfile.o
+ .debug_line    0x00000000000003e0       0xfe ./getfullpath.o
+ .debug_line    0x00000000000004de      0x530 ./command.o
+ .debug_line    0x0000000000000a0e       0x44 ./err.o
+ .debug_line    0x0000000000000a52       0x9a ./addvar.o
+ .debug_line    0x0000000000000aec      0x146 ./kprintf.o
+ .debug_line    0x0000000000000c32       0xd2 ./runcommand.o
+ .debug_line    0x0000000000000d04       0x91 ./tohex.o
+
+.debug_str      0x0000000000000000      0x88a
+ .debug_str     0x0000000000000000      0x19a ./string.o
+                                        0x1f6 (size before relaxing)
+ .debug_str     0x000000000000019a       0x4a ./readline.o
+                                        0x162 (size before relaxing)
+ .debug_str     0x00000000000001e4       0x37 ./tokenize.o
+                                        0x13b (size before relaxing)
+ .debug_str     0x000000000000021b       0x70 ./copyfile.o
+                                        0x189 (size before relaxing)
+ .debug_str     0x000000000000028b       0x39 ./getfullpath.o
+                                        0x185 (size before relaxing)
+ .debug_str     0x00000000000002c4      0x518 ./command.o
+                                        0x790 (size before relaxing)
+ .debug_str     0x00000000000007dc        0x6 ./err.o
+                                        0x11c (size before relaxing)
+ .debug_str     0x00000000000007e2       0x24 ./addvar.o
+                                        0x152 (size before relaxing)
+ .debug_str     0x0000000000000806       0x3f ./kprintf.o
+                                         0xea (size before relaxing)
+ .debug_str     0x0000000000000845       0x36 ./runcommand.o
+                                        0x1ba (size before relaxing)
+ .debug_str     0x000000000000087b        0xf ./tohex.o
+                                        0x138 (size before relaxing)
+
+.comment        0x0000000000000000       0x11
+ .comment       0x0000000000000000       0x11 ./string.o
+                                         0x12 (size before relaxing)
+ .comment       0x0000000000000000       0x12 ./readline.o
+ .comment       0x0000000000000000       0x12 ./tokenize.o
+ .comment       0x0000000000000000       0x12 ./copyfile.o
+ .comment       0x0000000000000000       0x12 ./getfullpath.o
+ .comment       0x0000000000000000       0x12 ./command.o
+ .comment       0x0000000000000000       0x12 ./err.o
+ .comment       0x0000000000000000       0x12 ./addvar.o
+ .comment       0x0000000000000000       0x12 ./kprintf.o
+ .comment       0x0000000000000000       0x12 ./runcommand.o
+ .comment       0x0000000000000000       0x12 ./tohex.o

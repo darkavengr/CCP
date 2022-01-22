@@ -285,7 +285,7 @@ kernelfree(phbuf);
 
 /* allocate user mode stack */
 
-stackp=alloc_int(ALLOC_NORMAL,processcount,PROCESS_STACK_SIZE,KERNEL_HIGH-PROCESS_STACK_SIZE);
+stackp=alloc_int(ALLOC_NORMAL,processcount,PROCESS_STACK_SIZE,KERNEL_HIGH-10-PROCESS_STACK_SIZE);
 if(stackp == NULL) {
  currentprocess=oldprocess;
 

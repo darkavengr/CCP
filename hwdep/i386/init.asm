@@ -1270,6 +1270,5 @@ temptwo dd 0
 MEMBUF_START dd offset end
 MEM_SIZE_HIGH dd 0
 MEM_SIZE dd 0
-startingccp db "Starting CCP...",13,0
 regbuf times 20 dd 0
 
