@@ -47,8 +47,6 @@ void init_multitasking(void);
 
 void switch_task(size_t *regs) {
 
- tickcount++;
-
  if(multitaskingenabled == FALSE) {				/* return if multiasking is disabled */
   return;
  }
@@ -57,8 +55,14 @@ void switch_task(size_t *regs) {
   return;
  }
 
+ if((currentprocess->flags & PROCESS_READY) != PROCESS_READY) return;	/* process not ready */
+
  if(++currentprocess->ticks < currentprocess->maxticks) {		/* return if process timeslot not complete */
   return;
+ }
+
+ if(currentprocess->pid == 1) {
+  asm("xchg %bx,%bx");
  }
 
 // asm(".intel_syntax");
@@ -74,10 +78,6 @@ void switch_task(size_t *regs) {
  loadpagetable(currentprocess->pid);				/* load page tables */
 
  switch_kernel_stack(currentprocess->kernelstackpointer);	/* switch kernel stack */
-
-// if(currentprocess->pid == 1) {
-//  asm("xchg %bx,%bx");
-// }
  
  memcpy(regs,&currentprocess->regs,X86_NUMBER_OF_REGISTERS*sizeof(size_t));		/* load registers */
  return;

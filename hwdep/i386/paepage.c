@@ -104,9 +104,8 @@ unsigned int addpage_int(uint32_t mode,size_t process,uint32_t page,void *physad
  next->pdpt[pdpt_of]=c | PAGE_PRESENT;
 }
 
-asm("xchg %bx,%bx");
 
-v=0xc0000000+(pdpt_of*512);
+v=0xc0000000+(pd*512);
 if(v[pd] == 0) {				/* if page directory empty */
 
  c=kernelalloc_nopaging(PAGE_SIZE);

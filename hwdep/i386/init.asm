@@ -522,7 +522,7 @@ je	unmap_pd
 
 mov	edi,ROOT_PDPT
 xor	eax,eax
-	mov	[edi],eax			; unmap lower half
+mov	[edi],eax			; unmap lower half
 mov	[edi+4],eax
 
 mov	cr3,edi
@@ -822,7 +822,6 @@ out	dx,al
 xor	al,al
 mov	dx,0A1h
 out	dx,al
-
 
 call	init_multitasking
 call	driver_init				; initialize drivers and filesystems

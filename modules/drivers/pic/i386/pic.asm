@@ -20,6 +20,8 @@ global irq15
 extern getpid
 
 irq0:
+inc	dword [tickcount]
+
 mov	dword [irqnumber],0
 jmp	irq
 
@@ -123,4 +125,5 @@ popa					; restore registers
 iret			; return
 
 irqnumber dd 0
+tickcount dd 0
 

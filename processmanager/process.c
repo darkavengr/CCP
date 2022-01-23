@@ -406,8 +406,12 @@ if((next->flags & PROCESS_WAITING) == 0) {		/* process is not being waited on */
 
 unlock_mutex(&process_mutex);			/* unlock mutex */
 
-//if(next->pid == oldprocess) yield();			/* switch to next process if killing current process */
-while(1) ;;
+if(next->pid == oldprocess) {
+ currentprocess->ticks=currentprocess->maxticks;
+ asm("xchg %bx,%bx");
+
+ yield();			/* switch to next process if killing current process */
+}
 
 return;
 }
