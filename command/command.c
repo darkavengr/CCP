@@ -40,6 +40,7 @@
 #include <stdint.h>
 #include "../header/errors.h"
 #include "command.h"
+#include "../processmanager/mutex.h"
 #include "../devicemanager/device.h"
 #include "../filemanager/vfs.h"
 #include "../processmanager/process.h"

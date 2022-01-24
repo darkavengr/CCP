@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include "../../../header/errors.h"
 #include "serialio.h"
+#include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
 #include "../../../filemanager/vfs.h"
 

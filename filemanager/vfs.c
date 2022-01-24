@@ -21,10 +21,10 @@
 #include <stddef.h>
 #include "../header/errors.h"
 #include "vfs.h"
+#include "../processmanager/mutex.h"
 #include "../devicemanager/device.h"
 #include "../header/bootinfo.h"
-#include "../processmanager/mutex.h"
-
+	
 size_t findfirst(char *name,FILERECORD *buf);
 size_t findnext(char *name,FILERECORD *buf);
 size_t open(char *filename,size_t access);
@@ -82,7 +82,6 @@ if(fs.findfirst == NULL) {			/* not implemented */
  setlasterror(NOT_IMPLEMENTED);
  return(-1);
 }
-
 
 return(fs.findfirst(name,buf));				/* call handler */
 }

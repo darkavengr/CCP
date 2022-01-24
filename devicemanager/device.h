@@ -48,6 +48,7 @@ typedef struct {
  unsigned int numberofheads;
  unsigned int numberofsectors;
  void *superblock;
+ MUTEX mutex;
  struct BLOCKDEVICE *next;
 }  BLOCKDEVICE;
 

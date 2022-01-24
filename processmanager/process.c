@@ -21,13 +21,13 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../header/errors.h"
+#include "mutex.h"
 #include "../devicemanager/device.h"
 #include "../filemanager/vfs.h"
 #include "../memorymanager/memorymanager.h"
 #include "process.h"
 #include "signal.h"
 #include "../header/bootinfo.h"
-#include "mutex.h"
 
 #define KERNEL_HIGH (1 << (sizeof(size_t) *8)-1)
 
@@ -850,17 +850,6 @@ size_t getreturncode(void) {
  return(currentprocess->rc);
 }
 
-size_t getprocessflags(void) {
- if(currentprocess == NULL) return(0);
- return(currentprocess->flags);
-}
-
-void setprocessflags(size_t flags) {
- if(currentprocess == NULL) return(0);
-
- currentprocess->flags=flags;
- return;
-}
 
 size_t ksleep(size_t wait) {
 size_t newtick;
@@ -925,4 +914,39 @@ size_t processmanager_init(void) {
  initialize_mutex(&process_mutex);
 }
 
+size_t blockprocess(size_t pid) {
+PROCESS *next;
+
+next=processes;
+	
+while(next != NULL) {
+ if(next->pid == pid) {			/* found process */
+   next->flags |= PROCESS_BLOCKED;			/* block process */
+   return(0);
+ }
+ 
+ next=next->next;
+}
+
+setlasterror(BAD_PROCESS);		/* invalid process */
+return(-1);
+}
+
+size_t unblockprocess(size_t pid) {
+PROCESS *next;
+
+next=processes;
+	
+while(next != NULL) {
+ if(next->pid == pid) {			/* found process */
+   next->flags &= PROCESS_BLOCKED;			/* block process */
+   return(0);
+ }
+ 
+ next=next->next;
+}
+
+setlasterror(BAD_PROCESS);		/* invalid process */
+return(-1);
+}
 

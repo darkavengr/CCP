@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 #include "../../../header/errors.h"
+#include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
 #include "pci.h"
 

@@ -18,6 +18,7 @@
 */
 
 #include "pit.h"
+#include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
 
 #define MODULE_INIT pit_init

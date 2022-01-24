@@ -24,8 +24,8 @@
  */
 
 #include <stdint.h>
+#include <stddef.h>
 #include "hwdefs.h"
-#include "../../devicemanager/device.h"
 #include "../../filemanager/vfs.h"
 #include "../../processmanager/process.h"
 

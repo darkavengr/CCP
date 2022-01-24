@@ -24,8 +24,6 @@
  */
 #include <stdint.h>
 #include "header/errors.h"
-#include "devicemanager/device.h"
-#include "filemanager/vfs.h"
 
 extern end();
 

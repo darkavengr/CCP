@@ -22,11 +22,11 @@
  */
 
 #include <stdint.h>
+#include "../processmanager/mutex.h"
 #include "device.h"
 #include "../filemanager/vfs.h"
 #include "../header/errors.h"
 #include <elf.h>
-#include "../processmanager/mutex.h"
 
 size_t add_block_device(BLOCKDEVICE *driver);
 size_t add_char_device(CHARACTERDEVICE *device);
@@ -168,17 +168,13 @@ size_t blockio(unsigned int op,size_t drive,size_t block,void *buf) {
   return(-1);
  }
 
- while((next->flags & DEVICE_LOCKED) == DEVICE_LOCKED) ;;	/* wait for drive to become free */
-
- next->flags |= DEVICE_LOCKED;				/* lock drive */
- 
-
+  unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 b=buf;
 
 if(next->sectorsperblock == 0) next->sectorsperblock=1;
 
-for(count=0;count<next->sectorsperblock;count++) {
 
+for(count=0;count<next->sectorsperblock;count++) {
  if(next->blockio(op,next->physicaldrive,(next->startblock+block)+count,b) == -1) {
   lasterr=getlasterror();
 
@@ -188,8 +184,6 @@ for(count=0;count<next->sectorsperblock;count++) {
    error=call_critical_error_handler(next->dname,drive,(op & 0x80000000),lasterr);	/* call exception handler */
 
    if(error == CRITICAL_ERROR_ABORT) {
-    next->flags ^= DEVICE_LOCKED;				/* unlock drive */
-
     unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
     exit(0);	/* abort */
    }
@@ -212,7 +206,6 @@ for(count=0;count<next->sectorsperblock;count++) {
  b=b+next->sectorsize;
 }
 
- next->flags ^= DEVICE_LOCKED;				/* unlock drive */
 
  unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
@@ -579,6 +572,8 @@ while(next != NULL) {
 
  next=next->next;
 }
+
+unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
 setlasterror(INVALID_DRIVE);
 return(-1);
