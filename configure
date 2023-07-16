@@ -1,5 +1,8 @@
 #!/bin/bash
-# Generates makefile
+#
+# Configure script for CCP
+#
+
 
 function check_if_module_included {
  for mod in "$module_names"; do 
@@ -16,15 +19,17 @@ function check_if_module_included {
 list_of_arches=`ls hwdep`
 module_names=""
 
-#
-# select the architecture
-#
 echo
 echo Interactive configure script
 echo
 
+#
+# select the architecture
+#
+
+echo "Choose which platform you want to compile for."
+
 while [ ${#response} == 0 ]; do			# no input, use default
- echo "Choose which platform you want to compile for."
  myp="Enter platform to compile for ["$list_of_arches"]:"
  echo -n $myp
  read response
@@ -32,8 +37,6 @@ while [ ${#response} == 0 ]; do			# no input, use default
  if [ -z "$response" ]; then
   echo "Enter platform to compile for"
  fi
-
-done
 
  for f in $list_of_arches; do			# check if valid input
   if [ "$f" == "$response" ]; then
@@ -44,9 +47,11 @@ done
 
  if [ ${#compile_arch} == 0 ]; then		# not valid arch
   echo configure: Unknown platform must be one of $list_of_arches
-  exit 1
+  response=""
  fi
  
+done
+
 if [ ! -e hwdep/$compile_arch/config ]; then			# check if config file exists
  echo configure: Missing file hwdep/$compile_arch/config
  exit 1
@@ -55,51 +60,52 @@ fi
 echo Compiling for $compile_arch
 
 CC_OPT_COUNT=0
+#
 # read options from config file
 #
  while IFS= read -r var
  do
 
-   IFS='=' read -r varname varval <<< "$var"
+   IFS='=' read -r varname varval <<< "$var"			#read line from file and split at = into varname and varval
 
-  case $varname in
-   CC)
+  case $varname in						# process 
+   CC)								# c compiler
    CC=$varval
    ;;
 
-   ASM)
+   ASM)								# assembler
    ASM=$varval
    ;;
 
-   LD)
+   LD)								# linker
    LD=$varval
    ;;
 
-   LD_OPTS)
+   LD_OPTS)							# linker options
    LDOPTS=$varval
    ;;
 
-   CC_OPTS)   
+   CC_OPTS)   							# compiler options
     CC_OPTS=$varval
    ;;
 
-   ASM_OPTS)   
+   ASM_OPTS)   							# assembler options
     ASM_OPTS=$varval   
    ;;
 
-   SEARCH)
+   SEARCH)							# search path
     SEARCH=$varval
     ;;
 
-   CC_BASE_FILES)
+   CC_BASE_FILES)						# base files for c compiler
     CC_BASE_FILES=$varval
     ;;
 
-   ASM_BASE_FILES)
+   ASM_BASE_FILES)						# base files for assembler
     ASM_BASE_FILES=$varval
     ;;
 
-   CC_OPT_FILE)
+   CC_OPT_FILE)							# optional files for c compiler
     OPT_FILES[optcount]=$varval
     let "optcount++"
     ;;
@@ -108,18 +114,22 @@ CC_OPT_COUNT=0
     
  done < hwdep/$compile_arch/config
 
+#
+# Select optional features
+#
+
  count=0;
 
- while [ "$optcount" != 0 ]; do
+ while [ "$optcount" != 0 ]; do				# until all optional features done
 
-  IFS=':' read -r cc_desc cc_yes cc_no <<< "${OPT_FILES[count]}"
+  IFS=':' read -r cc_desc cc_yes cc_no <<< "${OPT_FILES[count]}"	# read line and split into cc_desc,cc_yes and cc_no variables
  
-  read -p "$cc_desc (Y/n)?" yesno
-
-  if [ $yesno == "y" ]; then
-   CC_OPT_FILES="$CC_OPT_FILES $cc_yes"
+  read -p "$cc_desc (Y/n)?" yesno			# prompt user to include feature
+ 
+  if [ ${#yesno} == 0 ] || [ $yesno == "y" ]; then				# include feature
+   CC_OPT_FILES="$CC_OPT_FILES $cc_yes"			# use file for this feature
    else
-    CC_OPT_FILES="$CC_OPT_FILES $cc_no"
+    CC_OPT_FILES="$CC_OPT_FILES $cc_no"			# use alternative file
   fi
 
   
@@ -145,7 +155,8 @@ for f in $SEARCH;do
  a=`echo $f | cut -d/ -f 3`
 
 let CC_OPT_COUNT=0
- if [ $name == "drivers" ] || [ $name == "filesystems" ]; then  
+
+ if [ $name == "drivers" ] || [ $name == "filesystems" ] ||  [ $name == "binfmt" ]; then  
 
  #read driver config information
 
@@ -154,25 +165,25 @@ let CC_OPT_COUNT=0
          COMPILE_DEFAULT_OPT=""
 	 REQUIRED=""
 
- 	 while IFS= read -r var
+ 	 while IFS= read -r var					# read lines from file
 	  do
 
-	  IFS='=' read -r varname varval <<< "$var"
+	  IFS='=' read -r varname varval <<< "$var"		# split line to varname and varval variables
 
 	  case $varname in
-	   name)
+	   name)						# driver name
 	    DRIVERNAME=$varval
 	    ;;
 
-	  description)
+	  description)						# driver description
 	   DESCRIPTION=$varval
 	   ;;
 
-	  compile_default_opt)
+	  compile_default_opt)					# Is optional feature
 	   COMPILE_DEFAULT_OPT=$varval
 	   ;;
 
-	  requires)
+	  requires)						# Required modules
 	   REQUIRED=$varval
 	   ;;
 
@@ -201,22 +212,18 @@ let CC_OPT_COUNT=0
 
   read response
 
-  if [ ${#response} == 0 ]; then	# no input, use default
-   response=$COMPILE_DEFAULT_OPT
-  fi
- 
-  if [ $response == "y" ] || [ $response == "Y" ]; then		# do response
+  if [  ${#response} == 0 ] || [ $response == "y" ] || [ $response == "Y" ]; then		# do response
      modulelist="$modulelist $f"		# add to list
      module_names="$module_names $DRIVERNAME"		# add to list     
 
 #
 # add dependencies
 #
-     if ! [ "$REQUIRED" = "" ]; then
-      check_if_module_included "$REQUIRED"
+     if ! [ "$REQUIRED" = "" ]; then			# there is a required modules
+      check_if_module_included "$REQUIRED"		# check if already included
 
       rv=$?		# need to save it so it can be compared
-      if [ "$rv" == "0" ]; then
+      if [ "$rv" == "0" ]; then				# not already included
        echo
        echo Including required dependency $REQUIRED
        echo
@@ -231,10 +238,16 @@ let CC_OPT_COUNT=0
 fi
 done
 
+#
+# Generate makefiles from templates
+#
 echo Generating Makefiles
 
-for f in $SEARCH;do	
- if [ ! -e $f/Makefile.in ]; then 
+for f in $SEARCH;do					# for each directory in search path
+
+# check if makefile exists
+
+ if [ ! -e $f/Makefile.in ]; then 			
   echo configure: Missing file $f/Makefile.in
   exit 1
  fi

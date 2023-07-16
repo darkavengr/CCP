@@ -2,7 +2,8 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=speaker.c
+OBJFILE=speaker.o
 
-all:
-	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
+../../../obj/@arch@/speaker.o:
+	$(CC) @cc_opts@ $(FILES) -o ../../../obj/@arch@/speaker.o
 

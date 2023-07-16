@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023-2022
 
     This file is part of CCP.
 
@@ -28,24 +28,32 @@
 #include <stdint.h>
 #include "../filemanager/vfs.h"
 
-unsigned int strlen(char *str);
-unsigned int strlen_unicode(char *str,size_t maxlen);
-unsigned int strcpy(char *d,char *s);
-unsigned int strcat(char *d,char *s);
+size_t strlen(char *str);
+size_t strlen_unicode(char *str,size_t maxlen);
+size_t strcpy(char *d,char *s);
+size_t strcat(char *d,char *s);
 int memcpy(void *d,void *s,size_t c);
 int memcmp(char *source,char *dest,size_t count);
 int strcmp(char *source,char *dest);
-unsigned int memset(void *buf,char i,size_t size);
-unsigned int itoa(unsigned int n, char s[]);
+size_t memset(void *buf,char i,size_t size);
+size_t itoa(size_t n, char s[]);
 void reverse(char s[]);
-unsigned int wildcard(char *mask,char *filename);
-unsigned int touppercase(char *string);
-unsigned int tolowercase(char *string);
-unsigned int wildcard_rename(char *name,char *mask,char *out);
+size_t wildcard(char *mask,char *filename);
+size_t touppercase(char *string);
+size_t tolowercase(char *string);
+size_t wildcard_rename(char *name,char *mask,char *out);
 int strtrunc(char *str,int c);
 int atoi(char *hex,int base);
 
-unsigned int strlen(char *str) {
+/*
+ * Get string length
+ *
+ * In: char *str	String buffer
+ *
+ * Returns string length
+ *
+ */
+size_t strlen(char *str) {
  size_t count=0;
  char *s;
 
@@ -58,7 +66,16 @@ unsigned int strlen(char *str) {
  return(count);
 }
 
-unsigned int strlen_unicode(char *str,size_t maxlen) {
+/*
+ * Get length of Unicode string
+ *
+ * In: char *string	String to get length of
+       size_t maxlen	Maximum length of string
+ *
+ * Returns string length
+ *
+ */
+size_t strlen_unicode(char *str,size_t maxlen) {
  size_t count;
  char *s;
 
@@ -77,7 +94,16 @@ unsigned int strlen_unicode(char *str,size_t maxlen) {
  return(count--);
 }
 
-unsigned int strcpy(char *d,char *s) {
+/*
+ * Copy string
+ *
+ * In: char *d		Destination string
+       char *s		Source string
+ *
+ * Returns nothing
+ *
+ */
+size_t strcpy(char *d,char *s) {
  char *x;
  char *y;
 
@@ -88,7 +114,16 @@ unsigned int strcpy(char *d,char *s) {
  *y--=0;
 }
 
-unsigned int strcat(char *d,char *s) {
+/*
+ * Conatecate string
+ *
+ * In: char *d		String to conatecate to
+       char *s		String to conatecate
+ *
+ * Returns nothing
+ *
+ */
+size_t strcat(char *d,char *s) {
  char *x=s;
  char *y=d;
 
@@ -99,9 +134,15 @@ unsigned int strcat(char *d,char *s) {
 }
 
 /*
- * copy memory
+ * Copy memory
  *
-*/
+ * In: void *d		Address to copy to
+       void *s		Address to copy from
+       size_t c		Number of bytes to copy
+ *
+ * Returns number of bytes copied
+ *
+ */
 
 int memcpy(void *d,void *s,size_t c) {
  char *x;
@@ -117,7 +158,13 @@ int memcpy(void *d,void *s,size_t c) {
 }
 
 /*
- * compare memory
+ * Compare memory
+ *
+ * In: void *d		Second address to compare
+       void *s		First address to compare
+       size_t c		Number of bytes to compare
+ *
+ * Returns different of last source and destination bytes if they do not match, 0 otherwise
  *
  */
 
@@ -142,11 +189,14 @@ int memcmp(char *source,char *dest,size_t count) {
 }
  
 /*
- * Compare string and return 0 if same
+ * Compare string
+ *
+ * In: char *source	First string to compare
+       void *dest	Second string to compare
+ *
+ * Returns different of last source and destination bytes if they do not match, 0 otherwise
  *
  */
-
-
 int strcmp(char *source,char *dest) {
  char c,d;
 
@@ -163,13 +213,17 @@ int strcmp(char *source,char *dest) {
  return(d-c);
 }
 
-
-/* 
- * fill memory
+/*
+ * Fill memory
+ *
+ * In: void *buf	Address to fill
+       char i		Byte to fill with
+       size_t size	Number of bytes to fill
+ *
+ * Returns nothing
  *
  */
-
-unsigned int memset(void *buf,char i,size_t size) {
+size_t memset(void *buf,char i,size_t size) {
  size_t count=0;
  char *b;
  
@@ -182,11 +236,18 @@ unsigned int memset(void *buf,char i,size_t size) {
  return;
 }
 
+/*
+ * Convert integer to character representation
+ *
+ * In: size_t n	Number to convert
+       char s[]		Character buffer
+ *
+ * Returns nothing
+ *
+ */
 
-
- /* itoa:  convert n to characters in s */
-unsigned int itoa(unsigned int n, char s[]) {
-unsigned int i, sign;
+size_t itoa(size_t n, char s[]) {
+size_t i, sign;
  
 //     if ((sign = n) < 0) n = -n;          /* make n positive */
 
@@ -201,10 +262,18 @@ unsigned int i, sign;
      reverse(s);
  }
 
+/*
+ * Reverse string
+ *
+ * In: char s[]		String to reverse
+ *
+ * Returns nothing
+ *
+ */
 void reverse(char s[]) {
-unsigned int c;
-unsigned int i;
-unsigned int j;
+size_t c;
+size_t i;
+size_t j;
 
 for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
  c = s[i];
@@ -213,7 +282,16 @@ for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
  }
 }
 
-unsigned int wildcard(char *mask,char *filename) {
+/*
+ * Match string using wildcard
+ *
+ * In: char *mask
+       void *dest	Second string to compare
+ *
+ * Returns different of last source and destination bytes if they do not match, 0 otherwise
+ *
+ */
+size_t wildcard(char *mask,char *filename) {
  size_t count;
  size_t countx;
  char *x;
@@ -263,7 +341,15 @@ unsigned int wildcard(char *mask,char *filename) {
 return(0);
 }
 
-unsigned int touppercase(char *string) {
+/*
+ * Convert string to uppercase
+ *
+ * In: char *string	String to convert
+ *
+ * Returns nothing
+ *
+ */
+size_t touppercase(char *string) {
 char *s;
 
 s=string;
@@ -276,7 +362,15 @@ while(*s != 0) {			/* until end */
  }
 }
 
-unsigned int tolowercase(char *string) {
+/*
+ * Convert string to lowercase
+ *
+ * In: char *string	String to convert
+ *
+ * Returns nothing
+ *
+ */
+size_t tolowercase(char *string) {
 char *s;
 
 s=string;
@@ -288,7 +382,18 @@ while(*s != 0) {			/* until end */
 
  }
 }
-unsigned int wildcard_rename(char *name,char *mask,char *out) {
+
+/*
+ * Replace string using wildcard
+ *
+ * In: char *name	Input string
+       char *mask	Wildcard to match
+       char *out	Output string
+ *
+ * Returns nothing
+ *
+ */
+size_t wildcard_rename(char *name,char *mask,char *out) {
 size_t count;
 char *m;
 char *n;
@@ -348,8 +453,17 @@ for(count=0;count<strlen(newmask);count++) {
 }
 
 return;
-}			
-
+}
+			
+/*
+ * Truncate string
+ *
+ * In: char *str	String to truncate
+       int c		Number of characters to truncate
+ *
+ * Returns nothing
+ *
+ */
 int strtrunc(char *str,int c) {
 char *s;
 int count;
@@ -364,6 +478,15 @@ s -= 2;
 return;
 }
 
+/*
+ * Convert string to integer
+ *
+ * In: char *hex	String to convert
+       int base		Base number to use (2,8,10,16)
+ *
+ * Returns converted number
+ *
+ */
 int atoi(char *hex,int base) {
 int num=0;
 char *b;
@@ -417,4 +540,26 @@ while(count > 0) {
 return(num);
 }
 
+/*
+ * Compare string case insensitively
+ *
+ * In: char *source	First string to compare
+       void *dest	Second string to compare
+ *
+ * Returns different of last source and destination bytes if they do not match, 0 otherwise
+ *
+ */
+size_t strcmpi(char *source,char *dest) {
+ char a,b;
+ char *sourcetemp[MAX_PATH];
+ char *desttemp[MAX_PATH];
+
+ strcpy(sourcetemp,source);
+ strcpy(desttemp,dest);
+
+ touppercase(sourcetemp);
+ touppercase(desttemp);
+
+ return(strcmp(sourcetemp,desttemp));
+}
 

@@ -1,5 +1,6 @@
+;
 ;  CCP Version 0.0.1
-;    (C) Matthew Boote 2020
+;    (C) Matthew Boote 2020-2022
 
 ;    This file is part of CCP.
 
@@ -19,6 +20,10 @@
 ;
 ; Hardware dependent code for i386 processors
 ;
+; In: Information passed via boot information
+; 
+; Returns: Doesn't return
+;
 
 %define TRUE 1
 %define FALSE 0
@@ -37,13 +42,15 @@ extern kprintf
 extern init_multitasking					; initalize multitasking
 extern driver_init						; initialize drivers
 extern memorymanager_init					; intialize memory manager
-extern readconsole						
-extern outputconsole
 extern processmanager_init					; intialize processes
 extern devicemanager_init					; intialize devices
 extern switch_task
 extern initrd_init
 extern paging_type
+extern kernelalloc
+extern disablemultitasking
+extern enablemultitasking
+extern initrd_init
 
 ;
 ; globals
@@ -58,31 +65,31 @@ global restart						; restart computer
 global disable_interrupts				; disable interrupts
 global enable_interrupts				; enable interrupts
 global switch_to_usermode_and_call_process		; switch to usermode and call process
-global MEM_SIZE						; size of memory
 global initializestack					; intialize stack
 global set_interrupt					; set interrupt
 global get_interrupt					; get interrupt
 global idttable
 global MEMBUF_START
 global switch_kernel_stack				; switch kernel stack
+global get_stack_base_pointer					; get base pointer
+
+global enablemultitasking
+global disablemultitasking
+global init_multitasking
 
 PAGE_SIZE equ 4096					; size of page  DON'T CHANGE	
 SYSTEM_USE equ 0FFFFFFFFh				; page marked for system used
-KERNEL_STACK_SIZE equ  65536				; size of initial kernel stack
-BASE_ADDR_LOW		equ 0
-BASE_ADDR_HIGH		equ 4
-LENGTH_LOW		equ 8
-LENGTH_HIGH		equ 12
-BLOCK_TYPE		equ 16
+KERNEL_STACK_SIZE equ  65536*2				; size of initial kernel stack
 
-INITIAL_KERNEL_STACK_ADDRESS equ 0x80000
+INITIAL_KERNEL_STACK_ADDRESS equ 0x60000
 BASE_OF_SECTION equ 0x80100000
 KERNEL_HIGH	equ 0x80000000
 DMA_BUFFER_SIZE equ 32768	
 
-ROOT_PDPT		equ	0x5000
+ROOT_PDPT		equ	0x2000
 ROOT_PAGEDIR		equ	0x1000
-ROOT_PAGETABLE		equ	0x6000
+ROOT_PAGETABLE		equ	0x3000
+ROOT_EMPTY		equ	0x4000
 
 PAGE_PRESENT		equ	1
 PAGE_RW			equ	2
@@ -96,9 +103,14 @@ TSS_SELECTOR 		equ	28h			; tss selector
 BOOT_INFO_DRIVE		equ	0xAC
 BOOT_INFO_CURSOR_ROW	equ	0xAD
 BOOT_INFO_CURSOR_COL	equ	0xAE
-BOOT_INFO_INITRD_START	equ	0xAF
-BOOT_INFO_SYMBOL_START	equ	0xB3
-BOOT_INFO_INITRD_SIZE	equ	0xB7
+BOOT_INFO_KERNEL_START	equ	0xAF
+BOOT_INFO_KERNEL_SIZE	equ	0xB3
+BOOT_INFO_INITRD_START	equ	0xB7
+BOOT_INFO_INITRD_SIZE	equ	0xBB
+BOOT_INFO_SYMBOL_START	equ	0xBF
+BOOT_INFO_SYMBOL_SIZE	equ	0xC3
+BOOT_INFO_NUM_SYMBOLS	equ	0xC7
+BOOT_INFO_MEMORY_SIZE	equ	0xCB
 
 _asm_init:
 ;
@@ -142,10 +154,9 @@ sub	esi,KERNEL_HIGH
 
 next_banner_char:
 mov	ah,0eh					; output character
-mov	al,[esi]					; character
+lodsb
 int	10h
 
-inc	si					; point to next
 test	al,al					; loop until end
 jnz	next_banner_char
 
@@ -153,12 +164,6 @@ jmp	short	over_msg
 
 starting_ccp db 10,13,"Starting CCP...",10,13,0
 over_msg:
-
-mov	ah,3h					; get cursor
-xor	bh,bh
-int	10h
-mov	[BOOT_INFO_CURSOR_ROW],dh
-mov	[BOOT_INFO_CURSOR_COL],dl
 
 ;
 ; enable a20 line
@@ -190,148 +195,12 @@ mov     al,0xAE
 out     0x64,al
  
 a20wait
-sti
-jmp 	short a20done
-  			
-;
-; detect memory
-; this must be done in real mode
-;
-; using these functions:
-;
-
-; INT 0x15, AX = 0xE820 *
-; INT 0x15, AX = 0xE801 *
-; INT 0x15, AX = 0xDA88 *
-; INT 0x15, AH = 0x88   *
-; INT 0x15, AH = 0x8A   *
-;
+		
 a20done:
-xor	ebx,ebx
-
-xor	ax,ax				; segment:offset address for buffer
-mov	es,ax
-mov	di,8000h				; segment:offset address for buffer
-
-xor	ecx,ecx					; clear memory count
-xor	edx,edx					; clear memory count
-
-push	ecx
-push	edx
-
-not_end_e820:
-mov	eax,0e820h				; get memory block
-mov	edx,534d4150h
-mov	ecx,20h					; size of memory block
-int	15h
-jc	no_e820					; 0e820 not supported
-
-pop	edx					; get count
-pop	ecx					; get count
-
-
-add	ecx,[es:di+LENGTH_LOW]			; add size
-adc	edx,[es:di+LENGTH_HIGH]			; add size
-push	ecx
-push	edx
-
-add	edi,20h
-
-test	ebx,ebx					; if at end
-jnz	not_end_e820				; loop if not
-
-add	ecx,8000h
-adc	edx,0
-
-jmp	end_detect_memory
-
-no_e820:
-mov	ax,0e801h				; get memory info
-int	15h
-jc	no_e801					; e801 not supported
-
-cmp	ah,86h					; not supported
-je	no_e801
-
-cmp	ah,80h					; not supported
-je	no_e801
-
-test	eax,eax					; use eax,ebx
-jnz	use_ebx_eax
-
-add	ecx,1024				; plus conventional memory
-shl	ecx,16					; multiply by 65536 because edx is in 64k blocks
-shl	edx,10					; multiply by 1024 because eax is in kilobytes
-mov	ecx,edx
-jmp	short end_detect_memory
-
-use_ebx_eax:
-add	eax,1024				; plus conventional memory
-shl	ebx,16					; multiply by 65536 because edx is in 64k blocks
-shl	eax,10					; multiply by 1024 because eax is in kilobytes
-add	eax,ebx					; add memory count below 16M
-mov	ecx,eax
-jmp	short end_detect_memory
-
-no_e801:
-mov	ah,88h					; get extended memory count
-int	15h
-jc	no_88h					; not supported
-
-test	ax,ax					; error
-jz	no_88h					; not supported
-
-cmp	ah,86h					; not supported
-je	no_88h
-
-cmp	ah,80h					; not supported
-je	no_88h
-
-add	eax,1024				; plus conventional memory
-shl	eax,10					; multiply by 1024, size is in kilobytes
-mov	ecx,eax
-jmp	short end_detect_memory
-
-no_88h:
-xor	ecx,ecx
-xor	ebx,ebx
-
-mov	ax,0da88h				; get extended memory size
-int	15h
-jc	no_da88h				; not supported
-
-; returned in cl:bx
-shr	ecx,16					; shift and add
-add	ecx,ebx
-pop	edx
-add	ecx,1024					; add conventional memory size
-jmp	short end_detect_memory
-
-no_da88h:
-mov	ah,8ah					; get extended memory size
-int	15h
-jc	no_8ah
-push	ax					; returned in dx:ax
-push	dx
-pop	ecx
-
-add	ecx,1024*1024				; add conventional memory size
-add	ecx,eax
-jmp	short end_detect_memory
-
-no_8ah:
-hlt						; halt
-
-end_detect_memory:
-;
-; from here to pmode: don't change ecx or edx
-;
 xor	ax,ax
 mov	ds,ax
 mov	es,ax
 mov	ss,ax
-
-cli
 
 mov 	edi,offset gdtinfo
 add	edi,KERNEL_HIGH
@@ -362,12 +231,20 @@ mov	es,ax
 mov	fs,ax					
 mov	gs,ax					
 mov	ss,ax					
-
-mov	[MEM_SIZE_HIGH-KERNEL_HIGH],edx		; save memory size
-mov	[MEM_SIZE-KERNEL_HIGH],ecx		; save memory size
-
+	
 mov	esp,(INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH)+KERNEL_STACK_SIZE	; temporary stack
 mov	ebp,INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH
+
+;
+; place memory map after initrd and symbol table
+
+mov	eax,[BOOT_INFO_KERNEL_START]
+add	eax,[BOOT_INFO_KERNEL_SIZE]		; Point to end of kernel
+add	eax,[BOOT_INFO_SYMBOL_SIZE]
+add	eax,[BOOT_INFO_INITRD_SIZE]
+add	eax,KERNEL_HIGH
+
+mov	[MEMBUF_START-KERNEL_HIGH],eax
 
 lea	esi,[paging_type-KERNEL_HIGH]
 mov	eax,[esi]
@@ -386,7 +263,7 @@ jmp	legacy_paging
 pae_paging:
 mov	edi,ROOT_PDPT
 xor	eax,eax
-mov	ecx,32
+mov	ecx,4096
 rep	stosb
 
 mov	edi,ROOT_PDPT			; create pdpt
@@ -397,13 +274,11 @@ mov	[edi+4],edx
 mov	[edi+16],eax			; map higher half
 mov	[edi+16+4],edx
 
-mov	eax,edi
-or	eax,1
-mov	[edi+24],eax	; map last entry to pdpt - page tables will be present at 0xc0000000 - 0xfffff000
-mov	[edi+24+4],edx	
-
 mov	eax,ROOT_PDPT		; set pdptphys and processid
 mov	[edi+36],eax
+
+xor	eax,eax
+mov	[edi+44],eax
 
 mov	edi,ROOT_PAGEDIR
 xor	eax,eax
@@ -415,22 +290,27 @@ mov	eax,ROOT_PAGETABLE | PAGE_RW | PAGE_PRESENT
 xor	edx,edx
 mov	[edi],eax
 mov	[edi+4],edx
-
+mov	cr3,edi
 
 ; create page table
+
+mov	ecx,(1024*1024)*4			; map first 4mb
+shr	ecx,12					; number of page table entries
+shl	ecx,4
+
+mov	edi,ROOT_PAGETABLE
+xor	eax,eax
+rep	stosd
+
+mov	ecx,(1024*1024)*4			; map first 4mb
+shr	ecx,12					; number of page table entries
+shl	ecx,4
 
 mov	edi,ROOT_PAGETABLE
 mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
 
-; find number of page tables to create
-mov	ecx,[MEM_SIZE-KERNEL_HIGH]				; get memory size
-mov	edx,[MEM_SIZE_HIGH-KERNEL_HIGH]				; get memory size
-
-and	ecx,0xfffff000				; round to 4096
-shr	ecx,22					; divide by 4mb
-shl	ecx,10					; multiply by 1kb
-
 map_next_page:
+or	eax,PAGE_PRESENT
 mov	[edi],eax
 mov	dword [edi+4],0
 
@@ -441,8 +321,8 @@ sub	ecx,1
 sbb	edx,0
 
 mov	ebx,ecx
-add	ebx,ecx
-test	ebx,ecx
+add	ebx,edx
+test	ebx,ebx
 jnz	map_next_page
 
 mov	eax,cr4				; enable pae paging
@@ -456,22 +336,42 @@ mov	eax,cr0
 or	eax,80000000h			; enable paging
 mov	cr0,eax
 
-jmp	over
+mov	eax,jump_high			; jump to higher half
+jmp	eax
 
 ;
 ; legacy paging
 ;
 legacy_paging:
+mov	edi,ROOT_PAGEDIR
+xor	eax,eax
+mov	ecx,1024
+rep	stosd
+
 ; create page table
 
 ; find number of page tables to create
 
-mov	ecx,[MEM_SIZE-KERNEL_HIGH]				; get memory size
-mov	edx,[MEM_SIZE_HIGH-KERNEL_HIGH]
+mov	ecx,(1024*1024)				; map first 1mb
 
-and	ecx,0xfffff000				; round to 4096
-shr	ecx,22					; divide by 4mb
-shl	ecx,10					; multiply by 1kb
+mov	ebx,end					; map CCP kernel
+sub	ebx,KERNEL_HIGH
+sub	ebx,100000h
+and	ebx,0fffff000h
+add	ebx,1000h
+add	ecx,ebx
+
+add	ecx,[BOOT_INFO_INITRD_SIZE]
+add	ecx,[BOOT_INFO_SYMBOL_SIZE]
+
+; map memory map
+
+add	ecx,[BOOT_INFO_MEMORY_SIZE]				; get memory size
+and	ecx,0fffff000h
+add	ecx,1000h
+
+shr	ecx,12					; number of page table entries
+shl	ecx,2
 
 mov	edi,ROOT_PAGETABLE
 mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
@@ -479,19 +379,7 @@ mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
 map_next_page_legacy:
 stosd
 add	eax,1000h			; point to next page
-
-sub	ecx,1
-sbb	edx,0
-
-mov	ebx,ecx
-add	ebx,ecx
-test	ebx,ecx
-jnz	map_next_page_legacy
-
-mov	edi,ROOT_PAGEDIR
-xor	eax,eax
-mov	ecx,4096
-rep	stosd
+loop	map_next_page_legacy
 
 mov	edi,ROOT_PAGEDIR
 mov	eax,ROOT_PAGETABLE+PAGE_RW+PAGE_PRESENT
@@ -520,12 +408,23 @@ mov	eax,[paging_type]
 cmp	eax,1
 je	unmap_pd
 
+mov	edi,ROOT_EMPTY
+xor	eax,eax
+mov	ecx,1024
+rep	stosd
+
 mov	edi,ROOT_PDPT
 xor	eax,eax
-mov	[edi],eax			; unmap lower half
+mov	dword [edi],ROOT_EMPTY
 mov	[edi+4],eax
 
-mov	cr3,edi
+mov	edi,ROOT_PDPT+(3*8)	; map last entry to page directory - page tables will be present at 0xc0000000 - 0xfffff000
+mov	edx,ROOT_PDPT | PAGE_PRESENT
+mov	[edi],edx	
+mov	[edi+4],eax	
+
+mov	edx,ROOT_PDPT
+mov	cr3,edx
 
 jmp	short endunmap	
 
@@ -533,7 +432,6 @@ unmap_pd:
 mov	edi,ROOT_PAGEDIR
 xor	eax,eax
 mov	[edi],eax
-
 endunmap:
 
 ;
@@ -666,14 +564,6 @@ lidt	[idt]					; load interrupts
 call	processmanager_init		; intialize process manager
 call	devicemanager_init		; intialize device manager
 
-
-;
-; place memory map after initrd
-
-mov	eax,end
-;add	eax,[BOOT_INFO_INITRD_SIZE+KERNEL_HIGH]
-mov	[MEMBUF_START],eax
-
 ; create page frames
 
 ; mark reserved memory
@@ -687,57 +577,29 @@ mov	[MEMBUF_START],eax
 ; 100000h							CCP 
 ; 100000h + CCP.SYS size
 ; 100000h + CCP.SYS size + INITRD.SYS size
-; 100001h -(100000+(MEM_SIZE/4096)*4)				CCP alloc map
-; ((MEM_SIZE/4096)*4)+1						FREE depending on memory size
+; 100001h -(100000+(BOOT_INFO_MEMORY_SIZE/4096)*4)				CCP alloc map
+; ((BOOT_INFO_MEMORY_SIZE/4096)*4)+1						FREE depending on memory size
 
 ; place memory map after the initial ram disk
 
 ; map memory
 
-mov	ebx,80080000h						; point to buffer
+; clear memory map area before filling it
 
-next_mark:
-mov	al,[ebx+BLOCK_TYPE]					; get type
-
-test	al,al
-jz	end_mark
-
-cmp	al,1							; mark as usable
-je	mark_usable
-
-cmp	al,2							; mark as not usable
-jge	mark_notusable
-
-mark_usable:
-xor	eax,eax
-jmp	short mark_mem
-
-mark_notusable:
-mov	eax,0ffffffffh
-
-mark_mem:
-mov	edi,[ebx+MEM_SIZE]			; start addresss
-shr	edi,12					; get number of 4096-byte pages
-add	edi,[MEMBUF_START]
-
-rep	stosd
-	
-add	ebx,20h					; point to next
-jmp	next_mark
-
-end_mark:
 mov	edi,[MEMBUF_START]
-mov	ecx,0x7000/PAGE_SIZE			; 20kb
+
+mov	ecx,[BOOT_INFO_MEMORY_SIZE+KERNEL_HIGH]
+and	ecx,0fffff000h
+shr	ecx,12					; get number of 4096-byte pages
+shl	ecx,2
+
+xor	eax,eax
+rep	stosd
+
+mov	edi,[MEMBUF_START]
+mov	ecx,(1024*1024)/PAGE_SIZE		; map first 1mb
 mov	eax,SYSTEM_USE
 rep	stosd					; real mode idt and data area
-
-mov	edi,0xA0000				; video memory+ROMs
-shr	edi,12					; get number of 4096-byte pages
-shl	edi,2
-add	edi,[MEMBUF_START]
-mov	ecx,((0x100000-0xA0000)/PAGE_SIZE)		; 0x100000-0xA0000
-mov	eax,SYSTEM_USE
-rep	stosd					; page reserved
 
 mov	edi,kernel_begin
 sub	edi,KERNEL_HIGH
@@ -747,8 +609,15 @@ shl	edi,2
 add	edi,[MEMBUF_START]
 
 mov	ecx,end					; size
-add	ecx,PAGE_SIZE
 sub	ecx,kernel_begin
+add	ecx,PAGE_SIZE
+
+mov	eax,[BOOT_INFO_MEMORY_SIZE+KERNEL_HIGH]
+and	eax,0fffff000h
+shr	eax,12					; get number of 4096-byte pages
+shr	eax,2
+add	ecx,eax
+
 shr	ecx,12					; get number of 4096-byte pages
 mov	eax,SYSTEM_USE
 rep	stosd					; page reserved
@@ -763,11 +632,22 @@ shr	ecx,12					; get number of 4096-byte pages
 mov	eax,SYSTEM_USE
 rep	stosd
 
+mov	edi,[MEMBUF_START]
+sub	edi,KERNEL_HIGH
+shr	edi,12					; get number of 4096-byte pages
+shl	edi,2					; multiply by 4,each 4096 byte page is represented by 4 byte entries
+add	edi,[MEMBUF_START]
+
+mov	ecx,KERNEL_STACK_SIZE
+shr	ecx,12					; get number of 4096-byte pages
+mov	eax,SYSTEM_USE
+rep	stosd
+
 push	dword DMA_BUFFER_SIZE
 call	memorymanager_init			; initalize memory manager
 
-push	offset outputconsole
-push	offset readconsole
+push	1
+push	2
 call	openfiles_init				; initialize device manager
 add	esp,12
 
@@ -824,7 +704,9 @@ mov	dx,0A1h
 out	dx,al
 
 call	init_multitasking
+
 call	driver_init				; initialize drivers and filesystems
+call	initrd_init
 
 ; intialize tss
 
@@ -840,8 +722,7 @@ mov	[tss_ss0],eax
 mov	ax,TSS_SELECTOR + 3				; load tss for interrupt calls from ring 3
 ltr	ax
 
-mov	esp,(INITIAL_KERNEL_STACK_ADDRESS+KERNEL_STACK_SIZE)+KERNEL_HIGH ; temporary stack
-
+mov	esp,(INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH)+KERNEL_STACK_SIZE	; temporary stack
 mov	[tss_esp0],esp
 sti
 
@@ -893,7 +774,6 @@ push	7
 jmp	int_common	
 
 int8_handler:
-push	0
 push	8
 jmp	int_common	
 
@@ -903,27 +783,23 @@ push	9
 jmp	int_common	
 
 int10_handler:
-push	0
 push	10
 jmp	int_common	
 
 int11_handler:
-push	0
 push	11
 jmp	int_common	
 
 int12_handler:
-push	0
 push	12
 jmp	int_common	
 
 int13_handler:
-push	0
 push	13
+mov	dword [intnumber],13
 jmp	int_common	
 
 int14_handler:
-push	0
 push	14
 jmp	int_common	
 
@@ -948,17 +824,6 @@ push	18
 jmp	int_common	
 
 int_common:
-push	eax
-mov	eax,[esp+12]			; get eip of interrupt handler from stack
-mov	[regbuf],eax			; save it
-pop	eax
-
-push	eax
-pushf
-pop	eax
-mov	[regbuf+40],eax			; save flags
-pop	eax
-
 mov	[regbuf+4],esp			; save other registers
 mov	[regbuf+8],eax
 mov	[regbuf+12],ebx
@@ -968,22 +833,35 @@ mov	[regbuf+24],esi
 mov	[regbuf+28],edi
 mov	[regbuf+32],ebp
 
+mov	eax,[esp+8]			; get eip of interrupt handler from stack
+mov	[regbuf],eax			; save it
+
+mov	eax,[esp+12]			; get flags
+mov	[regbuf+40],eax			; save flags
+
 push	offset regbuf			; call exception handler
 call	exception
-add	esp,20
+add	esp,12
+
+exit_exception:
+xchg	bx,bx
 iret
 
 end_process:
 call exit
 iret
 
+get_stack_base_pointer:
+mov	eax,ebp
+ret
+
 ;
 ; low level dispatcher
 ;
 d_lowlevel:
+cli
 nop
 
-sti
 push	eax
 push	ebx
 push	ecx
@@ -991,14 +869,20 @@ push	edx
 push	esi
 push	edi
 
+sti
+
 mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
 mov 	ds,ax
 mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
 
-call	dispatchhandler
+;call	disablemultitasking
 
+call	dispatchhandler
+;call	enablemultitasking
+
+cli	
 mov	[tempone],eax
 
 mov 	ax,USER_DATA_SELECTOR				; load the kernel data segment descriptor
@@ -1006,21 +890,21 @@ mov 	ds,ax
 mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
-	
+
 pop	edi
 pop	esi
 pop	edx
 pop	ecx
 pop	ebx
 pop	eax
-
+sti
 cmp	eax,0ffffffffh					; if error ocurred
 je	iret_error
 
 mov	eax,[tempone]					; then return old eax
 
 iret_error:
-sti							; interrupts back on
+sti
 iret  
 
 ;
@@ -1033,15 +917,18 @@ mov	eax,[esp]					; get eip
 mov	[tempone],eax
 
 mov	ebx,[esp+4]					; get esp
-mov	eax,ebx						; get stack size
-sub	eax,[esp+8]
+mov	eax,ebx
+;sub	eax,[esp+8]					; minus stack size
 
-sub	ebx,4096
 mov	esp,ebx
 mov	ebp,eax
 
-pusha
 jmp	[tempone]					; return without using stack
+
+switch_kernel_stack:
+mov	ebx,[esp+4]					; get address
+mov	[tss_esp0],ebx					; patch tss esp0
+ret
 
 restart:
 in	al,64h					; get status
@@ -1129,19 +1016,6 @@ pop	edi
 pop	esi
 pop	edx
 pop	ecx
-pop	ebx
-ret
-
-;
-; switch to kernel stack
-;
-
-switch_kernel_stack:
-push	ebx
-
-mov	ebx,[esp+8]				; get stack address
-mov	[tss_esp0],ebx
-
 pop	ebx
 ret
 
@@ -1267,7 +1141,5 @@ end_tss:
 tempone dd 0
 temptwo dd 0
 MEMBUF_START dd offset end
-MEM_SIZE_HIGH dd 0
-MEM_SIZE dd 0
 regbuf times 20 dd 0
-
+intnumber dd 0

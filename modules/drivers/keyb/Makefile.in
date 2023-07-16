@@ -2,7 +2,8 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=keyb.c
+OBJFILE=keyb.o
 
-all:
-	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
+../../../obj/@arch@/keyb.o:
+	$(CC) @cc_opts@ $(FILES) -o ../../../obj/@arch@/keyb.o
 

@@ -23,7 +23,7 @@ for f in $*; do
  name=`echo $f | cut -d/ -f 2`
  a=`echo $f | cut -d/ -f 3`
 
- if [ $name == "drivers" ]  || [ $name == "filesystems" ] || [ $name == "executable_formats" ]; then
+ if [ $name == "drivers" ]  || [ $name == "filesystems" ] || [ $name == "binfmt" ]; then
   echo Including driver $a
   echo $a\_init\(NULL\)\;>>drive.c
  fi

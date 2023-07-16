@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -20,12 +20,27 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../../../header/errors.h"
+#include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
 #include "atapi.h"
 #include "../ata/ata.h"
 
 #define MODULE_INIT atapi_init
 
+size_t atapi_send_command(size_t physdrive,atapipacket *atapi_packet);
+size_t atapi_io(size_t op,size_t physdrive,size_t block,uint16_t *buf);
+size_t atapi_ident(size_t physdrive,ATA_IDENTIFY *buf);
+size_t atapi_init(char *initstring);
+
+/*
+ * Send ATAPI command
+ *
+ * In:  physdrive	Physical drive
+        atapi_packet	ATAPI packet with information about transfer
+ *
+ *  Returns: -1 on error, 0 on success
+ *
+ */
 size_t atapi_send_command(size_t physdrive,atapipacket *atapi_packet) {
 uint16_t controller;
 int slavebit;
@@ -84,7 +99,20 @@ while(count++ < sizeof(atapi_packet)/2) {
 
 }
 
-size_t atapi_ident(unsigned int physdrive,ATA_IDENTIFY *buf) {
+/*
+ * ATAPI I/O function
+ *
+ * In:  op	Operation (0=read,1=write)
+        buf	Buffer
+	len	Number of bytes to read/write
+ *
+ *  Returns: 0 on success, -1 on error
+ *
+ */	
+size_t atapi_io(size_t op,size_t physdrive,size_t block,uint16_t *buf) {
+}
+
+size_t atapi_ident(size_t physdrive,ATA_IDENTIFY *buf) {
  uint16_t controller;
  size_t count;
  uint16_t *b;
@@ -119,7 +147,7 @@ size_t atapi_ident(unsigned int physdrive,ATA_IDENTIFY *buf) {
 
  while((inb(controller+ATA_COMMAND_PORT) & 0x80) != 0) ;;		/* wait until ready */
 
-/* check if atapi */
+/* check if not atapi */
   if((inb(ATA_CYLINDER_LOW_PORT) != 0) && (inb(ATA_CYLINDER_HIGH_PORT) != 0)) return(-1);
 
  b=buf;
@@ -131,19 +159,27 @@ size_t atapi_ident(unsigned int physdrive,ATA_IDENTIFY *buf) {
  return(NO_ERROR);
 }
 
+/*
+ * Initialize ATAPI
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
 
 size_t atapi_init(char *initstring) {
 int physdiskcount;
-ATA_IDENT ident;
+ATA_IDENTIFY ident;
 
  /* Add hard disk partitions */
 
  for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk */
 
-  if(ata_ident(physdiskcount,&ident) == -1) continue;		/* get ata identify */
+  if(atapi_ident(physdiskcount,&ident) == -1) continue;		/* get ata identify */
 
-  if(partitions_init(physdiskcount,&ata_io) == -1) {	/* can't initalize partitions */
-   kprintf("Unable to intialize partitions for drive %X\n",physdiskcount);
+  if(partitions_init(physdiskcount,&atapi_io) == -1) {	/* can't initalize partitions */
+   kprintf("atapi: Unable to intialize partitions for drive %X\n",physdiskcount);
    return(-1);
   }
  }
@@ -151,4 +187,3 @@ ATA_IDENT ident;
  return;	
 }
 
-}

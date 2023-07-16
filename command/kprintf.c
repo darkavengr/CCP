@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -18,11 +18,22 @@
 */
 
 #include <stdarg.h>
+#include <stdint.h>
+#include <stddef.h>
 
 #define stdout 1
 
 void kprintf(char *format, ...);
 
+/*
+ * Print formatted string
+ *
+ * In: char *format	Formatted string to print, uses same format placeholders as printf
+       ...		Variable number of arguments to print
+ *
+ * Returns nothing
+ *
+ */
 void kprintf(char *format, ...) {
  va_list args;
  char *b;
@@ -61,7 +72,7 @@ void kprintf(char *format, ...) {
     break;
 
    case 'u':				/* unsigned decimal */
-    num=va_arg(args,unsigned int);
+    num=va_arg(args,size_t);
     itoa(num,z);
 
     if(num < 10) write(stdout,"0",1);
@@ -71,7 +82,7 @@ void kprintf(char *format, ...) {
     break;
 
    case 'o':				/* octal */
-    num=va_arg(args,unsigned int);
+    num=va_arg(args,size_t);
     itoa(num,z);
 
     if(num < 8) write(stdout,"0",1);
@@ -83,7 +94,7 @@ void kprintf(char *format, ...) {
    case 'p':				/* same as x */
    case 'x':				/*  lowercase x */
    case 'X':
-    num=va_arg(args,unsigned int);
+    num=va_arg(args,size_t);
 
     tohex(num,z);
     write(stdout,z,strlen(z));
@@ -119,6 +130,16 @@ void kprintf(char *format, ...) {
 va_end(args);
 
 }
+
+/*
+ * Print formatted string to string
+ *
+ * In:  char *buf	Buffer to store output
+	char *format	Formatted string to print, uses same format placeholders as printf
+       ...		Variable number of arguments to write to stringnt
+ *
+ * Returns nothing
+ */
 
 void ksprintf(char *buf,char *format, ...) {
  va_list args;
@@ -165,7 +186,7 @@ void ksprintf(char *buf,char *format, ...) {
     break;
 
    case 'u':				/* unsigned decimal */
-    num=va_arg(args,unsigned int);
+    num=va_arg(args,size_t);
 
     if(num < 10) strcat(bufptr,"0");
 
@@ -177,7 +198,7 @@ void ksprintf(char *buf,char *format, ...) {
     break;
 
    case 'o':				/* octal */
-    num=va_arg(args,unsigned int);
+    num=va_arg(args,size_t);
 
     if(num < 8) strcat(bufptr,"0");
     itoa(num,z);
@@ -190,7 +211,7 @@ void ksprintf(char *buf,char *format, ...) {
    case 'p':				/* same as x */
    case 'x':				/*  lowercase x */
    case 'X':
-    num=va_arg(args,unsigned int);
+    num=va_arg(args,size_t);
 
     tohex(num,z);
     if(num < 16) strcat(bufptr,"0");
@@ -201,7 +222,7 @@ void ksprintf(char *buf,char *format, ...) {
     break;
    
    case 'c':				/* character */
-    c=va_arg(args,unsigned int);
+    c=va_arg(args,size_t);
     b++;
     break;
 

@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -26,13 +26,21 @@
 #define MODULE_INIT clock_init
 
 
-unsigned int gettime(TIMEBUF *timebuf);
+size_t gettime(TIMEBUF *timebuf);
 void settime(TIMEBUF *timebuf);
-unsigned int delay_loop(size_t delaycount);
-size_t clockio(unsigned int op,void *buf,size_t size);
+size_t delay_loop(size_t delaycount);
+size_t clockio(size_t op,void *buf,size_t size);
 void clock_init(char *init);
 
-unsigned int gettime(TIMEBUF *timebuf) {
+/*
+ * Get time and date
+ *
+ * In:  timebuf 	struct to store time and date
+ *
+ *  Returns: nothing
+ *
+ */
+size_t gettime(TIMEBUF *timebuf) {
  outb(0x70,4); 
  timebuf->hours=inb(0x71); 			/* read hour */
  outb(0x70,2); 
@@ -48,6 +56,14 @@ unsigned int gettime(TIMEBUF *timebuf) {
  timebuf->day=inb(0x71);			 /* read day */
 }
 
+/*
+ * Set time and date
+ *
+ * In:  timebuf 	struct with time and date
+ *
+ *  Returns: nothing
+ *
+ */
 void settime(TIMEBUF *timebuf) {
  outb(0x70,4); 
  outb(0x71,timebuf->hours);			 /* set hours */
@@ -65,9 +81,17 @@ void settime(TIMEBUF *timebuf) {
  return;
 }
 
-unsigned int delay_loop(size_t delaycount) {
- unsigned int oldcount;
- unsigned int count;
+/*
+ * Delay loop
+ *
+ * In:  delaycount	Number of seconds to wait
+ *
+ *  Returns: nothing
+ *
+ */
+size_t delay_loop(size_t delaycount) {
+ size_t oldcount;
+ size_t count;
 
  outb(0x70,1);				/* get seconds */ 
  oldcount=inb(0x71);
@@ -78,9 +102,17 @@ unsigned int delay_loop(size_t delaycount) {
  }
 }
 
-/* stub function to be called by read() or write() */
-
-size_t clockio(unsigned int op,void *buf,size_t size) {
+/*
+ * Clock  I/O function
+ *
+ * In:  op	Operation (0=read,1=write)
+        buf	Buffer
+	len	Number of bytes to read/write
+ *
+ *  Returns: nothing
+ *
+ */
+size_t clockio(size_t op,void *buf,size_t size) {
  TIMEBUF time;
  char *z[10];
 
@@ -104,11 +136,20 @@ size_t clockio(unsigned int op,void *buf,size_t size) {
  return(-1);
 }
 
+/*
+ * Initialize RTC
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
+
 void clock_init(char *init) {
 CHARACTERDEVICE device;
 
  strcpy(&device.dname,"CLOCK$");
- device.chario=&clockio;
+ device.charioread=&clockio;
  device.ioctl=NULL;
  device.flags=0;
  device.data=NULL;

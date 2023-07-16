@@ -99,12 +99,31 @@ MACHINE_X86	equ 3
 LITTLEENDIAN	equ 1
 ELF_32BIT	equ 1
 
+SHT_SYMTAB	equ 2
+SHT_STRTAB	equ 3
+
+STT_NOTYPE	equ 0
+STT_SECTION	equ 3
+
 BOOT_INFO_DRIVE		equ	0xAC
 BOOT_INFO_CURSOR_ROW	equ	0xAD
 BOOT_INFO_CURSOR_COL	equ	0xAE
-BOOT_INFO_INITRD_START	equ	0xAF
-BOOT_INFO_SYMBOL_START	equ	0xB3
-BOOT_INFO_INITRD_SIZE	equ	0xB7
+BOOT_INFO_KERNEL_START	equ	0xAF
+BOOT_INFO_KERNEL_SIZE	equ	0xB3
+BOOT_INFO_INITRD_START	equ	0xB7
+BOOT_INFO_INITRD_SIZE	equ	0xBB
+BOOT_INFO_SYMBOL_START	equ	0xBF
+BOOT_INFO_SYMBOL_SIZE	equ	0xC3
+BOOT_INFO_NUM_SYMBOLS	equ	0xC7
+BOOT_INFO_MEMORY_SIZE	equ	0xCB
+
+INT15_E820_BASE_ADDR_LOW	equ 0
+INT15_E820_BASE_ADDR_HIGH	equ 4
+INT15_E820_LENGTH_LOW		equ 8
+INT15_E820_LENGTH_HIGH		equ 12
+INT15_E820_BLOCK_TYPE		equ 16
+
+INT15_BUFFER		equ	0x9000
 
 org	BASE_OF_SECTION
 cli							; disable interrupts
@@ -123,9 +142,6 @@ mov	ss,ax
 ; enable a20 line
 ;
 
-;
-; enable a20 line
-;
 call    a20wait					; wait for a20 line
 mov     al,0xAD					; disable keyboard
 out     0x64,al
@@ -220,11 +236,9 @@ mov	dx,[7c00h+_SECTORSIZE]
 mul	dx 
 mov	[blocksize],eax
 
-;
-; search root directory for ccp.sys
-;
-
-; find and load ccp.sys
+;**************************************
+; Load kernel
+;**************************************
 
 mov	esi,offset loading_ccp
 call	output16
@@ -238,12 +252,25 @@ jnz	ccpsys_not_found
 
 ; read files
 mov	ebx,offset findbuf
-mov	edx,LOAD_ADDRESS
+; save kernel load address
 
-add	edx,[ebx+_FILE_SIZE]			; load after file load address so it can
+mov	edx,LOAD_ADDRESS
+mov	[BOOT_INFO_KERNEL_START],edx
+
+; save kernel size
+
+mov	ecx,[ebx+_FILE_SIZE]
+mov	[BOOT_INFO_KERNEL_SIZE],ecx
+
+; save current end address
+
+mov	eax,edx					; address
+add	eax,[ebx+_FILE_SIZE]			; +size
+mov	[currentptr],eax
+
+add	edx,(1024*1024)			; load after file load address so it can be relocated
 mov	[loadbuf],edx
-mov	[BOOT_INFO_INITRD_START],edx
-call	loadfile				; be relocated
+call	loadfile				
 
 mov	esi,edx
 mov	eax,[esi+ELF_MAGIC]				; get elf marker
@@ -294,8 +321,146 @@ int	19h
 
 is_phok:
 ;
+; Copy kernel symbols before copying kernel, copying segments overwrites temporary buffer
+;
+
+; find size of program segments to calculate destination address
+
+;
+mov	esi,[loadbuf]
+movsx	ecx,word [esi+ELF_PHCOUNT]			; number of program headers
+
+add	esi,[esi+ELF_PHDR]				; point to program headers
+xor	edx,edx						; clear counter
+
+next_size:
+mov	eax,[esi+PHDR_TYPE]				; get segment type
+cmp	eax,PROG_LOADABLE
+jne	next_segment_size
+
+add	edx,[esi+PHDR_VSIZE]
+
+next_segment_size:
+loop	next_size
+
+mov	eax,LOAD_ADDRESS				; calculate destination address
+add	eax,edx
+
+mov	[symbols_start],eax
+
+; Copy symbol names and addresses
+mov	esi,[loadbuf]
+movsx	ecx,word [esi+ELF_SHCOUNT]			; number of section headers
+
+add	esi,[esi+ELF_SHDR]				; point to section headers
+
+next_find_sections:
+mov	eax,[esi+SH_TYPE]				; get section type
+cmp	eax,SHT_SYMTAB					; symbol table
+je	save_symtab
+
+cmp	eax,SHT_STRTAB					; string table
+je	save_strtab
+
+jmp	not_section
+
+save_symtab:
+mov	eax,[esi+SH_OFFSET]				; get offset
+add	eax,[loadbuf]
+add	eax,16						; skip first
+
+mov	[symtab],eax
+
+mov	edx,[esi+SH_SIZE]				; get size
+shr	edx,4						; divide by sixteen
+mov	[number_of_symbols],edx
+mov	[BOOT_INFO_NUM_SYMBOLS],eax
+jmp	not_section
+
+save_strtab:
+mov	eax,[esi+SH_OFFSET]				; get offset
+add	eax,[loadbuf]
+inc	eax
+
+mov	[strtab],eax
+jmp	not_section
+
+not_section:
+; point to next section header
+mov	edx,[loadbuf]					; point to elf header
+movsx	eax,word [edx+ELF_SHDRSIZE]			; size of section header
+add	esi,eax						; point to next section header
+
+loop	next_find_sections
+
+; copy the symbol names and addresses to destination
+;**********************************************************************
+;
+
+mov	edi,[symbols_start]				; output address
+
+next_symbol:
+;xchg	bx,bx
+mov	esi,[strtab]					; point to string table
+
+next_string:
+a32	movsb
+
+cmp	byte [edi-1],0
+jne	next_string
+
+mov	[strtab],esi					; update address of string table
+
+mov	esi,[symtab]					; point to symbol table
+
+next_sym:
+
+mov	al,[esi+12]					; get section type
+
+; skip invalid symbol types
+
+cmp	al,STT_SECTION					; section type
+je	bad_type
+
+mov	eax,[esi]					; get name index
+test	eax,eax
+jz	bad_type
+
+;xchg	bx,bx
+
+mov	eax,[esi+4]					; get value
+add	esi,16
+mov	[symtab],esi					; update address of symbol table
+
+mov	[edi],eax
+
+add	edi,4						; point to next
+
+mov	eax,[number_of_symbols]				; decrement counter
+dec	eax
+mov	[number_of_symbols],eax
+
+test	eax,eax						; if at end
+jnz	next_symbol
+
+jmp	load_segments
+
+bad_type:
+add	esi,16
+jmp	next_sym
+
+;
 ; load program segments
 ;
+;
+load_segments:
+mov	eax,[symbols_start]				; symbols address
+mov	[BOOT_INFO_SYMBOL_START],eax
+
+mov	eax,[symbols_start]				; output address
+sub	edi,eax						; get size of symbol table
+mov	[BOOT_INFO_SYMBOL_SIZE],edi
+
 mov	esi,[loadbuf]
 movsx	ecx,word [esi+ELF_PHCOUNT]			; number of program headers
 add	esi,[esi+ELF_PHDR]				; point to program headers
@@ -307,49 +472,65 @@ jne	next_segment
 
 push	esi
 push	ecx
-mov	edi,[esi+PHDR_VADDR]				; destination
-sub	edi,KERNEL_HIGH
-mov	ecx,[esi+PHDR_SEGSIZE]
-mov	eax,[esi+PHDR_OFFSET]
-mov	esi,[loadbuf]
+
+mov	edi,[esi+PHDR_VADDR]				; get destination address
+sub	edi,KERNEL_HIGH					; minus higher-half address
+
+mov	ecx,[esi+PHDR_SEGSIZE]				; number of bytes to copy
+mov	eax,[esi+PHDR_OFFSET]				; get address
+mov	esi,[loadbuf]					; add load address
 add	esi,eax
 
-a32 rep	movsd						; copy data
+a32 rep	movsb						; copy data
 
 pop	ecx
 pop	esi
 next_segment:
 loop	next_programheader
-	
-;mov	esi,offset loading_initrd
-;call	output16
 
-;mov	ebx,offset findbuf
-;mov	edx,offset initrd_name
-;call	find_file
+;***********************
+; Load initrd
+;**********************
+load_initrd:
+mov	ebx,offset findbuf
+mov	edx,offset initrd_name
+call	find_file
 
-;test	eax,eax					; found file
-;jnz	initrd_file_not_found
+test	eax,eax					; found file
+jnz	initrd_file_not_found
 
-;mov	edx,[ebx+_FILE_SIZE]			; memory buf start
-;mov	[BOOT_INFO_INITRD_START],edx
+mov	esi,offset loading_initrd
+call	output16
 
-; read files
-;mov	ebx,offset findbuf
-;mov	edx,LOAD_ADDRESS
+; save initrd address
 
-;add	edx,[ebx+_FILE_SIZE]			; load after file load address so it can
-;mov	[loadbuf],edx
-;mov	[BOOT_INFO_INITRD_START],edx
+mov	edx,[BOOT_INFO_KERNEL_START]
+add	edx,[BOOT_INFO_KERNEL_SIZE]		; Point to end of kernel
+add	edx,[BOOT_INFO_SYMBOL_SIZE]
 
-;mov	edx,[ebx+_FILE_SIZE]
-;mov	[BOOT_INFO_INITRD_SIZE],edx
-;call	loadfile
+mov	[BOOT_INFO_INITRD_START],edx
 
+mov	ecx,[ebx+_FILE_SIZE]			; save initrd size
+mov	[BOOT_INFO_INITRD_SIZE],ecx
+
+call	loadfile
+
+noinitrd:
 mov	ax,10h
 mov	ds,ax
 mov	es,ax
 mov	ss,ax
+
+mov	ah,3h					; get cursor
+xor	bh,bh
+int	10h
+mov	[BOOT_INFO_CURSOR_ROW],dh
+mov	[BOOT_INFO_CURSOR_COL],dl
+
+call	detect_memory				; get memory size
+
+mov	[BOOT_INFO_MEMORY_SIZE],eax
+mov	[BOOT_INFO_MEMORY_SIZE+4],edx
 
 db	67h
 jmp	0ffffh:10h					; jump to kernel
@@ -392,7 +573,9 @@ cmp	cl,32h				; fat32
 je	getnext_fat32
 
 getnext_fat12:
-mov	ebx,eax				; entryno=block * (block/2)
+;  entryno=(block+(block/2));
+
+mov	ebx,eax				; entryno=block + (block/2)
 shr	eax,1				; divide by two
 add	eax,ebx
 mov	[entryno],eax
@@ -402,7 +585,7 @@ getnext_fat16:
 shl	eax,1				; multiply by two
 add	eax,ebx
 mov	[entryno],eax
-jmp ok
+jmp 	ok
 
 getnext_fat32:
 shl	eax,2				; multiply by four
@@ -410,16 +593,19 @@ add	eax,ebx
 mov	[entryno],eax
 
 ok:
-xor	eax,eax				;blockno=(next->reservedsectors*next->sectorsperblock)+(entryno / (next->sectorsperblock*next->sectorsize));		
+xor	eax,eax				
 mov	al,[7c00h+_SECTORSPERBLOCK]	
 mul	word [7c00h+_RESERVEDSECTORS]
 mov	ecx,eax
 
-;  entry_offset=(entryno % (next->sectorsperblock*next->sectorsize));	/* offset into fat */
+;  blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
+;  entry_offset=(entryno % (bpb->sectorsperblock*bpb->sectorsize));	/* offset into fat */
 
 xor	edx,edx
 mov	eax,[entryno]
-div	dword [blocksize]		; entryno/blocksize
+mov	ebx,[blocksize]
+div	ebx
+
 add	eax,ecx
 mov	[fat_blockno],eax
 mov	[entry_offset],edx
@@ -429,12 +615,16 @@ mov	ebx,FAT_BUF			; buffer
 
 push	ebx				; save address
 
-next_fatblock:
 mov	eax,[fat_blockno]			; read fat sector and fat sector + 1 to buffer
+
+next_fatblock:
 mov	edx,[BOOT_INFO_DRIVE]
 call	readblock
 
+mov	eax,[fat_blockno]			; read fat sector and fat sector + 1 to buffer
 inc	eax				; block+1
+mov	[fat_blockno],eax
+
 add	ebx,[blocksize]
 loop	next_fatblock
 
@@ -453,16 +643,14 @@ je	get_block_fat32
 
 get_block_fat12:
 add	ebx,[entry_offset]		; get entry
-mov	ax,[bx]
+mov	ax,[ebx]
 
-push	ax
-mov	ax,[block]
-rcr	ax,1				; copy lsb to carry flag
-pop	ax
+mov	dx,[block]
+rcr	dx,1				; copy lsb to carry flag
 jc	is_odd
 
 and	ax,0fffh					; is even
-jmp	 check_end
+jmp	check_end
 
 is_odd:
 shr	ax,4
@@ -661,7 +849,7 @@ add	ebx,eax
 sub	ebx,2	
 mov	eax,ebx						; block number
 
-mov	edx,[BOOT_INFO_DRIVE]
+mov	dl,[BOOT_INFO_DRIVE]
 mov	ebx,[loadptr]					; buffer
 call	readblock					; read block
 
@@ -728,8 +916,10 @@ mov	[save_esp],esp				; save esp
 mov	[dest_addr],ebx
 mov	[read_block],eax
 
-cmp	edx,80h
-jl	no_extensions
+mov	al,dl
+and	al,80h	
+test	al,al
+jz	no_extensions
 
 mov	ah,41h					; check for int 13h extensions
 mov	bx,55aah
@@ -879,6 +1069,149 @@ int	16h					; get key
 popa
 ret
 
+;
+; detect memory
+; this must be done in real mode
+;
+; using these functions:
+;
+
+; INT 0x15, AX = 0xE820 *
+; INT 0x15, AX = 0xE801 *
+; INT 0x15, AX = 0xDA88 *
+; INT 0x15, AH = 0x88   *
+; INT 0x15, AH = 0x8A   *
+;
+; returns memory size in eax:edx
+;
+detect_memory:
+push	ebx
+push	ecx
+push	esi
+push	edi
+push	es
+
+xor	ebx,ebx
+
+xor	ax,ax				; segment:offset address for buffer
+mov	es,ax
+mov	di,INT15_BUFFER			; segment:offset address for buffer
+
+xor	ecx,ecx					; clear memory count
+xor	edx,edx					; clear memory count
+
+xor	ebx,ebx
+
+not_end_e820:
+push	ecx
+push	edx
+
+mov	eax,0e820h				; get memory block
+mov	edx,534d4150h
+mov	ecx,24					; size of memory block
+int	15h
+
+pop	edx
+pop	ecx
+
+add	ecx,[es:di+INT15_E820_LENGTH_LOW]			; add size
+adc	edx,[es:di+INT15_E820_LENGTH_HIGH]			; add size
+
+test	ebx,ebx					; if at end
+jnz	not_end_e820				; loop if not
+
+add	ecx,8000h
+adc	edx,0
+
+jmp	end_detect_memory
+
+no_e820:
+mov	ax,0e801h				; get memory info
+int	15h
+jc	no_e801					; e801 not supported
+
+cmp	ah,86h					; not supported
+je	no_e801
+
+cmp	ah,80h					; not supported
+je	no_e801
+
+test	eax,eax					; use eax,ebx
+jnz	use_ebx_eax
+
+add	ecx,1024				; plus conventional memory
+shl	ecx,16					; multiply by 65536 because edx is in 64k blocks
+shl	edx,10					; multiply by 1024 because eax is in kilobytes
+mov	ecx,edx
+jmp	short end_detect_memory
+
+use_ebx_eax:
+add	eax,1024				; plus conventional memory
+shl	ebx,16					; multiply by 65536 because edx is in 64k blocks
+shl	eax,10					; multiply by 1024 because eax is in kilobytes
+add	eax,ebx					; add memory count below 16M
+mov	ecx,eax
+jmp	short end_detect_memory
+
+no_e801:
+mov	ah,88h					; get extended memory count
+int	15h
+jc	no_88h					; not supported
+
+test	ax,ax					; error
+jz	no_88h					; not supported
+
+cmp	ah,86h					; not supported
+je	no_88h
+
+cmp	ah,80h					; not supported
+je	no_88h
+
+add	eax,1024				; plus conventional memory
+shl	eax,10					; multiply by 1024, size is in kilobytes
+mov	ecx,eax
+jmp	short end_detect_memory
+
+no_88h:
+xor	ecx,ecx
+xor	ebx,ebx
+
+mov	ax,0da88h				; get extended memory size
+int	15h
+jc	no_da88h				; not supported
+
+; returned in cl:bx
+shr	ecx,16					; shift and add
+add	ecx,ebx
+pop	edx
+add	ecx,1024					; add conventional memory size
+jmp	short end_detect_memory
+
+no_da88h:
+mov	ah,8ah					; get extended memory size
+int	15h
+jc	no_8ah
+push	ax					; returned in dx:ax
+push	dx
+pop	ecx
+
+add	ecx,1024*1024				; add conventional memory size
+add	ecx,eax
+jmp	short end_detect_memory
+
+no_8ah:
+hlt						; halt
+
+end_detect_memory:
+mov	eax,ecx
+
+pop	es
+pop	edi
+pop	esi
+pop	ecx
+pop	ebx
+ret	
+
 ccpsys_notfound db "CCP.SYS not found",0
 initrd_notfound db 10,13,"INITRD.SYS not found",0
 noa20_error db "Can't enable A20 line",0
@@ -912,6 +1245,11 @@ find_buf dd 0
 head db 0
 cyl dw 0
 sector db 0
+currentptr dd 0
+symbols_start dd 0
+symtab dd 0
+strtab dd 0
+number_of_symbols dd 0
 
 findbuf TIMES 32 db 0
 dap	TIMES 16 db 0

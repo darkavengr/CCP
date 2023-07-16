@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -16,28 +16,29 @@
     You should have received a copy of the GNU General Public License
     along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
-
+#include "../../../header/kernelhigh.h"
+#include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
 #include "sb16.h"
-
-#define KERNEL_HIGH (1 << (sizeof(size_t)*8)-1)
 
 #define MODULE_INIT sb16_init
 
 void sb16_init(char *initstring);
-unsigned int sb16_io(unsigned int op,char *buf,size_t len);
-size_t sb16_ioctlsize_t handle,unsigned long request,char *buffer);
+size_t sb16_io_read(char *buf,size_t len);
+size_t sb16_ioctl(size_t handle,unsigned long request,char *buffer);
 void sb_irq_handler(void);
 
 uint8_t *sb_dma_buffer;
 size_t sb_dma_buffer_size=SB_DMA_BUFFER_DEFAULT_SIZE;
-unsigned int sb_irq_number=SB_DEFAULT_IRQ;
-unsigned int sb_channel=SB_DEFAULT_CHANNEL;
-unsigned int sb_sample_rate=SB_DEFAULT_SAMPLE_RATE;
-unsigned int sb_time_constant=SB_DEFAULT_TIME_CONSTANT;
-unsigned int sb_data_type=SB_DEFAULT_DATA_TYPE;
+size_t sb_irq_number=SB_DEFAULT_IRQ;
+size_t sb_channel=SB_DEFAULT_CHANNEL;
+size_t sb_sample_rate=SB_DEFAULT_SAMPLE_RATE;
+size_t sb_time_constant=SB_DEFAULT_TIME_CONSTANT;
+size_t sb_data_type=SB_DEFAULT_DATA_TYPE;
 char *sb_bufptr;
 size_t sb_transfer_length;
+
+/* soundblaster 16 ports */
 
  struct {
   uint16_t address_register;
@@ -55,6 +56,15 @@ size_t sb_transfer_length;
                    { 0xc4,0xc6,0x8b,0xb0,0xD4,0xD8,0xd6 },\
 		   { 0xc8,0xca,0x89,0xb0,0xD4,0xD8,0xd6 },\
 	           { 0xc4,0xc6,0x8b,0xb0,0xD4,0xD8,0xd6 } };
+
+/*
+ * Initialize Soundblaster 16
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
 
 void sb16_init(char *init) {
 CHARACTERDEVICE bd;
@@ -116,7 +126,8 @@ if(sb_dma_buffer == -1) {					/* can't alloc */
 }
 
 strcpy(bd.dname,"AUDIO");		/* add char device */
-bd.chario=&sb16_io;
+bd.charioread=&sb16_io_read;
+bd.chariowrite=NULL;
 bd.flags=0;
 bd.data=NULL;
 bd.next=NULL;
@@ -152,7 +163,18 @@ switch(sb_irq_number) {
 return;
 }
 
-unsigned int sb16_io(unsigned int op,char *buf,size_t len) {
+/*
+ * Soundblaster 16 I/O function
+ *
+ * In:  op	Operation (0=read,1=write)
+        buf	Buffer
+	len	Number of bytes to read/write
+ *
+ *  Returns: nothing
+ *
+ */
+
+size_t sb16_io_read(char *buf,size_t len) {
  char *b;
 
  outb(DSP_RESET,1);			/* reset sound card */
@@ -189,9 +211,9 @@ unsigned int sb16_io(unsigned int op,char *buf,size_t len) {
   outb(sb_ports[sb_channel].mask_register,0x4+sb_channel);		/* select channel */
   outb(sb_ports[sb_channel].flipflop_register,1);				/* flip-flop */
   outb(sb_ports[sb_channel].mode_register,0x58+sb_channel);		/* auto mode */
-  outb(sb_ports[sb_channel].page_register,(uint8_t) ((unsigned int) sb_dma_buffer >> 16));		/* byte #3 of 24-bit address */
-  outb(sb_ports[sb_channel].address_register,(uint8_t) (((unsigned int) sb_dma_buffer & 0x0000ff)));	/* byte #1 of 24-bit address */
-  outb(sb_ports[sb_channel].address_register,(uint8_t) (((unsigned int) sb_dma_buffer & 0x00ff00) >> 8)); /* byte #2 of 24-bit address */
+  outb(sb_ports[sb_channel].page_register,(uint8_t) ((size_t) sb_dma_buffer >> 16));		/* byte #3 of 24-bit address */
+  outb(sb_ports[sb_channel].address_register,(uint8_t) (((size_t) sb_dma_buffer & 0x0000ff)));	/* byte #1 of 24-bit address */
+  outb(sb_ports[sb_channel].address_register,(uint8_t) (((size_t) sb_dma_buffer & 0x00ff00) >> 8)); /* byte #2 of 24-bit address */
   outb(sb_ports[sb_channel].count_register,(uint8_t) ((sb_dma_buffer_size-1) & 0xff));	/* size low byte */
   outb(sb_ports[sb_channel].count_register,(uint8_t) ((sb_dma_buffer_size-1) >> 8));	/* size low byte */
   outb(sb_ports[sb_channel].mask_register,sb_channel);		/* enable channel */
@@ -213,9 +235,19 @@ unsigned int sb16_io(unsigned int op,char *buf,size_t len) {
  outb(DSP_WRITE,SB_SPEAKER_OFF);		/* disable speaker */
 }
 
+/*
+ * Soundblaster 16 ioctl handler
+ *
+ * In:  handle	Handle created by open() to reference device
+        request Request number
+        buffer  Buffer
+ *
+ *  Returns: -1 on error, 0 on success
+ *
+ */
 
-size_t sb16_ioctlsize_t handle,unsigned long request,char *buffer) {
-unsigned int param;
+size_t sb16_ioctl(size_t handle,unsigned long request,char *buffer) {
+size_t param;
 char *b;
 size_t count;
 
@@ -231,17 +263,17 @@ size_t count;
    outb(DSP_MIXER_DATA_PORT,sb_irq_number);
 
    setirqhandler(sb_irq_number,&sb_irq_handler);		/* set irq handler */
-   break;
+   return(0);
 
   case IOCTL_SB16_SET_SAMPLE_RATE: 	/* set sample rate */
    sb_sample_rate=*buffer;
-   return;
+   return(0);
 
   case IOCTL_SB16_SET_CHANNEL:	 	/* set channel */
    param=*buffer;
 
    if((param == 0) || (param > 3)) return(-1); /* invalid channel */
-   return;
+   return(0);
 
   case IOCTL_SB16_SET_VOLUME:	 	/* set volume */
    param=*buffer;
@@ -250,7 +282,7 @@ size_t count;
 
    outb(DSP_MIXER_PORT,SB_SET_VOLUME);
    outb(DSP_MIXER_DATA_PORT,param);
-   return;
+   return(0);
 
   case IOCTL_SB16_SET_TIME_CONSTANT:	/* set time constant */
    param=*buffer;
@@ -261,18 +293,26 @@ size_t count;
 
    outb(DSP_MIXER_PORT,SB_SET_TIME_CONSTANT);
    outb(DSP_MIXER_DATA_PORT,sb_time_constant);
-   return;
+   return(0);
    
   case IOCTL_SB16_SET_DATATYPE:	/* set data type */
    sb_data_type=*buffer;
 
-    return;
+    return(0);
  
   default:
     return(-1);
  }
 }
 
+/*
+ * Soundblaster 16 IRQ handler
+ *
+ * In: nothing
+ *
+ *  Returns: nothing
+ *
+ */
 
 void sb_irq_handler(void) {
  #ifdef SB16_DEBUG

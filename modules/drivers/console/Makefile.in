@@ -3,6 +3,6 @@ CC=@cc@
 LD=@ld@
 FILES=console.c
 
-all:
+../../../obj/@arch@/console.o:
 	$(CC) -c -w -ffreestanding -nostdlib -lgcc  -g $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
 

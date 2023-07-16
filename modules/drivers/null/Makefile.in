@@ -3,6 +3,6 @@ CC=@cc@
 LD=@ld@
 FILES=null.c
 
-all:
+../../../obj/@arch@/null.o:
 	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
 

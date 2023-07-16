@@ -17,7 +17,7 @@ global read
 global mkdir
 global rmdir
 global getargs
-global getvers
+global getversion
 global alloc
 global free
 global shutdown
@@ -43,10 +43,22 @@ global loaddriver
 global setconsolecolour
 global tell
 global set_critical_error_handler
+global set_signal_handler
+global signal
+global getpid
+global getprocessinfomation
+global ioctl
+global load_kernel_module
+global remove_block_device
+global add_block_device
+global register_filesystem
+global lock_mutex
+global unlock_mutex
+global getenv
 
 exit:
-mov 	ah,0x4c
-int 21h 
+mov 	eax,0x4c
+int 	21h 
 ret
 
 seek:
@@ -68,7 +80,7 @@ setfileattributes:
 mov	edx,[esp+4]
 
 mov	eax,0x4301
-int	 21h
+int	21h
 ret
 
 getfiletimedate:
@@ -91,14 +103,14 @@ ret
 close:
 mov	ebx,[esp+4]
 
-mov 	ah,3eh
+mov 	eax,3e00h
 int 	21h
 ret
 
 create:
 mov	edx,[esp+4]
 
-mov	ah,3ch
+mov	eax,3c00h
 int 	21h
 ret
 
@@ -113,7 +125,7 @@ ret
 delete:
 mov	edx,[esp+4]
 
-mov	ah,41h
+mov	eax,4100h
 int 	21h
 ret
 
@@ -129,7 +141,7 @@ findfirst:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
-mov	ah,4eh
+mov	eax,4e00h
 int 	21h
 ret
 
@@ -137,20 +149,20 @@ findnext:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
-mov	ah,4fh
+mov	eax,4f00h
 int 	21h
 ret
 
 getcwd:
 mov	edx,[esp+4]
 
-mov	ah,47h
+mov	eax,4700h
 int 	21h
 ret
 
 chdir:
 mov	edx,[esp+4]
-mov	ah,3bh
+mov	eax,3b00h
 int 	21h
 ret
 
@@ -158,7 +170,7 @@ rename:
 mov	esi,[esp+4]
 mov	edi,[esp+8]
 
-mov	ah,56h
+mov	eax,5600h
 int 	21h
 ret
 
@@ -176,45 +188,45 @@ mov	ebx,[esp+4]
 mov	edx,[esp+8]
 mov	ecx,[esp+12]
 
-mov	ah,3fh
+mov	eax,3f00h
 int 	21h
 ret
 
 mkdir:
 mov	edx,[esp+4]
 
-mov	ah,39h
+mov	eax,3900h
 int 	21h
 ret
 
 rmdir:
 mov	edx,[esp+4]
 
-mov	ah,3ah
+mov	eax,3a00h
 int 	21h
 ret
 
 getargs:
 mov	edx,[esp+4]
 
-mov	ah,65h
+mov	eax,6500h
 int 	21h
 ret
 
-getvers:
-mov	ah,30h
+getversion:
+mov	eax,3000h
 int 	21h
 ret
 
 alloc:
-mov	ah,48h
+mov	eax,4800h
 mov	ebx,[esp+4]
 int	 21h
 ret
 
 free:
 mov	edx,[esp+4]
-mov	ah,49h
+mov	eax,4900h
 int	21h
 ret
 
@@ -230,7 +242,7 @@ int	 21h
 ret
 
 getlasterror:
-mov	ah,4dh
+mov	eax,4d00h
 int 	21h
 ret
 
@@ -309,7 +321,7 @@ ret
 
 writeconsole:
 mov	edx,[esp+4]
-mov	ah,9h
+mov	eax,9h
 int 	21h
 ret
 
@@ -342,14 +354,14 @@ ret
 
 dup:
 mov	ebx,[esp+4]
-mov 	ah,45h
+mov 	eax,45h
 int 	21h
 ret
 
 dup2:
 mov	ebx,[esp+4]
 mov	ecx,[esp+8]
-mov 	ah,46h
+mov 	eax,46h
 int 	21h
 ret
 
@@ -366,17 +378,121 @@ int	21h
 ret
 
 set_signal_handler:
-mov	ah,8ch
+mov	eax,8c00h
 mov	edx,[esp+4]
 int	21h
+ret
 
 signal:
-mov	ah,8dh
+mov	eax,8d00h
 mov	ebx,[esp+4]
 mov	edx,[esp+8]
 int	21h
+ret
 
-xwait:
-mov	ah,8ah
+waitpid:
+mov	eax,8a00h
 mov	ebx,[esp+4]
 int	21h
+ret
+
+getpid:
+mov	eax,5000h
+int	21h
+ret
+
+getprocessinfomation:
+mov	eax,6500h
+mov	ebx,[esp+4]
+int	21h
+ret
+
+blockread:
+mov	eax,9000h
+mov	ecx,[esp+4]
+mov	edx,[esp+8]
+int	21h
+ret
+
+blockwrite:
+mov	eax,9100h
+mov	ecx,[esp+4]
+mov	edx,[esp+8]
+int	21h
+ret
+
+ioctl:
+mov	eax,4401h
+mov	ebx,[esp+4]
+mov	ecx,[esp+8]
+mov	edx,[esp+12]
+int	21h
+ret
+
+dma_alloc:
+mov	eax,7000h
+mov	ebx,[esp+4]
+int	21h
+ret
+
+remove_block_device:
+mov	eax,700Dh
+mov	edx,[esp+4]
+int	21h
+ret
+
+remove_char_device:
+mov	eax,700Eh
+mov	edx,[esp+4]
+int	21h
+ret
+
+register_filesystem:
+mov	eax,700Dh
+mov	edx,[esp+4]
+int	21h
+ret
+
+lock_mutex:
+mov	eax,702eh
+mov	edx,[esp+4]
+int	21h
+ret
+
+unlock_mutex:
+mov	eax,702fh
+mov	edx,[esp+4]
+int	21h
+ret
+
+allocatedriveletter:
+mov	eax,7028h
+int	21h
+ret
+
+findcharacterdevice:
+mov	eax,7029h
+mov	ebx,[esp+4]
+mov	edx,[esp+8]
+int	21h
+ret
+
+getblockdevice:
+mov	eax,702ah
+mov	ebx,[esp+4]
+mov	edx,[esp+8]
+int	21h
+ret
+
+getdevicebyname:
+mov	eax,702bh
+mov	ebx,[esp+4]
+mov	edx,[esp+8]
+int	21h
+ret
+
+getenv:
+mov	eax,7030h
+int	21h
+ret
+

@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -24,6 +24,16 @@
 #include "../devicemanager/device.h"
 #include "../filemanager/vfs.h"
 
+/*
+ * Read line from console
+ *
+ * In:  unsigned long handle	Handle
+	char *buf		Buffer
+        int size		Buffer size
+ *
+ * Returns nothing
+ */
+
 unsigned long readline(unsigned long handle,char *buf,int size) {
 char *bufptr;
 int count=0;
@@ -33,12 +43,16 @@ bufptr=buf;				/* point to buffer */
 while(1) { 
  read(stdin,bufptr,1);
 
- if(*bufptr == '\x8') {			/* backspace */
-  bufptr--;
-  *bufptr=0;
+ if(count++ >= size) return;
+
+ if(*bufptr == 0x8) {			/* if backspace, erase character */
+
+  *bufptr--=0;
+  *bufptr--=0;
+  count -= 2;
  }
 
- if(*bufptr == '\n') {
+ if(*bufptr == '\n') {			/* if newline, return */
   *bufptr=0;
   break;
  }
@@ -49,31 +63,3 @@ while(1) {
 return(NO_ERROR);
 }
 
-char *readbuf[MAX_PATH];
-
-unsigned long readlinefromfile(unsigned int handle,char *buf) {
-unsigned int count=0;
-char *readlinebufptr;
-unsigned int readsize=0;
-
-if(readsize == 0) readsize=read(handle,readbuf,MAX_PATH);
-
-readlinebufptr=readbuf;
-
-while(readsize--) {
-
- if(*readlinebufptr == '\n') {		/* at end */
-   memcpy(buf,readbuf,count);		/* copy to buffer */
-
-   memcpy(readbuf,buf+readsize,readsize);	/* move remaing data to start of buffer */
-   memset(buf+readsize,0,MAX_PATH-readsize);	/* and fill the rest of the buffer with zeros */
-
-   readsize -= count;
-   return;
- }
-
- readlinebufptr++;
-}
-
-return(NO_ERROR);
-}

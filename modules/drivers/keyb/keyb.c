@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -20,16 +20,18 @@
 /* CCP keyboard driver */
 
 #include <stdint.h>
+#include "../../../header/kernelhigh.h"
 #include "../../../header/errors.h"
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
+#include "../../../processmanager/signal.h"
 #include "keyb.h"
-
-#define KERNEL_HIGH (1 << (sizeof(unsigned int)*8)-1)
 
 #define MODULE_INIT keyb_init
 
-void readconsole(unsigned int ignore,char *buf,size_t size);
+void readconsole(char *buf,size_t size);
+void keyb_init(void);
+
 size_t readkey(void);
 void keyb_init(void);
 
@@ -41,7 +43,7 @@ uint32_t altpressed=FALSE;
 /* characters from scan codes */
 char *scancodes_unshifted[] = { "`",0x22,"1","2","3","4","5","6","7","8","9","0","-","="," ","\t","q","w","e","r","t","y","u", \
 		         "i","o","p","[","]","\n"," ","a","s","d","f","g","h","j","k","l",";","@","#"," ","\\","z","x","c", \
-                 	"v","b","n","m",",",".","?",",","/"," "," "," "," "," "," "," "," "," "," "," ", \
+                 	"v","b","n","m",",",".","/",",","/"," "," "," "," "," "," "," "," "," "," "," ", \
 		         " "," "," "," "," "," "," ","7","8","9","-","4","5","6","+","1","2","3","0"," " };
 
  char *scancodes_shifted[] = { "`",0x22,"!","@","\£","$","%%","^","&","*","(",")","_","+","\b","\t","Q","W","E","R","T","Y","U", \
@@ -49,20 +51,42 @@ char *scancodes_unshifted[] = { "`",0x22,"1","2","3","4","5","6","7","8","9","0"
 		         "X","C","V","B","N","M","<",">","?"," "," "," "," "," "," "," "," "," "," "," "," ", \
 		         " "," "," "," "," "," "," ","7","8","9","-","4","5","6","+","1","2","3","0","." };
 
-unsigned int consoleio(unsigned int op,char *s,size_t size);
-void readconsole(unsigned int ignore,char *buf,size_t size);
-void keyb_init(void);
-
 char *keybbuf[KEYB_BUFFERSIZE];
 char *keybuf=keybbuf;
 size_t readcount=0;
 char *keylast=keybbuf;
 
-void readconsole(unsigned int ignore,char *buf,size_t size) {
+/*
+ * Read from console
+ *
+ * In: size_t ignore	Ignored value
+       char *buf		Buffer
+       size_t size		Number of character to read
+ *
+ *  Returns nothing
+ *
+ */
+void readconsole(char *buf,size_t size) {
  keybuf=keybbuf; 						/* point to start of buffer */
  readcount=0;
 
- while(readcount < size) ;;
+ while(readcount < size) {
+
+/* if backspace, delete character */
+  
+  if(*keybuf == 0x8) {
+   
+/* overwrite character on screen */
+
+   if(get_cursor_col() > 0) {
+	   movecursor(get_cursor_row(),get_cursor_col()-1);
+	   outputconsole(" ",1);
+	   movecursor(get_cursor_row(),get_cursor_col()-1);	
+   }
+
+   return;
+  }
+ }      
 
  memcpy(buf,keybbuf,size);				
  readcount=0;
@@ -70,34 +94,38 @@ void readconsole(unsigned int ignore,char *buf,size_t size) {
  return;
 }
 
-/* called by irq1 handler see init.asm 	*/
+/*
+ * Keyboard irq handler
+ *
+ * In: nothing
+ *
+ *  Returns nothing
+ *
+ * called by irq1 handler see init.asm 	*/
 
 size_t readkey(void) {
-uint8_t x;
-uint8_t *k=KERNEL_HIGH+0x497;
+uint8_t keycode;
 char c;
-unsigned int row,col;
+size_t row,col;
 
 if((inb(0x64) & 1) == 0) return;					/* not ready */
 
-if((*k & 64) == 64) capson=TRUE;					/* caps lock on */
-
-x=inb(0x60);
+keycode=inb(0x60);
 
 /* if it's a break code, then do various keys */
 
-if((x & 128) == 128) {
- if(x == LEFT_SHIFT_UP || x == RIGHT_SHIFT_UP) {
+if((keycode & 128) == 128) {
+ if(keycode == LEFT_SHIFT_UP || keycode == RIGHT_SHIFT_UP) {
   shiftpressed=FALSE;
   return;
  }
 
- if(x == LEFT_ALT_UP || x == RIGHT_ALT_UP) {
+ if(keycode == LEFT_ALT_UP || keycode == RIGHT_ALT_UP) {
    ctrlpressed=FALSE;
    return;
  }
 
- if(x == LEFT_CTRL_UP || x == RIGHT_CTRL_UP) {
+ if(keycode == LEFT_CTRL_UP || keycode == RIGHT_CTRL_UP) {
    ctrlpressed=FALSE;
    return;
  }
@@ -109,22 +137,19 @@ if((x & 128) == 128) {
 
 if(readcount++ == KEYB_BUFFERSIZE) return;				/* buffer full - must reset count see above */
 
-getcursorpos(row,col);
-
-switch(x) {								/* control characters */
+switch(keycode) {								/* control characters */
 
  case KEY_TAB:
   kprintf("        ");
   return;
 
  case KEY_HOME_7:							/* move cursor to start of line */  
-  col=0;
-  movecursor(row,col);
+  movecursor(0,get_cursor_col());
   return;
 
  case KEY_END1:								/* move cursor to end of line */
   col=strlen(keybbuf);
-  movecursor(row,col);
+  movecursor(25,get_cursor_col());
   return;
 
  case LEFT_SHIFT:
@@ -143,12 +168,7 @@ switch(x) {								/* control characters */
   return;
 
  case KEY_BACK:
-   col--;
-   kprintf(" ");
-   col--;
-   movecursor(row,col);
-  
-  *keybuf--=0;
+  *keybuf=8;
   return;							
  
  case KEY_CAPSLOCK:
@@ -164,14 +184,14 @@ switch(x) {								/* control characters */
   return;
 
  case KEY_CTRL:									/* ctrl characters and ctrl alt del */
-  x=inb(0x60);
+  keycode=inb(0x60);
   ctrlpressed=TRUE;
   readcount--;				/* see above comment */
   return;
 }
 
 if(ctrlpressed == TRUE) { 							/* control characters */
- switch(x) {
+ switch(keycode) {
   case KEY_SINGQUOTE_AT:
    *keybuf++=CTRL_AT;
    kprintf("^@");
@@ -189,7 +209,8 @@ if(ctrlpressed == TRUE) { 							/* control characters */
 
      case KEY_C:
       kprintf("^C");
-      exit(1);
+
+      sendsignal(getpid(),SIGTERM);		/* send signal to terminate signal */
       return;
 
       case KEY_D:
@@ -297,11 +318,12 @@ if(ctrlpressed == TRUE) { 							/* control characters */
       case KEY_Z:
        *keybuf++=CTRL_Z;
        return;
+
      }
 
     }
 
-  if(ctrlpressed == TRUE && altpressed == TRUE && x == KEY_DEL) {
+  if(ctrlpressed == TRUE && altpressed == TRUE && keycode == KEY_DEL) {
    kprintf("CTRL-ALT-DEL\n\n");
    shutdown(1);
   }
@@ -309,38 +331,46 @@ if(ctrlpressed == TRUE) { 							/* control characters */
 /* if caps lock in on only shift letters */
 
   if(capson == TRUE) {
-   c=*scancodes_shifted[x];		/* get character */
+   c=*scancodes_shifted[keycode];		/* get character */
 
    if((c > 'A'-1 && c < 'Z'+1) && shiftpressed == TRUE) {
     c=c+32;				/* to lowercase */
     *keybuf++=c;
-    kprintf(scancodes_unshifted[x]);
+    kprintf(scancodes_unshifted[keycode]);
     return;
    }
 
    if((c > 'A'-1 && c < 'Z'+1) && shiftpressed == FALSE) {
     *keybuf++=c;
-    kprintf(scancodes_shifted[x]);
+    kprintf(scancodes_shifted[keycode]);
     return;
    }
 
   }
  
   if(shiftpressed == FALSE) {
-   kprintf(scancodes_unshifted[x]);
+   kprintf(scancodes_unshifted[keycode]);
 
-   *keybuf++=*scancodes_unshifted[x];
+   *keybuf++=*scancodes_unshifted[keycode];
   }
   else
   {
 
-   kprintf(scancodes_shifted[x]);
-   *keybuf++=*scancodes_shifted[x];
+   kprintf(scancodes_shifted[keycode]);
+   *keybuf++=*scancodes_shifted[keycode];
   }
 
 return;
 }
 
+/*
+ * Initialize keyboard
+ *
+ * In: nothing
+ *
+ * Returns nothing
+ *
+ */
 void keyb_init(void) {
 CHARACTERDEVICE device;
 
@@ -350,7 +380,8 @@ CHARACTERDEVICE device;
  altpressed=FALSE;
 
  strcpy(&device.dname,"CON");
- device.chario=&readconsole;
+ device.charioread=&readconsole;
+ device.chariowrite=NULL;
  device.ioctl=NULL;
  device.flags=0;
  device.data=NULL;
@@ -359,6 +390,8 @@ CHARACTERDEVICE device;
  add_char_device(&device);			/* con */
 
  setirqhandler(1,&readkey);		/* set irq handler */
- return(NULL);
+ 
+ init_console_device(_READ,0,&readconsole);
+ return;
 }
 

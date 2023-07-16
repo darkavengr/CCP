@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -19,12 +19,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "../header/kernelhigh.h"
 #include "../header/errors.h"
 #include "vfs.h"
 #include "../processmanager/mutex.h"
 #include "../devicemanager/device.h"
 #include "../header/bootinfo.h"
-	
+
 size_t findfirst(char *name,FILERECORD *buf);
 size_t findnext(char *name,FILERECORD *buf);
 size_t open(char *filename,size_t access);
@@ -42,7 +43,6 @@ size_t dup2(size_t oldhandle,size_t newhandle);
 size_t register_filesystem(FILESYSTEM *newfs);
 size_t detect_filesystem(size_t drive,FILESYSTEM *buf);
 size_t getfullpath(char *filename,char *buf);
-size_t openfiles_init(void *read,void *write);
 size_t seek(size_t handle,size_t pos,size_t whence);
 size_t tell(size_t handle);
 size_t setfiletimedate(char *filename,TIMEBUF *createtime,TIMEBUF *lastmodtime);
@@ -53,17 +53,26 @@ size_t splitname(char *name,SPLITBUF *splitbuf);
 size_t updatehandle(size_t handle,FILERECORD *buf);
 size_t get_filename_token(char *filename,void *buf);
 size_t get_filename_token_count(char *filename);
+size_t change_file_owner_pid(size_t handle,size_t pid);
+size_t init_console_device(size_t type,size_t handle,void *cptr);
+size_t openfiles_init(size_t a,size_t b);
+void shut(void);
 
 FILERECORD *openfiles=NULL;
 FILESYSTEM *filesystems=NULL;
 MUTEX vfs_mutex;
 
-#define KERNEL_HIGH 1 << (sizeof(size_t)*8)-1
-
 char *old;
 
-extern outputconsole();
-extern readconsole();
+/*
+ * Find first file in directory
+ *
+ * In:  name	Filename or wildcard of file to find
+        buffer	Buffer to hold information about files
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t findfirst(char *name,FILERECORD *buf) {
 FILESYSTEM fs;
@@ -71,10 +80,11 @@ SPLITBUF splitbuf;
 char *fullname[MAX_PATH];
 
 getfullpath(name,fullname);
+	
 splitname(fullname,&splitbuf);				/* split name */
 
 if(detect_filesystem(splitbuf.drive,&fs) == -1) {		/* detect file system */
- setlasterror(GENERAL_FAILURE);
+ setlasterror(UNKNOWN_FILESYSTEM);
  return(-1);
 }
 
@@ -85,6 +95,16 @@ if(fs.findfirst == NULL) {			/* not implemented */
 
 return(fs.findfirst(name,buf));				/* call handler */
 }
+
+/*
+ * Find next file in directory
+ *
+ * In:  name	Filename or wildcard of file to find
+        buffer	Buffer to hold information about files
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t findnext(char *name,FILERECORD *buf) {
 FILESYSTEM fs;
@@ -105,15 +125,20 @@ if(fs.findnext == NULL) {			/* not implemented */
  return(-1);
 }
 
-return(fs.findnext(name,buf));
+return(fs.findnext(name,buf));		/* Call via function pointer */
 }
 
 
 /*
-/* Open file
+ * Open file
  *
- * Returns handle or error
+ * In: name	File to open
+       access	File mode(O_RD_RW, O_RDONLY)
+ *
+ * Returns: -1 on error, 0 on success
+ *
  */
+
 size_t open(char *filename,size_t access) {
 size_t blockcount;
 size_t handle;
@@ -176,6 +201,7 @@ handle++;
   next->findblock=0;
   next->currentblock=0;
   next->currentpos=0;
+  next->owner_process=getpid();
   next->blockio=blockdevice.blockio;
   next->flags=FILE_BLOCK_DEVICE;
   next->handle=handle;
@@ -188,6 +214,8 @@ handle++;
   return(handle);					/* return handle */
  }
 
+/* If opening character device */
+
  if(findcharacterdevice(filename,&chardevice) == 0) {
      next=openfiles;
      last=openfiles;
@@ -199,8 +227,7 @@ handle++;
 
      last->next=kernelalloc(sizeof(FILERECORD));			/* allocate */
      next=last->next;
-     next->next=next;
-
+  
      if(next == NULL) {
       lock_mutex(&vfs_mutex);
       return(-1);
@@ -208,7 +235,8 @@ handle++;
 
      strcpy(next->filename,chardevice.dname);
 
-     next->chario=chardevice.chario;
+     next->charioread=chardevice.charioread;
+     next->chariowrite=chardevice.chariowrite;
      next->ioctl=chardevice.ioctl;
      next->flags=FILE_CHAR_DEVICE;
      next->currentpos=0;
@@ -295,6 +323,15 @@ handle++;
  return(handle);					/* return handle */
 } 
 
+/*
+ * Delete file
+ *
+ * In:  name	File to delete
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+
 size_t delete(char *name) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
@@ -322,6 +359,15 @@ if(fs.delete == NULL) {			/* not implemented */
 return(fs.delete(name));
 }
 
+/*
+ * Rename file
+ *
+ * In:  oldname	File to rename
+	newname	New filename
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 size_t rename(char *oldname,char *newname) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
@@ -349,6 +395,14 @@ if(fs.rename == NULL) {			/* not implemented */
 return(fs.rename(oldname,newname));
 }
 
+/*
+ * Create file
+ *
+ * In:  name	File to create
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 size_t create(char *name) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
@@ -377,6 +431,15 @@ if(fs.create(name) == -1) return(-1);
 return(open(name,_O_RDWR));
 }
 
+/*
+ * Remove directory
+ *
+ * In:  name	Directory to remove
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+
 size_t rmdir(char *name) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
@@ -403,6 +466,15 @@ if(fs.rmdir == NULL) {			/* not implemented */
 return(fs.rmdir(name));
 }
 
+/*
+ * Create directory
+ *
+ * In:  name	Directory to create
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+
 size_t mkdir(char *name) {
 FILESYSTEM fs;
 SPLITBUF splitbuf;
@@ -425,6 +497,15 @@ if(fs.mkdir == NULL) {			/* not implemented */
 return(fs.mkdir(name));
 }
 
+/*
+ * Set file attributes
+ *
+ * In:  name	File to change attributes
+        attribs Attributes. The specific attributes depend on the filesystem
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t chmod(char *name,size_t attribs) {
 FILESYSTEM fs;
@@ -448,6 +529,17 @@ if(fs.chmod == NULL) {			/* not implemented */
 return(fs.chmod(name,attribs));
 }
 
+/*
+ * Read from file or device
+ *
+ * In:  handle	File handle
+	addr	Buffer to read to
+	size	Number of bytes to read
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+
 size_t read(size_t handle,void *addr,size_t size) {
 FILESYSTEM fs;
 FILERECORD *next;
@@ -457,14 +549,14 @@ lock_mutex(&vfs_mutex);
 
 next=openfiles;
 while(next != NULL) {
- if(next->handle == handle) break;
+ if((next->handle == handle) && (next->owner_process == getpid())) break;
  next=next->next;
 }
 
 if(next == NULL) {
  unlock_mutex(&vfs_mutex);
 
- setlasterror(BAD_HANDLE);
+ setlasterror(INVALID_HANDLE);
  return(-1);
 }
 
@@ -475,7 +567,8 @@ unlock_mutex(&vfs_mutex);
  */
 
 if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */		
- if(next->chario(_READ,addr,size) == -1) {
+
+ if(next->charioread(addr,size) == -1) {
   unlock_mutex(&vfs_mutex);
   return(-1);
  }
@@ -507,6 +600,17 @@ unlock_mutex(&vfs_mutex);
 return(fs.read(handle,addr,size));
 }
 
+/*
+ * Write to file or device
+ *
+ * In:  handle	File handle
+	addr	Buffer to read to
+	size	Number of bytes to read
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+
 size_t write(size_t handle,void *addr,size_t size) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
@@ -517,20 +621,21 @@ lock_mutex(&vfs_mutex);
 
 next=openfiles;
 while(next != NULL) {
- if(next->handle == handle) break;
+ if((next->handle == handle) && (next->owner_process == getpid())) break;
  next=next->next;
 }
 
 if(next == NULL) {
  unlock_mutex(&vfs_mutex);
 
- setlasterror(BAD_HANDLE);
+ setlasterror(INVALID_HANDLE);
  return(-1);
 }
 
 if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */		
- if(next->chario(_WRITE,addr,size) == -1) {
-  lock_mutex(&vfs_mutex);
+
+ if(next->chariowrite(addr,size) == -1) {
+  unlock_mutex(&vfs_mutex);
 
   return(-1);
  }
@@ -563,6 +668,16 @@ return(fs.write(handle,addr,size));
 }
 
 
+/*
+ * Ioctl - device specific I/O operations
+ *
+ * In:  handle	File handle
+	request Request number - device specific
+	buffer	Buffer
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 size_t ioctl(size_t handle,unsigned long request,void *buffer) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
@@ -580,7 +695,7 @@ while(next != NULL) {
 if(next == NULL) {
  unlock_mutex(&vfs_mutex);
 
- setlasterror(BAD_HANDLE);
+ setlasterror(INVALID_HANDLE);
  return(-1);
 }
 
@@ -598,7 +713,7 @@ else
 {
  unlock_mutex(&vfs_mutex);
 
- setlasterror(BAD_DEVICE);
+ setlasterror(INVALID_DEVICE);
  return(-1);
 }
 }
@@ -606,7 +721,12 @@ else
 /*
  * Close file
  *
+ * In:  handle	File handle
+ *
+ * Returns: -1 on error, 0 on success
+ *
  */
+
 size_t close(size_t handle) { 
 size_t count;
 FILERECORD *last;
@@ -645,13 +765,54 @@ while(next != NULL) {					/* find filename in struct */
 
 unlock_mutex(&vfs_mutex);
 
-setlasterror(BAD_HANDLE);
+setlasterror(INVALID_HANDLE);
 return(-1);
 }
 
-/* duplicate handle */
+/*
+ * Close all open files for process
+ *
+ * In:  nothing
+ *
+ * Returns: nothing
+ *
+ */
 
-size_t dup(size_t handle) {
+void shut(void) { 
+FILERECORD *last;
+FILERECORD *next;
+ 
+lock_mutex(&vfs_mutex);
+
+next=openfiles;
+
+while(next != NULL) {					/* find filename in struct */
+
+  if(next->owner_process == getpid()) {		/* if file is owned by process */
+   last->next=next->next;
+   kernelfree(next);
+  }
+
+ next=next->next;
+}
+
+unlock_mutex(&vfs_mutex);
+
+setlasterror(INVALID_HANDLE);
+return(-1);
+}
+
+/*
+ * Duplicate handle for process
+ *
+ * In:  handle	File handle
+ *	pid	Process ID
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+
+size_t dup_internal(size_t handle,size_t pid) {
 FILERECORD *source;
 FILERECORD *dest;
 FILERECORD *last;
@@ -662,7 +823,8 @@ lock_mutex(&vfs_mutex);
 source=openfiles;
  
  while(source != NULL) {					/* find handle in struct */
-  if(source->handle == handle) break;
+  if((source->handle == handle) && (source->owner_process == pid)) break;
+
   source=source->next;
   count++;
  }
@@ -670,7 +832,7 @@ source=openfiles;
  if(source == NULL) {
   unlock_mutex(&vfs_mutex);
 
-  setlasterror(BAD_HANDLE);
+  setlasterror(INVALID_HANDLE);
   return(-1);
  }
 
@@ -686,15 +848,22 @@ source=openfiles;
  
  if(last->next == NULL) {
   unlock_mutex(&vfs_mutex);
-
   setlasterror(NO_MEM);				/* out of memory */
   return(-1);
  }
-	
- memcpy(last->next,source,sizeof(FILERECORD));  /* copy data */
+
+ last=last->next;		/* point to struct */	
+
+ memcpy(last,source,sizeof(FILERECORD));  /* copy data */
  
- last=last->next;		/* point to struct */
  last->owner_process=getpid();
+ last->next=NULL;
+
+ dest=openfiles;
+ 
+ while(dest != NULL) {
+  dest=dest->next;
+ }
 
  unlock_mutex(&vfs_mutex);
 
@@ -702,12 +871,34 @@ source=openfiles;
  return(count);
 }
 
-/* duplicate handle and overwrite*/
+/*
+ * Duplicate handle
+ *
+ * In:  handle	File handle
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+
+size_t dup(size_t handle) {
+ dup_internal(handle,getpid());
+}
+
+/*
+ * Duplicate handle and overwrite
+ *
+ * In:  oldhandle	Existing file handle
+	newhandle	File handle to overwrite
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t dup2(size_t oldhandle,size_t newhandle) {
 FILERECORD *oldnext;
 FILERECORD *newnext;
 FILERECORD *last;
+size_t savenext;
 
 lock_mutex(&vfs_mutex);
 
@@ -721,7 +912,7 @@ while(oldnext != NULL) {					/* find handle in struct */
 if(oldnext == NULL) {
  unlock_mutex(&vfs_mutex);
 
- setlasterror(BAD_HANDLE);
+ setlasterror(INVALID_HANDLE);
  return(-1);
 }
 
@@ -736,11 +927,16 @@ while(newnext != NULL) {					/* find handle in struct */
 if(newnext == NULL) {
  unlock_mutex(&vfs_mutex);
 
- setlasterror(BAD_HANDLE);
+ setlasterror(INVALID_HANDLE);
  return(-1);
 }	
 
+savenext=oldnext->next;		/* save next pointer */
+
 memcpy(newnext,oldnext,sizeof(FILERECORD));  /* copy data */
+
+newnext->next=savenext;
+newnext->owner_process=getpid();
 
 unlock_mutex(&vfs_mutex);
 
@@ -749,6 +945,15 @@ return(newnext->handle);
 }
 
 size_t timescalled=0;
+
+/*
+ * Register filesystem
+ *
+ * In:  newfs	struct of filesystem information
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t register_filesystem(FILESYSTEM *newfs) {
 FILESYSTEM *next;
@@ -761,28 +966,22 @@ if(filesystems == NULL) {
  filesystems=kernelalloc(sizeof(FILESYSTEM));		/* add to end */
  if(filesystems == NULL) return(-1);
 
- memcpy(filesystems,newfs,sizeof(FILESYSTEM));
- filesystems->next=NULL;
-
- unlock_mutex(&vfs_mutex);
- setlasterror(NO_ERROR);
- return(0);
+ next=filesystems;
 
 }
 else
 {
  next=filesystems;
 
- while(next->next != NULL) {
+ while(next != NULL) {
 
   if(strcmp(newfs->name,next->name) == 0) {		/* already loaded */
-
    unlock_mutex(&vfs_mutex);
-
-   setlasterror(BAD_DRIVER);
+   setlasterror(INVALID_DRIVER);
    return(-1);
   }
 
+  last=next;
   next=next->next;
  }
 
@@ -792,22 +991,31 @@ else
   return(-1);
  }
 
- last=last->next;
- memcpy(last,newfs,sizeof(FILESYSTEM));
- last->next=NULL;
-
- unlock_mutex(&vfs_mutex);
- setlasterror(NO_ERROR);
- return(0);
+ next=last->next;
 }
+
+memcpy(next,newfs,sizeof(FILESYSTEM));
+next->next=NULL;
 
 unlock_mutex(&vfs_mutex);
-return(-1);
+setlasterror(NO_ERROR);
+return(0);
 }
+
+/*
+ * Detect filesystem
+ *
+ * In:  drive	Drive
+	buf	Buffer to fill with information about filesystem
+ *
+ * 
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t detect_filesystem(size_t drive,FILESYSTEM *buf) {
 void *blockbuf;
-FILESYSTEM *next=filesystems;
+FILESYSTEM *next;
 void *b=NULL;
 
 lock_mutex(&vfs_mutex);
@@ -815,18 +1023,18 @@ lock_mutex(&vfs_mutex);
 blockbuf=kernelalloc(VFS_MAX);
 if(blockbuf == NULL) return(-1);
 
-blockio(0,drive,0,blockbuf);		/* read block */
+if(blockio(0,drive,0,blockbuf) == -1) return(-1);		/* read block */
 
 /* check magic number */
+
+next=filesystems;
 
 while(next != NULL) {
  b=blockbuf;
  b += next->location;
 
- if(memcmp(b,next->magicnumber,next->size) == 0) {	/* if matches */
+ if(memcmp(b,next->magicnumber,next->size) == 0) {	/* if magic number matches */
   memcpy(buf,next,sizeof(FILESYSTEM));
-
-//  if(getpid() == 1) asm("xchg %bx,%bx");
 
   kernelfree(blockbuf);
 
@@ -841,10 +1049,20 @@ while(next != NULL) {
 
 unlock_mutex(&vfs_mutex);
 
-setlasterror(BAD_DRIVER);
+setlasterror(INVALID_DRIVER);
 return(-1);
 }
 
+/*
+ * Get full file path from partial path
+ *
+ * In:  filename	Partial path to filename
+	buf		Buffer to fill with full path to filename
+ *
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t getfullpath(char *filename,char *buf) {
 char *token[10][MAX_PATH];
@@ -856,6 +1074,7 @@ int countx;
 char *b;
 char c,d,e;
 char *cwd[MAX_PATH];
+BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
 if(filename == NULL || buf == NULL) return(-1);
 
@@ -871,9 +1090,7 @@ memset(buf,0,MAX_PATH);
 
  if(c == '\\') {
   if(getpid() == -1) {
-   b=KERNEL_HIGH+BOOT_INFO_DRIVE;
-
-   c=*b+'A';
+   c=boot_info->drive+'A';
 
    b=buf;
    *b++=c;
@@ -957,58 +1174,108 @@ for(countx=0;countx<dottc;countx++) {
   } 
 }
 
+/*
+ * Initialize file manager
+ *
+ * In:  nothing
+ *
+ * Returns: nothing
+ *
+ */
 
 
-size_t openfiles_init(void *read,void *write) {
+size_t openfiles_init(size_t a,size_t b) {
 FILERECORD *next;
 
 filesystems=NULL;
 
 openfiles=kernelalloc(sizeof(FILERECORD));			/* stdin */
 if(openfiles == NULL) {	/*can't allocate */
- kprintf("kernel: can't allocate memory for stdin\n");
+ kprintf_direct("kernel: can't allocate memory for stdin\n");
  return(-1);
 }
 
-openfiles->flags=FILE_CHAR_DEVICE;
 strcpy(openfiles->filename,"stdin");
 openfiles->handle=0;
-openfiles->chario=read;
+openfiles->charioread=NULL;			/* for now */
+openfiles->chariowrite=NULL;
+openfiles->flags=FILE_CHAR_DEVICE;
 
-openfiles->next=kernelalloc(sizeof(FILERECORD));				/* stdout */
+openfiles->next=kernelalloc(sizeof(FILERECORD));			/* stdin */
 if(openfiles->next == NULL) {	/*can't allocate */
- kprintf("kernel: can't allocate memory for stdout");
- return;
+ kprintf_direct("kernel: can't allocate memory for stdout\n");
+ return(-1);
 }
 
 next=openfiles->next;
 
-next->chario=write;
-next->flags=FILE_CHAR_DEVICE;
-next->handle=1;
 strcpy(next->filename,"stdout");
+next->handle=1;
+next->charioread=NULL;			/* for now */
+next->chariowrite=NULL;
+next->flags=FILE_CHAR_DEVICE;
 
-next->next=kernelalloc(sizeof(FILERECORD));				/* stderr */
-if(openfiles->next == NULL) {	/*can't allocate */
- kprintf("kernel: can't allocate memory for stderr\n");
- return;
+next->next=kernelalloc(sizeof(FILERECORD));			/* stdin */
+if(next->next == NULL) {	/*can't allocate */
+ kprintf_direct("kernel: can't allocate memory for stderr\n");
+ return(-1);
 }
 
 next=next->next;
-next->flags=FILE_CHAR_DEVICE;
-next->chario=&outputconsole;
-next->handle=2;
+
 strcpy(next->filename,"stderr");
+next->handle=2;
+next->charioread=NULL;			/* for now */
+next->chariowrite=NULL;
 next->next=NULL;
+}
+
+/*
+ * Initialize console
+ *
+ * In:  handle	handle of console device (0,1 or 2)
+	cptr	Pointer to console I/O function	
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */	
+
+size_t init_console_device(size_t type,size_t handle,void *cptr) {
+FILERECORD *next;
+ 
+ next=openfiles;
+
+ while(next != NULL) {
+
+  if(next->handle == handle) {
+
+	if(type == _READ) {
+ 	 next->charioread=cptr;
+	}
+	else if(type == _WRITE) {
+	 next->chariowrite=cptr;
+	}
+
+	return(0);
+ }
+
+ next=next->next;
+}
 
 initialize_mutex(&vfs_mutex);		/* intialize mutex */
 
-return;
+return(-1);
 }
 
 
 /*
- * set file position
+ * Set file position
+ *
+ * In:  handle	File handle
+	pos	Byte to seek to
+	whence	Where to seek from(0=start,1=current position,2=end)
+ *
+ * Returns: -1 on error, new file position on success
  *
  */
 
@@ -1029,7 +1296,7 @@ while(next != NULL) {
 if(next == NULL) {
  unlock_mutex(&vfs_mutex);
 
- setlasterror(BAD_HANDLE);
+ setlasterror(INVALID_HANDLE);
  return(-1);
 }
 
@@ -1047,10 +1314,12 @@ unlock_mutex(&vfs_mutex);
 return(fs.seek(handle,pos,whence));
 }
 
-
 /*
+ * Get file position
  *
- * get file position
+ * In:  handle	File handle
+ *
+ * Returns: -1 on error, file position on success
  *
  */
 
@@ -1068,14 +1337,14 @@ while(next != NULL) {					/* find filename in struct */
   break;
  }
 
- next=next->next;;
+ next=next->next;
  count++;
 }
 
 if(next == NULL) {
  unlock_mutex(&vfs_mutex);
 
- setlasterror(BAD_HANDLE);			/* bad handle */
+ setlasterror(INVALID_HANDLE);			/* bad handle */
  return(-1);
 }
 
@@ -1083,6 +1352,17 @@ if(next == NULL) {
 
  return(next->currentpos);				/* return position */
 }
+
+/*
+ * Set file time and date
+ *
+ * In:  filename	File to set file and date of
+	createtime	struct with create time and date information
+        lastmodtime	struct with last modified time and date information
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t setfiletimedate(char *filename,TIMEBUF *createtime,TIMEBUF *lastmodtime) {
 FILESYSTEM fs;
@@ -1100,6 +1380,15 @@ if(detect_filesystem(splitbuf.drive,&fs) == -1) {
 return(fs.setfiletd(filename,createtime,lastmodtime));
 }
 
+/*
+ * Get start block of file
+ *
+ * In:  name	Filename
+ *
+ * Returns: -1 on error, start block on success
+ *
+ */
+
 size_t getstartblock(char *name) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
@@ -1115,6 +1404,16 @@ if(detect_filesystem(splitbuf.drive,&fs) == -1) {
 return(fs.getstartblock(name));
 }
 
+/*
+ * Get file information from handle
+ *
+ * In:  handle	File handle
+	buf	struct to hold information about file
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+
 size_t gethandle(size_t handle,FILERECORD *buf) {
 FILERECORD *next;
 
@@ -1123,11 +1422,12 @@ lock_mutex(&vfs_mutex);
 next=openfiles;
 
 while(next != NULL) {
- if(next->handle == handle) {		/* found handle */
+ if((next->handle == handle) && (next->owner_process == getpid())) {		/* found handle */
 
   unlock_mutex(&vfs_mutex);
 
   memcpy(buf,next,sizeof(FILERECORD));		/* copy data */
+
   return(0);
  }
 
@@ -1137,9 +1437,18 @@ while(next != NULL) {
 
 unlock_mutex(&vfs_mutex);
 
-setlasterror(BAD_HANDLE);
+setlasterror(INVALID_HANDLE);
 return(-1);
 }
+
+/*
+ * Get file size
+ *
+ * In:  handle	File handle
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t getfilesize(size_t handle) {
  FILERECORD *next;
@@ -1149,7 +1458,7 @@ size_t getfilesize(size_t handle) {
  next=openfiles;
 
  while(next != NULL) {
-  if(next->handle == handle) {
+  if((next->handle == handle) && (next->owner_process == getpid())) {
    unlock_mutex(&vfs_mutex);
 
    return(next->filesize);
@@ -1157,9 +1466,20 @@ size_t getfilesize(size_t handle) {
 
   next=next->next;
  }
- 
+
+ unlock_mutex(&vfs_mutex); 
  return(-1);
 }
+
+/*
+ * Split filename into drive, directory and filename
+ *
+ * In:  name	Filename
+	splitbuf	struct to hold information about drive, directory and filename
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t splitname(char *name,SPLITBUF *splitbuf) {
  size_t count;
@@ -1199,9 +1519,19 @@ size_t splitname(char *name,SPLITBUF *splitbuf) {
  return;
 } 
 
+/*
+ * Update file information using handle
+ *
+ * In:  handle	File handle
+	buf	Struct holding information about the file
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+
 size_t updatehandle(size_t handle,FILERECORD *buf) {
 FILERECORD *next;
-unsigned int foundhandle=FALSE;
+size_t foundhandle=FALSE;
 
 lock_mutex(&vfs_mutex);
 
@@ -1210,7 +1540,7 @@ next=openfiles;
 while(next != NULL) {
 /* update own handle */
 
- if(next->handle == handle) {		/* found handle */
+ if((next->handle == handle) && (next->owner_process == getpid())) {		/* found handle */
 
   memcpy(next,buf,sizeof(FILERECORD));		/* copy data */
 
@@ -1241,6 +1571,17 @@ if(foundhandle == FALSE) return(-1);		/* handle not found */
 
 return(0);
 }
+
+/*
+ * Get single part of path from filename
+ *
+ * In:  filename	Filename to get part of filename from
+	buf		Buffer to hold filename part
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ * Returns a single part of the filename each time it is called
+ */
 
 size_t get_filename_token(char *filename,void *buf) {
  char *f;
@@ -1276,6 +1617,16 @@ while(*f != '\\') {
  return(0);
 }
 
+/*
+ * Get number of parts in filename seperated by \\
+ *
+ * In:  handle	File handle
+	addr	Buffer to read to
+	size	Number of bytes to read
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t get_filename_token_count(char *filename) {
  char *f;
@@ -1296,4 +1647,27 @@ return(count);						/* return number of tokens */
 }
 
 
+size_t change_file_owner_pid(size_t handle,size_t pid) {
+FILERECORD *next;
+
+lock_mutex(&vfs_mutex);
+
+next=openfiles;
+
+while(next != NULL) {
+ if(next->handle == handle) {		/* found handle */
+
+  next->owner_process=pid;		/* set owner */
+  unlock_mutex(&vfs_mutex);
+
+  return(0);
+ }
+
+
+ next=next->next;
+}
+
+unlock_mutex(&vfs_mutex);
+return(-1);
+}
 

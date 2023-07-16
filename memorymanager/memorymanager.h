@@ -2,3 +2,5 @@
 #define ALLOC_KERNEL	1
 #define ALLOC_NOPAGING 	2
 
+#define FREE_PHYSICAL	1
+

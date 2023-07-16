@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -29,11 +29,16 @@
 
 extern setirqhandler();
 
-uint8_t comport(unsigned int op,uint16_t port,char *buf,size_t size);
-void com1(unsigned int op,char *buf,size_t size);
-void com2(unsigned int op,char *buf,size_t size);
-void com3(unsigned int op,char *buf,size_t size);
-void com3(unsigned int op,char *buf,size_t size);
+uint8_t comport(size_t op,uint16_t port,char *buf,size_t size);
+void read_com1(char *buf,size_t size);
+void read_com2(char *buf,size_t size);
+void read_com3(char *buf,size_t size);
+void read_com3(char *buf,size_t size);
+void write_com1(char *buf,size_t size);
+void write_com2(char *buf,size_t size);
+void write_com3(char *buf,size_t size);
+void write_com3(char *buf,size_t size);
+
 void com1_irq_handler(void *regs);
 void com2_irq_handler(void *regs);
 void com3_irq_handler(void *regs);
@@ -41,10 +46,14 @@ void com4_irq_handler(void *regs);
 void serialio_init(char *init);
 size_t serial_ioctl(size_t handle,unsigned long request,char *buffer);
 
-port ports[]={ { "com1",COM1,115200,8,0,0,0,NULL,NULL,NULL,0,1024 },\
-	       { "com2",COM2,115200,8,0,0,0,NULL,NULL,NULL,0,1024 },\
-	       { "com3",COM3,115200,8,0,0,0,NULL,NULL,NULL,0,1024 },\
-	       { "com4",COM4,115200,8,0,0,0,NULL,NULL,NULL,0,1024 }};
+/* Serial and parallel ports default settings */
+
+port ports[]={ { "com1",COM1,115200,8,0,0,0,NULL,NULL,NULL,NULL,0,1024 },\
+	       { "com2",COM2,115200,8,0,0,0,NULL,NULL,NULL,NULL,0,1024 },\
+	       { "com3",COM3,115200,8,0,0,0,NULL,NULL,NULL,NULL,0,1024 },\
+	       { "com4",COM4,115200,8,0,0,0,NULL,NULL,NULL,NULL,0,1024 }};
+
+/* parity values */
 
 parity parityvals[] = { { "none", 0 },\
 			{ "odd", 1 },\
@@ -53,11 +62,22 @@ parity parityvals[] = { { "none", 0 },\
 			{ "space", 4 },\
 			{ "",-1 } };
 
-uint8_t comport(unsigned int op,uint16_t port,char *buf,size_t size) {
-unsigned int count;
+/*
+ * Serial/parallel port I/O common function
+ *
+ * In: size_t op	Operation (0=read, 1=write)
+       uint16_t port	Port number
+       char *buf	Buffer
+       size_t size	Number of bytes to read/write
+ *
+ *  * Returns number of bytes read/written on success, -1 on error
+ *
+ */
+uint8_t comport(size_t op,uint16_t port,char *buf,size_t size) {
+size_t count;
 char *b;
-unsigned int comportrcount;
-unsigned int whichport;
+size_t comportrcount;
+size_t whichport;
 char c;
 
 if(op == _WRITE) {				/* write com port */
@@ -65,17 +85,12 @@ if(op == _WRITE) {				/* write com port */
 
  b=buf;
 
- kprintf("com1=%X\n",port);
- kprintf("buf=%X\n",buf);
-
  for(count=0;count<size;count++) {		/* for each */
   c=*b++;
-  kprintf("%c",c);
 
   outb((uint16_t) port,c);
  }
 
- kprintf("com done\n");
  return(size); 
 }
 
@@ -106,31 +121,105 @@ for(whichport=0;whichport<5;whichport++) {
  return(size);   
 }
 
-
-void com1(unsigned int op,char *buf,size_t size) {
- comport(op,COM1,buf,size);
+/*
+ * COM1 I/O functions
+ *
+ * In: size_t op	Operation (0=read, 1=write)
+       char *buf	Buffer
+       size_t size	Number of bytes to read/write
+ *
+ *  * Returns number of bytes read/written on success, -1 on error
+ *
+ */
+void read_com1(char *buf,size_t size) {
+ return(comport(_READ,COM1,buf,size));
 }
 
-void com2(unsigned int op,char *buf,size_t size) {
- comport(op,COM2,buf,size);
+void write_com1(char *buf,size_t size) {
+ return(comport(_WRITE,COM1,buf,size));
+}
+/*
+ * COM2 I/O function
+ *
+ * In: size_t op	Operation (0=read, 1=write)
+       char *buf	Buffer
+       size_t size	Number of bytes to read/write
+ *
+ *  * Returns number of bytes read/written on success, -1 on error
+ *
+ */
+
+void read_com2(char *buf,size_t size) {
+ return(comport(_READ,COM2,buf,size));
 }
 
-void com3(unsigned int op,char *buf,size_t size) {
- comport(op,COM3,buf,size);
+void write_com2(char *buf,size_t size) {
+ return(comport(_WRITE,COM2,buf,size));
 }
 
-void com4(unsigned int op,char *buf,size_t size) {
- comport(op,COM4,buf,size);
+/*
+ * COM3 I/O function
+ *
+ * In: size_t op	Operation (0=read, 1=write)
+       char *buf	Buffer
+       size_t size	Number of bytes to read/write
+ *
+ *  * Returns number of bytes read/written on success, -1 on error
+ *
+ */
+
+void read_com3(char *buf,size_t size) {
+ return(comport(_READ,COM3,buf,size));
 }
 
+void write_com3(char *buf,size_t size) {
+ return(comport(_WRITE,COM3,buf,size));
+}
+
+/*
+ * COM4 I/O function
+ *
+ * In: size_t op	Operation (0=read, 1=write)
+       char *buf	Buffer
+       size_t size	Number of bytes to read/write
+ *
+ *  * Returns number of bytes read/written on success, -1 on error
+ *
+ */
+
+void read_com4(char *buf,size_t size) {
+ return(comport(_READ,COM4,buf,size));
+}
+
+void write_com4(char *buf,size_t size) {
+ return(comport(_WRITE,COM4,buf,size));
+}
+
+/*
+ * COM1 irq handler
+ *
+ * In: void *regs 	Buffer to save CPU registers (not used)
+ *
+ *  Returns nothing
+ *
+ */
 void com1_irq_handler(void *regs) {
  if(ports[0].bufptr == ports[0].buffer+ports[0].buffersize) ports[0].bufptr=ports[0].buffer;
+
 
  *ports[0].bufptr++=inb(COM1);
  ports[0].portrcount++;
  return;
 }
 
+/*
+ * COM2 irq handler
+ *
+ * In: void *regs 	Buffer to save CPU registers (not used)
+ *
+ *  Returns nothing
+ *
+ */
 void com2_irq_handler(void *regs) {
  if(ports[1].bufptr == ports[1].buffer+ports[1].buffersize) ports[1].bufptr=ports[1].buffer;
 
@@ -139,6 +228,14 @@ void com2_irq_handler(void *regs) {
  return;
 }
 
+/*
+ * COM3 irq handler
+ *
+ * In: void *regs 	Buffer to save CPU registers (not used)
+ *
+ *  Returns nothing
+ *
+ */
 void com3_irq_handler(void *regs) {
  if(ports[2].bufptr == ports[2].buffer+ports[2].buffersize) ports[2].bufptr=ports[2].buffer;
 
@@ -147,6 +244,14 @@ void com3_irq_handler(void *regs) {
  return;
 }
 
+/*
+ * COM4 irq handler
+ *
+ * In: void *regs 	Buffer to save CPU registers (not used)
+ *
+ *  Returns nothing
+ *
+ */
 void com4_irq_handler(void *regs) {
  if(ports[1].bufptr == ports[1].buffer+ports[3].buffersize) ports[1].bufptr=ports[1].buffer;
 
@@ -156,9 +261,14 @@ void com4_irq_handler(void *regs) {
 }
 
 
- /* intialize devices */
-
-
+/*
+ * Initialize serial and parallel ports
+ *
+ * In: char *init	Initialization string
+ *
+ *  Returns nothing
+ *
+ */
 void serialio_init(char *init) {
 CHARACTERDEVICE device;
 char *tokens[10][255];
@@ -169,10 +279,15 @@ int subtc;
 int whichp;
 int countx;
 
-ports[0].handler=&com1;		/* intialize function pointers */
-ports[1].handler=&com2;
-ports[2].handler=&com3;
-ports[3].handler=&com4;
+ports[0].readhandler=&read_com1;		/* intialize function pointers */
+ports[1].readhandler=&read_com2;
+ports[2].readhandler=&read_com3;
+ports[3].readhandler=&read_com4;
+
+ports[0].writehandler=&write_com1;		/* intialize function pointers */
+ports[1].writehandler=&write_com2;
+ports[2].writehandler=&write_com3;
+ports[3].writehandler=&write_com4;
 
 //port=com1 baud=115200 databits=8 stopbits=1 parity=even interrupts=data buffersize=1024
 
@@ -240,7 +355,9 @@ for(count=0;count<4;count++) {
  ports[count].bufptr= ports[count].buffer;
 
  strcpy(&device.dname,ports[count].name);		/* add device */
- device.chario=ports[count].handler;
+ device.charioread=ports[count].readhandler;
+ device.chariowrite=ports[count].writehandler;
+
  device.flags=0;
  device.data=NULL;
  device.next=NULL;
@@ -258,8 +375,18 @@ for(count=0;count<4;count++) {
 return;
 }	
 
+/*
+ * ioctl handler for serial and parallel ports
+ *
+ * In: size_t handler		Handle used to for port (was opened with open());
+       unsigned long request	Request number
+       char *buffer		Buffer
+ *
+ *  Returns 0 on success, -1 on error
+ *
+ */
 size_t serial_ioctl(size_t handle,unsigned long request,char *buffer) {
-unsigned int param;
+size_t param;
 FILERECORD serialdevice;
 char *b;
 int count;
@@ -285,15 +412,15 @@ b=buffer;
    outb(ports[count].port+3, 0x80);    			/* Enable DLAB (set baud rate divisor) */
    outb(ports[count].port+0, (115200/ports[count].baud)); /* set divisor  */
    outb(ports[count].port+4, 0x0B);    				/* IRQs enabled, RTS/DSR set  */
-   return;
+   return(0);
 
   case IOCTL_SERIAL_DATABITS:
    ports[count].databits=*buffer;
-   return;
+   return(0);
 
   case IOCTL_SERIAL_STOPBITS:
    ports[count].stopbits=*buffer;
-   return;
+   return(0);
 
   case IOCTL_SERIAL_PARITY:
    ports[count].parity=*buffer;
@@ -301,7 +428,7 @@ b=buffer;
    outb(ports[count].port+1, 0x00);    			/* Disable all interrupts */
    outb(ports[count].port+3, ports[count].parity);    	/* Parity  */
    outb(ports[count].port+4, 0x0B);    				/* IRQs enabled, RTS/DSR set  */
-   return;
+   return(0);
 
   default:
     return(-1);

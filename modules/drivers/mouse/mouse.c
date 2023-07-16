@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 #include "mouse.h"
+#include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
 
 #define MODULE_INIT mouse_init
@@ -29,13 +30,13 @@ uint8_t readmouse(void);
 void mouse_handler(void);
 void wait_for_mouse_read(void);
 void wait_for_mouse_write(void);
-size_t mouseio(unsigned int op,void *buf,size_t size);
-unsigned int wait_for_ack(void);
+size_t mouseio_read(void *buf,size_t size);
+size_t wait_for_ack(void);
 void mouse_send_command(uint8_t command);
 void wait_for_mouse_ack(void);
-unsigned int mouse_set_sample_rate(unsigned int resolution);
-unsigned int mouse_enable_scrollwheel(void);
-unsigned int mouse_set_resolution(unsigned int resolution);
+size_t mouse_set_sample_rate(size_t resolution);
+size_t mouse_enable_scrollwheel(void);
+size_t mouse_set_resolution(size_t resolution);
 
 struct {
  size_t mousex;
@@ -46,6 +47,15 @@ struct {
 size_t mreadcount;
 uint8_t mousepacket[3];
 size_t mouse_click_timestamp=0;
+
+/*
+ * Initialize mouse
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
 
 int mouse_init(char *init) {
 CHARACTERDEVICE device;
@@ -89,14 +99,15 @@ readmouse();
 /* no ack */
 
 strcpy(&device.dname,"MOUSE");			/* add character device */
-device.chario=&mouseio;
+device.charioread=&mouseio_read;
+device.chariowrite=NULL;
 device.flags=0;
 device.data=NULL;
 device.next=NULL;
 
 add_char_device(&device);
 
-mouse_click_timestamp=gettickcount();		/* get first timestamp for doubleclick */
+mouse_click_timestamp=get_tick_count();		/* get first timestamp for doubleclick */
 
 if(init != NULL) {			/* args found */
  tc=tokenize_line(init,tokens," ");	/* tokenize line */
@@ -128,6 +139,15 @@ if(init != NULL) {			/* args found */
 
 return;
 }
+
+/*
+ * Mouse IRQ handler
+ *
+ * In:  nothing
+ *
+ * Returns: nothing
+ *
+ */
 
 void mouse_handler(void) {
  uint8_t mousestatus;
@@ -162,17 +182,17 @@ void mouse_handler(void) {
   mouseinfo.mousey += my;
 
   if(mousepacket[0] & MOUSE_LEFT_BUTTON_MASK) {
-  //  kprintf("%X %X\n",mouse_click_timestamp,gettickcount());
+  //  kprintf("%X %X\n",mouse_click_timestamp,get_tick_count());
 
 
-    if(gettickcount() < (mouse_click_timestamp+MOUSE_DOUBLECLICK_INTERVAL)) {		/* double click */    
+    if(get_tick_count() < (mouse_click_timestamp+MOUSE_DOUBLECLICK_INTERVAL)) {		/* double click */    
 
    //     kprintf("Mouse double clicked\n");
  	mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_DOUBLECLICK;
     }
     else
     {
-	mouse_click_timestamp=gettickcount()+MOUSE_DOUBLECLICK_INTERVAL;
+	mouse_click_timestamp=get_tick_count()+MOUSE_DOUBLECLICK_INTERVAL;
 
 //        kprintf("Mouse left clicked\n");
         mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_MASK;
@@ -196,11 +216,29 @@ void mouse_handler(void) {
  return;
 }
 
+/*
+ * Read mouse data
+ *
+ * In:  nothing
+ *
+ * Returns: mouse data byte
+ *
+ */
+
 uint8_t readmouse(void) {
  wait_for_mouse_read();		/*wait for ready to read */
 
  return(inb(MOUSE_PORT));
 }
+
+/*
+ * Wait for mouse to be ready to read data
+ *
+ * In:  nothing
+ *
+ * Returns: nothing
+ *
+ */
 
 void wait_for_mouse_read(void) {
 //kprintf("mouse read\n");
@@ -210,6 +248,14 @@ while((inb(MOUSE_STATUS) & MOUSE_DATA_READY_READ) != 1) ;;
 return;
 }
 
+/*
+ * Wait for mouse to be ready to write data
+ *
+ * In:  nothing
+ *
+ * Returns: nothing
+ *
+ */
 void wait_for_mouse_write(void) {
 uint8_t readmouse=0;
 
@@ -225,23 +271,46 @@ do {
 return;
 }
 
-size_t mouseio(unsigned int op,void *buf,size_t size) {
+/*
+ * Mouse I/O function
+ *
+ * In:  op	Operation (0=read,1=write)
+        buf	Buffer
+	len	Number of bytes to read/write
+ *
+ *  Returns: number of bytes read
+ *
+ */
+size_t mouseio_read(void *buf,size_t size) {
 char *b;
 size_t count;
 
-if(op == _MOUSE_READ) {
- while(mreadcount < 3) ;;		/* wait for buffer to fill up */
+while(mreadcount < 3) ;;		/* wait for buffer to fill up */
 
- memcpy(buf,&mouseinfo,sizeof(mouseinfo));
- return(size);
+memcpy(buf,&mouseinfo,sizeof(mouseinfo));
+return(size);
 }
 
-}
-
+/*
+ * Wait for mouse to acknowledge command
+ *
+ * In: nothing
+ *
+ *  Returns: nothing
+ *
+ */
 void wait_for_mouse_ack(void) {
  while(inb(MOUSE_PORT) != 0xFA) ;;
 }
 
+/*
+ * Send command to mouse
+ *
+ * In:  command	Command to send
+ *
+ *  Returns: nothing
+ *
+ */
 void mouse_send_command(uint8_t command) {
  wait_for_mouse_write();		/*wait for ready to write */
  outb(MOUSE_STATUS,0xD4);
@@ -250,7 +319,15 @@ void mouse_send_command(uint8_t command) {
  outb(MOUSE_PORT,command);
 }
 
-unsigned int mouse_set_resolution(unsigned int resolution) {
+/*
+ * Set mouse move resolution
+ *
+ * In:  resolution	Resolution (2,4, etc)
+ *
+ *  Returns: data byte from mouse
+ *
+ */
+size_t mouse_set_resolution(size_t resolution) {
  mouse_send_command(MOUSE_SET_RESOLUTION);
 
  wait_for_mouse_write();		/*wait for ready to write */
@@ -261,7 +338,7 @@ unsigned int mouse_set_resolution(unsigned int resolution) {
  return(readmouse());
 }
 
-unsigned int mouse_set_sample_rate(unsigned int resolution) {
+size_t mouse_set_sample_rate(size_t resolution) {
  mouse_send_command(MOUSE_SET_SAMPLE_RATE);
 
  wait_for_mouse_write();		/*wait for ready to write */
@@ -272,7 +349,15 @@ unsigned int mouse_set_sample_rate(unsigned int resolution) {
  return(readmouse());
 }
 
-unsigned int mouse_enable_scrollwheel(void) {
+/*
+ * Enable scroll wheel on mouse
+ *
+ * In:  nothing
+ *
+ *  Returns: data byte from mouse
+ *
+ */
+size_t mouse_enable_scrollwheel(void) {
  mouse_set_sample_rate(200);
  mouse_set_sample_rate(100);
  mouse_set_sample_rate(80);
@@ -282,7 +367,15 @@ unsigned int mouse_enable_scrollwheel(void) {
  return(readmouse());
 }
 
-unsigned int mouse_enable_extra_buttons(void) {
+/*
+ * Enable extra mouse buttions
+ *
+ * In:  nothing
+ *
+ *  Returns: nothing
+ *
+ */
+size_t mouse_enable_extra_buttons(void) {
  mouse_set_sample_rate(200);
  mouse_set_sample_rate(200);
  mouse_set_sample_rate(80);
@@ -292,8 +385,18 @@ unsigned int mouse_enable_extra_buttons(void) {
  return(readmouse());
 }
 
-unsigned int mouse_ioctl(size_t handle,unsigned long request,char *buffer) {
-unsigned int param;
+/*
+ * Soundblaster 16 ioctl handler
+ *
+ * In:  handle	Handle created by open() to reference device
+        request Request number
+        buffer  Buffer
+ *
+ *  Returns: -1 on error, 0 on success
+ *
+ */
+size_t mouse_ioctl(size_t handle,unsigned long request,char *buffer) {
+size_t param;
 char *b;
 
 b=buffer;

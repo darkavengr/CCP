@@ -3,6 +3,6 @@ CC=@cc@
 LD=@ld@
 FILES=ata.c
 
-all:
+../../../obj/@arch@/ata.o:
 	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
 

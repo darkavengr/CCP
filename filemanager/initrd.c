@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -18,6 +18,8 @@
 */
 
 #include <stdint.h>
+#include "../header/kernelhigh.h"
+#include "../processmanager/mutex.h"
 #include "vfs.h"
 #include "../devicemanager/device.h"
 #include "initrd.h"
@@ -26,43 +28,85 @@
 
 size_t initrd_findfirst(char *filename,FILERECORD *buf);
 size_t initrd_findnext(char *filename,FILERECORD *buf);
-size_t initrd_find(unsigned int op,char *filename,FILERECORD *buf);
+size_t initrd_find(size_t op,char *filename,FILERECORD *buf);
 initrd_read(int ignore,size_t size,void *buf);
 size_t initrd_init(void);
-unsigned int initrd_io(unsigned int op,size_t drive,size_t block,char *buf);
+size_t initrd_io(size_t op,size_t drive,size_t block,char *buf);
 
 TAR_HEADER *tarptr;
 
+/*
+ * Find first file in INITRD
+ *
+ * In:  name	Filename or wildcard of file to find
+        buffer	Buffer to hold information about files
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 size_t initrd_findfirst(char *filename,FILERECORD *buf) {
  return(initrd_find(FALSE,filename,buf));
 }
 
+/*
+ * Find next file in INITRD
+ *
+ * In:  name	Filename or wildcard of file to find
+        buffer	Buffer to hold information about files
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 size_t initrd_findnext(char *filename,FILERECORD *buf) {
  return(initrd_find(TRUE,filename,buf));
 }
 
-size_t initrd_find(unsigned int op,char *filename,FILERECORD *buf) {
+/*
+ * Find file in INITRD
+ *
+ * In:  name	Filename or wildcard of file to find
+        buffer	Buffer to hold information about files
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+size_t initrd_find(size_t op,char *filename,FILERECORD *buf) {
 size_t size;
+BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
+size_t ptr;
 
-if(op == FALSE) tarptr=BOOT_INFO_INITRD_START;		/* first */
+if(op == FALSE) tarptr=boot_info->initrd_start+KERNEL_HIGH;		/* first */
 
-if(*tarptr->filename == 0) {			/* last file */
+if(*tarptr->name == 0) {			/* last file */
  setlasterror(FILE_NOT_FOUND);
  return(-1);
 }
 
-kprintf("%X\n",tarptr);
-asm("xchg %bx,%bx");
-
 memset(buf,0,sizeof(FILERECORD));
 
-strcpy(buf->filename,tarptr->filename);	/* copy information */
+strcpy(buf->filename,tarptr->name);	/* copy information */
 
-atoi(tarptr->size,buf->filesize);
+buf->filesize=atoi(tarptr->size,8);
 buf->drive='Z';
 
-tarptr += (size+sizeof(TAR_HEADER));	/* point to next */
+ptr=tarptr;
+ptr += ((buf->filesize / 512) + 1) * 512;
+
+if(buf->filesize % TAR_BLOCK_SIZE) ptr += TAR_BLOCK_SIZE;
+
+tarptr=ptr;
 }
+
+/*
+ * Read from INITRD
+ *
+ * In:  handle	File handle
+	addr	Buffer to read to
+	size	Number of bytes to read
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
 
 initrd_read(int ignore,size_t size,void *buf) {
 void *dataptr;
@@ -75,27 +119,40 @@ memcpy(buf,dataptr,size);
 return(size);
 }
 
+/*
+ * Initialize INITRD
+ *
+ * In:  nothing
+ *
+ * Returns: nothing
+ *
+ */
+
 size_t initrd_init(void) {
 FILESYSTEM fs;
 FILERECORD filerecord;
 size_t retval;
 BLOCKDEVICE bd;
+uint8_t magic[] = { 'u','s','t','a','r',' ',' ' };
 
 /* create block device */
 strcpy(bd.dname,"INITRD");
 bd.blockio=&initrd_io;		/*setup struct */
 bd.ioctl=NULL;
 bd.physicaldrive=0;
-bd.drive=0;
+bd.drive=25;
 bd.flags=0;
 bd.startblock=0;
 bd.sectorsperblock=1;
-addblockdevice(&bd);
+add_block_device(&bd);
 
-/* load filesystem driver */
+memset(&fs,0,sizeof(FILESYSTEM));
+
+/* register filesystem driver */
 strcpy(fs.name,"INITRDFS");	/* name */
-strcpy(fs.magicnumber,"Ustar\0");
-fs.size=6;
+
+memcpy(fs.magicnumber,magic,INITRD_MAGIC_SIZE);
+fs.size=INITRD_MAGIC_SIZE;
 fs.location=257;
 fs.findfirst=&initrd_findfirst;
 fs.findnext=&initrd_findnext;
@@ -117,16 +174,30 @@ fs.seek=NULL;
 register_filesystem(&fs);
 }
 
-unsigned int initrd_io(unsigned int op,size_t drive,size_t block,char *buf) { 
- size_t *size_ptr=BOOT_INFO_INITRD_START;
+/*
+ * INITRD I/O function
+ *
+ * In:  op	Ignored
+        buf	Buffer
+	len	Number of bytes to read
+ *
+ *  Returns: 0 on success or -1
+ *
+ */
+size_t initrd_io(size_t op,size_t drive,size_t block,char *buf) { 
+ BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
+ char *tptr;
 
- if((block*512) > *size_ptr) {			/* out of range */
-  set_last_error(BAD_BLOCK);
+ if((block*512) > boot_info->initrd_size) {			/* out of range */
+  setlasterror(INVALID_BLOCK);
   return(-1);
-}
+ }
 
- memcpy(buf,tarptr,(block*512));		/* copy data */
+ tptr=boot_info->initrd_start;
+ tptr += KERNEL_HIGH;
+
+ memcpy(buf,tptr,TAR_BLOCK_SIZE);		/* copy data */
  
- set_last_error(NO_ERROR);
+ setlasterror(NO_ERROR);
  return(0);
 }

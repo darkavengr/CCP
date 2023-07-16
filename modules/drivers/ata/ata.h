@@ -19,6 +19,8 @@
 #define _READ 0
 #define _WRITE 1
 
+#define ATA_ALT_STATUS_PORT	0
+#define ATA_FEATURES_PORT	1
 #define ATA_DATA_PORT		0
 #define	ATA_ERROR_PORT		1
 #define	ATA_SECTOR_COUNT_PORT   2
@@ -51,15 +53,11 @@
 
 #define IOCTL_ATA_IDENTIFY 0
 
-unsigned int ata_hdio_dma(unsigned int op,unsigned int drive,unsigned int block,char *buf);
-unsigned int hdio_chs (unsigned int op,unsigned int physdrive,unsigned int blocksize,unsigned int head,unsigned int cylinder,unsigned int sector,uint16_t *buf);
+size_t ata_hdio_dma(size_t op,size_t drive,size_t block,char *buf);
+size_t hdio_chs (size_t op,size_t physdrive,size_t blocksize,size_t head,size_t cylinder,size_t sector,uint16_t *buf);
 
-char *hddmastruct;
-unsigned int irq14done=FALSE;
-unsigned int irq15done=FALSE;
-
-unsigned int irq14_handler(void);
-unsigned int irq15_handler(void);
+size_t irq14_handler(void);
+size_t irq15_handler(void);
 
 typedef struct {
  uint16_t general_configuration;		//0			

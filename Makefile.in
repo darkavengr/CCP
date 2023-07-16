@@ -1,25 +1,84 @@
 ASM=@asm@
 CC=@cc@
 LD=@cc@
-FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c processmanager/process.c header/string.c @cc_opt_files@
+FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c header/string.c header/bootinfo.c @cc_opt_files@
 
-all:
-	if [ ! -e bin ]; then mkdir bin;fi
-	if [ ! -e bin/@arch@ ]; then mkdir bin/@arch@;fi
+#
+# Recipe to make everything
+#
+all: hwdep drivers ccp command
 
-	if [ ! -e obj ]; then mkdir obj;fi
-	if [ ! -e obj/@arch@ ]; then mkdir obj/@arch@;fi
+#
+# Recipe to make kernel
+#
+ccp: obj/@arch@/drive.o obj/@arch@/memorymanager.o obj/@arch@/ccp.o obj/@arch@/device.o obj/@arch@/vfs.o obj/@arch@/process.o obj/@arch@/multitasking.o obj/@arch@/string.o
+	$(CC) -T hwdep/@arch@/ld.script -o bin/@arch@/CCP.SYS -ffreestanding -nostdlib `ls obj/@arch@/*.o` -lgcc -Wl,-Map -Wl,ccp.map
+	./gensym bin/i386/CCP.SYS
 
+#
+# Recipe to make hardware-dependent code
+#
+
+.PHONY: hwdep
+hwdep:
+	make -C hwdep/@arch@
+
+#
+# Recipe to make drivers
+#
+.PHONY: drivers
+drivers:
 	./gendrivelist  @driverlist@
 	echo $(OBJFILES)
 
 	for f in @driverlist@; do make -C $$f;done
-	$(foreach f,$(FILES),$(CC) -c -w -ffreestanding -nostdlib -lgcc  $f -o $(patsubst %.c,%.o, obj/@arch@/$(notdir $(f)));)
+	$(foreach f,$(FILES),$(CC) -c -w -w -ffreestanding -nostdlib -lgcc  $f -o $(patsubst %.c,%.o, obj/@arch@/$(notdir $(f)));)
 
-	make -C hwdep/@arch@
-
-	$(CC) -T hwdep/@arch@/ld.script -o bin/@arch@/CCP.SYS -ffreestanding -nostdlib `ls obj/@arch@/*.o` -lgcc -Wl,-Map -Wl,ccp.map
+#
+# Recipe to make command interpreter
+#
+.PHONY: command
+command:
 	make -C command
+
+#
+# Rules for building the core files
+#
+
+obj/@arch@/bootinfo.o:
+	$(CC) -c -w header/bootinfo.c
+
+obj/@arch@/drive.o:
+	$(CC) -c -w drive.c
+
+obj/@arch@/memorymanager.o:
+	$(CC) -c -w  memorymanager/memorymanager.c
+
+obj/@arch@/ccp.o:
+	$(CC) -c -w ccp.c
+
+obj/@arch@/device.o:
+	$(CC) -c -w devicemanager/device.c
+
+obj/@arch@/vfs.o:
+	$(CC) -c -w filemanager/vfs.c
+
+obj/@arch@/initrd.o:
+	$(CC) -c -w filemanager/initrd.c
+
+obj/@arch@/process.o:
+	$(CC) -c -w processmanager/process.c
+
+obj/@arch@/multitasking.o:
+	$(CC) -c -w processmanager/multitasking.c
+
+obj/@arch@/string.o:
+	$(CC) -c -w header/string.c
+
+$(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))):
+	$(CC) -c -w @cc_opt_files@
+
+
 clean:
 	rm bin/@arch@/*
 	rm obj/@arch@/*

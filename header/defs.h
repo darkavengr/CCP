@@ -2,7 +2,7 @@
 #include "errors.h"
 
 #define CCPVER 0x0100
-#define PROCESS_BASE_ADDRESS 1 << (sizeof(unsigned int)*8)-1
+#define PROCESS_BASE_ADDRESS 1 << (sizeof(size_t)*8)-1
 
 void null_function(void);
 

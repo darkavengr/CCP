@@ -25,7 +25,8 @@ typedef struct _port {
  int stopbits;
  int parity;
  int interrupts;
- void (*handler)(int,int,int,int,void *);
+ void (*readhandler)(int,int,int,int,void *);
+ void (*writehandler)(int,int,int,int,void *);
  char *buffer;
  char *bufptr;
  int portrcount;

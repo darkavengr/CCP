@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023-2022
 
     This file is part of CCP.
 
@@ -26,11 +26,13 @@
 #include "device.h"
 #include "../filemanager/vfs.h"
 #include "../header/errors.h"
+#include "../header/bootinfo.h"
+#include "../header/kernelhigh.h"
 #include <elf.h>
 
 size_t add_block_device(BLOCKDEVICE *driver);
 size_t add_char_device(CHARACTERDEVICE *device);
-size_t blockio(unsigned int op,size_t drive,size_t block,void *buf);
+size_t blockio(size_t op,size_t drive,uint64_t block,void *buf);
 size_t load_kernel_module(char *filename,char *argsx);
 size_t getnameofsymbol(Elf32_Shdr *strtab,size_t which,char *name);
 size_t findcharacterdevice(char *name,CHARACTERDEVICE *buf);
@@ -41,25 +43,34 @@ size_t remove_block_device(char *name);
 size_t remove_char_device(char *name);
 size_t allocatedrive(void);
 void devicemanager_init(void);
+size_t getkernelsymbol(char *name);
 
 BLOCKDEVICE *blockdevices=NULL;
 size_t lastdrive=2;
 CHARACTERDEVICE *characterdevs=NULL;
 MUTEX blockdevice_mutex;
 MUTEX characterdevice_mutex;
+uint32_t drive_bitmap=0;
 
 #define DO_386_32(S, A)	((S) + (A))
 #define DO_386_PC32(S, A, P)	((S) + (A) - (P))
  
-kernelsymbol *kernelsyms=NULL;
-
+/*
+ * Add block device
+ *
+ * In: driver	Block device object to add
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
 size_t add_block_device(BLOCKDEVICE *driver) {
  BLOCKDEVICE *next;
  BLOCKDEVICE *last;
 
  lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
-/* find device */
+/* find end of device list */
+
  next=blockdevices;
  
  while(next != NULL) {
@@ -92,7 +103,14 @@ else
  return(NO_ERROR);
 }
 
-
+/*
+ * Register character device
+ *
+ * In: CHARACTERKDEVICE *device		Character device to register
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
 size_t add_char_device(CHARACTERDEVICE *device) {
 CHARACTERDEVICE *charnext;
 CHARACTERDEVICE *charlast;
@@ -142,15 +160,20 @@ else
  *
  * calls a hardware-specific routine
  *
+ * In: size_t op		Operation (0=read, 1=write)
+ *     size_t block		Block number
+       void *buf		Buffer
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
  */
 
-
-size_t blockio(unsigned int op,size_t drive,size_t block,void *buf) {
+size_t blockio(size_t op,size_t drive,uint64_t block,void *buf) {
  BLOCKDEVICE *next;
  char *b;
- unsigned int count;
- unsigned int error;
- unsigned int lasterr;
+ size_t count;
+ size_t error;
+ size_t lasterr;
 
  lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
@@ -178,7 +201,7 @@ for(count=0;count<next->sectorsperblock;count++) {
  if(next->blockio(op,next->physicaldrive,(next->startblock+block)+count,b) == -1) {
   lasterr=getlasterror();
 
-  if(lasterr == WRITE_PROTECT_ERROR || lasterr == DRIVE_NOT_READY || lasterr == BAD_CRC \
+  if(lasterr == WRITE_PROTECT_ERROR || lasterr == DRIVE_NOT_READY || lasterr == INVALID_CRC \
 		|| lasterr == GENERAL_FAILURE || lasterr == DEVICE_IO_ERROR) { 
  
    error=call_critical_error_handler(next->dname,drive,(op & 0x80000000),lasterr);	/* call exception handler */
@@ -213,6 +236,16 @@ for(count=0;count<next->sectorsperblock;count++) {
  return(NO_ERROR);
 }	
 
+/*
+ * Load and execute kernel module
+ *
+ * In: char *filename		Filename of kernel module
+ *     char *argsx		Arguments
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
+
 size_t load_kernel_module(char *filename,char *argsx) {
  size_t handle;
  char *fullname[MAX_PATH];
@@ -234,8 +267,8 @@ size_t load_kernel_module(char *filename,char *argsx) {
  size_t *addr;
  size_t *ref;
  void *(*entry)(char *);
- unsigned int numberofrelocentries;
- unsigned int symval;
+ size_t numberofrelocentries;
+ size_t symval;
  uint32_t codestart;
 
 disablemultitasking();
@@ -255,19 +288,19 @@ if(read(handle,buf,getfilesize(handle)) == -1) return(-1); /* read error */
 elf_header=buf;
 
 if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_header->e_ident[2] != 0x4C && elf_header->e_ident[3] != 0x46) {	/* not elf */
- setlasterror(BAD_DRIVER);
+ setlasterror(INVALID_DRIVER);
  kernelfree(buf);
  return(-1);
 }
 
 if(elf_header->e_type != ET_REL) {
- setlasterror(BAD_DRIVER);
+ setlasterror(INVALID_DRIVER);
  kernelfree(buf);
  return(-1);
 }
 
 if(elf_header->e_shnum == 0) {	
- setlasterror(BAD_DRIVER);
+ setlasterror(INVALID_DRIVER);
  kernelfree(buf);
  return(-1);
 }
@@ -284,13 +317,13 @@ for(count=0;count < elf_header->e_shnum;count++) {
 /* check if symbol and string table present */
 
 if(symtab == NULL) {
- setlasterror(BAD_DRIVER);
+ setlasterror(INVALID_DRIVER);
  kernelfree(buf);
  return(-1); 
 }
 
 if(shptr == NULL) {
-setlasterror(BAD_DRIVER);
+setlasterror(INVALID_DRIVER);
  kernelfree(buf);
  return(-1); 
 }
@@ -317,7 +350,7 @@ while(*entryptr != 0) {
  if(count == elf_header->e_shnum) {
   kprintf("Missing symbol .text in %s\n",filename);
 
-  setlasterror(BAD_DRIVER);
+  setlasterror(INVALID_DRIVER);
 
   kernelfree(buf);
   return(-1);
@@ -356,7 +389,7 @@ for(count=0;count < elf_header->e_shnum;count++) {
 	              if(symval == -1) {
 		       kprintf("Unknown external symbol %s in %s\n",filename,name);
 
-                       setlasterror(BAD_DRIVER);
+                       setlasterror(INVALID_DRIVER);
 		       kernelfree(buf);
 		       return(-1); 
 		      }
@@ -389,7 +422,7 @@ for(count=0;count < elf_header->e_shnum;count++) {
 	       kprintf("kernel: unknown relocation type %d in %s\n",symtype,filename);
 
 	       enablemultitasking();
-	       setlasterror(BAD_DRIVER);
+	       setlasterror(INVALID_DRIVER);
 	       return(-1);
              }
        }
@@ -422,7 +455,7 @@ for(count=0;count < elf_header->e_shnum;count++) {
 		       kprintf("Unknown external symbol %s in %s\n",filename,name);
 
 		       enablemultitasking();
-                       setlasterror(BAD_DRIVER);
+                       setlasterror(INVALID_DRIVER);
 		       kernelfree(buf);
 		       return(-1); 
 		      }
@@ -451,7 +484,7 @@ for(count=0;count < elf_header->e_shnum;count++) {
 
      	      default:
 	       enablemultitasking();
-	       setlasterror(BAD_DRIVER);
+	       setlasterror(INVALID_DRIVER);
 	       return(-1);
              }
 
@@ -470,6 +503,17 @@ entry(argsx);
 return;
 }
 
+/*
+ * Get name of symbol from kernel module
+ *
+ * In: Elf32_Shdr *strtab	Pointer to ELF sting table
+       size_t which		Symbol index
+       char *name		Symbol name
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
+
 size_t getnameofsymbol(Elf32_Shdr *strtab,size_t which,char *name) {
  size_t count=0;
  Elf32_Shdr *strptr=strtab;
@@ -481,21 +525,53 @@ size_t getnameofsymbol(Elf32_Shdr *strtab,size_t which,char *name) {
  strcpy(name,strptr);
 }
 
-int getkernelsymbol(char *name) {
-kernelsymbol *symptr;
+/*
+ * Get kernel symbol
+ *
+ * In: char *name	Name of kernel symbol
+ *
+ * Returns symbol value on success, -1 otherwise
+ * 
+ */
 
-if(kernelsyms == NULL) return(-1);		/* no symbols */
+size_t getkernelsymbol(char *name) {
+BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
+char *symptr;
+size_t count;
+size_t *valptr;
 
-symptr=kernelsyms;
+symptr=bootinfo->symbol_start;
+symptr += KERNEL_HIGH;		/* point to symbol table */
 
-while(symptr != NULL) {			/* search symbols for name */
- if(strcmpi(symptr->name,name) == 0) return(symptr->val);
+/* loop through symbols and find the kernel symbol */
 
- symptr++;
+for(count=0;count<bootinfo->number_of_symbols;count++) {
+
+ kprintf("%s\n",symptr);
+
+ if(strcmp(symptr,name) == 0) {				/* symbol found */
+
+  symptr += strlen(name)+1;		/* skip over name */
+
+  valptr=symptr;			/* cast pointer to size_t */
+  return(*valptr);			/* return value */
  }
 
- return(-1);
+ symptr += strlen(symptr)+sizeof(size_t)+1;		/* skip over name and symbol */
 }
+
+return(-1);
+}
+
+/*
+ * Get information about a character device
+ *
+ * In: char *name		Name of device
+       CHARACTERDEVICE *buf	Buffer to hold information about device
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
 
 size_t findcharacterdevice(char *name,CHARACTERDEVICE *buf) {
 CHARACTERDEVICE *next;
@@ -522,6 +598,16 @@ setlasterror(FILE_NOT_FOUND);
 return(-1);
 }
 
+/*
+ * Get information about a block device using drive number
+ *
+ * In: size_t drive		Drive number
+       BLOCKDEVICE *buf		Buffer to hold information about device
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
+
 size_t getblockdevice(size_t drive,BLOCKDEVICE *buf) {
 BLOCKDEVICE *next;
 
@@ -547,6 +633,16 @@ unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 setlasterror(INVALID_DRIVE);
 return(-1);
 }
+
+/*
+ * Get information about a character device using it's name
+ *
+ * In: char *name		Name of device
+       CHARACTERDEVICE *buf	Buffer to hold information about device
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
 
 size_t getdevicebyname(char *name,BLOCKDEVICE *buf) {
 BLOCKDEVICE *next;
@@ -579,6 +675,16 @@ setlasterror(INVALID_DRIVE);
 return(-1);
 }
 
+/*
+ * Updat block device information
+ *
+ * In: size_t drive		Drive
+       BLOCKDEVICE *buf		information about device
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
+
 size_t update_block_device(size_t drive,BLOCKDEVICE *driver) {
  BLOCKDEVICE *next;
  BLOCKDEVICE *last;
@@ -608,6 +714,15 @@ size_t update_block_device(size_t drive,BLOCKDEVICE *driver) {
   setlasterror(INVALID_DRIVE);
   return(-1);
 }
+
+/*
+ * Remove block device
+ *
+ * In: char *name		Name of device
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
 
 size_t remove_block_device(char *name) {
 BLOCKDEVICE *next;
@@ -649,6 +764,15 @@ BLOCKDEVICE *last;
  return(-1);
 }
 
+/*
+ * Remove character device
+ *
+ * In: char *name		Name of device
+       CHARACTERDEVICE *buf	Buffer to hold information about device
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
 
 size_t remove_char_device(char *name) {
 CHARACTERDEVICE *next;
@@ -686,14 +810,62 @@ CHARACTERDEVICE *last;
  next=next->next;
  }
 
- setlasterror(BAD_DEVICE);
+ setlasterror(INVALID_DEVICE);
  return(-1);
 }
 
+/*
+ * Allocate drive number
+ *
+ * In: nothing
+ *
+ * Returns next drive number or -1 on error
+ * 
+ */
+
 size_t allocatedrive(void) {
- return(lastdrive++);
+ size_t count;
+ size_t drivenumber=2;
+
+/* loop through bitmap to find free drive
+   starts at bit 2 to skip first two drives which are reserved */
+
+/* from 2**2 to 2**26 */
+
+ for(count=4;count<67108864;count *= 2) {
+  if((drive_bitmap & count) == 0) {		/* found free drive */
+   drive_bitmap |= count;		/* allocate drive */
+
+   return(drivenumber);
+  }
+
+  drivenumber++;
+ }
+
+ return(-1);		/* no free drives */
 }
 
+/*
+ * Free drive letter
+ *
+ * In: drive to free 
+ *
+ * Returns nothing
+ * 
+ */
+size_t freedrive(size_t drive) {
+ drive_bitmap &= (ipow(2,drive));		/* free drive */
+}
+
+
+/*
+ * Initialize device manager
+ *
+ * In: nothing       
+ *
+ * Returns nothing
+ * 
+ */
 
 void devicemanager_init(void) {
  blockdevices=NULL;
@@ -701,5 +873,7 @@ void devicemanager_init(void) {
 
  initialize_mutex(&blockdevice_mutex);		/* intialize mutex */
  initialize_mutex(&characterdevice_mutex);	/* intialize mutex */
+
+ drive_bitmap=0;
 }
 

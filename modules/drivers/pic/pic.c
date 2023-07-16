@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023-2022
 
     This file is part of CCP.
 
@@ -17,6 +17,8 @@
     along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <stdint.h>
+#include <stddef.h>
 #include "pic.h"
 
 #define MODULE_INIT pic_init
@@ -40,14 +42,31 @@ extern irq13;
 extern irq14;
 extern irq15;
 
-void setirqhandler(unsigned int irqnumber,void *handler);
+/*
+ * Set IRQ handler
+ *
+ * In: size_t irqnumber	IRQ number
+       void *handler		IRQ handler
+ *
+ *  Returns nothing
+ *
+ */
+void setirqhandler(size_t irqnumber,void *handler);
 void pic_init(void);
 
-void setirqhandler(unsigned int irqnumber,void *handler) {
+void setirqhandler(size_t irqnumber,void *handler) {
  irq_handlers[irqnumber]=handler;
  return;
 }
 
+/*
+ * Initialize PIC
+ *
+ * In: nothing
+ *
+ *  Returns nothing
+ *
+ */
 void pic_init(void) {
 disable_interrupts();
 

@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -20,6 +20,7 @@
 #include <elf.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "../header/kernelhigh.h"
 #include "../header/errors.h"
 #include "mutex.h"
 #include "../devicemanager/device.h"
@@ -28,9 +29,6 @@
 #include "process.h"
 #include "signal.h"
 #include "../header/bootinfo.h"
-
-#define KERNEL_HIGH (1 << (sizeof(size_t) *8)-1)
-
 
 size_t exec(char *filename,char *argsx,size_t flags);
 size_t kill(size_t process);
@@ -56,33 +54,44 @@ size_t signal(void *handler);
 size_t sendsignal(size_t process,size_t signal);
 size_t set_critical_error_handler(void *addr);
 size_t call_critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
+char *getenv();
+size_t load_executable(char *filename);
+size_t register_executable_format(EXECUTABLEFORMAT *format);
 
 size_t last_error_no_process=0;
-uint32_t entry;
-int type;
 PROCESS *processes=NULL;
 PROCESS *currentprocess=NULL;
-char *temp_filename[MAX_PATH];
-char *temp_args[MAX_PATH];
 MUTEX process_mutex;
+size_t signalno;
+size_t thisprocess;
+char *saveenv=NULL;
+EXECUTABLEFORMAT *executableformats=NULL;
 
- /* load program */
+/*
+ * Execute program
+ *
+ * In: char *filename	Filename of file to execute
+       char *argsx	Arguments
+       size_t flags	Flags
+ *
+ * Returns -1 on error, doesn't return on success if it is a foreground process
+ *
+ */
+size_t entrypoint;
+char *tempfilename[MAX_PATH];
+char *tempargs[MAX_PATH];
+
 size_t exec(char *filename,char *argsx,size_t flags) {
- size_t handle;
- char *fullname[MAX_PATH];
- size_t count;
- void *kernelstackbase;
- PROCESS *next;
- size_t stackp;
- Elf32_Ehdr elf_header;
- size_t processcount;
- PROCESS *last;
- Elf32_Phdr *phbuf;
- size_t *haha;
- FILERECORD *filenext;
- PSP *psp=0;
- PROCESS *oldprocess;
- size_t kernelstackp;
+size_t handle;
+void *kernelstackbase;
+PROCESS *next;
+PROCESS *oldprocess;
+size_t stackp;
+size_t processcount;
+PROCESS *last;
+PSP *psp=0;
+size_t *stackinit;
+char *fullpath[MAX_PATH];
 
 /* disable task switching without disabling interrupts -
    interrupts need to be enabled for device/io */
@@ -90,73 +99,19 @@ size_t exec(char *filename,char *argsx,size_t flags) {
 disablemultitasking();
 enable_interrupts();
 
-getfullpath(filename,fullname);
+/* add process to process list and find process id */
 
-strcpy(temp_filename,fullname);			/* save filename and args */
-strcpy(temp_args,argsx);
-
-/*
- * load program to memory */
-
-handle=open(fullname,_O_RDONLY);		/* open file */
-if(handle == -1) return(-1);		/* can't open */
-
-if(read(handle,&elf_header,sizeof(Elf32_Ehdr)) == -1) {
- enablemultitasking();
- return(-1); /* read error */
-}
-
-entry=elf_header.e_entry;		/* get entry point */
-type=elf_header.e_type;
-
-/* check magic number, elf type and number of program headers */
-
-if(elf_header.e_ident[0] != 0x7F && elf_header.e_ident[1] != 0x45 && elf_header.e_ident[2] != 0x4C && elf_header.e_ident[3] != 0x46) {	/*  elf */
- close(handle);
- enablemultitasking();
- setlasterror(BAD_EXEC);
- return(-1);
-}
-
-if(elf_header.e_type != ET_EXEC) {		/* not executable */
- close(handle);
- enablemultitasking();
-
- setlasterror(BAD_EXEC);
- return(-1);
-}
-
-if(elf_header.e_phnum == 0) {			/* no program headers */
- loadpagetable(getppid());
- enablemultitasking();
- 
- setlasterror(BAD_EXEC);
- return(-1);
-}
-
-/* find new process id */
-
- processcount=0;
- next=processes;
-
- while(next != NULL) {
-  if(next->pid >= processcount) processcount=next->pid+1;
-  next=next->next;				/* find end */
-
- }
-
-page_init(processcount);				/* intialize page directory */	
-loadpagetable(processcount);				/* load page table */
-
-/* add process to process list */
+processcount=0;
 
 if(processes == NULL) {  
- processes=alloc_int(ALLOC_KERNEL,processcount,sizeof(PROCESS),-1);
+ processes=kernelalloc(sizeof(PROCESS));
 
  if(processes == NULL) {
   loadpagetable(getppid());
   freepages(processcount);
   enablemultitasking();	
+
+  close(handle);
   return(-1);
  }
 
@@ -168,15 +123,16 @@ else
 {
  next=processes;
 
- while(next->next != NULL) {
+ while(next != NULL) {
   last=next;
+
+  if(next->pid >= processcount) processcount=next->pid+1;		/* find new process ID */
 
   next=next->next;				/* find end */
  }
 
- next->next=alloc_int(ALLOC_KERNEL,processcount,sizeof(PROCESS),-1);
-
- next=next->next;
+ last->next=kernelalloc(sizeof(PROCESS));
+ next=last->next;
 
  if(next == NULL) {
   loadpagetable(getppid());
@@ -189,11 +145,15 @@ else
  }
 }
 
- /* create struct */
+getfullpath(filename,fullpath);
 
-strcpy(next->filename,temp_filename);
-strcpy(next->args,temp_args);
-	
+ /* create struct */
+strcpy(next->filename,fullpath);
+strcpy(next->args,argsx);
+
+strcpy(tempfilename,fullpath);
+strcpy(tempargs,argsx);
+
 getcwd(next->currentdir);		/* current directory */
 next->maxticks=DEFAULT_QUANTUM_COUNT;
 next->ticks=0;
@@ -204,145 +164,147 @@ next->errorhandler=NULL;
 next->signalhandler=NULL;
 next->rc=0;
 next->flags=0;
-next->writeconsolehandle=stdout;
-next->readconsolehandle=stdin;
 next->lasterror=0;
 next->ticks=0;
 next->maxticks=DEFAULT_QUANTUM_COUNT;
 next->next=NULL;
 
-oldprocess=currentprocess;
-currentprocess=next;		/* set current process */
+next->kernelstackbase=kernelalloc(PROCESS_STACK_SIZE);
 
-/* allocate buffer for program headers */
+if(next->kernelstackbase == NULL) {
+ currentprocess=oldprocess;
 
- phbuf=alloc_int(ALLOC_KERNEL,processcount,(elf_header.e_phentsize*elf_header.e_phnum),-1);
- if(phbuf == NULL) {
-  loadpagetable(getpid());
-  freepages(processcount);
-  enablemultitasking();
+ loadpagetable(getpid());
+ freepages(processcount);
+ enablemultitasking();
 
-  currentprocess=oldprocess;
-  return(-1);
- }
-
- if(seek(handle,elf_header.e_phoff,SEEK_SET) == -1) {
-  currentprocess=oldprocess;
-
-  loadpagetable(getpid());
-  freepages(processcount);
-  kernelfree(phbuf);
-  enablemultitasking();	
-  return(-1);
- }
-
-/* read program headers */
-
- if(read(handle,phbuf,(elf_header.e_phentsize*elf_header.e_phnum)) == -1) {
-  currentprocess=oldprocess;
-
-  loadpagetable(getpid());
-  freepages(processcount);
-  kernelfree(phbuf);
-  enablemultitasking();	
-
-  return(-1);
+ close(handle);
+ return(-1);
 }
 
-/*
- * go through program headers and load them if they are PT_LOAD */
+next->kernelstackpointer=next->kernelstackbase+PROCESS_STACK_SIZE;
 
- for(count=0;count<elf_header.e_phnum;count++) {
+/* Enviroment variables are inherited
+ * Part one of enviroment variables duplication
 
-  if(phbuf->p_type == PT_LOAD) {			/* if segment is loadable */
+ *
+ * copy the variables to a buffer in kernel memory where it is visible to both parent and child process
+ */
+saveenv=NULL;
 
-   seek(handle,phbuf->p_offset,SEEK_SET);			/* seek to position */
+if(currentprocess != NULL) {
+ saveenv=kernelalloc(ENVIROMENT_SIZE);
+ memcpy(saveenv,currentprocess->envptr,ENVIROMENT_SIZE);
+}
 
-   alloc_int(ALLOC_NORMAL,processcount,phbuf->p_memsz,phbuf->p_vaddr);
+page_init(processcount);				/* intialize page directory */	
+loadpagetable(processcount);				/* load page table */
 
-   if(read(handle,phbuf->p_vaddr,phbuf->p_filesz) == -1) {	/* read error */
-     if(getlasterror() != END_OF_FILE) {
-      currentprocess=oldprocess; 
+oldprocess=currentprocess;				/* save current process pointer */
+currentprocess=next;					/* point to new process */
 
-      loadpagetable(getpid());
-      freepages(processcount);
-      kernelfree(phbuf);
-      enablemultitasking();	
-   
-      return(-1);
-     }
-   }
+/* Part two of enviroment variables duplication
+ *
+ * copy variables from buffer */
 
-  }
+currentprocess->envptr=alloc_int(ALLOC_NORMAL,processcount,ENVIROMENT_SIZE,KERNEL_HIGH-ENVIROMENT_SIZE-1);
 
-  phbuf++;		/* point to next */
-
- }
-
-close(handle);
-
-kernelfree(phbuf);
+if(saveenv != NULL) {
+ memcpy(currentprocess->envptr,saveenv,ENVIROMENT_SIZE);
+ kernelfree(saveenv);
+}
 
 /* allocate user mode stack */
-
-stackp=alloc_int(ALLOC_NORMAL,processcount,PROCESS_STACK_SIZE,KERNEL_HIGH-10-PROCESS_STACK_SIZE);
+stackp=alloc_int(ALLOC_NORMAL,processcount,PROCESS_STACK_SIZE,KERNEL_HIGH-PROCESS_STACK_SIZE-ENVIROMENT_SIZE);
 if(stackp == NULL) {
  currentprocess=oldprocess;
-
  loadpagetable(getpid());
  freepages(processcount);
  enablemultitasking();	
  return(-1);
 }
 
-/* allocate kernel mode stack */
-
-kernelstackp=kernelalloc(PROCESS_STACK_SIZE);
-if(kernelstackp == NULL) {
- currentprocess=oldprocess;
-
- loadpagetable(getpid());
- freepages(processcount);
- enablemultitasking();	
- return(-1);
-}
-
-disable_interrupts();
+stackinit=next->kernelstackpointer;
+*stackinit--=entrypoint;
+*stackinit--=0x8;
+*stackinit--=0x200;
+*stackinit=next->kernelstackpointer;
+*stackinit=0;
+*stackinit=0;
+*stackinit=0;
+*stackinit=0;
+*stackinit=next->kernelstackpointer;
+*stackinit=0;
+*stackinit=0;
+*stackinit=0;
 
 next->stackbase=stackp;
 next->stackpointer=stackp+PROCESS_STACK_SIZE;
-next->kernelstackbase=kernelstackp;
-next->kernelstackpointer=kernelstackp+PROCESS_STACK_SIZE;
+/* duplicate stdin, stdout and stderr */
+
+if(getpid() != 0) {
+ dup_internal(stdin,getppid());
+ dup_internal(stdout,getppid());
+ dup_internal(stderr,getppid());
+}
+
+/* intialize process registers */
+
+next->regs[0]=0;						/* EDI */
+next->regs[1]=0;						/* ESI */
+next->regs[2]=next->stackbase;					/* EBP */
+next->regs[3]=next->stackpointer;				/* original ESP */
+next->regs[4]=0;						/* EBX */
+next->regs[5]=0;						/* EDX */
+next->regs[6]=0;							/* ECX */
+next->regs[7]=0;						/* EAX */
+next->regs[8]=entrypoint;					/* EIP */
+next->regs[9]=0x8;						/* CS */
+next->regs[10]=0x200;						/* eflags */
+next->regs[11]=next->stackpointer;				/* ESP */
+
+entrypoint=load_executable(tempfilename);			/* load executable */
+if(entrypoint == -1) {
+ kernelfree(next);
+
+ currentprocess=oldprocess;			/* restore previous process */
+
+ loadpagetable(getpid());
+ enablemultitasking();
+ return(-1);
+}
+
 
 /* create psp */ 
-
 ksprintf(psp->commandline,"%s %s",next->filename,next->args);
+
 psp->cmdlinesize=strlen(psp->commandline);
 
 enable_interrupts();
 
 if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
- currentprocess=oldprocess;
+ currentprocess=oldprocess;			/* restore previous process */
 
  loadpagetable(getpid());
  enablemultitasking();
  return;
 }
 else
-{
- initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);
-
- switch_kernel_stack(currentprocess->kernelstackpointer);	/* switch kernel stack */
+{ 
+ initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize user mode stack */
 
  enablemultitasking();
-
- switch_to_usermode_and_call_process(entry);		/* switch to user mode, enable interrupts, and call process */
+ switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
 }
 
 }
+
 /*
-
- * terminate process
+ * Terminate process
+ *
+ * In: size_t process	Process ID
+ *
+ * Returns -1 on error doesn't return on success
  *
  */
 
@@ -353,7 +315,11 @@ PROCESS *nextprocess;
 char *b;
 size_t oldprocess;
 
+disablemultitasking();
+
 lock_mutex(&process_mutex);			/* lock mutex */
+
+shut();			/* close open files for process */
 
 oldprocess=getpid();
 
@@ -368,10 +334,11 @@ while(next != NULL) {
 }
 
 if(next == NULL) {
- setlasterror(BAD_PROCESS);		/* invalid process */
+ setlasterror(INVALID_PROCESS);		/* invalid process */
 
  unlock_mutex(&process_mutex);			/* unlock mutex */
- enable_interrupts();
+
+ enablemultitasking();
  return(-1);
 }
 
@@ -380,48 +347,66 @@ if(processes == NULL) {
  shutdown(0);
 }
 
-if((next->flags & PROCESS_WAITING) == 0) {		/* process is not being waited on */
-   if(next == processes) {			/* start */
-    processes=next->next;
-   }
-   else if(next->next == NULL) {		/* end */
-	last->next=NULL;
-   }
-   else						/* middle */
-   {
-    last->next=next->next;	
-   }
+while((next->flags & PROCESS_BLOCKED) != 0) ;;		/* process is being waited on */
 
- if(processes == NULL) {		/* no processes */
-  kprintf("No processes, system will shut down\n");
-  shutdown(_SHUTDOWN);
- }
- else
- {
+if(next == processes) {			/* start */
+ processes=next->next;
+}
+else if(next->next == NULL) {		/* end */
+  last->next=NULL;
+}
+else						/* middle */
+{
+  last->next=next->next;	
+}
+
+if(processes == NULL) {		/* no processes */
+ kprintf("No processes, system will shut down\n");
+ shutdown(_SHUTDOWN);
+}
+else
+{
  kernelfree(next);
  freepages(oldprocess);
- }
-
 }
+
 
 unlock_mutex(&process_mutex);			/* unlock mutex */
 
-if(next->pid == oldprocess) {
- currentprocess->ticks=currentprocess->maxticks;
- asm("xchg %bx,%bx");
+if(process == oldprocess) {
+ currentprocess->ticks=currentprocess->maxticks;	/* force task to end of timeslot */
+
+ enablemultitasking();
 
  yield();			/* switch to next process if killing current process */
 }
 
+enablemultitasking();
 return;
 }
+
+/*
+ * Exit from process
+ *
+ * In: size_t val	Return value
+ *
+ * Returns -1 on error, doesn't return on success
+ *
+ */
 
 size_t exit(size_t val) {
   kill(getpid());			/* kill current process */
   return(val);	
 }
 
-/* shutdown */
+/*
+ * Shutdown
+ *
+ * In: size_t shutdown_status	Shutdown or restart
+ *
+ * Returns nothing
+ *
+ */
 
 void shutdown(size_t shutdown_status) { 
  size_t newtick;
@@ -434,16 +419,12 @@ void shutdown(size_t shutdown_status) {
  kprintf("Waiting %d seconds for processes to terminate\n",SHUTDOWN_WAIT);
  ksleep(SHUTDOWN_WAIT);
  
- newtick=gettickcount()+SHUTDOWN_WAIT;	/* wait for processes to terminate */
-	
- while(gettickcount() < newtick) {
-  if(processes == NULL) break;
- }
-
  if(processes != NULL) kprintf("processes did not terminate in time (too bad)\n");
 
  if(shutdown_status == _SHUTDOWN) {
   kprintf("It is now safe to turn off your computer\n");
+
+  disable_interrupts();
   while(1) halt();		/* loop */
  }
  else
@@ -453,6 +434,14 @@ void shutdown(size_t shutdown_status) {
  
 }
   
+/*
+ * Find first process
+ *
+ * In: PROCESS *buf	Object to store information about process
+ *
+ * Returns -1 on error or 0 on success
+ *
+ */
 
 size_t findfirstprocess(PROCESS *buf) { 
  memcpy(buf,processes,(size_t) sizeof(PROCESS));
@@ -460,6 +449,15 @@ size_t findfirstprocess(PROCESS *buf) {
  currentprocess->findptr=processes;
  return(NO_ERROR);
 }
+
+/*
+ * Find next process
+ *
+ * In: PROCESS *buf	Object to store information about process
+ *
+ * Returns -1 on error or 0 on success
+ *
+ */
 
 size_t findnextprocess(PROCESS *buf) { 
  PROCESS *findptr=currentprocess->findptr;
@@ -475,6 +473,15 @@ size_t findnextprocess(PROCESS *buf) {
 }
   
 
+/*
+ * Wait for process to change state
+ *
+ * In: size_t pid	Process ID
+ *
+ * Returns -1 on error or 0 on success
+ *
+ */
+
 size_t wait(size_t pid) {
 PROCESS *next;
 size_t oldflags;
@@ -489,12 +496,9 @@ while(next != NULL) {
 
   unlock_mutex(&process_mutex);			/* unlock mutex */
 
-  next->flags |= PROCESS_WAITING;
-
   oldflags=next->flags;
-  newflags=next->flags;
  
-  while(newflags == oldflags) ;;		/* wait for process to change state */
+  while(next->flags == oldflags) ;;		/* wait for process to change state */
 
   setlasterror(NO_ERROR);
   return(0);
@@ -503,11 +507,23 @@ while(next != NULL) {
  next=next->next;
 }
 
-setlasterror(BAD_PROCESS);		/* invalid process */
+setlasterror(INVALID_PROCESS);		/* invalid process */
 return(-1);
 }
 
-/* dispatcher */
+/*
+ * Dispatcher
+ *
+ * In: void *argsix			Arguments to pass to functions
+       void *argfive
+       void *argfour
+       void *argthree
+       void *argtwo
+       void *argsone			Function code of function to call
+ *
+ * Returns -1 on error or function return value on success
+ *
+ */
 
 size_t dispatchhandler(void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone) {
 char *b;
@@ -579,7 +595,7 @@ switch(highbyte) {		/* function */
   case 0x56:			/* rename */
    return(rename((char *) argfive,(char *) argsix));
 
-  case 0x65:			/* get struct */
+  case 0x65:			/* get process information */
    memcpy(argtwo,currentprocess,sizeof(PROCESS));
    break; 
    
@@ -590,7 +606,7 @@ switch(highbyte) {		/* function */
    return(alloc((size_t)  argtwo));
 
   case 0x49:			/* free */
-   free(argtwo);
+   free(argfour);
    return;
 
   case 0x4d:	
@@ -603,10 +619,10 @@ switch(highbyte) {		/* function */
    return(blockio(_WRITE,argthree,argfour));
 
   case 0x8c:				/* set signal handler */
-   return(sendsignal(argtwo,argfour));
+   return(signal(argfour));
 
   case 0x8d:				/* send signal */
-   return(signal(argfour));
+   return(sendsignal((size_t) argtwo,argfour));
 
   case 0x8a:				/* wait for process to change state */
    return(wait((size_t)  argtwo));
@@ -656,7 +672,7 @@ switch(highbyte) {		/* function */
   case 0x4b03:				/* load driver */
    return(load_kernel_module(argfour));
 
-  case 0x7000:
+  case 0x7000:				/* allocate dma buffer */
    return(dma_alloc(argtwo));
      	
   case 0x7002:			/* restart */
@@ -688,14 +704,13 @@ switch(highbyte) {		/* function */
    case 0x700E:			/* remove char device */
      return(remove_char_device(argfour));
 
+   case 0x7018:				/* get file size */
+    return(getfilesize(argtwo));
+
    case 0x7019:			/* terminate process */
      return(kill((size_t)  argtwo));
 
-   case 0x7022:				/* set tick count */
-     currentprocess->maxticks=argtwo;
-     return;
-
-   case 0x7028:				/* get next free drive number */
+   case 0x7028:				/* get next free drive letter */
      return(allocatedrive());
 
    case 0x7029:				/* get character device */
@@ -716,6 +731,9 @@ switch(highbyte) {		/* function */
    case 0x702f:				/* unlock mutex */
     return(unlock_mutex(argfour));
 
+   case 0x7030:				/* get enviroment address */
+    return(getenv());
+
   default:
    setlasterror(INVALID_FUNCTION);
    return(-1);
@@ -723,7 +741,11 @@ switch(highbyte) {		/* function */
 }
 
 /*
- * get current directory
+ * Get current directory
+ *
+ * In: char *dir	Buffer for directory name
+ *
+ * Returns -1 on error or 0 on success
  *
  */
 
@@ -731,8 +753,8 @@ size_t getcwd(char *dir) {
  char *buf[255];
  char c;
  char *b;
- char *bootdriveloc=KERNEL_HIGH+(size_t)  BOOT_INFO_DRIVE;
  BLOCKDEVICE blockdevice;
+ BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
 /*
  * usually the directory is got from the current process struct
@@ -740,7 +762,7 @@ size_t getcwd(char *dir) {
  * must be built up on the fly */
 
  if(currentprocess == NULL) {			/* no processes so get from boot drive */
-  c=*bootdriveloc;						/* get boot drive from 0xAC */
+  c=boot_info->drive;						/* get boot drive */
   if(c >= 0x80) c=c-0x80;
  
   if(getblockdevice(c,&blockdevice) == -1) return(-1);
@@ -762,7 +784,11 @@ size_t getcwd(char *dir) {
 }
 
 /*
- * set current directory
+ * Set current directory
+ *
+ * In: char *dirname			Directory to change to    
+ *
+ * Returns -1 on error or function return value on success
  *
  */
 
@@ -784,6 +810,8 @@ getfullpath(dirname,fullpath);
 strcpy(savecwd,currentprocess->currentdir);		/* save current directory */
 memcpy(currentprocess->currentdir,fullpath,3);		/* get new path */
 
+//asm("xchg %bx,%bx");
+
 if(findfirst(fullpath,&buf) == -1) {			/* path doesn't exist */
  strcpy(currentprocess->currentdir,savecwd);		/* restore old current directory */
  return(-1);		
@@ -795,10 +823,28 @@ setlasterror(NO_ERROR);
 return(NO_ERROR);				/* no error */
 }
 
+/*
+ * Get process ID
+ *
+ * In: Nothing
+ *
+ * Returns process ID
+ *
+ */
+
 size_t getpid(void) {
  if(currentprocess == NULL) return(0);
  return(currentprocess->pid);
 }
+
+/*
+ * Set last error
+ *
+ * In: size_t err	Error number
+ *
+ * Returns nothing
+ *
+ */
 
 size_t setlasterror(size_t err) {
  if(currentprocess == NULL) {
@@ -809,11 +855,29 @@ size_t setlasterror(size_t err) {
  currentprocess->lasterror=err;
 }
 
+/*
+ * Get last error
+ *
+ * In: Nothing
+ *
+ * Returns last error number
+ *
+ */
+
 size_t getlasterror(void) {
  if(currentprocess == NULL) return(last_error_no_process);
 
  return(currentprocess->lasterror);
 }
+
+/*
+ * Get process filename
+ *
+ * In: char *buf	Buffer for filename
+ *
+ * Returns nothing
+ *
+ */
 
 size_t getprocessfilename(char *buf) {
 if(currentprocess == NULL) {
@@ -824,11 +888,29 @@ if(currentprocess == NULL) {
 strcpy(buf,currentprocess->filename);
 }
 
+/*
+ * Get console write handle
+ *
+ * In: nothing
+ *
+ * Returns console write handle
+ *
+ */
+
 size_t getwriteconsolehandle(void) {
  if(currentprocess == NULL) return(stdout);
 
  return(currentprocess->writeconsolehandle);
 }
+
+/*
+ * Get console read handle
+ *
+ * In: nothing   
+ *
+ * Returns console read handle
+ *
+ */
 
 size_t getreadconsolehandle(void) {
  if(currentprocess == NULL) return(stdin);
@@ -836,69 +918,149 @@ size_t getreadconsolehandle(void) {
  return(currentprocess->readconsolehandle);
 }
 
+/*
+ * Get process arguments
+ *
+ * In: char *buf	Buffer for arguments
+ *
+ * Returns nothing
+ *
+ */
+
 size_t getprocessargs(char *buf) {
- if(currentprocess == NULL) return(0);
+ if(currentprocess == NULL) return;
 strcpy(buf,currentprocess->args);
 }
+
+/*
+ * Get parent process ID
+ *
+ * In: nothing
+ *
+ * Returns parent process ID
+ *
+ */
 
 size_t getppid(void) {
  if(currentprocess == NULL) return(0);
  return(currentprocess->parentprocess);
 }
+
+/*
+ * Get process return code
+ *
+ * In: nothing
+ *
+ * Returns process return code
+ *
+ */
+
 size_t getreturncode(void) {
  if(currentprocess == NULL) return(0);
  return(currentprocess->rc);
 }
 
+/*
+ * Sleep for specified time
+ *
+ * In: size_t wait	Time to sleep for  
+ *
+ * Returns nothing
+ *
+ */
 
 size_t ksleep(size_t wait) {
 size_t newtick;
 
-newtick=gettickcount()+wait;
+newtick=get_tick_count()+wait;
 
-while(gettickcount() < newtick) ;;
+while(get_tick_count() <= newtick) ;;
 }
+
+/*
+ * Set signal handler
+ *
+ * In: void *handler	Handler function to call on signal receipt
+ *
+ * Returns 0
+ *
+ */
 
 size_t signal(void *handler) {
  currentprocess->signalhandler=handler;
- 
+
  setlasterror(NO_ERROR);
  return(NO_ERROR);
 }
 
+/*
+ * Send signal to process
+ *
+ * In: size_t process	Process to send signal to
+       size_t signal	Signal to send
+ *
+ * Returns -1 on error or 0 on success
+ *
+ */
+
 size_t sendsignal(size_t process,size_t signal) {
 PROCESS *next;
 next=processes;
-size_t thisprocess;
-	
+
 while(next != NULL) {
  if(next->pid == process) break;
  next=next->next;
 }
 
 if(next == NULL) {
- setlasterror(BAD_PROCESS);		/* invalid process */
+ setlasterror(INVALID_PROCESS);		/* invalid process */
  return(-1);
 }
 
-disable_interrupts();
 
-thisprocess=getpid();	/* get current process */
+if(next->signalhandler != NULL) {
+ disablemultitasking();
+ signalno=signal;		/* save signal number so that when the process address space changes it won't be lost */
 
-loadpagetable(process);			/* switch to process address space */
-currentprocess->signalhandler(signal);	/*call signal handler */
+ thisprocess=getpid();	/* get current process */
 
-loadpagetable(thisprocess);		/* switch back to original address space */
-enable_interrupts();
+ loadpagetable(process);			/* switch to process address space */
+
+ next->signalhandler(signalno);	/*call signal handler */
+ loadpagetable(thisprocess);		/* switch back to original address space */
+
+ enablemultitasking();
+}
 
 setlasterror(NO_ERROR);
 return(0);
 }
 
+/*
+ * Set critical error handler
+ *
+ * In: void *addr	Function to call
+ *
+ * Returns nothing
+ *
+ */
+
 size_t set_critical_error_handler(void *addr) {
  currentprocess->errorhandler=addr;
  return;
 }
+
+/*
+ * Call critical error handler
+ *
+ * In: name	Error message to display
+       drive	Drive number if invoked on error from block device
+       flags	Flags
+       error	Error number
+ *
+ * Returns -1 on error or critical error handler on success
+ *
+ */
 
 size_t call_critical_error_handler(char *name,size_t drive,size_t flags,size_t error) {
  if(currentprocess == NULL) return(-1);
@@ -907,12 +1069,30 @@ size_t call_critical_error_handler(char *name,size_t drive,size_t flags,size_t e
  return(currentprocess->errorhandler(name,drive,flags,error));
 }
 
+/*
+ * Initialize process manager
+ *
+ * In: nothing
+ *
+ * Returns nothing
+ *
+ */
+
 size_t processmanager_init(void) {
  processes=NULL;
  currentprocess=NULL;
 
  initialize_mutex(&process_mutex);
 }
+
+/*
+ * Block process
+ *
+ * In: size_t pid	PID of process to block
+ *
+ * Returns -1 on error or function return value on success
+ *
+ */
 
 size_t blockprocess(size_t pid) {
 PROCESS *next;
@@ -928,9 +1108,18 @@ while(next != NULL) {
  next=next->next;
 }
 
-setlasterror(BAD_PROCESS);		/* invalid process */
+setlasterror(INVALID_PROCESS);		/* invalid process */
 return(-1);
 }
+
+/*
+ * Unblock process
+ *
+ * In:  size_t pid		PID of process to block
+ *
+ * Returns -1 on error or function return value on success
+ *
+ */
 
 size_t unblockprocess(size_t pid) {
 PROCESS *next;
@@ -946,7 +1135,113 @@ while(next != NULL) {
  next=next->next;
 }
 
-setlasterror(BAD_PROCESS);		/* invalid process */
+setlasterror(INVALID_PROCESS);		/* invalid process */
+return(-1);
+}
+
+
+/*
+ * Get enviroment variables address
+ *
+ * In:  Nothing
+ *
+ * Returns  enviroment variables address
+ *
+ */
+char *getenv() {
+ return(currentprocess->envptr);
+}
+
+void save_kernel_stack_pointer(size_t new_stack_pointer) {
+ if(currentprocess == NULL) return;
+
+ currentprocess->kernelstackpointer=new_stack_pointer;
+}
+
+size_t get_kernel_stack_pointer(void) {
+ if(currentprocess == NULL) return(0);
+
+ return(currentprocess->kernelstackpointer);
+}
+
+
+PROCESS *update_current_process_pointer(PROCESS *ptr) {
+ currentprocess=ptr;
+}
+
+size_t register_executable_format(EXECUTABLEFORMAT *format) {
+EXECUTABLEFORMAT *next;
+EXECUTABLEFORMAT *last;
+
+/* check if executable format exists */
+
+if(executableformats == NULL) {
+ executableformats=kernelalloc(sizeof(EXECUTABLEFORMAT));
+ if(executableformats == NULL) return(-1);
+
+ next=executableformats;
+}
+else
+{
+ next=executableformats;
+
+ while(next != NULL) {
+  last=next;
+
+  if(strcmpi(next->name,format->name)) {		/* format exists */
+   setlasterror(DRIVER_ALREADY_LOADED);
+   return(-1);
+  }
+
+  next=next->next;
+ }
+
+/* add new format */
+
+ last->next=kernelalloc(sizeof(EXECUTABLEFORMAT));
+ if(last->next == NULL) return(-1);
+
+ next=last->next;
+}
+
+memcpy(next,format,sizeof(EXECUTABLEFORMAT));
+
+next->next=NULL;
+
+setlasterror(NO_ERROR);
+return(0);
+}
+
+size_t load_executable(char *filename) {
+EXECUTABLEFORMAT *next;
+char *buffer[MAX_PATH];
+size_t handle;
+
+/* read magic number */
+
+handle=open(filename,_O_RDONLY);		/* open file */
+if(handle == -1) return(-1);		/* can't open */
+
+if(read(handle,buffer,MAX_PATH) == -1) {
+ close(handle);
+ return(-1);
+}
+
+close(handle);
+
+/* find format */
+
+next=executableformats;
+
+while(next != NULL) {
+ if(memcmp(next->magic,buffer,next->magicsize) == 0) {		/* found format */
+  return(next->callexec(filename));				/* call via function pointer */
+ }
+
+ next=next->next;
+}
+
+setlasterror(INVALID_BINFMT);
 return(-1);
 }
 

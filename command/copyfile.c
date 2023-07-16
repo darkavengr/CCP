@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -24,6 +24,15 @@
 #include "../filemanager/vfs.h"
 #include "../header/errors.h"
 
+/*
+ * Copy file
+ *
+ * In:  char *source		File to copy from
+	char *destination	File to copy to
+ *
+ * Returns 0 on success, -1 on error
+ */
+
 unsigned long copyfile(char *source,char *destination) {
  unsigned long sourcehandle;
  unsigned long desthandle;
@@ -39,7 +48,7 @@ unsigned long copyfile(char *source,char *destination) {
  sourcehandle=open(source,_O_RDONLY);
  if(sourcehandle == -1) {				/* can't open */
   writeerror();
-  return;
+  return(-1);
  }
 
  desthandle=create(destination);
@@ -54,7 +63,7 @@ unsigned long copyfile(char *source,char *destination) {
  readbuf=alloc(MAX_PATH);
  if(readbuf == -1) {
   writeerror();
-  return;
+  return(-1);
  }
 
  while((count != -1) || (countx != -1)) {
@@ -64,18 +73,18 @@ unsigned long copyfile(char *source,char *destination) {
 
   if(count == -1) {
    writeerror();
-   return;
+   return(-1);
   }
 
   countx=write(desthandle,readbuf,count);
 
   if(countx == -1) {
    writeerror();
-   return;
+   return(-1);
   }
 
   kprintf("write=%d\n",countx);
  }
 
-  return;
+  return(0);
 }  

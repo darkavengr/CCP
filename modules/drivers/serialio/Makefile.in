@@ -3,6 +3,6 @@ CC=@cc@
 LD=@ld@
 FILES=serialio.c
 
-all:
+../../../obj/@arch@/serialio.o:
 	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
 

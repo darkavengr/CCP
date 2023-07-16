@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -21,6 +21,15 @@
 #include "../header/errors.h"
 #include "command.h"
 #include <stddef.h>
+
+/*
+ * Get full file path from partial name
+ *
+ * In: char *filename	Partial filename
+       char *buf	Buffer to store full name
+ *
+ * Returns nothing
+ */
 
 size_t getfullpath(char *filename,char *buf) {
 char *token[10][MAX_PATH];

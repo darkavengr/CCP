@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -20,6 +20,15 @@
 #include <stdint.h>
 #include "command.h"
 #include "../header/errors.h"
+
+/*
+ * Convert number to hexadecimal string
+ *
+ * In: uint32_t hex	Number to convert
+       char *buf	Buffer to store converted number
+ *
+ * Returns nothing
+ */
 
 uint32_t tohex(uint32_t hex,char *buf) {
 uint32_t count;

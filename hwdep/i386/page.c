@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -30,18 +30,19 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "../../header/kernelhigh.h"
 #include "page.h"
 #include "hwdefs.h"
 #include "../../header/errors.h"
 
-unsigned int PAGE_SIZE=4096;
+size_t PAGE_SIZE=4096;
 
-size_t addpage_int(unsigned int mode,size_t process,uint32_t page,void *physaddr); 
+size_t addpage_int(size_t mode,size_t process,uint32_t page,void *physaddr); 
 void page_init_first_time(void);
 size_t page_init(size_t process);
 size_t removepage(uint32_t page,size_t process);
 size_t freepages(size_t process);
-size_t  findfreevirtualpage(size_t size,unsigned int alloc,size_t process);
+size_t  findfreevirtualpage(size_t size,size_t alloc,size_t process);
 size_t loadpagetable(size_t process);
 size_t getphysicaladdress(size_t process,uint32_t virtaddr);
 size_t addpage_user(uint32_t page,size_t process,void *physaddr); 
@@ -50,9 +51,8 @@ size_t addpage_system(uint32_t page,size_t process,void *physaddr);
 extern end(void);
 
 extern kernel_begin(void);
-extern MEM_SIZE;
 
-unsigned int paging_type=1;
+size_t paging_type=1;
 
 #define MEMBUF_START end
 
@@ -62,8 +62,21 @@ struct ppt {
  size_t process; 
  struct ppt *next;
 } *processpaging=PAGE_DIRECTORY_LOCATION+KERNEL_HIGH;
+		
+/* add page */
 
-size_t addpage_int(unsigned int mode,size_t process,uint32_t page,void *physaddr) { 
+/*
+ * Add page
+ *
+ * In: uint32_t mode	Allocation mode(ALLOC_KERNEL or ALLOC_NORMAL)
+       uint32_t process Process ID
+       uint32_t page	Virtual address
+       void *physaddr	Physical address
+ *
+ * Returns NULL or -1 on error
+ * 
+ */
+size_t addpage_int(size_t mode,size_t process,uint32_t page,void *physaddr) { 
  size_t count;
  struct ppt *next;
  struct ppt *remap;
@@ -93,6 +106,9 @@ size_t addpage_int(unsigned int mode,size_t process,uint32_t page,void *physaddr
   if(c == NULL) return(-1);
 
   next->pagedir[pd]=(uint32_t) c | PAGE_USER | PAGE_RW | PAGE_PRESENT;	/* page directory entry */
+
+  v=(uint32_t *) 0xffc00000 + (pd*1024);
+  memset(v,0,PAGE_SIZE);
  }
 
 /* page tables are mapped at 0xffc00000 via recursive paging */
@@ -100,25 +116,18 @@ size_t addpage_int(unsigned int mode,size_t process,uint32_t page,void *physaddr
  v=(uint32_t *) 0xffc00000 + (pd*1024);
  v[pt]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
  
- if(page >= KERNEL_HIGH) {		/* if kernelalloc map into every process */
-  remap=processpaging;
-
-  while(remap != NULL) {
-	  next->pagedir[1022]=remap->pagedirphys | PAGE_RW | PAGE_PRESENT;
-
-	  v=(uint32_t *) 0xff800000 + (pd*1024);
-  	  v[pt]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
-
-	remap=remap->next;
-  }
- }
 
  return;
 }
 
-
-/* intialize address space */
-
+/*
+ * Initialize process address space
+ *
+ * In: size_t process	Process ID
+ *
+ * Returns nothing
+ * 
+ */
 size_t page_init(size_t process) {
  struct ppt *p;
  struct ppt *last;
@@ -152,9 +161,7 @@ virtaddress=findfreevirtualpage(size,ALLOC_KERNEL,0);		/* find free virtual addr
 oldvirtaddress=virtaddress;
 oldpp=pp;
 
-//kprintf("address=%X %X\n",virtaddress,pp);
-
-for(count=0;count != (sizeof(struct ppt)/PAGE_SIZE)+1;count++) {
+for(count=0;count<(size/PAGE_SIZE)+1;count++) {
  addpage_system(virtaddress,0,(void *) pp);
 
  pp += PAGE_SIZE;
@@ -168,24 +175,40 @@ last->pagedirphys=oldpp;						/* physical address of page directory */
 last->process=process;
 
 memcpy(&last->pagedir[512],&processpaging->pagedir[512],PAGE_SIZE/2);			/* copy page directory */
+
 last->pagedir[1023]=last->pagedirphys+(PAGE_RW+PAGE_PRESENT);
 
 last->next=NULL;
 return;
 }
 
-/* remove page */
+/*
+ * Remove page
+ *
+ * In: uint32_t page	Page to remove
+       size_t process	Process ID
+ *
+ * Returns NULL
+ * 
+ */
 size_t removepage(uint32_t page,size_t process) {
  addpage_int(0,process,page,0);						/* clear page */
  return;
 }
 
+/*
+ * Free address space
+ *
+ * In: size_t process	Process ID
+ *
+ */
 size_t freepages(size_t process) {
  struct ppt *next;
  struct ppt *last;
- size_t count;
- size_t countx;
- uint32_t *v;
+ size_t pagecount;
+ size_t entrycount;
+ size_t *v;
+ size_t physaddress=0;
 
  next=processpaging;
  last=processpaging;
@@ -197,16 +220,49 @@ size_t freepages(size_t process) {
   next=next->next;
  }
 
+ if(next == NULL) return(-1);
+
+/* remove physical addresses from page tables and remove them from the memory map */
+
+ for(pagecount=0;pagecount<512;pagecount++) {
+
+  if(next->pagedir[pagecount] != 0) {
+   v=(uint32_t *) 0xffc00000 + (pagecount*1024);		/* point to location of page directory */
+
+   for(entrycount=0;entrycount<1023;entrycount++) {    
+
+//      asm("xchg %bx,%bx");
+
+//      if(v[entrycount] != 0) free_physical(v[entrycount]);
+   }
+
+  }
+
+ v++;
+
+ }
+
+
+/* remove page directory entry */
+
  last->next=next->next;	
 
- kernelfree(next);						/* and free it */
+// kernelfree(next);						/* and free it */
 
  return;
 }
 
-/* find free virtual address */
+/*
+ * find free virtual address
+ *
+ * In: size_t size	Number of free bytes to find
+       size_t alloc	Allocation flags (ALLOC_KERNEL to find in top half of memory, ALLOC_NORMAL to find in bottom half)
+       size_t process		Process ID
 
-size_t  findfreevirtualpage(size_t size,unsigned int alloc,size_t process) {
+ * Returns first free virtual address of size on success or -1 on error
+ * 
+ */
+size_t  findfreevirtualpage(size_t size,size_t alloc,size_t process) {
 uint32_t s;
 size_t start;
 size_t end;
@@ -280,6 +336,14 @@ for(count=start;count<1022;count++) {			/* page directories */
  return(-1);
 }
 
+/*
+ * Load page tables for process
+ *
+ * In: size_t process		Process ID
+ *
+ * Returns NULL
+ * 
+ */
 size_t loadpagetable(size_t process) {
 struct ppt *next; 
 
@@ -299,6 +363,15 @@ while(next != NULL) {
 return(-1);
 }
 
+/*
+ * Get physical address from virtual address
+ *
+ * In: size_t process		Process ID
+       uint32_t virtaddr	Virtual address
+ *
+ * Returns physical address or -1 on error
+ * 
+ */
 size_t getphysicaladdress(size_t process,uint32_t virtaddr) {
  size_t count;
  struct ppt *next;
@@ -325,11 +398,30 @@ size_t getphysicaladdress(size_t process,uint32_t virtaddr) {
  v=(uint32_t *) 0xffc00000 + (pd*1024);
  return(v[pt] & 0xfffff000);				/* return physical address */
 }
+/*
+ * Add user page
+ *
+ * In: uint32_t page		Virtual address       
+       size_t process		Process ID
+       void *physaddr		Physical address
 
+ * Returns NULL
+ * 
+ */
 size_t addpage_user(uint32_t page,size_t process,void *physaddr) { 
  return(addpage_int(PAGE_USER+PAGE_RW+PAGE_PRESENT,process,page,physaddr));
 }
 
+/*
+ * Add system page
+ *
+ * In: uint32_t page		Virtual address       
+       size_t process		Process ID
+       void *physaddr		Physical address
+
+ * Returns NULL
+ * 
+ */
 size_t addpage_system(uint32_t page,size_t process,void *physaddr) { 
  return(addpage_int(PAGE_SYSTEM+PAGE_RW+PAGE_PRESENT,process,page,physaddr));
 }

@@ -4,6 +4,11 @@
 #define TRUE		1
 #define	FALSE		0
 
+#define KEYB_CAPSLOCK_FLAG	1
+#define KEYB_SHIFT_FLAG		2
+#define KEYB_CTRL_FLAG		4
+#define KEYB_ALT_FLAG		8
+
 #define CTRL_AT		0
 #define CTRL_A 		1
 #define CTRL_B 		2

@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -17,19 +17,29 @@
     along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
 #include "../../../filemanager/vfs.h"
 
 #define MODULE_INIT speaker_io
 
 void speaker_init(char *initstring);
-size_t speaker_io(unsigned int op,unsigned int *buf,unsigned size_t len);
+size_t speaker_io_write(size_t *buf,size_t len);
 
+/*
+ * Intialize speaker
+ *
+ * In: nothing
+ *
+ * Returns nothing
+ *
+ */
 void speaker_init(char *initstring) {
 CHARACTERDEVICE bd;
 
 strcpy(bd.dname,"SPEAKER");		/* add char device */
-bd.chario=&speaker_io;
+bd.chariowrite=&speaker_io_write;
+bd.charioread=NULL;
 bd.ioctl=NULL;
 bd.flags=0;
 bd.data=NULL;
@@ -40,15 +50,24 @@ add_char_device(&bd);
 return;
 }
 
-size_t speaker_io(unsigned int op,size_t *buf,unsigned size_t len) {
+/*
+ * Speaker I/O handler
+ *
+ * In: size_t op 	Operation (0=read, 1=write)
+       size_t *buf	Buffer
+       size_t len	Number of bytes to read or write
+ *
+ *  Returns 0 on success, -1 on error
+ *
+ */
+size_t speaker_io_write(size_t *buf,size_t len) {
 uint32_t frequency;
 uint32_t notelen;
 uint8_t sound;
 size_t lencount;
 size_t count;
 
-if(op == _WRITE) {
- for(count=0;count<len;count++) {
+for(count=0;count<len;count++) {
 	 frequency=1193180 / (uint32_t) *buf++;
 	 notelen=*buf++;
 
@@ -60,9 +79,9 @@ if(op == _WRITE) {
 
 	/* wait for sound to end */
 
-	 lencount=gettickcount()+notelen;
+	 lencount=get_tick_count()+notelen;
 	 
-	 while( gettickcount() < lencount) {
+	 while( get_tick_count() < lencount) {
 	  sound=inb(0x61);
 
   	  if(sound != (sound | 3)) outb(0x61, sound | 3);
@@ -71,10 +90,7 @@ if(op == _WRITE) {
 	 outb(0x61,inb(0x61) & 0xfc);
   }
 
- return;
-}
- 
-return(-1);
+return(0);
 }
 
 

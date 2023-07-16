@@ -20,15 +20,11 @@
 #define _WRITE 1
 
 typedef struct {
- char *name[MAX_PATH];
- unsigned int val;
-} kernelsymbol;
-
-typedef struct {
  char *dname[MAX_PATH];
- unsigned int (*chario)(unsigned int,unsigned int,void *);			/* function pointer */
- unsigned int (*ioctl)(size_t handle,unsigned long request,void *buffer);
- unsigned int flags;
+ size_t (*charioread)(void *,size_t);			/* function pointer */
+ size_t (*chariowrite)(void *,size_t);			/* function pointer */
+ size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
+ size_t flags;
  void *data;
  struct CHARACTERDEVICE *next;
 } CHARACTERDEVICE;
@@ -36,17 +32,17 @@ typedef struct {
 typedef struct {
  uint8_t dname[MAX_PATH];
  void *dbuf;
- unsigned int (*blockio)(unsigned int,unsigned int,size_t,void *);			/* function pointers */
- unsigned int (*ioctl)(size_t handle,unsigned long request,void *buffer);
- unsigned int flags;
- unsigned int drive;
+ size_t (*blockio)(size_t,size_t,uint64_t,void *);			/* function pointers */
+ size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
+ size_t flags;
+ size_t drive;
  uint64_t startblock;
- unsigned int physicaldrive; 
- unsigned int sectorsperblock;
- unsigned int sectorsize;
- unsigned int sectorspertrack;
- unsigned int numberofheads;
- unsigned int numberofsectors;
+ size_t physicaldrive; 
+ size_t sectorsperblock;
+ size_t sectorsize;
+ size_t sectorspertrack;
+ size_t numberofheads;
+ size_t numberofsectors;
  void *superblock;
  MUTEX mutex;
  struct BLOCKDEVICE *next;

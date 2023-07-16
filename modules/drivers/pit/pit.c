@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -24,8 +24,18 @@
 #define MODULE_INIT pit_init
 
 void pit_init(char *init);
-unsigned int pit_io(unsigned int op,unsigned int *buf,unsigned int ignored);
+size_t pit_io(size_t op,size_t *buf,size_t ignored);
+size_t pit_read(size_t size,size_t *buf);
+size_t pit_write(size_t size,size_t *buf);
 
+/*
+ * Initialize PIT (Programmable Interval Timer)
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
 void pit_init(char *init) {
 CHARACTERDEVICE bd;
 uint32_t pit_val=PIT_VAL;
@@ -35,7 +45,8 @@ outb(0x40,PIT_VAL & 0xFF);
 outb(0x40,((PIT_VAL >> 8) & 0xFF));
 
 strcpy(bd.dname,"TIMER");		/* add char device */
-bd.chario=&pit_io;
+bd.charioread=&pit_read;
+bd.chariowrite=&pit_write;
 bd.ioctl=NULL;
 bd.flags=0;
 bd.data=NULL;
@@ -45,8 +56,19 @@ add_char_device(&bd);
 return;
 }
 
-unsigned int pit_io(unsigned int op,unsigned int *buf,unsigned int ignored) {
-unsigned int val;
+/*
+ * PIT I/O function
+ *
+ * In:  op	Operation (0=read,1=write)
+        buf	Buffer
+	len	Number of bytes to read/write
+ *
+ *  Returns: nothing
+ *
+ */
+
+size_t pit_io(size_t op,size_t *buf,size_t ignored) {
+size_t val;
 
 if(op == PIT_READ) {
   outb(0x43,0x34);
@@ -54,7 +76,7 @@ if(op == PIT_READ) {
   val=(inb(0x40) << 8)+inb(0x40);		/* read pit */ 
   *buf=val;
 
-  return;
+  return(0);
 }
 
 if(op == PIT_WRITE) {
@@ -64,9 +86,17 @@ if(op == PIT_WRITE) {
  outb(0x40,val & 0xFF);
  outb(0x40,((val >> 8) & 0xFF));
 
- return;
+ return(0);
 }
  
 return(-1);
+}
+
+size_t pit_read(size_t size,size_t *buf) {
+ return(_READ,buf,size);
+}
+
+size_t pit_write(size_t size,size_t *buf) {
+ return(_READ,buf,size);
 }
 

@@ -19,9 +19,10 @@ global irq15
 
 extern getpid
 
+;
+; IRQ handlers
+;
 irq0:
-inc	dword [tickcount]
-
 mov	dword [irqnumber],0
 jmp	irq
 
@@ -89,7 +90,7 @@ irq15:
 mov	dword [irqnumber],15
 jmp	irq
 
-irq:	
+irq:
 pusha						; save registers
 
 mov	edx,[irqnumber]
@@ -102,8 +103,7 @@ mov	eax,[eax]
 test	eax,eax
 jz	irq_exit
 
-mov	edx,esp
-push	edx
+push	esp
 call	eax					; call irq handler
 add	esp,4
 
@@ -121,9 +121,8 @@ out	0a0h,al
 
 nslave:
 popa					; restore registers
-
 iret			; return
 
+
 irqnumber dd 0
-tickcount dd 0
 

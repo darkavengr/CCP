@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -18,6 +18,7 @@
 */
 
 #include <stdint.h>
+#include "../../../header/kernelhigh.h"
 #include "../../../header/errors.h"
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
@@ -25,11 +26,9 @@
 #include "console.h"
 #include "../../../header/bootinfo.h"
 
-#define KERNEL_HIGH (1 << (sizeof(unsigned int)*8)-1)
-
 #define MODULE_INIT console_init
 
-size_t outputconsole(unsigned int ignore,char *s,size_t size);
+size_t outputconsole(char *s,size_t size);
 void movecursor(uint16_t row,uint16_t col);
 uint32_t getcursorpos(void);
 void console_init(char *init);
@@ -48,15 +47,25 @@ void setconsolecolour(uint8_t c);
 uint8_t row=0;
 uint8_t col=0;
 uint8_t colour=7;
-unsigned int ppos;
+size_t ppos;
 
-size_t outputconsole(unsigned int ignore,char *s,size_t size) {
+/*
+ * Console I/O function
+ *
+ * In:  op	Operation (0=read,1=write)
+        buf	Buffer
+	len	Number of bytes to read/write
+ *
+ *  Returns: nothing
+ *
+ */
+size_t outputconsole(char *s,size_t size) {
 char *consolepos;
 uint32_t pos;
 char *scrollbuf[MAX_X*MAX_Y];
-unsigned int wch;
-
-consolepos=KERNEL_HIGH+0xB8000+(((row*MAX_X)+col)*2);
+size_t wch;
+  
+consolepos=KERNEL_HIGH+0xB8000+(((row*MAX_X)+col)*2);	/* address to write to */
 
 if((size_t) consolepos % 2 == 1) consolepos++;
   
@@ -115,43 +124,73 @@ if((size_t) consolepos % 2 == 1) consolepos++;
 return(size);
 }
 
-/* move cursor */
+/*
+ * Move cursor
+ *
+ * In:  row	Row to move to
+        col	Column to move to
+ *
+ *  Returns: nothing
+ *
+ */
 
-void movecursor(uint16_t row,uint16_t col) {
+void movecursor(uint16_t r,uint16_t c) {
 uint16_t ppos;
 
-ppos=(row*MAX_X)+col;
+ppos=(r*MAX_X)+c;
 
 outb(0x3d4,0xf);							/* cursor high */
 outb(0x3d5,(ppos  & 0xff));
 outb(0x3d4,0xe);							/* cursor row */
 outb(0x3d5,(ppos >> 8) & 0xff);
+
+row=r;
+col=c;
 return;
 }
 
-/* get cursor */
+/*
+ * Get screen cursor X position 
+ *
+ * In:  nothing
+ *
+ *  Returns: X position
+ *
+ */
 
-uint32_t getcursorpos(void) {
-uint8_t row;
-uint8_t col;
+uint32_t get_cursor_row(void) {
+return(row);
 
-outb(0x3d4,0xf);							/* cursor high */
-row=inb(0x3d5);
-outb(0x3d4,0xe);							/* cursor row */
-col=inb(0x3d5);
-
-row=row  & 0xff;
-col=col >> 8;
-
-return((row << 16)+col);
 }
+
+/*
+ * Get screen cursor Y position 
+ *
+ * In:  nothing
+ *
+ *  Returns: Y position
+ *
+ */
+uint32_t get_cursor_col(void) {
+return(col);
+}
+
+/*
+ * Initialize screen
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
 
 void console_init(char *init) {
 CHARACTERDEVICE device;
-uint8_t *cursor_loc=KERNEL_HIGH+(size_t)  BOOT_INFO_CURSOR;
+BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
 strcpy(&device.dname,"CONOUT");
-device.chario=&outputconsole;
+device.charioread=NULL;
+device.chariowrite=&outputconsole;
 device.ioctl=NULL;
 device.flags=0;
 device.data=NULL;
@@ -159,8 +198,11 @@ device.next=NULL;
 
 add_char_device(&device);			/* con */
 
-row=*cursor_loc++;
-col=*cursor_loc++;
+row=boot_info->cursor_row++;
+col=boot_info->cursor_col++;
+
+init_console_device(_WRITE,1,&outputconsole);
+init_console_device(_WRITE,2,&outputconsole);
 
 return(NULL);
 }

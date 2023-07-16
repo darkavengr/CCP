@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -33,11 +33,11 @@ size_t memcpy(void *d,void *s,size_t c);
 size_t memcmp(char *source,char *dest,size_t count);
 size_t strcmp(char *source,char *dest);
 void memset(void *buf,char i,size_t size);
-unsigned int itoa(unsigned int n, char s[]);
+size_t itoa(size_t n, char s[]);
 void reverse(char s[]);
-unsigned int wildcard(char *mask,char *filename);
-unsigned int touppercase(char *string);
-unsigned int wildcard_rename(char *name,char *mask,char *out);
+size_t wildcard(char *mask,char *filename);
+size_t touppercase(char *string);
+size_t wildcard_rename(char *name,char *mask,char *out);
 int strtrunc(char *str,int c);
 int atoi(char *hex,int base);
 void kprintf(char *format, ...);
@@ -45,6 +45,16 @@ void ksprintf(char *buf,char *format, ...);
 void tohex(uint32_t hex,char *buf);
 size_t tokenize_line(char *linebuf,char *tokens[MAX_PATH][MAX_PATH],char *split);
 void tohex64(uint64_t hex,char *buf);
+void kprintf_direct(char *format, ...);
+
+/*
+ * Get string length
+ *
+ * In: char *str	String buffer
+ *
+ * Returns string length
+ *
+ */
 
 size_t strlen(char *str) {
  size_t count=0;
@@ -58,6 +68,16 @@ size_t strlen(char *str) {
 
  return(count);
 }
+
+/*
+ * Get length of Unicode string
+ *
+ * In: char *string	String to get length of
+       size_t maxlen	Maximum length of string
+ *
+ * Returns string length
+ *
+ */
 
 size_t strlen_unicode(char *str,size_t maxlen) {
  size_t count;
@@ -81,6 +101,16 @@ size_t strlen_unicode(char *str,size_t maxlen) {
  return(count);
 }
 
+/*
+ * Copy string
+ *
+ * In: char *d		Destination string
+       char *s		Source string
+ *
+ * Returns nothing
+ *
+ */
+
 void strcpy(char *d,char *s) {
  char *x;
  char *y;
@@ -91,6 +121,16 @@ void strcpy(char *d,char *s) {
  while(*x != 0) *y++=*x++;
  *y--=0;
 }
+
+/*
+ * Conatecate string
+ *
+ * In: char *d		String to conatecate to
+       char *s		String to conatecate
+ *
+ * Returns nothing
+ *
+ */
 
 void strcat(char *d,char *s) {
  char *x=s;
@@ -103,9 +143,15 @@ void strcat(char *d,char *s) {
 }
 
 /*
- * copy memory
+ * Copy memory
  *
-*/
+ * In: void *d		Address to copy to
+       void *s		Address to copy from
+       size_t c		Number of bytes to copy
+ *
+ * Returns number of bytes copied
+ *
+ */
 
 size_t memcpy(void *d,void *s,size_t c) {
  char *x;
@@ -121,7 +167,13 @@ size_t memcpy(void *d,void *s,size_t c) {
 }
 
 /*
- * compare memory
+ * Compare memory
+ *
+ * In: void *d		Second address to compare
+       void *s		First address to compare
+       size_t c		Number of bytes to compare
+ *
+ * Returns different of last source and destination bytes if they do not match, 0 otherwise
  *
  */
 
@@ -146,11 +198,14 @@ size_t memcmp(char *source,char *dest,size_t count) {
 }
  
 /*
- * Compare string and return 0 if same
+ * Compare string
+ *
+ * In: char *source	First string to compare
+       void *dest	Second string to compare
+ *
+ * Returns different of last source and destination bytes if they do not match, 0 otherwise
  *
  */
-
-
 size_t strcmp(char *source,char *dest) {
  char c,d;
 
@@ -167,6 +222,15 @@ size_t strcmp(char *source,char *dest) {
  return(d-c);
 }
 
+/*
+ * Compare string case insensitively
+ *
+ * In: char *source	First string to compare
+       void *dest	Second string to compare
+ *
+ * Returns different of last source and destination bytes if they do not match, 0 otherwise
+ *
+ */
 size_t strcmpi(char *source,char *dest) {
  char a,b;
  char *sourcetemp[MAX_PATH];
@@ -181,13 +245,19 @@ size_t strcmpi(char *source,char *dest) {
  return(strcmp(sourcetemp,desttemp));
 }
 
-/* 
- * fill memory
+/*
+ * Fill memory
+ *
+ * In: void *buf	Address to fill
+       char i		Byte to fill with
+       size_t size	Number of bytes to fill
+ *
+ * Returns nothing
  *
  */
 
 void memset(void *buf,char i,size_t size) {
- unsigned int count=0;
+ size_t count=0;
  char *b;
  
  b=buf;					/* point to buffer */
@@ -201,10 +271,18 @@ void memset(void *buf,char i,size_t size) {
 }
 
 
+/*
+ * Convert integer to character representation
+ *
+ * In: size_t n	Number to convert
+       char s[]		Character buffer
+ *
+ * Returns nothing
+ *
+ */
 
- /* itoa:  convert n to characters in s */
-unsigned int itoa(unsigned int n, char s[]) {
-unsigned int i, sign;
+size_t itoa(size_t n, char s[]) {
+size_t i, sign;
  
 //     if ((sign = n) < 0) n = -n;          /* make n positive */
 
@@ -219,10 +297,18 @@ unsigned int i, sign;
      reverse(s);
  }
 
+/*
+ * Reverse string
+ *
+ * In: char s[]		String to reverse
+ *
+ * Returns nothing
+ *
+ */
 void reverse(char s[]) {
-unsigned int c;
-unsigned int i;
-unsigned int j;
+size_t c;
+size_t i;
+size_t j;
 
 for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
  c = s[i];
@@ -231,7 +317,16 @@ for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
  }
 }
 
-unsigned int wildcard(char *mask,char *filename) {
+/*
+ * Match string using wildcard
+ *
+ * In: char *mask
+       void *dest	Second string to compare
+ *
+ * Returns different of last source and destination bytes if they do not match, 0 otherwise
+ *
+ */
+size_t wildcard(char *mask,char *filename) {
  size_t count;
  size_t countx;
  char *x;
@@ -281,7 +376,15 @@ unsigned int wildcard(char *mask,char *filename) {
 return(0);
 }
 
-unsigned int touppercase(char *string) {
+/*
+ * Convert string to uppercase
+ *
+ * In: char *string	String to convert
+ *
+ * Returns nothing
+ *
+ */
+size_t touppercase(char *string) {
 char *s;
 
 s=string;
@@ -294,13 +397,23 @@ while(*s != 0) {			/* until end */
  }
 }
 
-unsigned int wildcard_rename(char *name,char *mask,char *out) {
+/*
+ * Replace string using wildcard
+ *
+ * In: char *name	Input string
+       char *mask	Wildcard to match
+       char *out	Output string
+ *
+ * Returns nothing
+ *
+ */
+size_t wildcard_rename(char *name,char *mask,char *out) {
 size_t count;
 char *m;
 char *n;
 char *o;
 char c;
-unsigned int countx;
+size_t countx;
 char *newmask[MAX_PATH];
 char *mmask[MAX_PATH];
 char *nname[MAX_PATH];
@@ -356,6 +469,15 @@ for(count=0;count<strlen(newmask);count++) {
 return;
 }			
 
+/*
+ * Truncate string
+ *
+ * In: char *str	String to truncate
+       int c		Number of characters to truncate
+ *
+ * Returns nothing
+ *
+ */
 int strtrunc(char *str,int c) {
 char *s;
 int count;
@@ -370,6 +492,15 @@ s -= 2;
 return;
 }
 
+/*
+ * Convert string to integer
+ *
+ * In: char *hex	String to convert
+       int base		Base number to use (2,8,10,16)
+ *
+ * Returns converted number
+ *
+ */
 int atoi(char *hex,int base) {
 int num=0;
 char *b;
@@ -423,8 +554,15 @@ while(count > 0) {
 return(num);
 }
 
-void kprintf(char *format, ...);
-
+/*
+ * Print formatted string
+ *
+ * In: char *format	Formatted string to print, uses same format placeholders as printf
+       ...		Variable number of arguments to print
+ *
+ * Returns nothing
+ *
+ */
 void kprintf(char *format, ...) {
  va_list args;
  char *b;
@@ -450,7 +588,6 @@ void kprintf(char *format, ...) {
     case's':				/* string */
      s=va_arg(args,const char*);
 
-
      write(stdout,s,strlen(s));
      b++;
      break;
@@ -465,7 +602,7 @@ void kprintf(char *format, ...) {
      break;
 
     case 'u':				/* unsigned decimal */
-     num=va_arg(args,unsigned int);
+     num=va_arg(args,size_t);
 
      itoa(num,z);
      write(stdout,z,strlen(z));
@@ -474,7 +611,7 @@ void kprintf(char *format, ...) {
      break;
 
     case 'o':				/* octal */
-     num=va_arg(args,unsigned int);
+     num=va_arg(args,size_t);
 
      itoa(num,z);
      write(stdout,z,strlen(z));
@@ -485,7 +622,7 @@ void kprintf(char *format, ...) {
     case 'p':				/* same as x */
     case 'x':				/*  lowercase x */
     case 'X':
-     num=va_arg(args,unsigned int);
+     num=va_arg(args,size_t);
 
      tohex(num,z);
      write(stdout,z,strlen(z));
@@ -524,6 +661,127 @@ void kprintf(char *format, ...) {
 va_end(args);
 
 }
+
+/*
+ * Print formatted string to a fixed console
+ *
+ * In: char *format	Formatted string to print, uses same format placeholders as printf
+       ...		Variable number of arguments to print
+ *
+ * Returns nothing
+ * 
+ * This function is used early in intializtion and by exception()
+ */
+
+void kprintf_direct(char *format, ...) {
+ va_list args;
+ char *b;
+ char c;
+ char *s;
+ char *p;
+ int num;
+ double d;
+ char *z[MAX_SIZE];
+
+ va_start(args,format);			/* get start of variable args */
+
+ b=format;
+
+ while(*b != 0) {
+  c=*b;
+
+  if(c == '%') {
+   c=*++b;
+
+  switch(c) {
+
+    case's':				/* string */
+     s=va_arg(args,const char*);
+
+     outputconsole(s,strlen(s));
+     b++;
+     break;
+
+    case 'd':				/* signed decimal */
+     num=va_arg(args,int);
+  
+     itoa(num,z);
+
+     outputconsole(z,strlen(z));
+
+     b++;
+     break;
+
+    case 'u':				/* unsigned decimal */
+     num=va_arg(args,size_t);
+
+     itoa(num,z);
+     outputconsole(z,strlen(z));
+    
+     b++;
+     break;
+
+    case 'o':				/* octal */
+     num=va_arg(args,size_t);
+
+     itoa(num,z);
+     outputconsole(z,strlen(z));
+    
+     b++;
+     break;
+
+    case 'p':				/* same as x */
+    case 'x':				/*  lowercase x */
+    case 'X':
+     num=va_arg(args,size_t);
+
+     tohex(num,z);
+     outputconsole(z,strlen(z));
+    
+     b++;
+     break;
+   
+     case 'c':				/* character */
+      c=(unsigned char) va_arg(args, int);
+
+      p=z;
+      *p=c;
+
+      outputconsole(z,strlen(z));
+      b++;
+
+      break;
+
+     case '%':
+      outputconsole("%",1);
+  
+      b++;
+
+      break;
+   }
+
+  }
+ else
+ {
+  outputconsole(&c,1);
+  b++;
+ }
+
+}
+
+va_end(args);
+
+}
+
+/*
+ * Print formatted string to string
+ *
+ * In:  char *buf	Buffer to store output
+	char *format	Formatted string to print, uses same format placeholders as printf
+       ...		Variable number of arguments to write to stringnt
+ *
+ * Returns nothing
+ */
 
 void ksprintf(char *buf,char *format, ...) {
  va_list args;
@@ -578,7 +836,7 @@ void ksprintf(char *buf,char *format, ...) {
     break;
 
    case 'u':				/* unsigned decimal */
-    num=va_arg(args,unsigned int);
+    num=va_arg(args,size_t);
 
     itoa(num,z);
     strcat(bufptr,z);
@@ -588,7 +846,7 @@ void ksprintf(char *buf,char *format, ...) {
     break;
 
    case 'o':				/* octal */
-    num=va_arg(args,unsigned int);
+    num=va_arg(args,size_t);
 
     itoa(num,z);
     strcat(bufptr,z);
@@ -600,7 +858,7 @@ void ksprintf(char *buf,char *format, ...) {
    case 'p':				/* same as x */
    case 'x':				/*  lowercase x */
    case 'X':
-    num=va_arg(args,unsigned int);
+    num=va_arg(args,size_t);
     tohex(num,z);
  
     strcat(bufptr,z);
@@ -611,7 +869,7 @@ void ksprintf(char *buf,char *format, ...) {
     break;
    
    case 'c':				/* character */
-    c=va_arg(args,unsigned int);
+    c=va_arg(args,size_t);
     b++;
     break;
 
@@ -639,9 +897,17 @@ va_end(args);
 
 }
 
+/*
+ * Convert number to hexadecimal string
+ *
+ * In: uint32_t hex	Number to convert
+       char *buf	Buffer to store converted number
+ *
+ * Returns nothing
+ */
 
 void tohex(uint32_t hex,char *buf) {
-unsigned int count;
+size_t count;
 uint32_t h;
 uint32_t shiftamount;
 uint32_t mask;
@@ -663,6 +929,16 @@ for(count=1;count<9;count++) {
 }
 
 }
+
+/*
+ * Tokenize string into array
+ *
+ * In: char *linebuf			String to tokenize
+       char *tokens[MAX_PATH][MAX_PATH]	Array to hold tokens
+       char *split			Character delimiter
+ *
+ * Returns number of tokens
+ */
 
 size_t tokenize_line(char *linebuf,char *tokens[MAX_PATH][MAX_PATH],char *split) {
 char *token;
@@ -702,3 +978,26 @@ while(*token != 0) {
 tc++;
 return(tc);
 }
+
+/*
+ * Raises integer to power
+ *
+ * In: n				Base number
+       e				Exponent
+ *
+ * Returns number of tokens
+ */
+size_t ipow(size_t n,size_t e) {
+ size_t num=n;				/* save number */
+ size_t count=e;
+
+/* multiple n by base number until end */
+
+do {
+ num *= n;
+} while(--count > 1);
+
+
+return(num);
+}
+ 

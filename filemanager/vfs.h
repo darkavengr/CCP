@@ -18,7 +18,7 @@
 
 #define FILE_ACCESS_EXCLUSIVE	4
 #define MAX_PATH		255
-#define VFS_MAX 		32768
+#define VFS_MAX 		1024
 
 #define	_READ 			0
 #define _WRITE 			1
@@ -35,8 +35,8 @@
 
 
 typedef struct {
- char *name[MAX_PATH];
- void *magicnumber[MAX_PATH];
+ uint8_t name[MAX_PATH];
+ uint8_t magicnumber[MAX_PATH];
  size_t size;
  size_t location;
  size_t (*findfirst)(char *name,void *);	/* handlers */
@@ -89,7 +89,8 @@ typedef struct {
  size_t flags;
  size_t handle;
  size_t (*blockio)(size_t,size_t,size_t,void *);			/* function pointer */
- size_t (*chario)(size_t,size_t,void *);			/* function pointer */
+ size_t (*charioread)(size_t,void *);			/* function pointer */
+ size_t (*chariowrite)(size_t,void *);			/* function pointer */
  size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
  uint32_t findlastblock; /* last block read by find() */
  size_t findentry;

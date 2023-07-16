@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -20,6 +20,16 @@
 #include <stdint.h>
 #include "command.h"
 
+
+/*
+ * Tokenize string into array
+ *
+ * In: char *linebuf			String to tokenize
+       char *tokens[MAX_PATH][MAX_PATH]	Array to hold tokens
+       char *split			Character delimiter
+ *
+ * Returns number of tokens
+ */
 int tokenize_line(char *linebuf,char *tokens[MAX_PATH][MAX_PATH],char *split) {
 char *token;
 int tc;

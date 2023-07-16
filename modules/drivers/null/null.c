@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -25,15 +25,35 @@
 #define MODULE_INIT null_init
 
 void null_init(char *init);
-void nul(unsigned int op,void *buf,size_t size) {
+
+/*
+ * Null device handler
+ *
+ * In: op 	Operation (0=read,1=write)
+       buf	Buffer
+       size	Size
+ *
+ *  Returns: nothing
+ *
+ */
+void nul(size_t op,void *buf,size_t size) {
 return;
 }
 
+/*
+ * Initialize null device
+ *
+ * In:  init 	Initialization string
+ *
+ *  Returns: nothing
+ *
+ */
 void null_init(char *init) {
 CHARACTERDEVICE device;
 
  strcpy(&device.dname,"NUL");
- device.chario=&nul;
+ device.charioread=&nul;
+ device.chariowrite=NULL;
  device.ioctl=NULL;
  device.flags=0;
  device.data=NULL;

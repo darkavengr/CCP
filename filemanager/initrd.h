@@ -1,21 +1,24 @@
 #include <stddef.h>
 
+#define TAR_BLOCK_SIZE	512
+#define INITRD_MAGIC_SIZE 6
+
 typedef struct {
- char filename[100];
- uint64_t mode;
- uint64_t userid;
- char *size[12];			/* size in ascii */
- char *lmtime[12];			/* also in ascii */
- uint64_t checksum;
- uint8_t linkindicator;
- char *linkname[100];
- uint8_t  type;
- char *ustar[6];
- uint16_t version;
- char *username[32];
- char *groupname[32];
- uint64_t device_major;
- uint64_t device_minor;
- char *filenameprefix[155];
+ char name[100];
+ char mode[8];
+ char uid[8];
+ char gid[8];
+ char size[12];
+ char mtime[12];
+ char chksum[8];
+ char typeflag;
+ char linkname[100];
+ char magic[6];
+ char version[2];
+ char uname[32];
+ char gname[32];
+ char devmajor[8];
+ char devminor[8];
+ char prefix[155];
 } TAR_HEADER;
 

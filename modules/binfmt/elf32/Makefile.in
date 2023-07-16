@@ -1,0 +1,8 @@
+ASM=@asm@
+CC=@cc@
+LD=@ld@
+FILES=elf32.c
+
+../../../obj/@arch@/elf32.o:
+	$(CC) @cc_opts@ $(FILES) -o ../../../obj/@arch@/elf32.o
+

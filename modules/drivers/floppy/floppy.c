@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "../../../header/kernelhigh.h"
 #include "../../../header/errors.h"
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
@@ -30,12 +31,12 @@
 #define MODULE_INIT floppy_init
 
 size_t checkstatus(void);
-unsigned int delay_loop(size_t delaycount);
+size_t delay_loop(size_t delaycount);
 void floppy_writecommand(size_t drive,uint8_t c);
-size_t sector_io(unsigned int op,uint8_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf);
+size_t sector_io(size_t op,uint8_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf);
 void waitforirq6(void);
 extern tickcount;
-volatile unsigned int irq6done=FALSE;
+volatile size_t irq6done=FALSE;
 void wait_for_irq6(void);
 extern setirqhandler();
 
@@ -46,8 +47,6 @@ uint8_t cyl;
 uint8_t st[7];
 
 //#define FLOPPY_DEBUG
-
-#define KERNEL_HIGH (1 << (sizeof(size_t)*8)-1)
 
 struct {
  uint8_t steprate_headunload;
@@ -65,9 +64,9 @@ struct {
 
 char *floppytype[] = { "None","5.25\" 360k","5.25\" 1.2M","3.5\" 720K","3.5\" 1.44M","3.5\" 2.88M" };
 struct {
- unsigned int sectorspertrack;
- unsigned int numberofheads;
- unsigned int numberofsectors;
+ size_t sectorspertrack;
+ size_t numberofheads;
+ size_t numberofsectors;
 } fdparams[] = { {0,0,0},\
 		 { 8,2,720 },\
        { 15,2,2400 },\
@@ -76,7 +75,15 @@ struct {
        { 15,2,2400 },\
        { 36,2,5760 } };
 
-/* switch motor on */
+/*
+ * Switch floppy motor on
+ *
+ * In: size_t drive	Drive
+ *
+ *  Returns: nothing
+ *
+ */
+
 void motor_on(size_t drive) {
 
 #ifdef FLOPPY_DEBUG
@@ -97,7 +104,14 @@ else
 
 }
 
-/* switch motor off */
+/*
+ * Switch floppy motor off
+ *
+ * In: size_t drive	Drive
+ *
+ *  Returns: nothing
+ *
+ */
 
 void motor_off(size_t drive) {
 #ifdef FLOPPY_DEBUG
@@ -115,6 +129,15 @@ void motor_off(size_t drive) {
    return;
   }
 }
+
+/*
+ * Initialize floppy drive prior to use
+ *
+ * In: size_t drive	Drive
+ *
+ *  Returns: nothing
+ *
+ */
  
 void initialize_floppy(size_t drive) {
 uint8_t floppytype;
@@ -206,8 +229,16 @@ floppytype=inb(0x71);
   return;
 }
 
+/*
+ * Switch floppy drive status
+ *
+ * In: size_t drive	Drive
+ *
+ *  Returns: nothing
+ *
+ */
 
-unsigned int getstatus(size_t drive) {
+size_t getstatus(size_t drive) {
  while(inb(MAIN_STATUS_REG) & RQM == RQM) ;;
 
  floppy_writecommand(drive,SENSE_INTERRUPT);		/* get status */
@@ -216,13 +247,31 @@ unsigned int getstatus(size_t drive) {
  cyl=inb(DATA_REGISTER);
  return;
 }
-/* read/write sector */
 
-size_t sector_io(unsigned int op,uint8_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf) {
-unsigned int count;
-unsigned int result;
-unsigned int retrycount;
-unsigned int dir;
+/*
+ * Floppy sector I/O
+ *
+ * In:  op  		Operation (0=read,1=write)
+	drive		Drive
+	head		Head
+        cyl		Cylinder
+	sector		Sector
+	blocksize 	block size
+	buf		buffer
+ *
+ *  Returns: -1 on error, 0 on success
+ *
+ * This is a low-level function called by fd_io
+ *
+ */
+
+size_t sector_io(size_t op,uint8_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf) {
+size_t count;
+size_t result;
+size_t retrycount;
+size_t dir;
+
+disablemultitasking();
 
 initialize_floppy(drive);
 
@@ -284,7 +333,7 @@ for(retrycount=0;retrycount < RETRY_COUNT;retrycount++) {
 
 /*******************/
  
- //delay_loop((unsigned int) floppy_parameters->head_settle_time);			/* wait for floppy head to settle */
+ //delay_loop((size_t) floppy_parameters->head_settle_time);			/* wait for floppy head to settle */
 
  outb(0x0a,0x06);					/* mask DMA channel 2 and 0 (assuming 0 is already masked) */
  if(op == _READ) outb(0x0b,0x56);		        /* 01011010 single transfer, address increment, autoinit, read, channel 2 */
@@ -335,15 +384,28 @@ break;
 
 if(op == _READ) memcpy((void *) buf,(char *) floppybuf+KERNEL_HIGH,blocksize); 		/* copy to from sector buffer to buffer */
 
+enablemultitasking();
+
  setlasterror(NO_ERROR);
  return(NO_ERROR);
 }
 
-unsigned int fd_io(unsigned int op,size_t drive,size_t block,char *buf) {
+/*
+ * Read/write block from floppy
+ *
+ * In:  op  		Operation (0=read,1=write)
+	drive		Drive	
+	buf		buffer
+ *
+ *  Returns: -1 on error, 0 on success
+ *
+ */
+
+size_t fd_io(size_t op,size_t drive,size_t block,char *buf) {
 BLOCKDEVICE blockdevice;
 BLOCKDEVICE *old;
-unsigned int count;
-unsigned int retrycount;
+size_t count;
+size_t retrycount;
 uint16_t cylinder;
 uint16_t temp;
 uint16_t head;
@@ -352,7 +414,7 @@ char *b;
 uint8_t floppytype;
 void *bootbuf;
 b=buf;
-unsigned int rv;
+size_t rv;
 
 
 /* if this is the first time the floppy drive has been used, there will
@@ -416,6 +478,14 @@ if(sector_io(op,(uint8_t) drive,head,cylinder,sector,512,b) == -1) return(-1);
 }
 
 
+/*
+ * IRQ 6 handler
+ *
+ * In:  nothing
+ *
+ *  Returns nothing
+ *
+ */
 
 void irq6_handler(void) {
 //#ifdef FLOPPY_DEBUG
@@ -425,6 +495,15 @@ void irq6_handler(void) {
  irq6done=TRUE;
  return;
 }
+
+/*
+ * Reset floppy controller
+ *
+ * In:  drive		Drive
+ *
+ *  Returns: nothing
+ *
+ */
 
 void reset_controller(size_t drive) {
 #ifdef FLOPPY_DEBUG
@@ -441,6 +520,15 @@ waitforirq6();	/* until ready */
   getstatus(drive);						/* get return values */
 }
 
+/*
+ *
+ *
+ * In:  drive	Drive
+ *
+ *  Returns: nothing
+ *
+ */
+
 void floppy_writecommand(size_t drive,uint8_t c) {
  if((inb(MAIN_STATUS_REG) & 0xc0) != 0x80) {	/* need to reset */
   reset_controller(drive);	
@@ -454,9 +542,9 @@ void floppy_writecommand(size_t drive,uint8_t c) {
 
 size_t floppy_init(char *init) {
 BLOCKDEVICE fdstruct;
-unsigned int floppycount=0;
+size_t floppycount=0;
 uint8_t ftype;
-unsigned int count;				 
+size_t count;				 
 
 floppybuf=dma_alloc(512);					/* allocate dma buffer */
 if(floppybuf == -1) {					/* can't alloc */
@@ -525,12 +613,30 @@ for(count=0;count<floppycount;count++) {
 setirqhandler(6,&irq6_handler);		/* set irq handler */
 }	
 
+/*
+ * Wait for IRQ6 to be called
+ 
+ * In: nothing
+ *
+ * Returns: nothing
+ *
+ */
+
 void waitforirq6(void) { 
 while(irq6done == FALSE) ;;
 
 return;	/* wait for interrupt */
  
 }
+
+/*
+ * Reset floppy controller
+ *
+ * In:  nothing
+ *
+ *  Returns: -1 on error, 0 on success
+ *
+ */
 
 size_t checkstatus(void) {
 uint8_t st[8];

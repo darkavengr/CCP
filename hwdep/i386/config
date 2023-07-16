@@ -25,6 +25,6 @@ CC_OPT_FILE=Include support for PAE paging?:hwdep/i386/paepage.c:hwdep/i386/page
 # directories to search for Makefile.in files
 # either specify a directory by itself or directory/* to search subdirs
 
-SEARCH=. modules/drivers/* modules/filesystems/* command hwdep/i386
+SEARCH=. modules/drivers/* modules/filesystems/* modules/binfmt/* command hwdep/i386
 
 

@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -18,89 +18,123 @@
 */
 
 #include <stdint.h>
+#include <stddef.h>
 #include "command.h"
 #include "../header/errors.h"
+#include "../processmanager/process.h"
 #include "../processmanager/mutex.h"
 #include "../devicemanager/device.h"
 #include "../filemanager/vfs.h"
 
-VARIABLES *vars=NULL;
-VARIABLES *lastvar=NULL;
-		
-/* set shell variable */
+	
+/*
+ * Set variable
+ *
+ * In: name	Variable name
+       val	Variable val
+ *
+ * Returns 0 on success or -1 on error
+ * 
+ */
+
 unsigned long setvar(char *name,char *val) {
- VARIABLES *next;
- VARIABLES *last;
+  char *varptr=getenv();
+  size_t diff;
+  char *b;
+  char *buffer[MAX_PATH];
 
+  while((size_t) *varptr != NULL) {
+   b=varptr;
 
- if(vars == NULL) {                  /* first */
-  vars=alloc(sizeof(VARIABLES));
-  if(vars == NULL) return(-1);
+  /* copy variable and val */
 
-  next=vars;
- }
- else
- {
-  next=vars;
-  last=vars; 
-
-   while(next != NULL) {				/* until end */
-    last=next; 
-
-     if(strcmp(next->name,name) == 0) {		/* found name */
-      strcpy(next->val,val);				/* copy value */
-      return(NO_ERROR);
-     }
- 
-     next=next->next;   
+   while(*varptr != 0) {
+    if(*varptr == '=') {		/* found end of name */
+     varptr++;
+     break;
     }
 
-   last->next=alloc(sizeof(VARIABLES));		/* add new link */
-   if(last->next == NULL) return(-1);				/* can't allocate */   
- 
-   next=last->next;
-  }
+    *b++=*varptr++;
+   }
 
-  strcpy(next->name,name);					/* create new variable */
-  strcpy(next->val,val);
-  next->next=NULL;
+   if(strcmpi(buffer,name) == 0) {	/* variable found */
+	if(strlen(varptr) == strlen(val)) { /* same size */
+	  strcpy(varptr,val);
+	  return(0);
+	}
+	else if(strlen(buffer) < strlen(val)) { /* smaller size */
+	   diff=(strlen(val)-strlen(buffer))+1;	/* get difference */
+		
+	   strcpy(varptr,val);
+	   varptr += strlen(varptr);		/* point to end */
+	   *varptr++=0;				/* put null at end */
+	
+	   memcpy(varptr,varptr+diff,ENVIROMENT_SIZE-diff);	/* copy back over gap */
+	   return(0);
+        }
+	else if(strlen(buffer) > strlen(val)) { /* larger size */     	 
+		/* copy forward */
+	   memcpy(varptr+strlen(val),varptr,ENVIROMENT_SIZE-strlen(val));
 
-  return(NO_ERROR);
-}
+ 	   strcpy(varptr,val);
+	   varptr += strlen(varptr);		/* point to end */
+	   *varptr++=0;				/* put null at end */
+	
+	   return(0);
+	}
+   }
 
-/* get shell variable
- */
-unsigned long getvar(char *name,char *buf) {
- VARIABLES *next=vars;
-
- while(next != NULL) {				/* until end */
-
-
-   if(strcmp(next->name,name) == 0) {		/* found name */
-    strcpy(buf,next->val);
-    return(0);
-  }
-
-
-
-  next=next->next;   
+  varptr += strlen(varptr);			/* point to next */
  }
 
-  return(-1);
-}
+/* add new variable */
+ strcpy(varptr,name);	/* name */
 
-unsigned long findvars(VARIABLES *buf) {
- if(lastvar == NULL) {
-  lastvar=vars;
- }
- else
- {
-  lastvar=lastvar->next;
- }
+ varptr += strlen(varptr);	/* point to end */
+ *varptr++='=';
+ strcpy(varptr,val);	/* val */
 
- if(lastvar == NULL) return(-1);
-
- memcpy(buf,lastvar,sizeof(VARIABLES));
  return(0);
+}
+
+/*
+ * Get variable
+ *
+ * In: name	Variable name
+       buf	buffer for val
+ *
+ * Returns 0 on success or -1 on error
+ * 
+ */
+
+unsigned long getvar(char *name,char *buf) {
+char *varptr=getenv();
+char *varname[MAX_PATH];
+char *nameptr;
+
+  while((size_t) *varptr != NULL) {
+
+ /* copy variable and val */
+
+  nameptr=varname;
+
+  while(*varptr != 0) {
+   if(*varptr == '=') {		/* found end of name */    
+    varptr++;
+    break;
+   }
+
+   *nameptr++=*varptr++;
+  }
+
+  if(strcmpi(varname,name) == 0) {	/* variable found */
+   strcpy(buf,varptr);
+   return(0);
+  }
+
+  varptr += strlen(varptr);			/* point to next */
+ }
+
+ return(-1);
 }
 

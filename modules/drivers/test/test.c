@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -19,6 +19,14 @@
 
 #define MODULE_INIT test_init
 
+/*
+ * Function name
+ *
+ * In: Parameters	Description
+ *
+ *  Returns: Return parameters
+ *
+ */
 int test_init(char *init)
 {
 return;

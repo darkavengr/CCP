@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -27,9 +27,22 @@
 
 extern end();
 
+/*
+ * High-level kernel initalization
+ *
+ * In: nothing
+ *
+ * Returns nothing
+ */
+
 void kernel(void) {
- if(exec("\\COMMAND.RUN","\\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run command interpreter */
-  kprintf("Missing or corrupt command interpreter, system halted (%d)",getlasterror());
+// char *buf[512];
+
+// ata_io_dma(0,0x80,0,buf);
+ if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run command interpreter */
+  asm("xchg %bx,%bx");
+
+  kprintf_direct("Missing or corrupt command interpreter, system halted (%d)",getlasterror());
   halt();
   while(1) ;;
  }

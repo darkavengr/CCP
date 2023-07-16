@@ -19,6 +19,10 @@
 ;
 ; Yield timeslice
 ;
+; [esp+4] pointer to register buffer
+;
+; returns: nothing
+;
 
 extern switch_task
 global yield
@@ -47,12 +51,11 @@ mov	eax,[esp+4]				; get eip
 mov	[saveeip],eax				; save it
 pop	eax
 
-sub	esp,4					; 
+sub	esp,4
 
 pushf
 push	cs
 push	dword [saveeip]
-
 pusha
 
 push	esp
@@ -61,7 +64,8 @@ call	switch_task				; switch to next task
 add	esp,4
 
 popa						; restore new registers
-sti
+
+;sti
 iret						; jump to cs:EIP
 
 saveeip dd 0

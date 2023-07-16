@@ -1,0 +1,6 @@
+name=ACPI driver
+description=ACPI driver. This enables power-management and shutdown functions.
+compile_opt=y
+
+
+

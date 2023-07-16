@@ -1,0 +1,6 @@
+name=elf32
+description=Adds support for 32-bit ELF executables
+compile_opt=m
+
+
+

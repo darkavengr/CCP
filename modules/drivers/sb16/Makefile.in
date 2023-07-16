@@ -3,6 +3,6 @@ CC=@cc@
 LD=@ld@
 FILES=sb16.c
 
-all:
+../../../obj/@arch@/sb16.o:
 	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
 

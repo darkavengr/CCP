@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "../../header/kernelhigh.h"
 #include "hwdefs.h"
 #include "../../filemanager/vfs.h"
 #include "../../processmanager/process.h"
@@ -39,7 +40,7 @@
 #define NO_COPROCESSOR	7
 #define DOUBLE_FAULT	8
 #define COPROCESSORSEGOVERRRUN 9
-#define	BAD_TSS		10
+#define	INVALID_TSS		10
 #define SEGMENT_NOTPRESENT 11
 #define STACK_FAULT	12
 #define GPF		14
@@ -48,7 +49,16 @@
 #define ALIGN_CHECK_EXCEPTION 17
 #define MACHINE_CHECK_EXCEPTION 18
 
-#define KERNEL_HIGH 1 << (sizeof(unsigned int)*8)-1
+/*
+ * x86 exception handler
+ *
+ * In: uint32_t *regs	Registers
+       uint32_t e	Error number
+       uint32_t dummy	Dummy value
+ *
+ * Returns nothing
+ * 
+ */
 
 extern void exception(uint32_t *regs,uint32_t e,uint32_t dummy);
 uint32_t tohex(uint32_t hex,char *buf);
@@ -61,23 +71,23 @@ char *exp[] = { "Division by zero exception","Debug exception","Non maskable int
 
 char *regnames[] = { "EIP=", "ESP=", "EAX=", "EBX=", "ECX=", "EDX=", "ESI=", "EDI=", "EBP=","" };
 
-char *flagsname[]= { "","O=", " D="," I="," T="," S="," Z=",""," A=",""," P=",""," C=","$" };
+char *flagsname[]= { "","Overflow", " Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
 
 extern void exception(uint32_t *regs,uint32_t e,uint32_t dummy) {
 uint32_t count;
-unsigned int handle;
 uint32_t flagsmask;
 char *b;
 char *processname[MAX_PATH];
+uint32_t shiftcount;
 
 if(regs[0] >= KERNEL_HIGH) {
- kprintf("Kernel panic [%s] at address %X\n",exp[e],regs[0]);
+ kprintf_direct("Kernel panic [%s] at address %X\n",exp[e],regs[0]);
 }
 else
 {
  getprocessfilename(processname);
  
- kprintf("%s at address %X in %s\n",exp[e],regs[0],processname);  /* exception */
+ kprintf_direct("%s at address %X in %s\n",exp[e],regs[0],processname);  /* exception */
 }
 
 count=0;
@@ -85,47 +95,42 @@ count=0;
 do {							/* dump registers */
  if(regnames[count] == "") break;
 
- kprintf("%s=%X\n",regnames[count],regs[count]);
+ kprintf_direct("%s=%X\n",regnames[count],regs[count]);
 
 } while(regs[count++] != "");
 
 
-flagsmask=2048;						/* mask to get flags */
+flagsmask=4096;						/* mask to get flags */
 count=0;
+shiftcount=12;
 
-while(flagsname[count] != "$") {			/* dump flags */
+/* dump flags */
 
- flagsmask=flagsmask >> 1;
- count++;
-
+do {
  if(flagsname[count] == "$") break;
 
- if(flagsname[count] == "") continue;			/* skip blank */
+ if(flagsname[count] != "") {
+  kprintf_direct("%s=%d ",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
+ }
 
-  kprintf(flagsname[count]);
-
-  if(((uint32_t) regs[10] & flagsmask) == flagsmask) {			/* regbuf[10] is flags */
-   kprintf("1");
-  }
-  else
-  {
-   kprintf("0");
-  }
-}
-
+ flagsmask=flagsmask >> 1;
+ shiftcount=shiftcount-1;
+ count++;
+} while(flagsname[count] != "$");
 
 if(regs[0] >= KERNEL_HIGH) {
-asm("xchg %bx,%bx");
-// kprintf("\nThe system will now shut down\n");
- 
-// shutdown(0);
+ kprintf_direct("\nThe system will now shut down\n");
+ shutdown(0);
 }
 else
 {
- kprintf("\n");
+ kprintf_direct("\n");
+
+ enable_interrupts();
+
  asm("xchg %bx,%bx");
- kill(getpid());
- kprintf("Process terminated\n");
+// kill(getpid());
+// kprintf_direct("Process terminated\n");
 }
 
 }

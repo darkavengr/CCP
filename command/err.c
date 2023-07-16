@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -26,34 +26,34 @@ char *errs[] = { "No error",\
 "Path not found",\
 "No handles",\
 "Access denied",\
-"Bad handle",\
+"Invalid handle",\
 "Reserved 1",\
-"No mem",\
+"Out of memory",\
 "Reserved 2",\
 "Reserved 3",\
-"Bad disk",\
+"Unknown drive format",\
 "Access error",\
-"Bad file",\
+"Invalid file",\
 "Reserved 4",\
 "Invalid drive",\
-"Directory has files",\
-"Rename across drive",\
+"Directory not empty",\
+"Can't rename across drives",\
 "End of directory",\
 "Write protect error",\
-"Bad device",\
-"Brive not ready",\
-"Bad CRC",\
-"File exists",\
-"Directory full",\
+"Invalid device",\
+"Drive not ready",\
+"Invalid CRC",\
+"File already exists",\
+"Directory is full",\
 "Disk full",\
-"Input past end",\
+"Input past end of file",\
 "Device I/O error",\
-"Bad file",\
-"Bad executable",\
+"Invalid file",\
+"Invalid executable",\
 "Device already exists",\
 "Invalid process",\
-"Bad device",\
-"Device in use",\
+"Invalid device",\
+"Device is in use",\
 "Invalid driver",\
 "Driver already loaded",\
 "No processes",\
@@ -65,7 +65,37 @@ char *errs[] = { "No error",\
 "File already open",\
 "General failure",\
 "Not a directory",\
-"Not implemented" };
+"Not implemented",\
+"File in use",\
+"Invalid executable format",\
+"Unknown filesystem" };
+
+char *errty[] = { "reading","writing" };
+char *nolabel = { "Missing label\n" };
+char *syntaxerror = { "Syntax error\n" };
+char *noparams = { "No parameters\n" };
+char *notbatchmode = { "Not in batch mode\n" };
+char *missingleftbracket = { "Missing (\n" };
+char *missingrightbracket = { "Missing )\n" };
+char *allfilesdeleted = { "All files will be deleted!\n" };
+char *badcommand = { "Bad command or filename\n" };
+char *overwrite = { "Overwrite %s (y/n)?" };
+char *filescopied = { "%d File(s) copied\n" };
+char *directoryof = { "Directory of %s\n\n" };
+char *filesdirectories = { "%d files(s) %d directories\n" };
+char *pidheader = { "PID   Parent     Filename        Arguments\n" };
+char *abortretryfail = { "\nAbort, Retry, Fail?" };
+char *commandbanner = { "Command version %d.%d\n" };
+char *areyousure = { "Are you sure (y/n)?" };
+char *terminatebatchjob = { "\nTerminate batch job (y/n)?" };
+
+/*
+ * Display error
+ *
+ * In:  nothing
+ *
+ * Returns nothing
+ */
 
 void writeerror(void) {
  unsigned long err=getlasterror();

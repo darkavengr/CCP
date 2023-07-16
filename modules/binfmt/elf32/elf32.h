@@ -1,0 +1,2 @@
+#define ELF32_MAGIC_SIZE 7
+

@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -24,8 +24,8 @@
 #define NULL 0
 #define GPT_BLOCK_SIZE 65536
 
-void partitions_init(size_t physdrive,unsigned int (*handler)(unsigned int,unsigned int,unsigned int,void *));
-unsigned int gpt_hd_init(size_t physdrive,unsigned int (*handler)(unsigned int,unsigned int,size_t,void *));
+void partitions_init(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *));
+size_t gpt_hd_init(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *));
 
 struct partitions { 
  uint8_t bootableflag;
@@ -40,11 +40,20 @@ struct partitions {
  uint32_t numberofsectors;
 };
 
-void partitions_init(size_t physdrive,unsigned int (*handler)(unsigned int,unsigned int,unsigned int,void *)) {
+/*
+ * Initialize partitions; add partitions as drives to block devices
+ *
+ * In: size_t physdrive								Physical drive
+       size_t (*handler)(size_t,size_t,size_t,void *)	I/O handler function to call to read blocks
+ *
+ * Returns 0
+ * 
+ */
+void partitions_init(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *)) {
 size_t partition_count;
-unsigned int head;
-unsigned int cyl;
-unsigned int sector;
+size_t head;
+size_t cyl;
+size_t sector;
 void *buf[512];
 void *bootbuf[512];
 BLOCKDEVICE hdstruct;
@@ -65,7 +74,7 @@ if(partition[partition_count].type == 0) continue;				/* empty entry */
 
 if(partition[partition_count].type == 0xee) {		 /* guid partition */
  gpt_hd_init(physdrive,handler);
- return;
+ return(0);
  }
 
 if(partition[partition_count].type == 0x5) {				/* extended partition */
@@ -144,8 +153,16 @@ if(partition[partition_count].type == 0x5) {				/* extended partition */
  return(0);	
 }
 
-
-unsigned int gpt_hd_init(size_t physdrive,unsigned int (*handler)(unsigned int,unsigned int,size_t,void *)) {
+/*
+ * Initialize GPT partitions; add partitions as drives to block devices
+ *
+ * In: size_t physdrive								Physical drive
+       size_t (*handler)(size_t,size_t,size_t,void *)	I/O handler function to call to read blocks
+ *
+ * Returns 0
+ * 
+ */
+size_t gpt_hd_init(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *)) {
  size_t partition_count;
  char *z[10];
  BLOCKDEVICE *next;

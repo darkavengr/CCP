@@ -1,0 +1,8 @@
+ASM=@asm@
+CC=@cc@
+LD=@ld@
+FILES=acpi.c
+
+../../../obj/@arch@/acpi.o:
+	$(CC) @cc_opts@ $(FILES) -o ../../../obj/@arch@/acpi.o
+

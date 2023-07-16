@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020
+    (C) Matthew Boote 2020-2023
 
     This file is part of CCP.
 
@@ -19,11 +19,29 @@
 
 #include <stdint.h>
 
+/*
+ * Write byte to port
+ *
+ * In: uint16_t port		Port to write to
+       uint8_t val		Byte to write
+
+ * Returns nothing
+ * 
+ */
 void outb(uint16_t port,uint8_t val) {
  asm volatile("outb %0,%1":: "a"(val),"d"(port));
  return;
 }
 
+
+/*
+ * Read byte from port
+ *
+ * In: uint16_t port		Port to read from
+ *
+ * Returns byte value read from port
+ * 
+ */
 uint8_t inb(uint16_t port) {
 uint8_t val;
 
@@ -31,11 +49,28 @@ uint8_t val;
  return(val);
 }
 
+/*
+ * Write word to port
+ *
+ * In: uint16_t port		Port to write to
+       uint16_t val		Word to write
+
+ * Returns nothing
+ * 
+ */
 void outw(uint16_t port,uint16_t val) {
  asm volatile("outw %0,%1":: "a"(val),"d"(port));
  return;
 }
 
+/*
+ * Read word from port
+ *
+ * In: uint16_t port		Port to read from
+ *
+ * Returns word value read from port
+ * 
+ */
 uint16_t inw(uint16_t port) {
  uint16_t val;
 
@@ -43,11 +78,28 @@ uint16_t inw(uint16_t port) {
  return(val);
  }
 
+/*
+ * Write dword to port
+ *
+ * In: uint32_t port		Port to write to
+       uint32_t val		Dword to write
+
+ * Returns nothing
+ * 
+ */
 void outd(uint16_t port,uint32_t val) {
  asm volatile("out %0,%1":: "a"(val),"d"(port));
  return;
 }
 
+/*
+ * Read dword from port
+ *
+ * In: uint16_t port		Port to read from
+ *
+ * Returns dword value read from port
+ * 
+ */
 uint32_t ind(uint16_t port) {
  uint32_t val;
 

@@ -1,28 +1,22 @@
 #define MAX_PATH	255
-#define COMMAND_PERMENANT 1
-#define COMMAND_STEP	  2
-
-#define COPY_OVERWRITE	1
-#define COPY_ASCII	2
-#define COPY_BINARY	4
-
-#define DELETE_PROMPT	1
-
-#define DIR_PAUSE	1
-#define DIR_WIDE	2
-#define DIR_ORDER	4
-#define DIR_SUBDIR	8
-#define DIR_BARE	16
-#define DIR_LOWER	32
-#define DIR_ATTRIBS	64
 
 #define	DIR_COUNT	10
 
+#define RUN_FOREGROUND	0
+#define RUN_BACKGROUND	1
+
+
 #define MAX_READ_SIZE	512
 
-typedef struct {
- char *name[MAX_PATH];
- char *val[MAX_PATH];
- struct VARIABLES *next;
-} VARIABLES;
+#define COMMAND_TOKEN_COUNT 		20
+
+#define RUN_COMMAND_AND_EXIT		1
+#define RUN_COMMAND_AND_CONTINUE	2
+#define COMMAND_PERMENANT		4
+#define COMMAND_STEPTHROUGH		8
+
+#define COMMAND_VERSION_MAJOR		1
+#define COMMAND_VERSION_MINOR		0
+
+#define TERMINATING 			2
 
