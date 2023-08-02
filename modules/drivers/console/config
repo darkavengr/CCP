@@ -1,6 +1,7 @@
 name=screen
-description=The screen driver, you must compile this in.
+description=The screen driver.
 compile_opt=y
+compile_external_module=n
 
 
 

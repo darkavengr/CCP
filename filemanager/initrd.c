@@ -29,7 +29,7 @@
 size_t initrd_findfirst(char *filename,FILERECORD *buf);
 size_t initrd_findnext(char *filename,FILERECORD *buf);
 size_t initrd_find(size_t op,char *filename,FILERECORD *buf);
-initrd_read(int ignore,size_t size,void *buf);
+size_t initrd_read(size_t handle,void *buf,size_t size);
 size_t initrd_init(void);
 size_t initrd_io(size_t op,size_t drive,size_t block,char *buf);
 
@@ -87,10 +87,15 @@ memset(buf,0,sizeof(FILERECORD));
 strcpy(buf->filename,tarptr->name);	/* copy information */
 
 buf->filesize=atoi(tarptr->size,8);
-buf->drive='Z';
+buf->drive=25;
+
+buf->startblock=(size_t) tarptr;
+buf->startblock -= (boot_info->initrd_start+KERNEL_HIGH);
+buf->startblock += 512;
+buf-> startblock /= TAR_BLOCK_SIZE;
 
 ptr=tarptr;
-ptr += ((buf->filesize / 512) + 1) * 512;
+ptr += ((buf->filesize / TAR_BLOCK_SIZE) + 1) * TAR_BLOCK_SIZE;
 
 if(buf->filesize % TAR_BLOCK_SIZE) ptr += TAR_BLOCK_SIZE;
 
@@ -108,15 +113,74 @@ tarptr=ptr;
  *
  */
 
-initrd_read(int ignore,size_t size,void *buf) {
-void *dataptr;
+size_t initrd_read(size_t handle,void *buf,size_t size) {
+FILERECORD onext;
+char *dataptr;
+BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
-size=atoi(tarptr->size,8);	/* get size */
-dataptr=tarptr+sizeof(TAR_HEADER);	/* data follows header */
+if(gethandle(handle,&onext) == -1) {	/* bad handle */
+ setlasterror(INVALID_HANDLE);
+ return(-1);
+}
 
-memcpy(buf,dataptr,size);
+//if((onext.currentpos+size) > (boot_info->initrd_start+boot_info->initrd_size)) {	/* reading past end of file */
+// setlasterror(INPUT_PAST_END);
+// return(-1);
+//}
+
+dataptr=boot_info->initrd_start+KERNEL_HIGH;		/* point to start */
+
+
+dataptr += (onext.startblock*TAR_BLOCK_SIZE);
+dataptr += onext.currentpos;				/* point to current position */
+
+memcpy(buf,dataptr,size);				/* copy data */
+
+onext.currentpos += size;				/* point to next data */
+
+updatehandle(handle,&onext);				/* update file information */
 
 return(size);
+}
+
+size_t initrd_seek(size_t handle,size_t pos,size_t whence) {
+size_t count=0;
+size_t sb;
+size_t posp;
+FILERECORD onext;
+SPLITBUF splitbuf;
+
+if(gethandle(handle,&onext) == -1) {	/* bad handle */
+ setlasterror(INVALID_HANDLE);
+ return(-1);
+}
+
+switch(whence) {
+
+ case SEEK_SET:				/*set current position */
+   onext.currentpos=pos;
+   break;
+
+  case SEEK_END:
+   onext.currentpos=onext.filesize+pos;	/* end+pos */
+   break;
+
+  case SEEK_CUR:				/* current location+pos */
+   onext.currentpos=onext.currentpos+pos;
+   break;
+  }
+
+setlasterror(NO_ERROR);
+updatehandle(handle,&onext);		/* update */
+return(onext.currentpos);
+}
+
+uint64_t initrd_getstartblock(char *filename) {
+FILERECORD find;
+
+findfirst(filename,&find);
+
+return(find.startblock);
 }
 
 /*
@@ -166,10 +230,8 @@ fs.create=NULL;
 fs.chmod=NULL;
 fs.setfiletd=NULL;
 fs.write=NULL;
-fs.write=NULL;
-fs.getstartblock=NULL;
-fs.getnextblock=NULL;
-fs.seek=NULL;
+fs.getstartblock=&initrd_getstartblock;
+fs.seek=&initrd_seek;
 
 register_filesystem(&fs);
 }
@@ -188,12 +250,13 @@ size_t initrd_io(size_t op,size_t drive,size_t block,char *buf) {
  BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
  char *tptr;
 
- if((block*512) > boot_info->initrd_size) {			/* out of range */
+ if((block*TAR_BLOCK_SIZE) > boot_info->initrd_size) {			/* out of range */
   setlasterror(INVALID_BLOCK);
   return(-1);
  }
 
  tptr=boot_info->initrd_start;
+ tptr += (block*TAR_BLOCK_SIZE);
  tptr += KERNEL_HIGH;
 
  memcpy(buf,tptr,TAR_BLOCK_SIZE);		/* copy data */
@@ -201,3 +264,23 @@ size_t initrd_io(size_t op,size_t drive,size_t block,char *buf) {
  setlasterror(NO_ERROR);
  return(0);
 }
+
+size_t load_modules_from_initrd(void) {
+FILERECORD findmodule;
+char *filename[MAX_PATH];
+
+/* loop through modules in initrd and load them */
+
+findfirst("Z:\\*.o",&findmodule);
+
+do {
+ ksprintf(filename,"Z:\\%s",findmodule.filename);
+
+ if(load_kernel_module(filename,NULL) == -1) {	/* load module */
+  kprintf_direct("Error loading kernel module %s from initrd\n",filename);
+ }
+
+} while(findnext("Z:\\*.o",&findmodule) != -1);
+
+}
+

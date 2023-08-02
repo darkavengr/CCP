@@ -1,6 +1,8 @@
 name=atapi
 description=ATAPI driver. Support for ATAPI devices; CD and DVD drives.
 compile_opt=m
+compile_external_module=y
+
 
 
 

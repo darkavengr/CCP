@@ -1,6 +1,7 @@
 name=Speaker driver
 description=Enables speaker output
 compile_opt=m
+compile_external_module=y
 
 
 

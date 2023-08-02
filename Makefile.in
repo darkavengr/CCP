@@ -1,7 +1,7 @@
 ASM=@asm@
 CC=@cc@
 LD=@cc@
-FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c header/string.c header/bootinfo.c @cc_opt_files@
+FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c processmanager/module.c header/string.c header/bootinfo.c @cc_opt_files@
 
 #
 # Recipe to make everything
@@ -71,6 +71,9 @@ obj/@arch@/process.o:
 
 obj/@arch@/multitasking.o:
 	$(CC) -c -w processmanager/multitasking.c
+
+obj/@arch@/module.o:
+	$(CC) -c -w processmanager/module.c
 
 obj/@arch@/string.o:
 	$(CC) -c -w header/string.c

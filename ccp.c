@@ -25,8 +25,6 @@
 #include <stdint.h>
 #include "header/errors.h"
 
-extern end();
-
 /*
  * High-level kernel initalization
  *
@@ -36,12 +34,7 @@ extern end();
  */
 
 void kernel(void) {
-// char *buf[512];
-
-// ata_io_dma(0,0x80,0,buf);
  if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run command interpreter */
-  asm("xchg %bx,%bx");
-
   kprintf_direct("Missing or corrupt command interpreter, system halted (%d)",getlasterror());
   halt();
   while(1) ;;

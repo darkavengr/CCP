@@ -199,7 +199,7 @@ handle++;
   strcpy(next->filename,blockdevice.dname);
 
   next->findblock=0;
-  next->currentblock=0;
+  next->currentblock=getstartblock(next->filename);
   next->currentpos=0;
   next->owner_process=getpid();
   next->blockio=blockdevice.blockio;
@@ -310,6 +310,8 @@ handle++;
  memset(next,0,sizeof(FILERECORD));
  memcpy(next,&dirent,sizeof(FILERECORD));  /* copy data */
 
+// strcpy(next->filename,fullname);	/* copy full filename */
+
  next->currentpos=0;			/* set position to start of file */
  next->currentblock=getstartblock(fullname);		/* get start block */
  next->access=access;			/* access mode */
@@ -317,8 +319,8 @@ handle++;
  next->handle=handle;			/* file handle */
  next->owner_process=getpid();		/* owner process */
  next->next=NULL;
+ 
  setlasterror(NO_ERROR);
-
  unlock_mutex(&vfs_mutex);
  return(handle);					/* return handle */
 } 
@@ -1401,6 +1403,11 @@ if(detect_filesystem(splitbuf.drive,&fs) == -1) {
  return(-1);
 }
 
+if(fs.getstartblock == NULL) {			/* not implemented */
+ setlasterror(NOT_IMPLEMENTED);
+ return(-1);
+}
+
 return(fs.getstartblock(name));
 }
 
@@ -1518,6 +1525,7 @@ size_t splitname(char *name,SPLITBUF *splitbuf) {
   splitbuf->drive=drive-'A';
  return;
 } 
+ 
 
 /*
  * Update file information using handle

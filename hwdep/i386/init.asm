@@ -706,7 +706,7 @@ out	dx,al
 call	init_multitasking
 
 call	driver_init				; initialize drivers and filesystems
-call	initrd_init
+;call	initrd_init
 
 ; intialize tss
 

@@ -1,4 +1,5 @@
 name=floppy
 description=Floppy driver. Provides access to floppy drives
-compile_opt=y
+compile_opt=m
+compile_external_module=y
 

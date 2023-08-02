@@ -1,7 +1,7 @@
 name=pci
 description=PCI driver
 compile_opt=y
-
+compile_external_module=n
 
 
 

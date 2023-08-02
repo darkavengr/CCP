@@ -27,7 +27,7 @@
 
 #define ATA_DEBUG 1
 
-#define MODULE_INIT ata_init
+//#define MODULE_INIT ata_init
 
 prdt_struct *prdt;
 
@@ -37,11 +37,68 @@ size_t ata_ident(size_t physdrive,ATA_IDENTIFY *buf);
 size_t ata_io_dma(size_t op,size_t physdrive,size_t block,uint16_t *buf);
 size_t irq14_handler(void);
 size_t irq15_handler(void);
-void ata_init(char *init);
+size_t ata_init(char *initstring);
 
 char *hddmastruct;
 size_t ata_irq14done=FALSE;
 size_t ata_irq15done=FALSE;
+
+/*
+ * Initialize ATA
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
+size_t ata_init(char *initstring) {
+ATA_IDENTIFY ident;
+size_t physdiskcount;
+prdt_struct *prdtptr;
+size_t p;
+
+prdt=dma_alloc(sizeof(prdt_struct));	/* allocate dma buffer */
+if(prdt == -1) {
+ kprintf_direct("\nhd: Error allocating memory for hd initialization\n");
+ return(-1);
+}
+
+p=prdt;
+p += KERNEL_HIGH;
+prdtptr=p;
+
+prdtptr->address=dma_alloc(ATA_DMA_BUFFER_SIZE);	/* allocate dma buffer */
+
+if(prdtptr->address == -1) {
+ kprintf_direct("\nhd: Error allocating memory for hd initialization\n");
+ return(-1);
+}
+
+
+ /* Add hard disk partitions */
+
+ for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk */
+
+  if(ata_ident(physdiskcount,&ident) == 0) {	/* get ata identify */
+
+   if(scan_partitions(physdiskcount,&ata_io) == -1) {	/* can't initalize partitions */
+    kprintf_direct("Unable to intialize partitions for drive %X\n",physdiskcount);
+    continue;
+   }
+  
+   if((physdiskcount == 0x80) || (physdiskcount == 0x81)) {
+	setirqhandler(14,&irq14_handler);		/* set irq handler for master */
+   }
+   else
+   {
+        setirqhandler(15,&irq15_handler);		/* set irq handler for slave */
+   }
+
+  }
+ }
+
+ return;	
+}
 
 /*
  * ATA I/O function
@@ -340,62 +397,6 @@ size_t ata_ident(size_t physdrive,ATA_IDENTIFY *buf) {
  return(NO_ERROR);
 }
 
-/*
- * Initialize Soundblaster 16
- *
- * In:  char *init	Initialization string
- *
- * Returns: nothing
- *
- */
-void ata_init(char *init) {
-ATA_IDENTIFY ident;
-size_t physdiskcount;
-prdt_struct *prdtptr;
-size_t p;
-
-prdt=dma_alloc(sizeof(prdt_struct));	/* allocate dma buffer */
-if(prdt == -1) {
- kprintf_direct("\nhd: Error allocating memory for hd initialization\n");
- return(-1);
-}
-
-p=prdt;
-p += KERNEL_HIGH;
-prdtptr=p;
-
-prdtptr->address=dma_alloc(ATA_DMA_BUFFER_SIZE);	/* allocate dma buffer */
-
-if(prdtptr->address == -1) {
- kprintf_direct("\nhd: Error allocating memory for hd initialization\n");
- return(-1);
-}
-
-
- /* Add hard disk partitions */
-
- for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk */
-
-  if(ata_ident(physdiskcount,&ident) == 0) {	/* get ata identify */
-
-   if(partitions_init(physdiskcount,&ata_io) == -1) {	/* can't initalize partitions */
-    kprintf_direct("Unable to intialize partitions for drive %X\n",physdiskcount);
-    continue;
-   }
-  
-   if((physdiskcount == 0x80) || (physdiskcount == 0x81)) {
-	setirqhandler(14,&irq14_handler);		/* set irq handler for master */
-   }
-   else
-   {
-        setirqhandler(15,&irq15_handler);		/* set irq handler for slave */
-   }
-
-  }
- }
-
- return;	
-}
 
 /*
  * ATA I/O function using DMA

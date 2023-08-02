@@ -119,6 +119,7 @@ do {
 } while(flagsname[count] != "$");
 
 if(regs[0] >= KERNEL_HIGH) {
+ asm("xchg %bx,%bx");
  kprintf_direct("\nThe system will now shut down\n");
  shutdown(0);
 }

@@ -1,6 +1,5 @@
 name=soundblaster16
 description=Soundblaster 16 driver. Install this for soundblaster sound cards.
 compile_opt=m
-
-
+compile_external_module=y
 

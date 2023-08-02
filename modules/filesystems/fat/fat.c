@@ -281,6 +281,7 @@ while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1
     buf->attribs=dirent.attribs;
 
     buf->filesize=dirent.filesize;
+
     buf->startblock=(dirent.block_high_word << 16)+(dirent.block_low_word);
     buf->drive=splitbuf->drive;
     buf->dirent=buf->findentry-1;
@@ -3190,7 +3191,6 @@ fatfilesystem.create=&fat_create;
 fatfilesystem.chmod=&fat_chmod;
 fatfilesystem.setfiletd=&fat_setfiletimedate;
 fatfilesystem.getstartblock=&fat_getstartblock;
-fatfilesystem.getnextblock=&fat_getnextblock;
 fatfilesystem.seek=&fat_seek;
 
 register_filesystem(&fatfilesystem);

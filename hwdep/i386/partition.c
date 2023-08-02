@@ -49,7 +49,7 @@ struct partitions {
  * Returns 0
  * 
  */
-void partitions_init(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *)) {
+void scan_partitions(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *)) {
 size_t partition_count;
 size_t head;
 size_t cyl;

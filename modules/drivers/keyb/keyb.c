@@ -25,6 +25,7 @@
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
 #include "../../../processmanager/signal.h"
+#include "../../../header/bootinfo.h"
 #include "keyb.h"
 
 #define MODULE_INIT keyb_init
@@ -67,31 +68,32 @@ char *keylast=keybbuf;
  *
  */
 void readconsole(char *buf,size_t size) {
- keybuf=keybbuf; 						/* point to start of buffer */
- readcount=0;
+keybuf=keybbuf; 						/* point to start of buffer */
+readcount=0;
+BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
- while(readcount < size) {
+while(readcount < size) {
 
 /* if backspace, delete character */
   
-  if(*keybuf == 0x8) {
+ if(*keybuf == 0x8) {
    
 /* overwrite character on screen */
 
-   if(get_cursor_col() > 0) {
-	   movecursor(get_cursor_row(),get_cursor_col()-1);
+   if(bootinfo->cursor_col > 0) {
+	   bootinfo->cursor_col--;
 	   outputconsole(" ",1);
-	   movecursor(get_cursor_row(),get_cursor_col()-1);	
-   }
-
-   return;
+	   bootinfo->cursor_col--;
   }
- }      
 
- memcpy(buf,keybbuf,size);				
- readcount=0;
+  return;
+ }
+}      
+
+memcpy(buf,keybbuf,size);				
+readcount=0;
  
- return;
+return;
 }
 
 /*
@@ -107,6 +109,7 @@ size_t readkey(void) {
 uint8_t keycode;
 char c;
 size_t row,col;
+BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
 if((inb(0x64) & 1) == 0) return;					/* not ready */
 
@@ -144,12 +147,13 @@ switch(keycode) {								/* control characters */
   return;
 
  case KEY_HOME_7:							/* move cursor to start of line */  
-  movecursor(0,get_cursor_col());
+  bootinfo->cursor_row=0;
   return;
 
  case KEY_END1:								/* move cursor to end of line */
   col=strlen(keybbuf);
-  movecursor(25,get_cursor_col());
+
+  bootinfo->cursor_row=25;
   return;
 
  case LEFT_SHIFT:

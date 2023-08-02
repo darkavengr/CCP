@@ -1,4 +1,5 @@
 name=serial
 description=Serial port driver.
-compile_opt=y
+compile_opt=m
+compile_external_module=y
 

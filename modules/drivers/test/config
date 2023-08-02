@@ -1,6 +1,7 @@
 name=test driver
 description=Test driver
 compile_opt=m
+compile_external_module=y
 
 
 

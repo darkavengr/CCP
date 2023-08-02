@@ -1,0 +1,15 @@
+#!/bin/bash
+
+export drivers_list=""
+
+directory=$1
+
+shift 1
+
+for f in $*; do
+ drivers_list="$drivers_list $directory/`basename $f`.o"
+done
+
+echo $drivers_list
+tar -cf bin/i386/INITRD.SYS $drivers_list
+

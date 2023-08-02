@@ -52,7 +52,6 @@ typedef struct {
  size_t (*getfiletd)(char *);
  size_t (*setfiletd)(char *,size_t,size_t);
  size_t (*getstartblock)(char *);
- size_t (*getnextblock)(size_t);
  size_t (*seek)(size_t,size_t,size_t);
  struct FILESYSTEM *next;
 } FILESYSTEM;
