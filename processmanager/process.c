@@ -30,6 +30,8 @@
 #include "signal.h"
 #include "../header/bootinfo.h"
 
+extern initializestack(void *ptr,size_t size);
+
 size_t exec(char *filename,char *argsx,size_t flags);
 size_t kill(size_t process);
 size_t exit(size_t val);

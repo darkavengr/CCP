@@ -1,0 +1,71 @@
+global initialize_tss
+global set_tss_esp0
+
+extern set_gdt
+
+%define offset
+%include "init.inc"
+%include "kernelselectors.inc"
+
+TSS_GDT_ENTRY equ 5
+
+; intialize tss
+
+set_tss_esp0:
+mov	eax,[esp+4]					; get address
+mov	[tss_esp0],eax
+ret
+
+initialize_tss:
+;xchg	bx,bx
+push	dword 0						; granularity
+push	dword 0xE9					; access
+push	(offset end_tss-offset tss)+offset tss		; limit
+push	offset tss					; base
+push	dword TSS_GDT_ENTRY				; gdt entry
+call	set_gdt
+add	esp,20
+
+mov	eax,KERNEL_DATA_SELECTOR			; kernel selector
+mov	[reg_es],eax
+mov	[reg_ss],eax
+mov	[reg_ds],eax
+mov	[reg_fs],eax
+mov	[reg_gs],eax
+mov	[reg_cs],eax
+mov	[tss_ss0],eax
+
+mov	ax,TSS_SELECTOR + 3				; load tss for interrupt calls from ring 3
+ltr	ax
+ret
+
+
+tss:
+prev dd 0
+tss_esp0 dd 0
+tss_ss0 dd 0
+tss_esp1 dd 0
+tss_ss1 dd 0 
+tss_esp2 dd 0
+tss_ss2 dd 0 
+tss_cr3 dd 0
+tss_eip dd 0
+tss_eflags dd 0
+reg_eax dd 0
+reg_ebx dd 0
+reg_ecx dd 0
+reg_edx dd 0
+reg_esp dd 0
+reg_ebp dd 0
+reg_esi dd 0
+reg_edi dd 0
+reg_es dd 0 
+reg_cs dd 0 
+reg_ss dd 0 
+reg_ds dd 0 
+reg_fs dd 0 
+reg_gs dd 0 
+reg_ldt dd 0
+tss_trap dw 0					
+tss_iomap_base dw 0
+end_tss:

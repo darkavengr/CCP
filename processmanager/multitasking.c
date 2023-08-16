@@ -107,7 +107,7 @@ PROCESS *find_next_process_to_switch_to(void) {
 size_t is_process_ready_to_switch(void) { 
  if(currentprocess == NULL) return(FALSE);
 
- if(++currentprocess->ticks < currentprocess->maxticks) return(FALSE);
+ if(++currentprocess->ticks <= currentprocess->maxticks) return(FALSE);
 
  return(TRUE);
 }

@@ -1,3 +1,8 @@
 #!/bin/bash
-nm -n $1 | grep " T " | awk '{ print $1" "$3 }' > $1.sym
+export basename=`basename bin/i386/CCP.SYS`
+export basename=`echo $basename  | cut -d . -f1`.sym
+
+export outname=`echo $basename | tr [:upper:] [:lower:]`
+
+nm -n $1 | grep " T " | awk '{ print $1" "$3 }' > $outname
 

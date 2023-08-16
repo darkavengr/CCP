@@ -516,11 +516,6 @@ mov	[BOOT_INFO_INITRD_SIZE],ecx
 call	loadfile
 
 noinitrd:
-mov	ax,10h
-mov	ds,ax
-mov	es,ax
-mov	ss,ax
-
 mov	ah,3h					; get cursor
 xor	bh,bh
 int	10h
@@ -531,6 +526,11 @@ call	detect_memory				; get memory size
 
 mov	[BOOT_INFO_MEMORY_SIZE],eax
 mov	[BOOT_INFO_MEMORY_SIZE+4],edx
+
+mov	ax,10h
+mov	ds,ax
+mov	es,ax
+mov	ss,ax
 
 db	67h
 jmp	0ffffh:10h					; jump to kernel

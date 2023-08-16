@@ -35,35 +35,16 @@ extern getpid
 extern loadpagetable						; load page tables
 extern get_kernel_stack_pointer
 extern update_current_process_pointer
-extern tss_esp0
+extern set_tss_esp0
 extern find_next_process_to_switch_to
 extern is_process_ready_to_switch
 extern reset_process_ticks
+extern increment_tick_count
 
 switch_task:
-mov	eax,esp
+ret
 
-push	eax
-call	save_kernel_stack_pointer
-add	esp,4
-
-;call	increment_tick_count
-
-call	is_multitasking_enabled			
-test	eax,eax 				; return if multitasking is disabled
-jnz	multitasking_enabled
-
-jmp	end_switch
-
-multitasking_enabled:
-call	is_process_ready_to_switch
-test	eax,eax
-jnz	not_finished
-
-jmp	end_switch
-
-not_finished:
-call	reset_process_ticks
+mov	[save_esp],esp
 
 call	getpid
 
@@ -72,6 +53,31 @@ jne	not_debug
 
 xchg	bx,bx
 not_debug:
+
+push	dword [save_esp]
+call	save_kernel_stack_pointer
+add	esp,4
+
+call	increment_tick_count
+
+call	is_multitasking_enabled			
+test	eax,eax 				; return if multitasking is disabled
+jnz	multitasking_enabled
+
+jmp	end_switch
+
+multitasking_enabled:
+inc	byte [0x800b8001]
+
+call	is_process_ready_to_switch
+test	eax,eax					; if process not ready to switch, return
+jnz	not_finished
+
+jmp	end_switch
+
+not_finished:
+call	reset_process_ticks
+
 call	find_next_process_to_switch_to			; pointer to next process to switch to
 
 push	eax						; switch to process
@@ -92,8 +98,10 @@ mov	esp,eax
 ; Patch ESP0 in TSS. The scheduler will use the correct kernel stack on the next task switch
 
 end_switch:
-mov	[tss_esp0],esp
+push	esp
+call	set_tss_esp0
+add	esp,4
 ret
 
-;regsptr dd 0
+save_esp dd 0
 
