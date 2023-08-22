@@ -93,6 +93,18 @@ jmp	irq
 irq:
 pusha						; save registers
 
+push	ds
+push	es
+push	ss
+push	fs
+push	gs
+
+mov	ax,0x10
+mov	ds,ax
+mov	es,ax
+mov	fs,ax
+mov	gs,ax
+
 mov	edx,[irqnumber]
 mov	eax,4
 mul	edx
@@ -120,6 +132,12 @@ mov	al,20h				          ; reset slave
 out	0a0h,al
 
 nslave:
+pop	gs
+pop	fs
+pop	ss
+pop	es
+pop	ds
+	
 popa					; restore registers
 iret			; return
 

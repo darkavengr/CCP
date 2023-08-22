@@ -96,7 +96,7 @@ size_t *stackinit;
 char *fullpath[MAX_PATH];
 
 /* disable task switching without disabling interrupts -
-   interrupts need to be enabled for device/io */
+   interrupts need to be enabled for device I/O */
 
 disablemultitasking();
 enable_interrupts();
@@ -185,6 +185,7 @@ if(next->kernelstackbase == NULL) {
 }
 
 next->kernelstackpointer=next->kernelstackbase+PROCESS_STACK_SIZE;
+next->kernelstacktop=next->kernelstackbase+PROCESS_STACK_SIZE;
 
 /* Enviroment variables are inherited
  * Part one of enviroment variables duplication
@@ -227,18 +228,18 @@ if(stackp == NULL) {
 }
 
 stackinit=next->kernelstackpointer;
-*stackinit--=entrypoint;
-*stackinit--=0x8;
-*stackinit--=0x200;
-*stackinit=next->kernelstackpointer;
-*stackinit=0;
-*stackinit=0;
-*stackinit=0;
-*stackinit=0;
-*stackinit=next->kernelstackpointer;
-*stackinit=0;
-*stackinit=0;
-*stackinit=0;
+*--stackinit=entrypoint;
+*--stackinit=0x8;
+*--stackinit=0x200;
+*--stackinit=next->kernelstackpointer;
+*--stackinit=0xABCD1234;
+*--stackinit=0;
+*--stackinit=0;
+*--stackinit=0;
+*--stackinit=next->kernelstackpointer;
+*--stackinit=0;
+*--stackinit=0;
+*--stackinit=0;
 
 next->stackbase=stackp;
 next->stackpointer=stackp+PROCESS_STACK_SIZE;
@@ -249,21 +250,6 @@ if(getpid() != 0) {
  dup_internal(stdout,getppid());
  dup_internal(stderr,getppid());
 }
-
-/* intialize process registers */
-
-next->regs[0]=0;						/* EDI */
-next->regs[1]=0;						/* ESI */
-next->regs[2]=next->stackbase;					/* EBP */
-next->regs[3]=next->stackpointer;				/* original ESP */
-next->regs[4]=0;						/* EBX */
-next->regs[5]=0;						/* EDX */
-next->regs[6]=0;							/* ECX */
-next->regs[7]=0;						/* EAX */
-next->regs[8]=entrypoint;					/* EIP */
-next->regs[9]=0x8;						/* CS */
-next->regs[10]=0x200;						/* eflags */
-next->regs[11]=next->stackpointer;				/* ESP */
 
 entrypoint=load_executable(tempfilename);			/* load executable */
 if(entrypoint == -1) {
@@ -1166,6 +1152,11 @@ size_t get_kernel_stack_pointer(void) {
  return(currentprocess->kernelstackpointer);
 }
 
+size_t get_kernel_stack_top(void) {
+ if(currentprocess == NULL) return(0);
+
+ return(currentprocess->kernelstacktop);
+}
 
 PROCESS *update_current_process_pointer(PROCESS *ptr) {
  currentprocess=ptr;

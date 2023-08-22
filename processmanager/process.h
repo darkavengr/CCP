@@ -9,7 +9,7 @@
 #define _SHUTDOWN	 		0
 #define _RESET				1
 #define PROCESS_STACK_SIZE 65536
-#define DEFAULT_QUANTUM_COUNT 1000
+#define DEFAULT_QUANTUM_COUNT 100
 
 #define SHUTDOWN_WAIT 10
 #define SIGNAL_COUNT 256
@@ -23,7 +23,6 @@ extern tss_esp0;
 
 
 typedef struct { 
- size_t regs[MAX_REGS];		// not same size as hardware-dependent number of registers!
  size_t pid;
  size_t ticks;	
  size_t maxticks;
@@ -39,6 +38,7 @@ typedef struct {
  size_t writeconsolehandle;	
  size_t readconsolehandle;	
  size_t kernelstackpointer;
+ size_t kernelstacktop;
  size_t kernelstackbase;
  size_t stackpointer;
  size_t stackbase;

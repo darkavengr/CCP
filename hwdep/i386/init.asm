@@ -121,6 +121,7 @@ inc	esi
 test	al,al					; loop until end
 jnz	next_banner_char
 
+inc	dword [BOOT_INFO_CURSOR_ROW]
 jmp	short	over_msg
 
 starting_ccp db 10,13,10,13,"Starting CCP...",10,13,0

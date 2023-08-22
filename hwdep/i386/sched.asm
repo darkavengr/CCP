@@ -40,23 +40,10 @@ extern find_next_process_to_switch_to
 extern is_process_ready_to_switch
 extern reset_process_ticks
 extern increment_tick_count
+extern get_kernel_stack_top
 
 switch_task:
-ret
-
 mov	[save_esp],esp
-
-call	getpid
-
-cmp	eax,1
-jne	not_debug
-
-xchg	bx,bx
-not_debug:
-
-push	dword [save_esp]
-call	save_kernel_stack_pointer
-add	esp,4
 
 call	increment_tick_count
 
@@ -71,16 +58,30 @@ inc	byte [0x800b8001]
 
 call	is_process_ready_to_switch
 test	eax,eax					; if process not ready to switch, return
-jnz	not_finished
+jnz	task_time_slice_finished
 
 jmp	end_switch
 
-not_finished:
+task_time_slice_finished:
+mov	eax,[save_esp]
+
+push	eax
+call	save_kernel_stack_pointer
+add	esp,4
+
 call	reset_process_ticks
 
+call	getpid
+
+cmp	eax,1
+jne	not_debug
+
+xchg	bx,bx
+
+not_debug:
 call	find_next_process_to_switch_to			; pointer to next process to switch to
 
-push	eax						; switch to process
+push	eax						; update current process pointer
 call	update_current_process_pointer
 add	esp,4
 
@@ -95,13 +96,16 @@ add	esp,4
 call	get_kernel_stack_pointer
 mov	esp,eax
 
-; Patch ESP0 in TSS. The scheduler will use the correct kernel stack on the next task switch
+; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
+call	get_kernel_stack_top
 
-end_switch:
-push	esp
+push	eax
 call	set_tss_esp0
 add	esp,4
+
+end_switch:
 ret
 
 save_esp dd 0
+
 
