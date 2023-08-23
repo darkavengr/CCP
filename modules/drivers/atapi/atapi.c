@@ -82,7 +82,7 @@ do {
   atastatus=inb(controller+ATA_COMMAND_PORT);						/* get status */
 
   if((atastatus & ATA_DRIVE_FAULT) || (atastatus & ATA_ERROR)) {			/* controller returned error */
-   kprintf("kernel: drive returned error\n");
+   kprintf_direct("kernel: drive returned error\n");
    setlasterror(DEVICE_IO_ERROR);
    return(-1);
   }
@@ -179,7 +179,7 @@ ATA_IDENTIFY ident;
   if(atapi_ident(physdiskcount,&ident) == -1) continue;		/* get ata identify */
 
   if(partitions_init(physdiskcount,&atapi_io) == -1) {	/* can't initalize partitions */
-   kprintf("atapi: Unable to intialize partitions for drive %X\n",physdiskcount);
+   kprintf_direct("atapi: Unable to intialize partitions for drive %X\n",physdiskcount);
    return(-1);
   }
  }

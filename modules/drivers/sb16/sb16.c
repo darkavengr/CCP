@@ -86,7 +86,7 @@ if(init != NULL) {			/* args found */
    sb_irq_number=atoi(op[1]);
 
    if(sb_irq_number > 15) {
-    kprintf("sb16: Invalid IRQ\n");
+    kprintf_direct("sb16: Invalid IRQ\n");
     return;
    }
   }
@@ -99,7 +99,7 @@ if(init != NULL) {			/* args found */
    sb_channel=atoi(op[1]);
 
    if((sb_channel == 0) || (sb_channel > 3)) {
-    kprintf("sb16: Invalid channel\n");
+    kprintf_direct("sb16: Invalid channel\n");
     return;
    }
   }
@@ -107,7 +107,7 @@ if(init != NULL) {			/* args found */
  if(strcmp(op[0],"volume") == 0) {		/* set volume */
 
    if(atoi(op[1]) > 0xff) {
-    kprintf("sb16: Invalid volume value\n");
+    kprintf_direct("sb16: Invalid volume value\n");
     return;
 
    outb(DSP_MIXER_PORT,SB_SET_VOLUME);
@@ -121,7 +121,7 @@ if(init != NULL) {			/* args found */
 
 sb_dma_buffer=dma_alloc(sb_dma_buffer_size);		/* allocate dma buffer */
 if(sb_dma_buffer == -1) {					/* can't alloc */
- kprintf("sb16: can't allocate dma buffer\n");
+ kprintf_direct("sb16: can't allocate dma buffer\n");
  return(-1);
 }
 
@@ -136,7 +136,7 @@ add_char_device(&bd);
 setirqhandler(sb_irq_number,&sb_irq_handler);		/* set irq handler */
 
 #ifdef SB16_DEBUG
- kprintf("sb irq number=%d\n",sb_irq_number);
+ kprintf_direct("sb irq number=%d\n",sb_irq_number);
 #endif
 
 outb(DSP_MIXER_PORT,0x80);		/* set irq */
@@ -182,8 +182,8 @@ size_t sb16_io_read(char *buf,size_t len) {
  outb(DSP_RESET,0);
 
  #ifdef SB16_DEBUG
-  kprintf("len=%d\n",len);
-  kprintf("reset=%X\n",inb(DSP_READ));
+  kprintf_direct("len=%d\n",len);
+  kprintf_direct("reset=%X\n",inb(DSP_READ));
  #endif
 
  outb(DSP_WRITE,SB_SPEAKER_ON);		/* enable speaker */
@@ -192,18 +192,18 @@ size_t sb16_io_read(char *buf,size_t len) {
  sb_transfer_length=len;
 
  #ifdef SB16_DEBUG
-  kprintf("%X %X\n",sb_dma_buffer,sb_dma_buffer+KERNEL_HIGH);
+  kprintf_direct("%X %X\n",sb_dma_buffer,sb_dma_buffer+KERNEL_HIGH);
  #endif
 
  memcpy(sb_dma_buffer+KERNEL_HIGH,sb_bufptr,sb_dma_buffer_size);		/* copy first chunk of data to dma buffer */
 
  #ifdef SB16_DEBUG
-  kprintf("mask register=%X\n",sb_ports[sb_channel].mask_register);
-  kprintf("flipflop register=%X\n",sb_ports[sb_channel].flipflop_register);
-  kprintf("mode register=%X\n",sb_ports[sb_channel].mode_register);
-  kprintf("page register=%X\n",sb_ports[sb_channel].page_register);
-  kprintf("address register=%X\n",sb_ports[sb_channel].address_register);
-  kprintf("count register=%X\n",sb_ports[sb_channel].count_register);
+  kprintf_direct("mask register=%X\n",sb_ports[sb_channel].mask_register);
+  kprintf_direct("flipflop register=%X\n",sb_ports[sb_channel].flipflop_register);
+  kprintf_direct("mode register=%X\n",sb_ports[sb_channel].mode_register);
+  kprintf_direct("page register=%X\n",sb_ports[sb_channel].page_register);
+  kprintf_direct("address register=%X\n",sb_ports[sb_channel].address_register);
+  kprintf_direct("count register=%X\n",sb_ports[sb_channel].count_register);
  #endif
 
   /* configure dma */
@@ -316,7 +316,7 @@ size_t count;
 
 void sb_irq_handler(void) {
  #ifdef SB16_DEBUG
-  kprintf("sb16: IRQ %d received\n",sb_irq_number);
+  kprintf_direct("sb16: IRQ %d received\n",sb_irq_number);
  #endif
 
   memcpy(sb_dma_buffer+KERNEL_HIGH,sb_bufptr,sb_dma_buffer_size);		/* copy next chunk of data to dma buffer */
@@ -324,7 +324,7 @@ void sb_irq_handler(void) {
   sb_transfer_length -= sb_dma_buffer_size;
 
  #ifdef SB16_DEBUG
-  kprintf("Transfer length=%d\n",sb_transfer_length);
+  kprintf_direct("Transfer length=%d\n",sb_transfer_length);
  #endif
 }
 

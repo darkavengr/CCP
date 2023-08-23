@@ -233,7 +233,7 @@ return;
  */
 
 size_t removepage(uint32_t page,size_t process) {
- //kprintf("remove page\n");
+ //kprintf_direct("remove page\n");
 
  addpage_int(0,process,page,0);						/* clear page */
  return(NULL);
@@ -255,7 +255,7 @@ size_t freepages(size_t process) {
  uint64_t *pagedir;
  size_t pdptcount;
 
- //kprintf("free pages\n");
+ //kprintf_direct("free pages\n");
 
  next=processpaging;
  
@@ -491,7 +491,7 @@ uint32_t getphysicaladdress(size_t process,uint32_t virtaddr) {
  uint64_t *p;
  uint64_t *v;
 
- //kprintf("get physical address\n");
+ //kprintf_direct("get physical address\n");
 
  next=processpaging;					/* find process page directory */
 
@@ -506,11 +506,11 @@ uint32_t getphysicaladdress(size_t process,uint32_t virtaddr) {
  pt=(virtaddr & 0x1FF000) >> 12;
 
  v=0xc0000000+(pdpt_of << 21+(pdpt_of*PAGE_SIZE))+(pd << 12);
- //kprintf("get physical address pdpt_of=%X\n",pdpt_of);
- //kprintf("get physical address pd=%X\n",pd);
- //kprintf("get physical address pt=%X\n",pt);
+ //kprintf_direct("get physical address pdpt_of=%X\n",pdpt_of);
+ //kprintf_direct("get physical address pd=%X\n",pd);
+ //kprintf_direct("get physical address pt=%X\n",pt);
 
- //kprintf("get physical address v=%X\n",v);
+ //kprintf_direct("get physical address v=%X\n",v);
 
  return(v[pt] & 0xfffff000);				/* return physical address */
 }

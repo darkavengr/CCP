@@ -396,7 +396,7 @@ int memorymanager_init(size_t dmasize) {
 
  dmabuf=kernelalloc_nopaging(dmasize);		/* allocate memory and return physical address */
  if(dmabuf == NULL) {
-  kprintf("kernel: Unable to allocate DMA buffer\n");
+  kprintf_direct("kernel: Unable to allocate DMA buffer\n");
   return(-1);
  }
 

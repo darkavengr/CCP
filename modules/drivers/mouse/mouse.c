@@ -119,7 +119,7 @@ if(init != NULL) {			/* args found */
 		mr=atoi(op[1]);
 
 		if(mr < 3) {
-		 kprintf("mouse: Invalid resolution. Must be 0,1,2 or 3\n");
+		 kprintf_direct("mouse: Invalid resolution. Must be 0,1,2 or 3\n");
 		 return;
 		}
 	
@@ -182,35 +182,35 @@ void mouse_handler(void) {
   mouseinfo.mousey += my;
 
   if(mousepacket[0] & MOUSE_LEFT_BUTTON_MASK) {
-  //  kprintf("%X %X\n",mouse_click_timestamp,get_tick_count());
+  //  kprintf_direct("%X %X\n",mouse_click_timestamp,get_tick_count());
 
 
     if(get_tick_count() < (mouse_click_timestamp+MOUSE_DOUBLECLICK_INTERVAL)) {		/* double click */    
 
-   //     kprintf("Mouse double clicked\n");
+   //     kprintf_direct("Mouse double clicked\n");
  	mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_DOUBLECLICK;
     }
     else
     {
 	mouse_click_timestamp=get_tick_count()+MOUSE_DOUBLECLICK_INTERVAL;
 
-//        kprintf("Mouse left clicked\n");
+//        kprintf_direct("Mouse left clicked\n");
         mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_MASK;
     }
    }
 
   if(mousepacket[0] & MOUSE_RIGHT_BUTTON_MASK) {
-//        kprintf("Mouse right clicked\n");
+//        kprintf_direct("Mouse right clicked\n");
 
 	mouseinfo.mousebuttons |= MOUSE_RIGHT_BUTTON_MASK;
   }
 
   if(mousepacket[0] & MOUSE_MIDDLE_BUTTON_MASK) {
-        kprintf("Mouse left clicked\n");
+        kprintf_direct("Mouse left clicked\n");
 	mouseinfo.mousebuttons |= MOUSE_MIDDLE_BUTTON_MASK;
  }
 
-  kprintf("x=%X y=%X\n",mouseinfo.mousex,mouseinfo.mousey);
+  kprintf_direct("x=%X y=%X\n",mouseinfo.mousex,mouseinfo.mousey);
  }
 
  return;
@@ -241,7 +241,7 @@ uint8_t readmouse(void) {
  */
 
 void wait_for_mouse_read(void) {
-//kprintf("mouse read\n");
+//kprintf_direct("mouse read\n");
 
 while((inb(MOUSE_STATUS) & MOUSE_DATA_READY_READ) != 1) ;;
 
@@ -264,7 +264,7 @@ uint8_t readmouse=0;
 do {
 
  readmouse=inb(MOUSE_STATUS);
-// kprintf("mouse status=%X\n",readmouse);
+// kprintf_direct("mouse status=%X\n",readmouse);
 
 } while((readmouse & MOUSE_DATA_READY_WRITE) != 0);
 

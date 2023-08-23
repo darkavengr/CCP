@@ -45,8 +45,6 @@ extern get_kernel_stack_top
 switch_task:
 mov	[save_esp],esp
 
-call	increment_tick_count
-
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled
@@ -55,6 +53,8 @@ jmp	end_switch
 
 multitasking_enabled:
 inc	byte [0x800b8001]
+
+call	increment_tick_count
 
 call	is_process_ready_to_switch
 test	eax,eax					; if process not ready to switch, return

@@ -480,7 +480,7 @@ chardevice.ioctl=NULL;
 
 chardevice.data=kernelalloc(sizeof(CHARACTERDEVICE));		/* allocate buffer */
 if(chardevice.data == NULL) {
- kprintf("\npci: Out of memory\n");
+ kprintf_direct("\npci: Out of memory\n");
  return(-1); 
 }
 

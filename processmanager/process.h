@@ -39,7 +39,6 @@ typedef struct {
  size_t readconsolehandle;	
  size_t kernelstackpointer;
  size_t kernelstacktop;
- size_t kernelstackbase;
  size_t stackpointer;
  size_t stackbase;
  size_t lasterror;

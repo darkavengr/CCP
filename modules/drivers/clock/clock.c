@@ -156,7 +156,7 @@ CHARACTERDEVICE device;
  device.next=NULL;
 
  if(add_char_device(&device) == -1) { /* can't intialize */
-  kprintf("kernel: can't intialize clock device\n");
+  kprintf_direct("kernel: can't intialize clock device\n");
   return(-1);
  }
 

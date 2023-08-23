@@ -303,7 +303,7 @@ if(init != NULL) {			/* args found */
    }
 
    if(whichp == 5) {		/* bad serial */
-    kprintf("serial: Unknown port %s\n",op[1]);
+    kprintf_direct("serial: Unknown port %s\n",op[1]);
     return;
    }
   }
@@ -334,7 +334,7 @@ if(init != NULL) {			/* args found */
    }
   
    if(countx == -1) {		/* bad value */
-    kprintf("serial: parity must be odd or even\n");
+    kprintf_direct("serial: parity must be odd or even\n");
     return;
    }
   }

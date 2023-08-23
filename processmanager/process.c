@@ -171,9 +171,10 @@ next->ticks=0;
 next->maxticks=DEFAULT_QUANTUM_COUNT;
 next->next=NULL;
 
-next->kernelstackbase=kernelalloc(PROCESS_STACK_SIZE);
+ 
+next->kernelstackpointer=kernelalloc(PROCESS_STACK_SIZE);
 
-if(next->kernelstackbase == NULL) {
+if(next->kernelstackpointer == NULL) {
  currentprocess=oldprocess;
 
  loadpagetable(getpid());
@@ -184,8 +185,22 @@ if(next->kernelstackbase == NULL) {
  return(-1);
 }
 
-next->kernelstackpointer=next->kernelstackbase+PROCESS_STACK_SIZE;
-next->kernelstacktop=next->kernelstackbase+PROCESS_STACK_SIZE;
+next->kernelstackpointer += PROCESS_STACK_SIZE;
+next->kernelstacktop=next->kernelstackpointer;
+
+stackinit=next->kernelstackpointer;
+*--stackinit=entrypoint;
+*--stackinit=0x8;
+*--stackinit=0x200;
+*--stackinit=next->kernelstackpointer;
+*--stackinit=0xABCD1234;
+*--stackinit=0;
+*--stackinit=0;
+*--stackinit=0;
+*--stackinit=next->kernelstackpointer;
+*--stackinit=0;
+*--stackinit=0;
+*--stackinit=0;
 
 /* Enviroment variables are inherited
  * Part one of enviroment variables duplication
@@ -226,20 +241,6 @@ if(stackp == NULL) {
  enablemultitasking();	
  return(-1);
 }
-
-stackinit=next->kernelstackpointer;
-*--stackinit=entrypoint;
-*--stackinit=0x8;
-*--stackinit=0x200;
-*--stackinit=next->kernelstackpointer;
-*--stackinit=0xABCD1234;
-*--stackinit=0;
-*--stackinit=0;
-*--stackinit=0;
-*--stackinit=next->kernelstackpointer;
-*--stackinit=0;
-*--stackinit=0;
-*--stackinit=0;
 
 next->stackbase=stackp;
 next->stackpointer=stackp+PROCESS_STACK_SIZE;
@@ -349,7 +350,7 @@ else						/* middle */
 }
 
 if(processes == NULL) {		/* no processes */
- kprintf("No processes, system will shut down\n");
+ kprintf_direct("kernel: No more processes running, system will shut down\n");
  shutdown(_SHUTDOWN);
 }
 else
@@ -399,18 +400,18 @@ size_t exit(size_t val) {
 void shutdown(size_t shutdown_status) { 
  size_t newtick;
 
- kprintf("Shutting down:\n");
- kprintf("Sending SIGTERM signal to all processes...\n");
+ kprintf_direct("Shutting down:\n");
+ kprintf_direct("Sending SIGTERM signal to all processes...\n");
 
  sendsignal(-1,SIGTERM);		/*  send terminate signal */
 
- kprintf("Waiting %d seconds for processes to terminate\n",SHUTDOWN_WAIT);
+ kprintf_direct("Waiting %d seconds for processes to terminate\n",SHUTDOWN_WAIT);
  ksleep(SHUTDOWN_WAIT);
  
- if(processes != NULL) kprintf("processes did not terminate in time (too bad)\n");
+ if(processes != NULL) kprintf_direct("processes did not terminate in time (too bad)\n");
 
  if(shutdown_status == _SHUTDOWN) {
-  kprintf("It is now safe to turn off your computer\n");
+  kprintf_direct("It is now safe to turn off your computer\n");
 
   disable_interrupts();
   while(1) halt();		/* loop */
@@ -532,7 +533,7 @@ switch(highbyte) {		/* function */
    break;
 
   case 9:			/* output string */
-   kprintf((char *) argfour);
+   kprintf_direct((char *) argfour);
    return;
 
   case 0x4c:			/* terminate process */

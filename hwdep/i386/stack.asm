@@ -22,6 +22,8 @@
 ;
 
 global initializestack
+global initializekernelstack
+extern set_tss_esp0
 
 initializestack:
 cli
@@ -37,4 +39,12 @@ mov	ebp,eax
 
 jmp	[tempeip]					; return without using stack
 
+initializekernelstack:
+mov	eax,[esp+4]					; get stack pointer value
+
+push	eax
+call	set_tss_esp0
+add	esp,4
+
+ret
 tempeip dd 0

@@ -60,7 +60,7 @@ while(rsdp_ptr < RSDP_END_ADDRESS) {
 }
 
 if(rsdp_ptr >= RSDP_END_ADDRESS) {	/* signature not found */
- kprintf("acpi: RSDP not found\n");
+ kprintf_direct("acpi: RSDP not found\n");
  return(-1);
 }
 
@@ -74,7 +74,7 @@ if(rsdp.revision == 0) {		/* ACPI 1.0 */
  rsdt.rsdt_entries=kernelalloc(rsdt.length);		/* allocate buffer for rsdt entries */
 
  if(rsdt.rsdt_entries == NULL) {
-  kprintf("acpi: Can't allocate memory for RSDT\n");
+  kprintf_direct("acpi: Can't allocate memory for RSDT\n");
   return(-1);
  }
 
@@ -90,7 +90,7 @@ else
 
  xsdt.xsdt_entries=kernelalloc(xsdt.length);		/* allocate buffer for xsdt entries */
  if(xsdt.xsdt_entries == NULL) {
-  kprintf("acpi: Can't allocate memory for XSDT\n");
+  kprintf_direct("acpi: Can't allocate memory for XSDT\n");
   return(-1);
  }
 

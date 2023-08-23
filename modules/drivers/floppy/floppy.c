@@ -87,7 +87,7 @@ struct {
 void motor_on(size_t drive) {
 
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: enable motor\n");
+ kprintf_direct("fd debug: enable motor\n");
 #endif
 
 if(drive == 0) {
@@ -115,7 +115,7 @@ else
 
 void motor_off(size_t drive) {
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: disable motor\n");
+ kprintf_direct("fd debug: disable motor\n");
 #endif
 
  switch(drive) {
@@ -145,13 +145,13 @@ char *z[10];
 uint8_t dir;
 
 #ifdef FLOPPY_DEBUG
-kprintf("fd debug: initialize floppy: reset\n");
+kprintf_direct("fd debug: initialize floppy: reset\n");
 #endif
 
    reset_controller(drive);	
 
 #ifdef FLOPPY_DEBUG
-kprintf("fd debug: initialize floppy: configure\n");
+kprintf_direct("fd debug: initialize floppy: configure\n");
 #endif
 
   floppy_writecommand(drive,CONFIGURE);			/* configure drive */
@@ -160,7 +160,7 @@ kprintf("fd debug: initialize floppy: configure\n");
   floppy_writecommand(drive,0);
 
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: initialize floppy: specify\n");
+ kprintf_direct("fd debug: initialize floppy: specify\n");
 #endif
  
   floppy_writecommand(drive,SPECIFY);			/* config/specify command */
@@ -206,14 +206,14 @@ floppytype=inb(0x71);
     break;
 
   default:
-    kprintf("kernel: Unknown floppy type\n");
+    kprintf_direct("kernel: Unknown floppy type\n");
     return(-1);
   }
  
  motor_on(drive);					/* enable motor */ 
  
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: initialize floppy: recalibrate\n");
+ kprintf_direct("fd debug: initialize floppy: recalibrate\n");
 #endif
 
   floppy_writecommand(drive,RECALIBRATE);			/* recalibrate */
@@ -288,7 +288,7 @@ initialize_floppy(drive);
 // }
 
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: sector io: seek\n");
+ kprintf_direct("fd debug: sector io: seek\n");
 #endif
 
  floppy_writecommand(drive,SEEK);				/* seek track */
@@ -299,7 +299,7 @@ irq6done=FALSE;
 waitforirq6();	/* until ready */
 
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: sector io: seek sense interrupt\n"); 
+ kprintf_direct("fd debug: sector io: seek sense interrupt\n"); 
 #endif
 
  floppy_writecommand(drive,SENSE_INTERRUPT);		/* get status but don't get result bytes */
@@ -308,7 +308,7 @@ waitforirq6();	/* until ready */
 
 
  #ifdef FLOPPY_DEBUG
-  kprintf("fd debug: sector io: copy to buffer for write\n"); 
+  kprintf_direct("fd debug: sector io: copy to buffer for write\n"); 
  #endif
 
  if(op == _WRITE) memcpy((char *) floppybuf+KERNEL_HIGH,buf,blocksize); 		/* copy to from sector buffer to buffer */
@@ -318,7 +318,7 @@ waitforirq6();	/* until ready */
 
 for(retrycount=0;retrycount < RETRY_COUNT;retrycount++) {
  #ifdef FLOPPY_DEBUG
-  kprintf("fd debug: sector io: enable dma\n"); 
+  kprintf_direct("fd debug: sector io: enable dma\n"); 
  #endif
 
  outb(0xa,6);					/* mask DMA channel 2 and 0 (assuming 0 is already masked) */
@@ -342,7 +342,7 @@ for(retrycount=0;retrycount < RETRY_COUNT;retrycount++) {
 
 
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: sector io: send command for i/o\n"); 
+ kprintf_direct("fd debug: sector io: send command for i/o\n"); 
 #endif
 
  irq6done=FALSE;
@@ -359,14 +359,14 @@ for(retrycount=0;retrycount < RETRY_COUNT;retrycount++) {
  floppy_writecommand(drive,0xff);		      /* default value for data length */
 
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: sector io: wait for io irq6\n"); 
+ kprintf_direct("fd debug: sector io: wait for io irq6\n"); 
 #endif
 
 irq6done=FALSE;
 waitforirq6();	/* until ready */
 
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: sector io: read io status\n"); 
+ kprintf_direct("fd debug: sector io: read io status\n"); 
 #endif
 
 break;
@@ -375,11 +375,11 @@ break;
  motor_off(drive);
 
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: sector io: copy from buffer for read\n"); 
+ kprintf_direct("fd debug: sector io: copy from buffer for read\n"); 
 #endif
 
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: sector io: copied ok\n"); 
+ kprintf_direct("fd debug: sector io: copied ok\n"); 
 #endif
 
 if(op == _READ) memcpy((void *) buf,(char *) floppybuf+KERNEL_HIGH,blocksize); 		/* copy to from sector buffer to buffer */
@@ -443,7 +443,7 @@ while(count++ < blockdevice.sectorsperblock) {
 }
  
 #ifdef FLOPPY_DEBUG
- kprintf("fd debug: sector i/o\n");
+ kprintf_direct("fd debug: sector i/o\n");
 #endif
 
 if(sector_io(op,(uint8_t) drive,head,cylinder,sector,512,b) == -1) {
@@ -489,7 +489,7 @@ if(sector_io(op,(uint8_t) drive,head,cylinder,sector,512,b) == -1) return(-1);
 
 void irq6_handler(void) {
 //#ifdef FLOPPY_DEBUG
-// kprintf("fd debug: IRQ6 received\n");
+// kprintf_direct("fd debug: IRQ6 received\n");
 //#endif
 
  irq6done=TRUE;
@@ -507,7 +507,7 @@ void irq6_handler(void) {
 
 void reset_controller(size_t drive) {
 #ifdef FLOPPY_DEBUG
- kprintf("fd_debug: controller reset\n");
+ kprintf_direct("fd_debug: controller reset\n");
 #endif
 
   irq6done=FALSE;
@@ -548,12 +548,12 @@ size_t count;
 
 floppybuf=dma_alloc(512);					/* allocate dma buffer */
 if(floppybuf == -1) {					/* can't alloc */
- kprintf("floppy: can't allocate dma buffer\n");
+ kprintf_direct("floppy: can't allocate dma buffer\n");
  return(-1);
 }
 
 #ifdef FLOPPY_DEBUG
- kprintf("dma buf=%X\n",floppybuf);
+ kprintf_direct("dma buf=%X\n",floppybuf);
 #endif
 
 outb(0x70,0x10);					/* check floppy disk presense */
@@ -561,7 +561,7 @@ outb(0x70,0x10);					/* check floppy disk presense */
 ftype=inb(0x71);
 
 if(ftype == 0) {				/* no floppy drives */
- kprintf("kernel: No floppy drives found\n");
+ kprintf_direct("kernel: No floppy drives found\n");
  return(-1);
 } 
 
