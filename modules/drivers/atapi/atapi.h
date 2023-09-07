@@ -50,19 +50,19 @@
 #define ATAPI_SEND_DISC_STRUCTURE	0xBF
 
 typedef struct {
- uint8_t opcode;
- uint8_t lun;
- uint32_t lba;
- uint8_t reserved;
- uint8_t reserved2;
- uint8_t pmi;
- uint8_t control;
- uint8_t reserved3;
- uint8_t reserved4;
+	uint8_t opcode;
+	uint8_t lun;
+	uint32_t lba;
+	uint8_t reserved;
+	uint8_t reserved2;
+	uint8_t pmi;
+	uint8_t control;
+	uint8_t reserved3;
+	uint8_t reserved4;
 } atapipacket;
 
 typedef struct {
- uint32_t lba;
- uint32_t blocklength;
+	uint32_t lba;
+	uint32_t blocklength;
 } CAPACITY_DATA;
 

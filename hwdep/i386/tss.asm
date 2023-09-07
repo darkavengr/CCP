@@ -1,5 +1,6 @@
 global initialize_tss
 global set_tss_esp0
+global get_stack_top
 
 extern set_gdt
 
@@ -14,6 +15,10 @@ TSS_GDT_ENTRY equ 5
 set_tss_esp0:
 mov	eax,[esp+4]					; get address
 mov	[tss_esp0],eax
+ret
+
+get_stack_top:
+mov	eax,[tss_esp0]
 ret
 
 initialize_tss:

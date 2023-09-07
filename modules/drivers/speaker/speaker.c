@@ -82,9 +82,9 @@ for(count=0;count<len;count++) {
 	 lencount=get_tick_count()+notelen;
 	 
 	 while( get_tick_count() < lencount) {
-	  sound=inb(0x61);
+	 	sound=inb(0x61);
 
-  	  if(sound != (sound | 3)) outb(0x61, sound | 3);
+  	 	if(sound != (sound | 3)) outb(0x61, sound | 3);
 	 }
 
 	 outb(0x61,inb(0x61) & 0xfc);

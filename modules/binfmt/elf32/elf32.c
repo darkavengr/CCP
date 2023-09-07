@@ -27,86 +27,83 @@ handle=open(fullname,_O_RDONLY);		/* open file */
 if(handle == -1) return(-1);		/* can't open */
 
 if(read(handle,&elf_header,sizeof(Elf32_Ehdr)) == -1) {
- close(handle);
- enablemultitasking();
- return(-1); /* read error */
+	close(handle);
+	return(-1); /* read error */
 }
 
 /* check magic number, elf type and number of program headers */
 
 if(elf_header.e_ident[0] != 0x7F && elf_header.e_ident[1] != 0x45 && elf_header.e_ident[2] != 0x4C && elf_header.e_ident[3] != 0x46) {	/*  elf */
- close(handle);
+	close(handle);
 
- setlasterror(INVALID_EXEC);
- return(-1);
+	setlasterror(INVALID_EXEC);
+	return(-1);
 }
 
 if(elf_header.e_type != ET_EXEC) {		/* not executable */
- close(handle);
- enablemultitasking();
-
- setlasterror(INVALID_EXEC);
- return(-1);
+	close(handle);
+	setlasterror(INVALID_EXEC);
+	return(-1);
 }
 
 if(elf_header.e_phnum == 0) {			/* no program headers */
- close(handle);
- setlasterror(INVALID_EXEC);
- return(-1);
+	close(handle);
+	setlasterror(INVALID_EXEC);
+	return(-1);
 }
 
 /* allocate buffer for program headers */
 
 phbuf=kernelalloc((elf_header.e_phentsize*elf_header.e_phnum));
 if(phbuf == NULL) {
- close(handle);
- return(-1);
+	close(handle);
+	return(-1);
 }
 
 if(seek(handle,elf_header.e_phoff,SEEK_SET) == -1) {
- kernelfree(phbuf);
- close(handle);
- return(-1);
+	kernelfree(phbuf);
+	close(handle);
+	return(-1);
 }
 
 /* read program headers */
 
 if(read(handle,phbuf,(elf_header.e_phentsize*elf_header.e_phnum)) == -1) {
- kernelfree(phbuf);
- close(handle);
- return(-1);
+	kernelfree(phbuf);
+	close(handle);
+	return(-1);
 }
 
 /*
- * go through program headers and load them if they are PT_LOAD */
+	* go through program headers and load them if they are PT_LOAD */
 
 for(count=0;count<elf_header.e_phnum;count++) {
- if(phbuf->p_type == PT_LOAD) {			/* if segment is loadable */
+	if(phbuf->p_type == PT_LOAD) {			/* if segment is loadable */
 
-  if(phbuf->p_vaddr >= KERNEL_HIGH) {		/* invalid address */
-      setlasterror(INVALID_EXEC);
+		if(phbuf->p_vaddr >= KERNEL_HIGH) {		/* invalid address */
+			setlasterror(INVALID_EXEC);
 
-      kernelfree(phbuf);
-      close(handle);
-      return(-1);
-   }
+			kernelfree(phbuf);
+			close(handle);
+			return(-1);
+		}
 
-  seek(handle,phbuf->p_offset,SEEK_SET);			/* seek to position */
+		seek(handle,phbuf->p_offset,SEEK_SET);			/* seek to position */
 
-  alloc_int(ALLOC_NORMAL,getpid(),phbuf->p_memsz,phbuf->p_vaddr);
+		alloc_int(ALLOC_NORMAL,getpid(),phbuf->p_memsz,phbuf->p_vaddr);
 
- if(read(handle,phbuf->p_vaddr,phbuf->p_filesz) == -1) {	/* read error */
-   if(getlasterror() != END_OF_FILE) {
-     kernelfree(phbuf);
-   
-     close(handle);
-     return(-1);
-    }
-   }
+		if(read(handle,phbuf->p_vaddr,phbuf->p_filesz) == -1) {	/* read error */
+			if(getlasterror() != END_OF_FILE) {		
+				kernelfree(phbuf);
+	  
+		    		close(handle);
+		    		return(-1);
+		   	}
+		}
 
-  }
+	}
 
-  phbuf++;		/* point to next */
+	phbuf++;		/* point to next */
 }
 
 close(handle);
@@ -129,10 +126,10 @@ exec.magicsize=ELF32_MAGIC_SIZE;
 exec.callexec=&load_elf32;
 
 if(register_executable_format(&exec) == -1) {
- kprintf_direct("elf32: Can't register binary format\n");
+	kprintf_direct("elf32: Can't register binary format\n");
 
- setlasterror(INVALID_BINFMT);
- return(-1);
+	setlasterror(INVALID_BINFMT);
+	return(-1);
 }
 
 setlasterror(NO_ERROR);

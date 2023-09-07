@@ -81,21 +81,21 @@ char *processname[MAX_PATH];
 uint32_t shiftcount;
 
 if(regs[0] >= KERNEL_HIGH) {
- kprintf_direct("Kernel panic [%s] at address %X\n",exp[e],regs[0]);
+	kprintf_direct("Kernel panic [%s] at address %X\n",exp[e],regs[0]);
 }
 else
 {
- getprocessfilename(processname);
+	getprocessfilename(processname);
  
- kprintf_direct("%s at address %X in %s\n",exp[e],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %X in %s\n",exp[e],regs[0],processname);  /* exception */
 }
 
 count=0;
 
 do {							/* dump registers */
- if(regnames[count] == "") break;
+	if(regnames[count] == "") break;
 
- kprintf_direct("%s=%X\n",regnames[count],regs[count]);
+	kprintf_direct("%s=%X\n",regnames[count],regs[count]);
 
 } while(regs[count++] != "");
 
@@ -107,31 +107,31 @@ shiftcount=12;
 /* dump flags */
 
 do {
- if(flagsname[count] == "$") break;
+	if(flagsname[count] == "$") break;
 
- if(flagsname[count] != "") {
-  kprintf_direct("%s=%d ",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
- }
+	if(flagsname[count] != "") {
+		kprintf_direct("%s=%d ",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
+	}
 
- flagsmask=flagsmask >> 1;
- shiftcount=shiftcount-1;
- count++;
+	flagsmask=flagsmask >> 1;
+	shiftcount=shiftcount-1;
+	count++;
 } while(flagsname[count] != "$");
 
 if(regs[0] >= KERNEL_HIGH) {
- asm("xchg %bx,%bx");
- kprintf_direct("\nThe system will now shut down\n");
- shutdown(0);
+	asm("xchg %bx,%bx");
+	kprintf_direct("\nThe system will now shut down\n");
+	shutdown(0);
 }
 else
 {
- kprintf_direct("\n");
+	kprintf_direct("\n");
 
- enable_interrupts();
+	asm("xchg %bx,%bx");
+	enable_interrupts();
 
- asm("xchg %bx,%bx");
-// kill(getpid());
-// kprintf_direct("Process terminated\n");
+	kill(getpid());
+	kprintf_direct("Process terminated\n");
 }
 
 }

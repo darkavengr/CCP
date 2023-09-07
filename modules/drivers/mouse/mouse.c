@@ -1,20 +1,20 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020-2023
+	   (C) Matthew Boote 2020-2023
 
-    This file is part of CCP.
+	   This file is part of CCP.
 
-    CCP is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	   CCP is free software: you can redistribute it and/or modify
+	   it under the terms of the GNU General Public License as published by
+	   the Free Software Foundation, either version 3 of the License, or
+	   (at your option) any later version.
 
-    CCP is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	   CCP is distributed in the hope that it will be useful,
+	   but WITHOUT ANY WARRANTY; without even the implied warranty of
+	   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	   GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+	   You should have received a copy of the GNU General Public License
+	   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <stdint.h>
@@ -39,9 +39,9 @@ size_t mouse_enable_scrollwheel(void);
 size_t mouse_set_resolution(size_t resolution);
 
 struct {
- size_t mousex;
- size_t mousey;
- size_t mousebuttons;
+	size_t mousex;
+	size_t mousey;
+	size_t mousebuttons;
 } mouseinfo;
 
 size_t mreadcount;
@@ -110,31 +110,31 @@ add_char_device(&device);
 mouse_click_timestamp=get_tick_count();		/* get first timestamp for doubleclick */
 
 if(init != NULL) {			/* args found */
- tc=tokenize_line(init,tokens," ");	/* tokenize line */
+	tc=tokenize_line(init,tokens," ");	/* tokenize line */
 
- for(count=0;count<tc;count++) {
- 	 tokenize_line(tokens[count],op,"=");	/* tokenize line */
+	for(count=0;count<tc;count++) {
+		tokenize_line(tokens[count],op,"=");	/* tokenize line */
 
-	  if(strcmp(op[0],"resolution") == 0) {		/* mouse resolution */
-		mr=atoi(op[1]);
+	  	if(strcmp(op[0],"resolution") == 0) {		/* mouse resolution */
+			mr=atoi(op[1]);
 
-		if(mr < 3) {
-		 kprintf_direct("mouse: Invalid resolution. Must be 0,1,2 or 3\n");
-		 return;
+			if(mr < 3) {
+				kprintf_direct("mouse: Invalid resolution. Must be 0,1,2 or 3\n");
+				return;
+			}
+	
+			mouse_set_resolution(mr);
+		}
+
+		if(strcmp(op[0],"samplerate") == 0) {
+			mr=atoi(op[1]);	/* sample rate */
+			mouse_set_sample_rate(mr);
 		}
 	
-		mouse_set_resolution(mr);
-	 }
-
-	 if(strcmp(op[0],"samplerate") == 0) {
-		mr=atoi(op[1]);	/* sample rate */
-		mouse_set_sample_rate(mr);
-	 }
-	
-	 if(strcmp(op[0],"enablescrollwheel") == 0) {
-  		mouse_enable_scrollwheel();
-	 }
- }
+		if(strcmp(op[0],"enablescrollwheel") == 0) {
+			mouse_enable_scrollwheel();
+		}
+	}
 }
 
 return;
@@ -150,70 +150,70 @@ return;
  */
 
 void mouse_handler(void) {
- uint8_t mousestatus;
- uint32_t oldpos;
- uint8_t oldcolour;
- uint8_t mx;
- uint8_t my;
+uint8_t mousestatus;
+uint32_t oldpos;
+uint8_t oldcolour;
+uint8_t mx;
+uint8_t my;
 
- wait_for_mouse_read();
- mousepacket[mreadcount]=inb(MOUSE_PORT);
- mreadcount++;
+wait_for_mouse_read();
+mousepacket[mreadcount]=inb(MOUSE_PORT);
+mreadcount++;
 
- if(mreadcount == 3 && (mousestatus & MOUSE_DATA_READY_READ) == 0) {
-  mreadcount=0;
+if(mreadcount == 3 && (mousestatus & MOUSE_DATA_READY_READ) == 0) {
+	 mreadcount=0;
 
-  mouseinfo.mousebuttons=mousepacket[0];
-  mx=mousepacket[1];
-  my=mousepacket[2];
+	 mouseinfo.mousebuttons=mousepacket[0];
+	 mx=mousepacket[1];
+	 my=mousepacket[2];
 
-  if(mx <= 2) {			/* small movement */
-   mx *= 1;
-  }
-  else
-  {
-   mx *=10;
-  }
+	 if(mx <= 2) {			/* small movement */
+	 	mx *= 1;
+	 }
+	 else
+	 {
+	 	mx *=10;
+	 }
 
-  if((mouseinfo.mousebuttons & MOUSE_X_SIGN_BIT_MASK)) mx |= 0xffffff00;
-  if((mouseinfo.mousebuttons & MOUSE_Y_SIGN_BIT_MASK)) my |= 0xffffff00;
+	 if((mouseinfo.mousebuttons & MOUSE_X_SIGN_BIT_MASK)) mx |= 0xffffff00;		/* wrap over */
+	 if((mouseinfo.mousebuttons & MOUSE_Y_SIGN_BIT_MASK)) my |= 0xffffff00;
 
-  mouseinfo.mousex += mx;
-  mouseinfo.mousey += my;
+	 mouseinfo.mousex += mx;
+	 mouseinfo.mousey += my;
 
-  if(mousepacket[0] & MOUSE_LEFT_BUTTON_MASK) {
-  //  kprintf_direct("%X %X\n",mouse_click_timestamp,get_tick_count());
+	 if(mousepacket[0] & MOUSE_LEFT_BUTTON_MASK) {
+	 //  kprintf_direct("%X %X\n",mouse_click_timestamp,get_tick_count());
 
 
-    if(get_tick_count() < (mouse_click_timestamp+MOUSE_DOUBLECLICK_INTERVAL)) {		/* double click */    
+	 	if(get_tick_count() < (mouse_click_timestamp+MOUSE_DOUBLECLICK_INTERVAL)) {		/* double click */    
 
-   //     kprintf_direct("Mouse double clicked\n");
- 	mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_DOUBLECLICK;
-    }
-    else
-    {
-	mouse_click_timestamp=get_tick_count()+MOUSE_DOUBLECLICK_INTERVAL;
+	  //     kprintf_direct("Mouse double clicked\n");
+		mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_DOUBLECLICK;
+	}
+	else
+	{
+		mouse_click_timestamp=get_tick_count()+MOUSE_DOUBLECLICK_INTERVAL;
 
-//        kprintf_direct("Mouse left clicked\n");
-        mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_MASK;
-    }
-   }
+	//        kprintf_direct("Mouse left clicked\n");
+		mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_MASK;
+	}
+}
 
-  if(mousepacket[0] & MOUSE_RIGHT_BUTTON_MASK) {
+if(mousepacket[0] & MOUSE_RIGHT_BUTTON_MASK) {
 //        kprintf_direct("Mouse right clicked\n");
 
 	mouseinfo.mousebuttons |= MOUSE_RIGHT_BUTTON_MASK;
-  }
+}
 
-  if(mousepacket[0] & MOUSE_MIDDLE_BUTTON_MASK) {
-        kprintf_direct("Mouse left clicked\n");
+if(mousepacket[0] & MOUSE_MIDDLE_BUTTON_MASK) {
+	kprintf_direct("Mouse left clicked\n");
 	mouseinfo.mousebuttons |= MOUSE_MIDDLE_BUTTON_MASK;
- }
+}
 
-  kprintf_direct("x=%X y=%X\n",mouseinfo.mousex,mouseinfo.mousey);
- }
+kprintf_direct("x=%X y=%X\n",mouseinfo.mousex,mouseinfo.mousey);
+}
 
- return;
+return;
 }
 
 /*
@@ -226,9 +226,9 @@ void mouse_handler(void) {
  */
 
 uint8_t readmouse(void) {
- wait_for_mouse_read();		/*wait for ready to read */
+wait_for_mouse_read();		/*wait for ready to read */
 
- return(inb(MOUSE_PORT));
+return(inb(MOUSE_PORT));
 }
 
 /*
@@ -262,9 +262,8 @@ uint8_t readmouse=0;
 //kprin|tf("mouse write\n");
 
 do {
-
- readmouse=inb(MOUSE_STATUS);
-// kprintf_direct("mouse status=%X\n",readmouse);
+	readmouse=inb(MOUSE_STATUS);
+	// kprintf_direct("mouse status=%X\n",readmouse);
 
 } while((readmouse & MOUSE_DATA_READY_WRITE) != 0);
 
@@ -275,7 +274,7 @@ return;
  * Mouse I/O function
  *
  * In:  op	Operation (0=read,1=write)
-        buf	Buffer
+	       buf	Buffer
 	len	Number of bytes to read/write
  *
  *  Returns: number of bytes read
@@ -300,7 +299,7 @@ return(size);
  *
  */
 void wait_for_mouse_ack(void) {
- while(inb(MOUSE_PORT) != 0xFA) ;;
+while(inb(MOUSE_PORT) != 0xFA) ;;
 }
 
 /*
@@ -312,11 +311,11 @@ void wait_for_mouse_ack(void) {
  *
  */
 void mouse_send_command(uint8_t command) {
- wait_for_mouse_write();		/*wait for ready to write */
- outb(MOUSE_STATUS,0xD4);
- 
- wait_for_mouse_write();		/*wait for ready to write */
- outb(MOUSE_PORT,command);
+wait_for_mouse_write();		/*wait for ready to write */
+outb(MOUSE_STATUS,0xD4);
+	
+wait_for_mouse_write();		/*wait for ready to write */
+outb(MOUSE_PORT,command);
 }
 
 /*
@@ -328,25 +327,26 @@ void mouse_send_command(uint8_t command) {
  *
  */
 size_t mouse_set_resolution(size_t resolution) {
- mouse_send_command(MOUSE_SET_RESOLUTION);
+mouse_send_command(MOUSE_SET_RESOLUTION);
 
- wait_for_mouse_write();		/*wait for ready to write */
- outb(MOUSE_PORT,resolution);
+wait_for_mouse_write();		/*wait for ready to write */
+outb(MOUSE_PORT,resolution);
 
 /* check if accepted */
- wait_for_mouse_read();		/*wait for ready to write */
- return(readmouse());
+wait_for_mouse_read();		/*wait for ready to write */
+
+return(readmouse());
 }
 
 size_t mouse_set_sample_rate(size_t resolution) {
- mouse_send_command(MOUSE_SET_SAMPLE_RATE);
+mouse_send_command(MOUSE_SET_SAMPLE_RATE);
 
- wait_for_mouse_write();		/*wait for ready to write */
- outb(MOUSE_PORT,resolution);
+wait_for_mouse_write();		/*wait for ready to write */
+outb(MOUSE_PORT,resolution);
 
 /* check if accepted */
- wait_for_mouse_read();		/*wait for ready to write */
- return(readmouse());
+wait_for_mouse_read();		/*wait for ready to write */
+return(readmouse());
 }
 
 /*
@@ -358,13 +358,14 @@ size_t mouse_set_sample_rate(size_t resolution) {
  *
  */
 size_t mouse_enable_scrollwheel(void) {
- mouse_set_sample_rate(200);
- mouse_set_sample_rate(100);
- mouse_set_sample_rate(80);
+mouse_set_sample_rate(200);
+mouse_set_sample_rate(100);
+mouse_set_sample_rate(80);
 
 /* check if accepted */
- wait_for_mouse_read();		/*wait for ready to write */
- return(readmouse());
+wait_for_mouse_read();		/*wait for ready to write */
+
+return(readmouse());
 }
 
 /*
@@ -376,21 +377,22 @@ size_t mouse_enable_scrollwheel(void) {
  *
  */
 size_t mouse_enable_extra_buttons(void) {
- mouse_set_sample_rate(200);
- mouse_set_sample_rate(200);
- mouse_set_sample_rate(80);
+mouse_set_sample_rate(200);
+mouse_set_sample_rate(200);
+mouse_set_sample_rate(80);
 
 /* check if accepted */
- wait_for_mouse_read();		/*wait for ready to write */
- return(readmouse());
+wait_for_mouse_read();		/*wait for ready to write */
+
+return(readmouse());
 }
 
 /*
  * Soundblaster 16 ioctl handler
  *
  * In:  handle	Handle created by open() to reference device
-        request Request number
-        buffer  Buffer
+	       request Request number
+	       buffer  Buffer
  *
  *  Returns: -1 on error, 0 on success
  *
@@ -401,32 +403,34 @@ char *b;
 
 b=buffer;
 
- switch(request) {			/* ioctl request */
+switch(request) {			/* ioctl request */
 
-  case MOUSE_IOCTL_SET_RESOLUTION:	/* set pointer resolution */
-    param=*b++;
+	case MOUSE_IOCTL_SET_RESOLUTION:	/* set pointer resolution */
+		aram=*b++;
 
-    mouse_set_resolution(param);
-    return;
+		mouse_set_resolution(param);
 
-  case MOUSE_IOCTL_SET_SAMPLE_RATE:	/* set sample rate */
-    param=*b++;
+		return;
 
-    mouse_set_sample_rate(param);
-    return;
+	case MOUSE_IOCTL_SET_SAMPLE_RATE:	/* set sample rate */
+		param=*b++;
 
-  case MOUSE_IOCTL_ENABLE_SCROLL_WHEEL: /* enable scroll wheel */
-    mouse_enable_scrollwheel();
-    return;
+		mouse_set_sample_rate(param);
 
-  case MOUSE_IOCTL_ENABLE_EXTRA_BUTTONS: /* enable extra buttons */
-    mouse_enable_extra_buttons();
-    return;
+		return;
 
-  default:
-    return(-1);
- }
+	case MOUSE_IOCTL_ENABLE_SCROLL_WHEEL: /* enable scroll wheel */
+		mouse_enable_scrollwheel();
+
+		return;
+
+	case MOUSE_IOCTL_ENABLE_EXTRA_BUTTONS: /* enable extra buttons */
+		mouse_enable_extra_buttons();
+		return;
+
+	default:
+		return(-1);
+	}
 }
-
 
 

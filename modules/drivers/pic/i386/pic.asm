@@ -16,6 +16,7 @@ global irq12
 global irq13
 global irq14
 global irq15
+global irq_exit
 
 extern getpid
 
@@ -23,6 +24,7 @@ extern getpid
 ; IRQ handlers
 ;
 irq0:
+;xchg	bx,bx
 mov	dword [irqnumber],0
 jmp	irq
 
@@ -94,10 +96,6 @@ irq:
 pusha						; save registers
 
 push	ds
-push	es
-push	ss
-push	fs
-push	gs
 
 mov	ax,0x10
 mov	ds,ax
@@ -115,9 +113,7 @@ mov	eax,[eax]
 test	eax,eax
 jz	irq_exit
 
-push	esp
 call	eax					; call irq handler
-add	esp,4
 
 irq_exit:
 nop
@@ -132,12 +128,13 @@ mov	al,20h				          ; reset slave
 out	0a0h,al
 
 nslave:
-pop	gs
-pop	fs
-pop	ss
-pop	es
 pop	ds
-	
+mov	ax,ds
+mov	es,ax
+mov	ss,ax
+mov	fs,ax
+mov	gs,ax
+
 popa					; restore registers
 iret			; return
 

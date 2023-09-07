@@ -30,7 +30,3 @@
 #define CONSOLE_YELLOW		14
 #define CONSOLE_LIGHT_WHITE	15
 
-
-
-
-

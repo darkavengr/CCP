@@ -71,22 +71,22 @@ size_t pit_io(size_t op,size_t *buf,size_t ignored) {
 size_t val;
 
 if(op == PIT_READ) {
-  outb(0x43,0x34);
+	outb(0x43,0x34);
 
-  val=(inb(0x40) << 8)+inb(0x40);		/* read pit */ 
-  *buf=val;
+	val=(inb(0x40) << 8)+inb(0x40);		/* read pit */ 
+	*buf=val;
 
-  return(0);
+	return(0);
 }
 
 if(op == PIT_WRITE) {
- val=*buf;
+	val=*buf;
 
- outb(0x43,0x34);
- outb(0x40,val & 0xFF);
- outb(0x40,((val >> 8) & 0xFF));
+	outb(0x43,0x34);
+	outb(0x40,val & 0xFF);
+	outb(0x40,((val >> 8) & 0xFF));
 
- return(0);
+	return(0);
 }
  
 return(-1);

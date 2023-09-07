@@ -23,6 +23,8 @@
 
 global initializestack
 global initializekernelstack
+global get_stack_pointer
+
 extern set_tss_esp0
 
 initializestack:
@@ -45,6 +47,10 @@ mov	eax,[esp+4]					; get stack pointer value
 push	eax
 call	set_tss_esp0
 add	esp,4
-
 ret
+
+get_stack_pointer:
+mov	eax,esp
+ret
+
 tempeip dd 0

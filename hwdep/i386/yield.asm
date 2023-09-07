@@ -30,9 +30,15 @@ global yield
 [BITS 32]
 use32
 
+;
+; Force switch to next process
+;
 yield:
 cli
 
+;
+; Stack format:
+;
 ; EIP ( already on stack)
 ; CS  
 ; EFLAGS
@@ -46,6 +52,8 @@ cli
 ; ESI
 ; EBP
 
+; save eip, cs and eflags in the same way as an interrupt call
+
 push	eax
 mov	eax,[esp+4]				; get eip
 mov	[saveeip],eax				; save it
@@ -56,11 +64,19 @@ sub	esp,4
 pushf
 push	cs
 push	dword [saveeip]
-pusha
 
-push	esp
+; save 
+push	ds
+
+mov	ax,0x10
+mov	ds,ax
+mov	es,ax
+mov	fs,ax
+mov	gs,ax
+
+pusha						; save general registers
+
 call	switch_task				; switch to next task
-
 add	esp,4
 
 popa						; restore new registers

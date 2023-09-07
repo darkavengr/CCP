@@ -1,20 +1,20 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020-2023
+			(C) Matthew Boote 2020-2023
 
-    This file is part of CCP.
+			This file is part of CCP.
 
-    CCP is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+			CCP is free software: you can redistribute it and/or modify
+			it under the terms of the GNU General Public License as published by
+			the Free Software Foundation, either version 3 of the License, or
+			(at your option) any later version.
 
-    CCP is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+			CCP is distributed in the hope that it will be useful,
+			but WITHOUT ANY WARRANTY; without even the implied warranty of
+			MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+			GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+			You should have received a copy of the GNU General Public License
+			along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <stdint.h>
@@ -51,7 +51,7 @@ size_t ppos;
  * Console I/O function
  *
  * In:  op	Operation (0=read,1=write)
-        buf	Buffer
+			    buf	Buffer
 	len	Number of bytes to read/write
  *
  *  Returns: nothing
@@ -67,59 +67,59 @@ BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information
 consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col)*2);	/* address to write to */
 
 if((size_t) consolepos % 2 == 1) consolepos++;
-  
-  while(size-- > 0) {
-   if(bootinfo->cursor_col++ >= MAX_X) {
-    bootinfo->cursor_col=0;						/* wrap round */
-    bootinfo->cursor_row++;
-   }
+	 
+	while(size-- > 0) {
+		if(bootinfo->cursor_col++ >= MAX_X) {
+			bootinfo->cursor_col=0;						/* wrap round */
+			bootinfo->cursor_row++;
+		}
 
-   if(*s == 0x0A || *s == 0x0D) {			/* newline */
-    bootinfo->cursor_row++;						/* wrap round */
-    bootinfo->cursor_col=0;
-    consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*80)+bootinfo->cursor_col)*2);
-   }
-  else
-  {
-   *consolepos++=*s++; 
-   *consolepos++=7;
+		if(*s == 0x0A || *s == 0x0D) {			/* newline */
+			bootinfo->cursor_row++;						/* wrap round */
+			bootinfo->cursor_col=0;
+			consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*80)+bootinfo->cursor_col)*2);
+		}
+		else
+		{
+		 *consolepos++=*s++; 
+		 *consolepos++=7;
 
-   if(bootinfo->cursor_row >= 24) {					/* scroll */
-    memcpy(scrollbuf,KERNEL_HIGH+0xB80a0,(MAX_X*2)*25);		/* to buffer */
-    memcpy(KERNEL_HIGH+0xB8000,scrollbuf,(MAX_X*2)*25);		/* to screen */
+			if(bootinfo->cursor_row >= 24) {					/* scroll */
+				memcpy(scrollbuf,KERNEL_HIGH+0xB80a0,(MAX_X*2)*25);		/* to buffer */
+				memcpy(KERNEL_HIGH+0xB8000,scrollbuf,(MAX_X*2)*25);		/* to screen */
 
-    bootinfo->cursor_col=1;						/* wrap round */
-    bootinfo->cursor_row=23;
-    movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
+				bootinfo->cursor_col=1;						/* wrap round */
+				bootinfo->cursor_row=23;
+				movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
 
-    consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col)*2);
-   }
+				consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col)*2);
+			}
 
-  }
- }
+		 }
+	}
 
- ppos=(bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col;
- asm(".intel_syntax noprefix");
- asm("mov dx,0x3d4");				/* set cursor position */
- asm("mov al,0x0f");
- asm("out dx,al");
+ppos=(bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col;
+asm(".intel_syntax noprefix");
+asm("mov dx,0x3d4");				/* set cursor position */
+asm("mov al,0x0f");
+asm("out dx,al");
 
- asm("mov dx,0x3d5");
- asm("mov ax,[ppos]");
- asm("and ax,0xff");
- asm("out dx,al");
+asm("mov dx,0x3d5");
+asm("mov ax,[ppos]");
+asm("and ax,0xff");
+asm("out dx,al");
 
- asm("mov dx,0x3d4");				/* set cursor position */
- asm("mov al,0x0e");
- asm("out dx,al");
-    
- asm("mov  dx,0x3d5");
- asm("mov ax,[ppos]");
- asm("mov cl,8");
- asm("shr ax,cl");
- asm("and ax,0xFF");
- asm("out dx,al");
- asm(".att_syntax");					/* ugggh */
+asm("mov dx,0x3d4");				/* set cursor position */
+asm("mov al,0x0e");
+asm("out dx,al");
+			
+asm("mov  dx,0x3d5");
+asm("mov ax,[ppos]");
+asm("mov cl,8");
+asm("shr ax,cl");
+asm("and ax,0xFF");
+asm("out dx,al");
+asm(".att_syntax");					/* ugggh */
 
 return(size);
 }
@@ -128,7 +128,7 @@ return(size);
  * Move cursor
  *
  * In:  bootinfo->cursor_row	bootinfo->cursor_row to move to
-        bootinfo->cursor_col	bootinfo->cursor_column to move to
+			    bootinfo->cursor_col	bootinfo->cursor_column to move to
  *
  *  Returns: nothing
  *

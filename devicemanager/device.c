@@ -1,20 +1,20 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020-2023-2022
+	   (C) Matthew Boote 2020-2023-2022
 
-    This file is part of CCP.
+	   This file is part of CCP.
 
-    CCP is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	   CCP is free software: you can redistribute it and/or modify
+	   it under the terms of the GNU General Public License as published by
+	   the Free Software Foundation, either version 3 of the License, or
+	   (at your option) any later version.
 
-    CCP is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	   CCP is distributed in the hope that it will be useful,
+	   but WITHOUT ANY WARRANTY; without even the implied warranty of
+	   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	   GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+	   You should have received a copy of the GNU General Public License
+	   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 /*
@@ -47,7 +47,7 @@ CHARACTERDEVICE *characterdevs=NULL;
 MUTEX blockdevice_mutex;
 MUTEX characterdevice_mutex;
 uint32_t drive_bitmap=0;
- 
+	
 /*
  * Add block device
  *
@@ -57,43 +57,42 @@ uint32_t drive_bitmap=0;
  * 
  */
 size_t add_block_device(BLOCKDEVICE *driver) {
- BLOCKDEVICE *next;
- BLOCKDEVICE *last;
+BLOCKDEVICE *next;
+BLOCKDEVICE *last;
 
- lock_mutex(&blockdevice_mutex);			/* lock mutex */
+lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
 /* find end of device list */
 
- next=blockdevices;
- 
- while(next != NULL) {
-  last=next;
-  next=next->next;
- }
+next=blockdevices;
+	
+while(next != NULL) {
+	 last=next;
+	 next=next->next;
+}
 
 if(blockdevices == NULL) {				/* if empty allocate struct */
- blockdevices=kernelalloc(sizeof(BLOCKDEVICE));
- if(blockdevices == NULL) return(-1);
+	blockdevices=kernelalloc(sizeof(BLOCKDEVICE));
+	if(blockdevices == NULL) return(-1);
 
- memset(blockdevices,0,sizeof(BLOCKDEVICE));
- last=blockdevices;
+	memset(blockdevices,0,sizeof(BLOCKDEVICE));
+	last=blockdevices;
 }
 else
 {
- last->next=kernelalloc(sizeof(blockdevices)); /* add to struct */
- last=last->next;
- memset(last,0,sizeof(BLOCKDEVICE));
+	last->next=kernelalloc(sizeof(blockdevices)); /* add to struct */
+	last=last->next;
+	memset(last,0,sizeof(BLOCKDEVICE));
 }
 
- /* at end here */
- memcpy(last,driver,sizeof(BLOCKDEVICE));
- last->next=NULL;
- last->superblock=NULL;
+/* at end here */
+memcpy(last,driver,sizeof(BLOCKDEVICE));
+last->next=NULL;
+last->superblock=NULL;
 
- unlock_mutex(&blockdevice_mutex);		/* unlock mutex */
-
- setlasterror(NO_ERROR);
- return(NO_ERROR);
+unlock_mutex(&blockdevice_mutex);		/* unlock mutex */
+setlasterror(NO_ERROR);
+return(NO_ERROR);
 }
 
 /*
@@ -113,39 +112,39 @@ charnext=characterdevs;
 /* find device */
 
 if(characterdevs == NULL) {				/* if empty allocate struct */
- characterdevs=kernelalloc(sizeof(CHARACTERDEVICE));
- if(characterdevs == NULL) return(-1);
+	characterdevs=kernelalloc(sizeof(CHARACTERDEVICE));
+	if(characterdevs == NULL) return(-1);
 
- memset(characterdevs,0,sizeof(CHARACTERDEVICE));
- charnext=characterdevs;
+	memset(characterdevs,0,sizeof(CHARACTERDEVICE));
+	charnext=characterdevs;
 }
 else
 {
- charnext=characterdevs;
+	charnext=characterdevs;
 
- do {
-  if(strcmpi(device->dname,charnext->dname) == 0) {		 		/* already loaded */
-   setlasterror(DRIVER_ALREADY_LOADED);
-   return(-1);
-  }
+	do {
+		if(strcmpi(device->dname,charnext->dname) == 0) {		 		/* already loaded */
+			setlasterror(DRIVER_ALREADY_LOADED);
+			return(-1);
+		}
 
-  charlast=charnext;
-  charnext=charnext->next;
- } while(charnext != NULL);
+		charlast=charnext;
+	 	charnext=charnext->next;
+	} while(charnext != NULL);
 
- charlast->next=kernelalloc(sizeof(characterdevs)); /* add to struct */
+charlast->next=kernelalloc(sizeof(characterdevs)); /* add to struct */
 
- charnext=charlast->next;
- memset(charnext,0,sizeof(CHARACTERDEVICE));
- 
+charnext=charlast->next;
+memset(charnext,0,sizeof(CHARACTERDEVICE));
+	
 }
 
- /* at end here */
- memcpy(charnext,device,sizeof(CHARACTERDEVICE));
- charnext->next=NULL;
- setlasterror(NO_ERROR);
- return(NO_ERROR);
+/* at end here */
+memcpy(charnext,device,sizeof(CHARACTERDEVICE));
+charnext->next=NULL;
 
+setlasterror(NO_ERROR);
+return(NO_ERROR);
 }
 
 /*
@@ -155,78 +154,77 @@ else
  *
  * In: size_t op		Operation (0=read, 1=write)
  *     size_t block		Block number
-       void *buf		Buffer
+     void *buf		Buffer
  *
  * Returns 0 on success, -1 otherwise
  * 
  */
 
 size_t blockio(size_t op,size_t drive,uint64_t block,void *buf) {
- BLOCKDEVICE *next;
- char *b;
- size_t count;
- size_t error;
- size_t lasterr;
+BLOCKDEVICE *next;
+char *b;
+size_t count;
+size_t error;
+size_t lasterr;
 
- lock_mutex(&blockdevice_mutex);			/* lock mutex */
+lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
- next=blockdevices;					/* find drive entry */
- 
- while(next != NULL) {
-  if(next->drive == drive) break;
-  next=next->next;
- }
+next=blockdevices;					/* find drive entry */
+	
+while(next != NULL) {
+	 if(next->drive == drive) break;
+	 next=next->next;
+}
 
- if(next == NULL) {					/* bad drive */
-  unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+if(next == NULL) {					/* bad drive */
+	 unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
-  setlasterror(INVALID_DRIVE);
-  return(-1);
- }
+	 setlasterror(INVALID_DRIVE);
+	 return(-1);
+}
 
-  unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 b=buf;
 
 if(next->sectorsperblock == 0) next->sectorsperblock=1;
 
 
 for(count=0;count<next->sectorsperblock;count++) {
- if(next->blockio(op,next->physicaldrive,(next->startblock+block)+count,b) == -1) {
-  lasterr=getlasterror();
+	if(next->blockio(op,next->physicaldrive,(next->startblock+block)+count,b) == -1) {
+		lasterr=getlasterror();
 
-  if(lasterr == WRITE_PROTECT_ERROR || lasterr == DRIVE_NOT_READY || lasterr == INVALID_CRC \
+		if(lasterr == WRITE_PROTECT_ERROR || lasterr == DRIVE_NOT_READY || lasterr == INVALID_CRC \
 		|| lasterr == GENERAL_FAILURE || lasterr == DEVICE_IO_ERROR) { 
- 
-   error=call_critical_error_handler(next->dname,drive,(op & 0x80000000),lasterr);	/* call exception handler */
+	
+	  		error=call_critical_error_handler(next->dname,drive,(op & 0x80000000),lasterr);	/* call exception handler */
 
-   if(error == CRITICAL_ERROR_ABORT) {
-    unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
-    exit(0);	/* abort */
-   }
+	  		if(error == CRITICAL_ERROR_ABORT) {
+	   			unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+	   			exit(0);	/* abort */
+	  		}
 
-   if(error == CRITICAL_ERROR_RETRY) {		/* RETRY */
-    count--;
-    continue;
-   }
+	  		if(error == CRITICAL_ERROR_RETRY) {		/* RETRY */
+	   			count--;
+	   			continue;
+	  		}
 
-   if(error == CRITICAL_ERROR_FAIL) {
-    next->flags ^= DEVICE_LOCKED;				/* unlock drive */
+	  		if(error == CRITICAL_ERROR_FAIL) {
+	   			next->flags ^= DEVICE_LOCKED;				/* unlock drive */
 
-    unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+	   			unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+	   			return(-1);	/* FAIL */
+	  		}
+	 	}
+	}
 
-    return(-1);	/* FAIL */
-   }
-  }
- }
-
- b=b+next->sectorsize;
+b=b+next->sectorsize;
 }
 
 
- unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
- setlasterror(NO_ERROR);
- return(NO_ERROR);
+setlasterror(NO_ERROR);
+return(NO_ERROR);
 }	
 
 
@@ -234,7 +232,7 @@ for(count=0;count<next->sectorsperblock;count++) {
  * Get information about a character device
  *
  * In: char *name		Name of device
-       CHARACTERDEVICE *buf	Buffer to hold information about device
+	      CHARACTERDEVICE *buf	Buffer to hold information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -248,17 +246,16 @@ lock_mutex(&characterdevice_mutex);			/* lock mutex */
 next=characterdevs;
 
 while(next != NULL) {
- if(strcmpi(next->dname,name) == 0) {		/* found */
+	if(strcmpi(next->dname,name) == 0) {		/* found */
+		memcpy(buf,next,sizeof(CHARACTERDEVICE));
 
-  memcpy(buf,next,sizeof(CHARACTERDEVICE));
+		unlock_mutex(&characterdevice_mutex);			/* unlock mutex */
 
-  unlock_mutex(&characterdevice_mutex);			/* unlock mutex */
+		setlasterror(NO_ERROR);
+		return(NO_ERROR);
+	}
 
-  setlasterror(NO_ERROR);
-  return(NO_ERROR);
- }
-
- next=next->next;
+next=next->next;
 }
 
 setlasterror(FILE_NOT_FOUND);
@@ -269,7 +266,7 @@ return(-1);
  * Get information about a block device using drive number
  *
  * In: size_t drive		Drive number
-       BLOCKDEVICE *buf		Buffer to hold information about device
+	      BLOCKDEVICE *buf		Buffer to hold information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -282,17 +279,17 @@ lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
 next=blockdevices;
 while(next != NULL) {
- if(next->drive == drive) {		/* found device */
+	if(next->drive == drive) {		/* found device */
 
-  memcpy(buf,next,sizeof(BLOCKDEVICE));
+		memcpy(buf,next,sizeof(BLOCKDEVICE));
 
-  unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+		unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
-  setlasterror(NO_ERROR);
-  return(NO_ERROR);
- }
+		setlasterror(NO_ERROR);
+		return(NO_ERROR);
+	}
 
- next=next->next;
+next=next->next;
 }
 
 unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
@@ -305,7 +302,7 @@ return(-1);
  * Get information about a character device using it's name
  *
  * In: char *name		Name of device
-       CHARACTERDEVICE *buf	Buffer to hold information about device
+	      CHARACTERDEVICE *buf	Buffer to hold information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -320,20 +317,21 @@ SPLITBUF splitbuf;
 lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
 next=blockdevices;
+
 while(next != NULL) {
- if(strcmpi(next->dname,name) == 0) {		/* found device */
-  savenext=next->next;
+	if(strcmpi(next->dname,name) == 0) {		/* found device */
+		savenext=next->next;
 
-  memcpy(buf,next,sizeof(BLOCKDEVICE));
-  next->next=savenext;
+		memcpy(buf,next,sizeof(BLOCKDEVICE));
+		next->next=savenext;
 
-  unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+		unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
-  setlasterror(NO_ERROR);
-  return(NO_ERROR);
- }
+		setlasterror(NO_ERROR);
+		return(NO_ERROR);
+	}
 
- next=next->next;
+	next=next->next;
 }
 
 unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
@@ -346,40 +344,40 @@ return(-1);
  * Updat block device information
  *
  * In: size_t drive		Drive
-       BLOCKDEVICE *buf		information about device
+	      BLOCKDEVICE *buf		information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
  */
 
 size_t update_block_device(size_t drive,BLOCKDEVICE *driver) {
- BLOCKDEVICE *next;
- BLOCKDEVICE *last;
+BLOCKDEVICE *next;
+BLOCKDEVICE *last;
 
 /* find device */
- lock_mutex(&blockdevice_mutex);			/* lock mutex */
+lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
- next=blockdevices;
+next=blockdevices;
 
- while(next != NULL) {
-  if(next->drive == drive) {		 		/* already loaded */
-   last=next->next;
+while(next != NULL) {
+	if(next->drive == drive) {		 		/* already loaded */
+		last=next->next;
 
-   memcpy(next,driver,sizeof(BLOCKDEVICE));		/* update struct */
+		memcpy(next,driver,sizeof(BLOCKDEVICE));		/* update struct */
 
-   next->next=last;
+		next->next=last;
 
-   unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+		unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
-   setlasterror(NO_ERROR);
-   return(0);
-  }
+		setlasterror(NO_ERROR);
+		return(0);
+	}
 
- next=next->next;
- }
+next=next->next;
+}
 	
-  setlasterror(INVALID_DRIVE);
-  return(-1);
+setlasterror(INVALID_DRIVE);
+return(-1);
 }
 
 /*
@@ -396,46 +394,46 @@ BLOCKDEVICE *next;
 BLOCKDEVICE *last;
 
 /* find device */
- lock_mutex(&blockdevice_mutex);			/* lock mutex */
+lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
- next=blockdevices;
- last=blockdevices;
+next=blockdevices;
+last=blockdevices;
 
- while(next != NULL) {
-  if(strcmpi(next->dname,name) == 0) {		 		/* already loaded */
+while(next != NULL) {
+	 if(strcmpi(next->dname,name) == 0) {		 		/* already loaded */
 
-   if(last == blockdevices) {			/* start */
-    blockdevices=next->next;
-   }
-   else if(next->next == NULL) {		/* end */
-	last->next=NULL;
-   }
-   else						/* middle */
-   {
-    last->next=next->next;	
-   }
-   
-   kernelfree(next);
+	 	if(last == blockdevices) {			/* start */
+	 		blockdevices=next->next;
+	 	}
+	  	else if(next->next == NULL) {		/* end */
+			last->next=NULL;
+	  	}
+	  	else						/* middle */
+	  	{
+	   		last->next=next->next;	
+	  	}
+	  
+		kernelfree(next);
 
-   unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+	  	unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
-   setlasterror(NO_ERROR);
-   return(0);
-  }
+		setlasterror(NO_ERROR);
+		return(0);
+	}
 
- last=next;
- next=next->next;
- }
+	last=next;
+	next=next->next;
+}
 
- setlasterror(INVALID_DRIVE);
- return(-1);
+setlasterror(INVALID_DRIVE);
+return(-1);
 }
 
 /*
  * Remove character device
  *
- * In: char *name		Name of device
-       CHARACTERDEVICE *buf	Buffer to hold information about device
+ * In: name		Name of device
+	buf		Buffer to hold information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -447,38 +445,38 @@ CHARACTERDEVICE *last;
 
 /* find device */
 
- lock_mutex(&characterdevice_mutex);			/* lock mutex */
+lock_mutex(&characterdevice_mutex);			/* lock mutex */
 
- next=characterdevs;
- last=next;
+next=characterdevs;
+last=next;
 
- while(next != NULL) {
-  if(strcmpi(next->dname,name) == 0) {		 		/* already loaded */
-   if(last == characterdevs) {			/* start */
-    characterdevs=next->next;
-   }
-   else if(next->next == NULL) {		/* end */
-	last->next=NULL;
-   }
-   else						/* middle */
-   {
-    last->next=next->next;	
-   }
+while(next != NULL) {
+	 if(strcmpi(next->dname,name) == 0) {		 		/* already loaded */
+	 	if(last == characterdevs) {			/* start */
+	 		characterdevs=next->next;
+	 	}
+		else if(next->next == NULL) {		/* end */
+			last->next=NULL;
+	  	}
+	  	else						/* middle */
+	  	{
+	   		last->next=next->next;	
+	  	}
 
-   kernelfree(next);
+	  	kernelfree(next);
 
-   unlock_mutex(&characterdevice_mutex);	/* unlock mutex */
+		unlock_mutex(&characterdevice_mutex);	/* unlock mutex */
 
-   setlasterror(NO_ERROR);
-   return(0);
-  }
+		setlasterror(NO_ERROR);
+		return(0);
+	 }
 
- last=next;
- next=next->next;
- }
+last=next;
+next=next->next;
+}
 
- setlasterror(INVALID_DEVICE);
- return(-1);
+setlasterror(INVALID_DEVICE);
+return(-1);
 }
 
 /*
@@ -491,25 +489,24 @@ CHARACTERDEVICE *last;
  */
 
 size_t allocatedrive(void) {
- size_t count;
- size_t drivenumber=2;
+size_t count;
+size_t drivenumber=2;
 
 /* loop through bitmap to find free drive
-   starts at bit 2 to skip first two drives which are reserved */
+	  starts at bit 2 to skip first two drives which are reserved */
 
 /* from 2**2 to 2**26 */
 
- for(count=4;count<67108864;count *= 2) {
-  if((drive_bitmap & count) == 0) {		/* found free drive */
-   drive_bitmap |= count;		/* allocate drive */
+for(count=4;count<67108864;count *= 2) {
+	if((drive_bitmap & count) == 0) {		/* found free drive */
+		drive_bitmap |= count;		/* allocate drive */
+		return(drivenumber);
+	}
 
-   return(drivenumber);
-  }
+	drivenumber++;
+}
 
-  drivenumber++;
- }
-
- return(-1);		/* no free drives */
+return(-1);		/* no free drives */
 }
 
 /*
@@ -521,7 +518,7 @@ size_t allocatedrive(void) {
  * 
  */
 size_t freedrive(size_t drive) {
- drive_bitmap &= (ipow(2,drive));		/* free drive */
+drive_bitmap &= (ipow(2,drive));		/* free drive */
 }
 
 
@@ -535,12 +532,12 @@ size_t freedrive(size_t drive) {
  */
 
 void devicemanager_init(void) {
- blockdevices=NULL;
- characterdevs=NULL;
+blockdevices=NULL;
+characterdevs=NULL;
 
- initialize_mutex(&blockdevice_mutex);		/* intialize mutex */
- initialize_mutex(&characterdevice_mutex);	/* intialize mutex */
+initialize_mutex(&blockdevice_mutex);		/* intialize mutex */
+initialize_mutex(&characterdevice_mutex);	/* intialize mutex */
 
- drive_bitmap=0;
+drive_bitmap=0;
 }
 

@@ -41,23 +41,23 @@ int count=0;
 bufptr=buf;				/* point to buffer */
 
 while(1) { 
- read(stdin,bufptr,1);
+	read(stdin,bufptr,1);
 
- if(count++ >= size) return;
+	if(count++ >= size) return;
 
- if(*bufptr == 0x8) {			/* if backspace, erase character */
+	if(*bufptr == 0x8) {			/* if backspace, erase character */
 
-  *bufptr--=0;
-  *bufptr--=0;
-  count -= 2;
- }
+		*bufptr--=0;
+		*bufptr--=0;
+		count -= 2;
+	}
 
- if(*bufptr == '\n') {			/* if newline, return */
-  *bufptr=0;
-  break;
- }
+	if(*bufptr == '\n') {			/* if newline, return */
+		*bufptr=0;
+		break;
+	}
 
- bufptr++;
+	bufptr++;
 }
 
 return(NO_ERROR);

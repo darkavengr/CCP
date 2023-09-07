@@ -42,8 +42,8 @@ extern *switch_task();
  * 
  */
 void disablemultitasking(void) {
- multitaskingenabled=FALSE;
- return;
+multitaskingenabled=FALSE;
+return;
 }
 
 /*
@@ -55,8 +55,8 @@ void disablemultitasking(void) {
  * 
  */
 void enablemultitasking(void) {
- multitaskingenabled=TRUE;
- return;
+multitaskingenabled=TRUE;
+return;
 }
 
 /*
@@ -86,7 +86,6 @@ return;
 
 size_t is_multitasking_enabled(void) {
  return(multitaskingenabled);
-
 }
 
 /*
@@ -99,9 +98,9 @@ size_t is_multitasking_enabled(void) {
  */
 
 PROCESS *find_next_process_to_switch_to(void) { 
- if((currentprocess == NULL) || (currentprocess->next == NULL)) return(processes);	/* if at end, loop back to start */
+if((currentprocess == NULL) || (currentprocess->next == NULL)) return(processes);	/* if at end, loop back to start */
 
- return(currentprocess->next);
+return(currentprocess->next);
 }
 
 size_t is_process_ready_to_switch(void) { 

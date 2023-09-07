@@ -1,20 +1,20 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020-2023
+				(C) Matthew Boote 2020-2023
 
-    This file is part of CCP.
+				This file is part of CCP.
 
-    CCP is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+				CCP is free software: you can redistribute it and/or modify
+				it under the terms of the GNU General Public License as published by
+				the Free Software Foundation, either version 3 of the License, or
+				(at your option) any later version.
 
-    CCP is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+				CCP is distributed in the hope that it will be useful,
+				but WITHOUT ANY WARRANTY; without even the implied warranty of
+				MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+				GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+				You should have received a copy of the GNU General Public License
+				along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 /* 
@@ -70,17 +70,17 @@ size_t fat_create_int(size_t entrytype,char *filename);
  * Find first or next file in directory
  *
  * In:  name	Filename or wildcard of file to find
-        buffer	Buffer to hold information about files
+		buffer	Buffer to hold information about files
  *
  * Returns: -1 on error, 0 on success
  *
  */
 size_t fat_findfirst(char *filename,FILERECORD *buf) {
- return(fat_find(FALSE,filename,buf));
+	return(fat_find(FALSE,filename,buf));
 }
 
 size_t fat_findnext(char *filename,FILERECORD *buf) {
- return(fat_find(TRUE,filename,buf));
+	return(fat_find(TRUE,filename,buf));
 }
 
 /*
@@ -88,7 +88,7 @@ size_t fat_findnext(char *filename,FILERECORD *buf) {
  *
  * In:  type	Type of find, 0=first file, 1=next file
 	name	Filename or wildcard of file to find
-        buffer	Buffer to hold information about files
+					   buffer	Buffer to hold information about files
  *
  * Returns: -1 on error, 0 on success
  *
@@ -116,26 +116,26 @@ if(lfnbuf == NULL) return(-1);
 
 splitbuf=kernelalloc(sizeof(SPLITBUF));	/* allocate split buffer */
 if(splitbuf == NULL) {
- kernelfree(lfnbuf);
- return(-1);
+	kernelfree(lfnbuf);
+	return(-1);
 }
 
 if(find_type == FALSE) {
- getfullpath(filename,fp);			/* get full filename */
- touppercase(fp);				/* convert to uppercase */
+	getfullpath(filename,fp);			/* get full filename */
+	touppercase(fp);				/* convert to uppercase */
 
- splitname(fp,splitbuf);					/* split filename */
+	splitname(fp,splitbuf);					/* split filename */
 
- buf->findentry=0;
+	buf->findentry=0;
 
- buf->findlastblock=fat_getstartblock(splitbuf->dirname);
- if(buf->findlastblock == -1) return(-1);
+	buf->findlastblock=fat_getstartblock(splitbuf->dirname);
+	if(buf->findlastblock == -1) return(-1);
 
- strcpy(buf->searchfilename,fp); 
+	strcpy(buf->searchfilename,fp); 
 }
 else
 {
- splitname(buf->searchfilename,splitbuf);					/* split filename */
+	splitname(buf->searchfilename,splitbuf);					/* split filename */
 
 }
 
@@ -143,200 +143,199 @@ if(strlen(splitbuf->filename) == 0) strcpy(splitbuf->filename,"*");
 
 fattype=fat_detectchange(splitbuf->drive);
 if(fattype == -1) {
- kernelfree(splitbuf);
- kernelfree(lfnbuf);
- setlasterror(INVALID_DISK);
- return(-1);
+	kernelfree(splitbuf);
+	kernelfree(lfnbuf);
+	setlasterror(INVALID_DISK);
+	return(-1);
 }
 
 if(getblockdevice(splitbuf->drive,&blockdevice) == -1) {
- kernelfree(splitbuf);
- kernelfree(lfnbuf);
- setlasterror(INVALID_DISK);
- return(-1);
+	kernelfree(splitbuf);
+	kernelfree(lfnbuf);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 bpb=blockdevice.superblock;		/* point to data */
 
 blockbuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);			/* allocate block buffers */ 
 if(blockbuf == NULL) {
- kernelfree(splitbuf);
- kernelfree(lfnbuf);
- return(-1);
+	kernelfree(splitbuf);
+	kernelfree(lfnbuf);
+	return(-1);
 }
 
 /*
  * If it's the root directory, then it's in a fixed position for fat12 and fat16.
-   All other directories are located in the data area */
+			All other directories are located in the data area */
 
 if(strcmp(splitbuf->dirname,"\\") != 0) { /* not root */
- if(fattype == 12 || fattype == 16) {
-  rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
-  startofdataarea=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
- }
- else
- {
-  startofdataarea=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
- }
- 
+	if(fattype == 12 || fattype == 16) {
+		rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
+		startofdataarea=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
+	}
+	else
+	{
+		startofdataarea=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
+	}
+	
 }
 else
 {
- startofdataarea=0;
+	startofdataarea=0;
 }
 
 blockptr=blockbuf+(buf->findentry*FAT_ENTRY_SIZE);	/* point to next file */
 
 if(blockio(_READ,splitbuf->drive,buf->findlastblock+startofdataarea,blockbuf) == -1) { /* read directory block */
- kernelfree(blockbuf);
- kernelfree(lfnbuf);
- kernelfree(splitbuf);
- return(-1);
+	kernelfree(blockbuf);
+	kernelfree(lfnbuf);
+	kernelfree(splitbuf);
+	return(-1);
 }
 
 /* search thorough block until filename found */
 
 while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1) {
- buf->findentry++;
- blockptr=blockptr+FAT_ENTRY_SIZE;
+	buf->findentry++;
+	blockptr=blockptr+FAT_ENTRY_SIZE;
 
- memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);				/* copy entry */
+	memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);				/* copy entry */
 
- c=*blockptr;
+	c=*blockptr;
 
- if(c == 0) {						/* end of directory */
-  kernelfree(blockbuf);
-  kernelfree(splitbuf);
-  kernelfree(lfnbuf);
-  setlasterror(END_OF_DIR);
-  return(-1);
- }
+	if(c == 0) {						/* end of directory */
+		kernelfree(blockbuf);
+		kernelfree(splitbuf);
+		kernelfree(lfnbuf);
+		setlasterror(END_OF_DIR);
+		return(-1);
+	}
 							/* get first character of filename */
- if(c == 0xE5) {
-  continue;							/* deleted file */
- }
+	if(c == 0xE5) {
+		continue;							/* deleted file */
+	}
 
- fatentrytofilename(dirent.filename,file);			/* convert filename */
+	fatentrytofilename(dirent.filename,file);			/* convert filename */
 
- if(dirent.attribs == 0x0f) {			/* long filename */
+	if(dirent.attribs == 0x0f) {			/* long filename */
+		lfncount=fat_readlfn(splitbuf->drive,buf->findlastblock,buf->findentry-1,lfnbuf);
 
-  lfncount=fat_readlfn(splitbuf->drive,buf->findlastblock,buf->findentry-1,lfnbuf);
+		buf->findentry += lfncount;
 
-  buf->findentry += lfncount;
+		blockptr=blockptr+(lfncount*FAT_ENTRY_SIZE);			/* point to next */
+				
+		if(wildcard(splitbuf->filename,lfnbuf->filename) == 0) { 	/* if file found */      	
+			strcpy(buf->filename,lfnbuf->filename);
 
-  blockptr=blockptr+(lfncount*FAT_ENTRY_SIZE);			/* point to next */
-    
-  if(wildcard(splitbuf->filename,lfnbuf->filename) == 0) { 	/* if file found */      
-  
-   strcpy(buf->filename,lfnbuf->filename);
+			buf->attribs=dirent.attribs;
 
-   buf->attribs=dirent.attribs;
+			buf->filesize=dirent.filesize;
+			buf->startblock=(dirent.block_high_word << 16)+(dirent.block_low_word);
+			buf->drive=splitbuf->drive;
+			buf->dirent=(buf->findentry-lfncount);
+			buf->access=0;
+			buf->currentpos=0;
 
-   buf->filesize=dirent.filesize;
-   buf->startblock=(dirent.block_high_word << 16)+(dirent.block_low_word);
-   buf->drive=splitbuf->drive;
-   buf->dirent=(buf->findentry-lfncount);
-   buf->access=0;
-   buf->currentpos=0;
-
-   buf->timebuf.hours=(dirent.createtime & 0xf800) >> 11;
-   buf->timebuf.minutes=(dirent.createtime  & 0x7e0) >> 6;
-   buf->timebuf.seconds=(dirent.createtime & 0x1f);
-   buf->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
-   buf->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
-   buf->timebuf.day=(dirent.createdate & 0x1f);
-   if(buf->attribs & FAT_ATTRIB_DIRECTORY) buf->flags=FILE_DIRECTORY;
+			buf->timebuf.hours=(dirent.createtime & 0xf800) >> 11;
+			buf->timebuf.minutes=(dirent.createtime  & 0x7e0) >> 6;
+			buf->timebuf.seconds=(dirent.createtime & 0x1f);
+			buf->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
+			buf->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
+			buf->timebuf.day=(dirent.createdate & 0x1f);
+			if(buf->attribs & FAT_ATTRIB_DIRECTORY) buf->flags=FILE_DIRECTORY;
 
 /* get next block */
 
-   if(fattype == 12 || fattype == 16) {
-    buf->currentblock=(bpb->sectorsperfat*bpb->numberoffats) \
-    + (buf->startblock) - bpb->reservedsectors;
-    + ((bpb->rootdirentries*FAT_ENTRY_SIZE) / (bpb->sectorsperblock*bpb->sectorsize));
-   }
+			if(fattype == 12 || fattype == 16) {
+				buf->currentblock=(bpb->sectorsperfat*bpb->numberoffats) \
+				+ (buf->startblock) - bpb->reservedsectors;
+				+ ((bpb->rootdirentries*FAT_ENTRY_SIZE) / (bpb->sectorsperblock*bpb->sectorsize));
+			}
 
-   if(fattype == 32) {
-    buf->currentblock=(bpb->fat32sectorsperfat*bpb->numberoffats) \
-    + (bpb->fat32rootdirstart*bpb->sectorsperblock) \
-    + (buf->startblock) - bpb->reservedsectors;
-   }
+			if(fattype == 32) {
+				buf->currentblock=(bpb->fat32sectorsperfat*bpb->numberoffats) \
+				+ (bpb->fat32rootdirstart*bpb->sectorsperblock) \
+				+ (buf->startblock) - bpb->reservedsectors;
+			}
 
 
-   kernelfree(blockbuf);
-   kernelfree(splitbuf);
-   kernelfree(lfnbuf);
-  
-  setlasterror(NO_ERROR);
+			kernelfree(blockbuf);
+			kernelfree(splitbuf);
+			kernelfree(lfnbuf);
+		
+			setlasterror(NO_ERROR);
 
-  return(0);
-  }
+			return(0);
+		}
 
 }
 
-   if(wildcard(splitbuf->filename,file) == 0) { 				/* if file found */     
-    fatentrytofilename(dirent.filename,buf->filename);			/* convert filename */
+			if(wildcard(splitbuf->filename,file) == 0) { 				/* if file found */     
+				fatentrytofilename(dirent.filename,buf->filename);			/* convert filename */
 
-    if(dirent.attribs & FAT_ATTRIB_DIRECTORY) buf->flags= FILE_DIRECTORY;
+				if(dirent.attribs & FAT_ATTRIB_DIRECTORY) buf->flags= FILE_DIRECTORY;
 
-    buf->attribs=dirent.attribs;
+				buf->attribs=dirent.attribs;
 
-    buf->filesize=dirent.filesize;
+				buf->filesize=dirent.filesize;
 
-    buf->startblock=(dirent.block_high_word << 16)+(dirent.block_low_word);
-    buf->drive=splitbuf->drive;
-    buf->dirent=buf->findentry-1;
-    buf->access=0;
-    buf->currentpos=0;
+				buf->startblock=(dirent.block_high_word << 16)+(dirent.block_low_word);
+				buf->drive=splitbuf->drive;
+				buf->dirent=buf->findentry-1;
+				buf->access=0;
+				buf->currentpos=0;
 
-    buf->timebuf.hours=(dirent.createtime & 0xf800) >> 11;
-    buf->timebuf.minutes=(dirent.createtime  & 0x7e0) >> 6;
-    buf->timebuf.seconds=(dirent.createtime & 0x1f);
-    buf->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
-    buf->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
-    buf->timebuf.day=(dirent.createdate & 0x1f);
- 
-    buf->drive=splitbuf->drive;		/* additonal information */
+				buf->timebuf.hours=(dirent.createtime & 0xf800) >> 11;
+				buf->timebuf.minutes=(dirent.createtime  & 0x7e0) >> 6;
+				buf->timebuf.seconds=(dirent.createtime & 0x1f);
+				buf->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
+				buf->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
+				buf->timebuf.day=(dirent.createdate & 0x1f);
+	
+				buf->drive=splitbuf->drive;		/* additonal information */
 
-    if(fattype == 12 || fattype == 16) {
-     buf->currentblock=(bpb->sectorsperfat*bpb->numberoffats) \
-     + ((bpb->rootdirentries*FAT_ENTRY_SIZE) / (bpb->sectorsperblock*bpb->sectorsize)) \
-     + (buf->startblock) - bpb->reservedsectors;
-    }
+				if(fattype == 12 || fattype == 16) {
+					buf->currentblock=(bpb->sectorsperfat*bpb->numberoffats) \
+					+ ((bpb->rootdirentries*FAT_ENTRY_SIZE) / (bpb->sectorsperblock*bpb->sectorsize)) \
+					+ (buf->startblock) - bpb->reservedsectors;
+				}
 
-    if(fattype == 32) {
-     buf->currentblock=(bpb->fat32sectorsperfat*bpb->numberoffats) \
-     + (bpb->fat32rootdirstart*bpb->sectorsperblock) \
-     + blockdevice.startblock - bpb->reservedsectors;
-    }
+				if(fattype == 32) {
+					buf->currentblock=(bpb->fat32sectorsperfat*bpb->numberoffats) \
+					+ (bpb->fat32rootdirstart*bpb->sectorsperblock) \
+					+ blockdevice.startblock - bpb->reservedsectors;
+				}
 
-    kernelfree(splitbuf);
-    kernelfree(blockbuf);
-    kernelfree(lfnbuf);
-    setlasterror(NO_ERROR);
-    return(0);
-   }
-  }
+				kernelfree(splitbuf);
+				kernelfree(blockbuf);
+				kernelfree(lfnbuf);
+
+				setlasterror(NO_ERROR);
+				return(0);
+			}
+		}
 
 if(buf->findentry >= ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1) {		/* at end of block */
 
- buf->findlastblock=fat_getnextblock(splitbuf->drive,buf->findlastblock);	/* get next block */
- buf->findentry=0;
+	buf->findlastblock=fat_getnextblock(splitbuf->drive,buf->findlastblock);	/* get next block */
+	buf->findentry=0;
 
- if((fattype == 12 && buf->findlastblock >= 0xff8) || (fattype == 16 && buf->findlastblock >= 0xfff8) || (fattype == 32 && buf->findlastblock >= 0xfffffff8)) {
-   kernelfree(blockbuf);
-   kernelfree(splitbuf);
+	if((fattype == 12 && buf->findlastblock >= 0xff8) || (fattype == 16 && buf->findlastblock >= 0xfff8) || (fattype == 32 && buf->findlastblock >= 0xfffffff8)) {
+			kernelfree(blockbuf);
+			kernelfree(splitbuf);
 
-  setlasterror(END_OF_DIR);
-  return(-1);
-  }
+			setlasterror(END_OF_DIR);
+			return(-1);
+	}
 }
 
-  kernelfree(blockbuf);
-  kernelfree(splitbuf);
-  kernelfree(lfnbuf);
+kernelfree(blockbuf);
+kernelfree(splitbuf);
+kernelfree(lfnbuf);
 
- setlasterror(NO_ERROR);
- return(0);
+setlasterror(NO_ERROR);
+return(0);
 }
 
 
@@ -378,41 +377,43 @@ getfullpath(newname,newfullname);                 /* get full path */
 
 splitbuf=kernelalloc(sizeof(SPLITBUF));
 if(splitbuf == NULL) {				/* can't allocate */
- kernelfree(lfnbuf);
+	kernelfree(lfnbuf);
 
- setlasterror(NO_MEM);
- return(-1);
+	setlasterror(NO_MEM);
+	return(-1);
 }
 
 newsplitbuf=kernelalloc(sizeof(SPLITBUF));
 if(newsplitbuf == NULL) {				/* can't allocate */
- setlasterror(NO_MEM);
- return(-1);
+	setlasterror(NO_MEM);
+	return(-1);
 }
 	
 splitname(fullname,splitbuf);			/* split name */
 splitname(newfullname,newsplitbuf);			/* split name */
 
 if(splitbuf->drive != newsplitbuf->drive || strcmp(splitbuf->dirname,newsplitbuf->dirname) != 0) {
- setlasterror(RENAME_ACR_DRIVE);
-  kernelfree(splitbuf);
-  kernelfree(newsplitbuf);
- return(-1);
+	setlasterror(RENAME_ACR_DRIVE);
+	kernelfree(splitbuf);
+	kernelfree(newsplitbuf);
+	return(-1);
 }
 
 fattype=fat_detectchange(splitbuf->drive);
 if(fattype == -1) {
-  kernelfree(splitbuf);
- kernelfree(lfnbuf);
- setlasterror(INVALID_DISK);
- return(-1);
+	kernelfree(splitbuf);
+	kernelfree(lfnbuf);
+
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(splitbuf->drive,&blockdevice) == -1) {
- kernelfree(splitbuf);
- kernelfree(newsplitbuf);
- setlasterror(INVALID_DISK);
- return(-1);
+	kernelfree(splitbuf);
+	kernelfree(newsplitbuf);
+
+	setlasterror(INVALID_DISK);
+	return(-1);
 }
 
 bpb=blockdevice.superblock;		/* point to data */
@@ -421,102 +422,108 @@ bpb=blockdevice.superblock;		/* point to data */
 fat_convertfilename(splitbuf->filename,file);			/* convert to FAT format */
 
 blockbuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);
+
 if(blockbuf == NULL) {			/* can't allocate */
-  kernelfree(splitbuf);
-  kernelfree(newsplitbuf);
- setlasterror(NO_MEM);
- return(-1);
+	kernelfree(splitbuf);
+	kernelfree(newsplitbuf);
+
+	setlasterror(NO_MEM);
+	return(-1);
 }
 
 
 rb=fat_getstartblock(splitbuf->dirname);		/* get directory start */
 if(rb == -1) {
-  kernelfree(splitbuf);
-  kernelfree(newsplitbuf);
- return(-1);
+		kernelfree(splitbuf);
+		kernelfree(newsplitbuf);
+		return(-1);
 }
 
 
- blockptr=blockbuf;
+blockptr=blockbuf;
 
- if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) {
-   kernelfree(splitbuf);
-   kernelfree(newsplitbuf);
-  return(-1);
- }
+if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) {
+		kernelfree(splitbuf);
+		kernelfree(newsplitbuf);
+		return(-1);
+}
 
 /* search through directory until filename found, and rename */
 
 while((fattype == 12 && rb < 0xff8) || (fattype == 16 && rb < 0xfff8) || (fattype == 32 && rb < 0xfffffff8)) {	/* until end */
 
 /* search through block to find entry, and rename if found */
- for(count=0;count<(bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE;count++) {
-  memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);
-  blockptr=blockptr+FAT_ENTRY_SIZE;
- 
-  if(*dirent.filename == 0) {					/* end of directory */
-   setlasterror(END_OF_DIR);
-   return(-1);
-  }
+	for(count=0;count<(bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE;count++) {
+		memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);
+		blockptr=blockptr+FAT_ENTRY_SIZE;
+	
+		if(*dirent.filename == 0) {					/* end of directory */
+			setlasterror(END_OF_DIR);
+			return(-1);
+		}
 
-  fatentrytofilename(dirent.filename,file);			/* convert filename */
-
-
+		fatentrytofilename(dirent.filename,file);			/* convert filename */
 
 
- if(dirent.attribs == 0x0f) {			/* long filename */
-  lfncount=fat_readlfn(splitbuf->drive,rb,count,lfnbuf);
-
-  if(lfncount != -1 &&  wildcard(splitbuf->filename,lfnbuf->filename) == 0) { 	/* if file found */
-
-   fat_writelfn(splitbuf->drive,rb,count,fullname,newfullname);
-    kernelfree(blockbuf);
-    kernelfree(splitbuf);
-    kernelfree(lfnbuf);
-
-   setlasterror(NO_ERROR);
-   return(NO_ERROR);
-  }
-
-  blockptr=blockptr+(lfncount*FAT_ENTRY_SIZE);		/* point to entry after lfn */
- }
 
 
-  if(wildcard(filename,file) == 0) {	       /* file found */  
-    wildcard_rename(filename,newname,newfile);	/* process wildcards in filename */
+		if(dirent.attribs == 0x0f) {			/* long filename */
+			lfncount=fat_readlfn(splitbuf->drive,rb,count,lfnbuf);
 
-    fat_convertfilename(newfile,dirent.filename);	/* new name */    
-    memcpy(blockptr-FAT_ENTRY_SIZE,&dirent,FAT_ENTRY_SIZE);
+			if(lfncount != -1 &&  wildcard(splitbuf->filename,lfnbuf->filename) == 0) { 	/* if file found */
 
-    if(blockio(_WRITE,splitbuf->drive,rb,blockbuf) == -1) {		/* write block */
-     kernelfree(splitbuf);
-      kernelfree(newsplitbuf);
-     setlasterror(NO_ERROR);
-     return(NO_ERROR);
-    }
-  }
- }
+				fat_writelfn(splitbuf->drive,rb,count,fullname,newfullname);
 
-  blockptr=blockbuf;
- 
-  rb=fat_getnextblock(splitbuf->drive,rb);			/* get next block */
-  if(rb == -1) {
-    kernelfree(splitbuf);
-    kernelfree(newsplitbuf);
-   return(-1);
-  }
+				kernelfree(blockbuf);
+				kernelfree(splitbuf);
+				kernelfree(lfnbuf);
 
-  blockptr=blockbuf;
-   
-  if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) {
-    kernelfree(splitbuf);
-    kernelfree(newsplitbuf);
-   return(-1);
-  }
+				setlasterror(NO_ERROR);
+
+				return(NO_ERROR);
+			}
+
+			blockptr=blockptr+(lfncount*FAT_ENTRY_SIZE);		/* point to entry after lfn */
+		}
+
+
+		if(wildcard(filename,file) == 0) {					   /* file found */  
+				wildcard_rename(filename,newname,newfile);	/* process wildcards in filename */
+
+				fat_convertfilename(newfile,dirent.filename);	/* new name */    
+				memcpy(blockptr-FAT_ENTRY_SIZE,&dirent,FAT_ENTRY_SIZE);
+
+				if(blockio(_WRITE,splitbuf->drive,rb,blockbuf) == -1) {		/* write block */
+					kernelfree(splitbuf);
+					 kernelfree(newsplitbuf);
+					setlasterror(NO_ERROR);
+					return(NO_ERROR);
+				}
+		}
+	}
+
+	blockptr=blockbuf;
+	
+	rb=fat_getnextblock(splitbuf->drive,rb);			/* get next block */
+	if(rb == -1) {
+		kernelfree(splitbuf);
+		kernelfree(newsplitbuf);
+	
+		return(-1);
+	}
+
+	blockptr=blockbuf;
+			
+	if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) {
+			kernelfree(splitbuf);
+			kernelfree(newsplitbuf);
+
+			return(-1);
+	}
 }
 
- kernelfree(splitbuf);
- kernelfree(newsplitbuf); 
+kernelfree(splitbuf);
+kernelfree(newsplitbuf); 
 
 setlasterror(FILE_NOT_FOUND);
 return(-1);
@@ -532,7 +539,7 @@ return(-1);
  * Stub function to call fat_delete */
 
 size_t fat_rmdir(char *dirname) {
- return(fat_delete(dirname));
+return(fat_delete(dirname));
 }
 
 /*
@@ -545,7 +552,7 @@ size_t fat_rmdir(char *dirname) {
  * Stub function that calls internal create function
  */
 size_t fat_mkdir(char *dirname) {
- return(fat_create_int(_DIR,dirname));
+return(fat_create_int(_DIR,dirname));
 }
 
 /*
@@ -558,7 +565,7 @@ size_t fat_mkdir(char *dirname) {
  */
 
 size_t fat_create(char *dirname) {
- return(fat_create_int(_FILE,dirname));
+return(fat_create_int(_FILE,dirname));
 }
 
 /*
@@ -602,9 +609,10 @@ unsigned char c;
 
 splitbuf=kernelalloc(sizeof(SPLITBUF));
 if(splitbuf == NULL) {				/* can't allocate */
-  kernelfree(blockbuf);
- setlasterror(NO_MEM);
- return(-1);
+	kernelfree(blockbuf);
+
+	setlasterror(NO_MEM);
+	return(-1);
 }
 
 blockptr=blockbuf;
@@ -613,54 +621,53 @@ splitname(filename,splitbuf);				/* split name */
 
 fattype=fat_detectchange(splitbuf->drive);
 if(fattype == -1) {
- kernelfree(blockbuf);
- kernelfree(splitbuf);
- setlasterror(INVALID_DISK);
- return(-1);
+	kernelfree(blockbuf);
+	kernelfree(splitbuf);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(splitbuf->drive,&blockdevice) == -1) {
- kernelfree(blockbuf);
- kernelfree(splitbuf);
- setlasterror(INVALID_DISK);			/* drive doesn't exist */
- return(-1);
+	kernelfree(blockbuf);
+	kernelfree(splitbuf);
+	setlasterror(INVALID_DISK);			/* drive doesn't exist */
+	return(-1);
 } 
 
 bpb=blockdevice.superblock;		/* point to data */
 
-
 blockbuf=kernelalloc((bpb->sectorsperblock*bpb->sectorsize));
 if(blockbuf == NULL) {				/* can't allocate */
-  kernelfree(blockbuf);
+	kernelfree(blockbuf);
 
- setlasterror(NO_MEM);
- return(-1);
+	setlasterror(NO_MEM);
+	return(-1);
 }
 
 getfullpath(filename,fullname);			/* get full path */
 
 if(findfirst(filename,&findbuf) != -1) {	/* check if file exists */
-  kernelfree(blockbuf);
-  kernelfree(splitbuf);
+	kernelfree(blockbuf);
+	kernelfree(splitbuf);
 
- setlasterror(FILE_EXISTS);
- return(-1);
+	setlasterror(FILE_EXISTS);
+	return(-1);
 }
 
 blockptr=blockbuf;
 rb=fat_getstartblock(splitbuf->dirname);		/* get directory start */
 if(rb == -1) {
-  kernelfree(splitbuf);
- return(-1);
+	kernelfree(splitbuf);
+	return(-1);
 }
 
 if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) { /* read block */
-  kernelfree(blockbuf);
-  kernelfree(splitbuf);
+	kernelfree(blockbuf);
+	kernelfree(splitbuf);
 
- return(-1);
+	return(-1);
 }
- 
+	
 gettime(&timebuf);				/* get time and date */
 
 time=(timebuf.hours << 11)+(timebuf.minutes << 5)+timebuf.seconds;
@@ -678,234 +685,235 @@ while((fattype == 12 && rb < 0xff8) || (fattype == 16 && rb < 0xfff8) || (fattyp
 
 /* loop through block until free entry found */
 
- for(count=0;count<bpb->sectorsperblock*bpb->sectorsize;count++) {
+	for(count=0;count<bpb->sectorsperblock*bpb->sectorsize;count++) {
 
-  c=*blockptr;
+		c=*blockptr;
 
-  if(c == 0) goto makeentry;			/* at end of directory found enough */
+		if(c == 0) goto makeentry;			/* at end of directory found enough */
 
-  if(c == 0xE5) {		/* free entry */
-   entrycount++;
-  }
-  else
-  {
-   entrycount=0;					/* entries must be contingous */
-  }
+		if(c == 0xE5) {		/* free entry */
+			entrycount++;
+		}
+		else
+		{
+			entrycount=0;					/* entries must be contingous */
+		}
 
 
-   if(entrycount >= flen) goto makeentry;		/* make entry */
+		if(entrycount >= flen) goto makeentry;		/* make entry */
 
-   blockptr=blockptr+FAT_ENTRY_SIZE;
- }
+		blockptr=blockptr+FAT_ENTRY_SIZE;
+	}
 
-  if(strcmp(splitbuf->dirname,"\\") != 0) rb += startofdataarea;		/* If not root directory, add start of data area */
+	if(strcmp(splitbuf->dirname,"\\") != 0) rb += startofdataarea;		/* If not root directory, add start of data area */
 
- if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) {	/* read block */
-   kernelfree(blockbuf);
-   kernelfree(splitbuf);
+	if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) {	/* read block */
+		kernelfree(blockbuf);
+		kernelfree(splitbuf);
 
-  return(-1);
- }
+		return(-1);
+	}
 
 /* next block */ 
 
- rb=fat_getnextblock(splitbuf->drive,rb);				/* get next block */
- if(rb == -1) {						/* at end,find free block */
+	rb=fat_getnextblock(splitbuf->drive,rb);				/* get next block */
+	if(rb == -1) {						/* at end,find free block */
 
 /* fat12 and fat16 are limited to 128 entries in the root directory */
 	
-  if(strcmp(splitbuf->dirname,"\\") == 0) {
-   if(fattype == 12 || fattype == 16) {
-    if(entrycount == bpb->rootdirentries) {
-     setlasterror(DIRECTORY_FULL);
+		if(strcmp(splitbuf->dirname,"\\") == 0) {
+			if(fattype == 12 || fattype == 16) {
+				if(entrycount == bpb->rootdirentries) {
+					setlasterror(DIRECTORY_FULL);
 
-      kernelfree(splitbuf);
-      kernelfree(blockbuf);
-     return(-1);
-    }
-   }
-  }
+					kernelfree(splitbuf);
+					kernelfree(blockbuf);
+					return(-1);
+				}
+			}
+		}
 
-  rb=fat_findfreeblock(splitbuf->drive);
-   if(rb == -1) {						/* at end,find free block */
-     kernelfree(blockbuf);
-     kernelfree(splitbuf);
-    return(-1);
-   }
+		rb=fat_findfreeblock(splitbuf->drive);
+			if(rb == -1) {						/* at end,find free block */
+				kernelfree(blockbuf);
+				kernelfree(splitbuf);
+				return(-1);
+			}
 
- }
+	}
 
- blockptr=blockbuf;
+	blockptr=blockbuf;
 } 
 	
- makeentry:
+	makeentry:
 
 
-if(entrytype == _FILE) {
- if(strlen(filename) > 11) {		/* create long filename */
-  memset(&findbuf,0,sizeof(dirent));
+	if(entrytype == _FILE) {
+		if(strlen(filename) > 11) {		/* create long filename */
+			memset(&findbuf,0,sizeof(dirent));
 
-  strcpy(findbuf.filename,splitbuf->filename);
-  memcpy(&findbuf.timebuf,&timebuf,sizeof(TIMEBUF));
-  findbuf.startblock=-1;
+			strcpy(findbuf.filename,splitbuf->filename);
+			memcpy(&findbuf.timebuf,&timebuf,sizeof(TIMEBUF));
+			findbuf.startblock=-1;
 
-  createlfn(&findbuf,rb,count);
+			createlfn(&findbuf,rb,count);
 
-  return(0);
- }
+			return(0);
+	}
 
-   fat_convertfilename(splitbuf->filename,dirent.filename);	/* get filename */
-   dirent.attribs=0;
-   dirent.createtime=time;
-   dirent.createdate=date;
-   dirent.last_modified_time=time;
-   dirent.last_modified_date=date;
+	fat_convertfilename(splitbuf->filename,dirent.filename);	/* get filename */
+	dirent.attribs=0;
+	dirent.createtime=time;
+	dirent.createdate=date;
+	dirent.last_modified_time=time;
+	dirent.last_modified_date=date;
 
-   dirent.filesize=0;
+	dirent.filesize=0;
 
-    if(fattype == 32) { 
-     dirent.block_high_word=0xffff;
-     dirent.block_low_word=0xffff;	/* entry */
-    }
-    
-    if(fattype == 12) dirent.block_low_word=0xfff;  /* entry */
-    if(fattype == 16) dirent.block_low_word=0xffff;
+	if(fattype == 32) { 
+		dirent.block_high_word=0xffff;
+		dirent.block_low_word=0xffff;	/* entry */
+	}
+				
+	if(fattype == 12) dirent.block_low_word=0xfff;  /* entry */
+	if(fattype == 16) dirent.block_low_word=0xffff;
 
-    memcpy(blockptr,&dirent,FAT_ENTRY_SIZE);
-  
-    if(blockio(_WRITE,splitbuf->drive,rb,blockbuf) == -1) {	/* write block */
-      kernelfree(splitbuf);
-     kernelfree(blockbuf);
-    return(-1); 
-   }
-   
- return(0);
+	memcpy(blockptr,&dirent,FAT_ENTRY_SIZE);
+		
+	if(blockio(_WRITE,splitbuf->drive,rb,blockbuf) == -1) {	/* write block */
+		kernelfree(splitbuf);
+		kernelfree(blockbuf);
+
+		return(-1); 
+	}
+			
+	return(0);
 }
 
-if(entrytype == _DIR) {
-     getcwd(cwd);
+	if(entrytype == _DIR) {
+		getcwd(cwd);
+		splitname(cwd,&cwdsplit);
 
-     splitname(cwd,&cwdsplit);
+		if(fattype == 12 || fattype == 16) {
+			rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
+			startofdataarea=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
+		}
+		else
+		{
+			startofdataarea=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
+		}
 
-      if(fattype == 12 || fattype == 16) {
-       rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
-       startofdataarea=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
-       }
-       else
-      {
-       startofdataarea=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
-      }
+		if(strcmp(cwdsplit.dirname,"\\") != 0) { /* not root */
+			thisdir_startofdataarea=startofdataarea;
+		}
+		else
+		{
+			thisdir_startofdataarea=0;
+		}
 
-     if(strcmp(cwdsplit.dirname,"\\") != 0) { /* not root */
-       thisdir_startofdataarea=startofdataarea;
-     }
-     else
-     {
-      thisdir_startofdataarea=0;
-     }
+		if(strlen(filename) > 11) {		/* create long filename */
+			memset(&findbuf,0,sizeof(FILERECORD));
 
- if(strlen(filename) > 11) {		/* create long filename */
-  memset(&findbuf,0,sizeof(FILERECORD));
+			strcpy(findbuf.filename,splitbuf->filename);
+			memcpy(findbuf.timebuf,&timebuf,sizeof(TIMEBUF));
 
-  strcpy(findbuf.filename,splitbuf->filename);
-  memcpy(findbuf.timebuf,&timebuf,sizeof(TIMEBUF));
+			return(createlfn(&findbuf,rb,count));
+		}
 
-  return(createlfn(&findbuf,rb,count));
- }
+		findbuf.startblock=-1;
+		memset(&dirent,0,sizeof(DIRENT));
 
-  findbuf.startblock=-1;
- memset(&dirent,0,sizeof(DIRENT));
+		fat_convertfilename(splitbuf->filename,dirent.filename);	/* get filename */
 
- fat_convertfilename(splitbuf->filename,dirent.filename);	/* get filename */
+		dirent.createtime=time;
+		dirent.createdate=date;
+		dirent.last_modified_time=time;
+		dirent.last_modified_date=date;
+		dirent.attribs=FAT_ATTRIB_DIRECTORY;
 
- dirent.createtime=time;
- dirent.createdate=date;
- dirent.last_modified_time=time;
- dirent.last_modified_date=date;
- dirent.attribs=FAT_ATTRIB_DIRECTORY;
+		subdir=fat_findfreeblock(splitbuf->drive);		/* find free block */
+		if(subdir == -1) {				/* no blocks */
+			kernelfree(splitbuf);
+			kernelfree(blockbuf);
+			return(-1);
+		}
 
- subdir=fat_findfreeblock(splitbuf->drive);		/* find free block */
- if(subdir == -1) {				/* no blocks */
-  kernelfree(splitbuf);
-  kernelfree(blockbuf);
-  return(-1);
- }
+	if(fattype == 32) { 
+		dirent.block_high_word=(subdir >> 16);			/* start block */
+		dirent.block_low_word=(uint16_t) (subdir  & 0xffff);
+		updatefat(splitbuf->drive,subdir,0xffff,0xfff8);         
+	}
 
- if(fattype == 32) { 
-  dirent.block_high_word=(subdir >> 16);			/* start block */
-  dirent.block_low_word=(uint16_t) (subdir  & 0xffff);
-  updatefat(splitbuf->drive,subdir,0xffff,0xfff8);         
- }
+	if(fattype == 12) {
+		dirent.block_high_word=0;
+		dirent.block_low_word=(uint16_t) subdir;
 
- if(fattype == 12) {
-  dirent.block_high_word=0;
-  dirent.block_low_word=(uint16_t) subdir;
+		updatefat(splitbuf->drive,subdir,0,0xfff8);
+	}
 
-  updatefat(splitbuf->drive,subdir,0,0xfff8);
- }
+	if(fattype == 16) {
+		dirent.block_low_word=(uint16_t) subdir;
+		updatefat(splitbuf->drive,subdir,0,0xfff8);
+	}
 
- if(fattype == 16) {
-  dirent.block_low_word=(uint16_t) subdir;
-  updatefat(splitbuf->drive,subdir,0,0xfff8);
- }
+	memcpy(blockptr,&dirent,FAT_ENTRY_SIZE);
 
- memcpy(blockptr,&dirent,FAT_ENTRY_SIZE);
-
- if(blockio(_WRITE,splitbuf->drive,rb,blockbuf) == -1) {	/* write block */
-	   kernelfree(splitbuf);
-	   kernelfree(blockbuf);
-	  return(-1);	
+	if(blockio(_WRITE,splitbuf->drive,rb,blockbuf) == -1) {	/* write block */
+				kernelfree(splitbuf);
+				kernelfree(blockbuf);
+			return(-1);	
 }
-  
- /* create first two entries in subdirectory ( . and ..) */
+		
+	/* create first two entries in subdirectory ( . and ..) */
 
-        memset(blockbuf,0,bpb->sectorsperblock*bpb->sectorsize);
+					   memset(blockbuf,0,bpb->sectorsperblock*bpb->sectorsize);
 
 	for(count=0;count<2;count++) {
-	 if(count == 0) strcpy(dirent.filename,".          ");
-	 if(count == 1) strcpy(dirent.filename,"..         ");
+		if(count == 0) strcpy(dirent.filename,".          ");
+		if(count == 1) strcpy(dirent.filename,"..         ");
 
-	 dirent.attribs=FAT_ATTRIB_DIRECTORY;				/* attributes */
-	 dirent.reserved=NULL;
-	 dirent.create_time_fine_resolution=0;
-	 dirent.createtime=time;
- 	 dirent.createdate=date;
-	 dirent.last_modified_time=dirent.createtime;
-	 dirent.last_modified_date=dirent.createdate;
-	 dirent.filesize=0;
+		dirent.attribs=FAT_ATTRIB_DIRECTORY;				/* attributes */
+		dirent.reserved=NULL;
+		dirent.create_time_fine_resolution=0;
+		dirent.createtime=time;
+		dirent.createdate=date;
+		dirent.last_modified_time=dirent.createtime;
+		dirent.last_modified_date=dirent.createdate;
+		dirent.filesize=0;
 
 
-	 if(fattype == 32) { 
-	  if(count == 0) {
-		  dirent.block_high_word=(subdir << 16);			/* start block */
-		  dirent.block_low_word=(subdir & 0xffff);
-	  }
-	  else
-	  {
-		  dirent.block_high_word=0;				/* start block */
-		  dirent.block_low_word=0;
-	  }
-	 }
+		if(fattype == 32) { 
+			if(count == 0) {
+				dirent.block_high_word=(subdir << 16);			/* start block */
+				dirent.block_low_word=(subdir & 0xffff);
+			}
+			else
+			{
+				dirent.block_high_word=0;				/* start block */
+				dirent.block_low_word=0;
+			}
+		}
 
-	 if(fattype == 12 || fattype == 16) {
-	  if(count == 0) {
-		  dirent.block_low_word=subdir;
-	  }
-	  else
-	  {
-		  dirent.block_low_word=0;
-	  }
-         }
+		if(fattype == 12 || fattype == 16) {
+			if(count == 0) {
+				dirent.block_low_word=subdir;
+			}
+			else
+			{
+				dirent.block_low_word=0;
+			}
+					    }
 
-	 memcpy(blockbuf+(count*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE*2);
-        }
+			memcpy(blockbuf+(count*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE*2);
+		}
 
-   	 if(blockio(_WRITE,splitbuf->drive,subdir+startofdataarea,blockbuf) == -1) {	/* write block */
-	   kernelfree(splitbuf);
-	   kernelfree(blockbuf);
-	  return(-1);	
-	 }
-  }
+		if(blockio(_WRITE,splitbuf->drive,subdir+startofdataarea,blockbuf) == -1) {	/* write block */
+			kernelfree(splitbuf);
+			kernelfree(blockbuf);
+
+			return(-1);	
+		}
+	}
 }
 
 /*
@@ -940,26 +948,26 @@ if(lfnbuf == NULL) return(-1);
 
 splitbuf=kernelalloc(sizeof(SPLITBUF));
 if(splitbuf == NULL) {				/* can't allocate */
- kernelfree(lfnbuf);
- setlasterror(NO_MEM);
- return(-1);
+	kernelfree(lfnbuf);
+	setlasterror(NO_MEM);
+	return(-1);
 }
 
 splitname(filename,splitbuf);				/* split name */
 
 fattype=fat_detectchange(splitbuf->drive);
 if(fattype == -1) {
-  kernelfree(splitbuf);
- kernelfree(lfnbuf);
- setlasterror(INVALID_DISK);
- return(-1);
+	kernelfree(splitbuf);
+	kernelfree(lfnbuf);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(splitbuf->drive,&blockdevice) == -1) {
- kernelfree(lfnbuf);
- setlasterror(INVALID_DISK);
- kernelfree(splitbuf);
- return(NO_ERROR);
+	kernelfree(lfnbuf);
+	setlasterror(INVALID_DISK);
+	kernelfree(splitbuf);
+	return(NO_ERROR);
 }
 
 bpb=blockdevice.superblock;		/* point to data */
@@ -967,23 +975,23 @@ bpb=blockdevice.superblock;		/* point to data */
 
 blockbuf=kernelalloc((bpb->sectorsperblock*bpb->sectorsize));
 if(blockbuf == NULL) {				/* can't allocate */
-  kernelfree(blockbuf);
-  kernelfree(splitbuf);
-  kernelfree(lfnbuf);
+	kernelfree(blockbuf);
+	kernelfree(splitbuf);
+	kernelfree(lfnbuf);
 
- setlasterror(NO_MEM);
- return(-1);
+	setlasterror(NO_MEM);
+	return(-1);
 }
 
 rb=fat_getstartblock(splitbuf->dirname);		/* get directory start */
 
- blockptr=blockbuf;
- if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) { /* block i/o */
-   kernelfree(lfnbuf); 
-   kernelfree(blockbuf);
-   kernelfree(splitbuf);
-  return(-1);
- }
+	blockptr=blockbuf;
+	if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) { /* block i/o */
+		kernelfree(lfnbuf); 
+		kernelfree(blockbuf);
+		kernelfree(splitbuf);
+		return(-1);
+	}
 
 /* search through directory until filename found, and mark as deleted */
 
@@ -991,53 +999,54 @@ while((fattype == 12 && rb < 0xff8) || (fattype == 16 && rb < 0xfff8) || (fattyp
 
 /* search through block to find entry, and mark asdeleted if found */
 
- for(count=0;count<(bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE;count++) {
-   memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);
+	for(count=0;count<(bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE;count++) {
+		memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);
 
-  
-   if(dirent.attribs == 0x0f) {	
+		
+		if(dirent.attribs == 0x0f) {	
 
-    lfncount=fat_readlfn(splitbuf->drive,rb,count,lfnbuf);
-    if(lfncount == -1) {
-     kernelfree(lfnbuf); 
-     kernelfree(blockbuf);
-     kernelfree(splitbuf);
+			lfncount=fat_readlfn(splitbuf->drive,rb,count,lfnbuf);
+			if(lfncount == -1) {
+				kernelfree(lfnbuf); 
+				kernelfree(blockbuf);
+				kernelfree(splitbuf);
 
-     setlasterror(FILE_NOT_FOUND);
-     return(-1);
-    }
+				setlasterror(FILE_NOT_FOUND);
+				return(-1);
+			}
 
-  if(wildcard(lfnbuf->filename,splitbuf->filename) == 0) deletelfn(splitbuf->filename,rb,count);
- 
-  blockptr=blockptr+(lfncount*FAT_ENTRY_SIZE);
-  
+			if(wildcard(lfnbuf->filename,splitbuf->filename) == 0) deletelfn(splitbuf->filename,rb,count);
+	
+			blockptr=blockptr+(lfncount*FAT_ENTRY_SIZE);
+		}
+
+		blockptr=blockptr+FAT_ENTRY_SIZE;
+
+		fatentrytofilename(dirent.filename,file);			/* convert to FAT format */
+	
+			
+		if(*dirent.filename == 0) {					/* end of directory */
+			setlasterror(END_OF_DIR);
+			return(-1);
+		}
+
+		if(wildcard(file,splitbuf->filename) == 0) {					   /* file found */  
+
+			blockptr=blockptr-FAT_ENTRY_SIZE;
+			*blockptr=0xE5;			/* mark as deleted */
+
+			if(blockio(_WRITE,splitbuf->drive,rb,blockbuf) == -1) {		/* write block */
+				kernelfree(splitbuf);
+				return(-1);
+			}
+
+			setlasterror(NO_ERROR);
+			return(NO_ERROR);
+		}
+	}
 }
 
- blockptr=blockptr+FAT_ENTRY_SIZE;
-
-  fatentrytofilename(dirent.filename,file);			/* convert to FAT format */
- 
-   
-   if(*dirent.filename == 0) {					/* end of directory */
-    setlasterror(END_OF_DIR);
-    return(-1);
-   }
-
-  if(wildcard(file,splitbuf->filename) == 0) {	       /* file found */  
-
-    blockptr=blockptr-FAT_ENTRY_SIZE;
-    *blockptr=0xE5;			/* mark as deleted */
-
-    if(blockio(_WRITE,splitbuf->drive,rb,blockbuf) == -1) {		/* write block */
-     kernelfree(splitbuf);
-     return(-1);
-    }
-
-    setlasterror(NO_ERROR);
-    return(NO_ERROR);
-   }
-  }
- }
+return(NO_ERROR);
 }
 
 /*
@@ -1075,51 +1084,51 @@ size_t cr;
  */			
 
 if(gethandle(handle,&onext) == -1) {	/* bad handle */
- setlasterror(INVALID_HANDLE);
- return(-1);
+	setlasterror(INVALID_HANDLE);
+	return(-1);
 }
 
 /* get drive struct for the file */
 
 fattype=fat_detectchange(onext.drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(onext.drive,&blockdevice) == -1) {
- setlasterror(INVALID_DISK);
- return(NULL);
+	setlasterror(INVALID_DISK);
+	return(NULL);
 }
 
 bpb=blockdevice.superblock;		/* point to data */
 
 if(onext.filesize == 0) {				/* read from 0 byte file */
- setlasterror(END_OF_FILE);
- return(-1);
+	setlasterror(END_OF_FILE);
+	return(-1);
 }
 
 iobuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);
 if(iobuf == NULL) {
- kernelfree(iobuf);
- return(-1);
+	kernelfree(iobuf);
+	return(-1);
 }
 
 /* find block to read from */
 
 if(fattype == 12 || fattype == 16) {
- fatsize=(bpb->sectorsperfat*bpb->numberoffats);
+	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
 
- rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
- datastart=bpb->reservedsectors+fatsize+rootdirsize;
+	rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
+	datastart=bpb->reservedsectors+fatsize+rootdirsize;
 
- blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
 if(fattype == 32) {
- fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
- datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
- blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
+	datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
+	blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
 ioaddr=addr;					/* point to buffer */
@@ -1129,100 +1138,102 @@ bytesdone=0;
 blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 
 if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
- if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
+	if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
 
- count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
+	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
 
- memcpy(addr,iobuf+blockoffset,count);	/* copy from buffer */
+	memcpy(addr,iobuf+blockoffset,count);	/* copy from buffer */
 
- addr=addr+count;
+	addr=addr+count;
 
- if(onext.currentpos+size >= (bpb->sectorsperblock*bpb->sectorsize)) {
+	if(onext.currentpos+size >= (bpb->sectorsperblock*bpb->sectorsize)) {
 
-  onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get blockdevice block */	
-  updatehandle(handle,&onext);
+		onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get blockdevice block */	
+		updatehandle(handle,&onext);
 
-  if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
-   onext.currentpos += count;
-   updatehandle(handle,&onext);
+		if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
+			onext.currentpos += count;
+			updatehandle(handle,&onext);
 
-   setlasterror(END_OF_FILE);
-   return(-1);
-   }
- }
+			setlasterror(END_OF_FILE);
+			return(-1);
+		}
+	}
 
- onext.currentpos += count;
- updatehandle(handle,&onext);
- return(size);
+	onext.currentpos += count;
+	updatehandle(handle,&onext);
+	return(size);
 }
 
 /*
  * read rest of blocks
  */
-  
-  for(blockcount=0;blockcount< (size / (bpb->sectorsperblock*bpb->sectorsize));blockcount++) {    
-    blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
-    count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
+		
+for(blockcount=0;blockcount< (size / (bpb->sectorsperblock*bpb->sectorsize));blockcount++) {    
+	blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
+	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
 
-    if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
+	if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
 
-    memcpy(addr,iobuf+blockoffset,count);
+	memcpy(addr,iobuf+blockoffset,count);
 
 
-    onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get blockdevice block */	
-    updatehandle(handle,&onext);
+	onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get blockdevice block */	
+	updatehandle(handle,&onext);
 
-    if(fattype == 12 || fattype == 16) {
-     fatsize=(bpb->sectorsperfat*bpb->numberoffats);
-     rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
-     datastart=bpb->reservedsectors+fatsize+rootdirsize;
-     blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
-    }
+	if(fattype == 12 || fattype == 16) {
+		fatsize=(bpb->sectorsperfat*bpb->numberoffats);
+		rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
+		datastart=bpb->reservedsectors+fatsize+rootdirsize;
+		blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	}
 
-    if(fattype == 32) {
-     fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
-     datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
-     blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
-    }
+	if(fattype == 32) {
+		fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
+		datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
+		blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	}
 
-    addr=addr+(bpb->sectorsperblock*bpb->sectorsize);      /* point to blockdevice address */
+	addr=addr+(bpb->sectorsperblock*bpb->sectorsize);      /* point to blockdevice address */
 
-    onext.currentpos += count;
-    updatehandle(handle,&onext);
+	onext.currentpos += count;
+	updatehandle(handle,&onext);
 
-    bytesdone=bytesdone+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
+	bytesdone=bytesdone+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
 
-    if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
-     setlasterror(END_OF_FILE);
-     return(-1);
-    }
- }
+	if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
+		setlasterror(END_OF_FILE);
+		return(-1);
+	}
+}
 
 
 /* end block with less than a block of data */
 
- if(size % (bpb->sectorsperblock*bpb->sectorsize)) {
-  if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
+if(size % (bpb->sectorsperblock*bpb->sectorsize)) {
+	if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
 
-  count=(size % (bpb->sectorsperblock*bpb->sectorsize));			/* remainder */
+	count=(size % (bpb->sectorsperblock*bpb->sectorsize));			/* remainder */
 
-  onext.currentpos=onext.currentpos+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
-  updatehandle(handle,&onext);
+	onext.currentpos=onext.currentpos+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
+	updatehandle(handle,&onext);
 
-  bytesdone=bytesdone+count;
+	bytesdone=bytesdone+count;
 
-  memcpy(addr,iobuf,count);	/* copy from buffer */
-  addr=addr+count;
+	memcpy(addr,iobuf,count);	/* copy from buffer */
+	addr=addr+count;
 
-  kernelfree(iobuf);
-  return(size);
- }
+	kernelfree(iobuf);
+
+	return(size);
+}
 
 onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);
 
 setlasterror(NO_ERROR);
 
 onext.findblock=block;		/* save block  */
+
 return(bytesdone);				/* return number of bytes */
 
 }
@@ -1263,142 +1274,146 @@ uint32_t lastblock;
 uint32_t sblock;
 
 if(gethandle(handle,&onext) == -1) {	/* bad handle */
- setlasterror(INVALID_HANDLE);
- return(-1);
+	setlasterror(INVALID_HANDLE);
+	return(-1);
 }
 
 fattype=fat_detectchange(onext.drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(onext.drive,&blockdevice) == -1) {
- setlasterror(INVALID_DISK);
- return(NULL);
+	setlasterror(INVALID_DISK);
+	return(NULL);
 }
 
 
-kprintf_direct("fat write\n");
+//kprintf_direct("fat write\n");
 
 bpb=blockdevice.superblock;		/* point to data */
 
 /* find block to read from */
 
 if(fattype == 12 || fattype == 16) {
- fatsize=(bpb->sectorsperfat*bpb->numberoffats);
+	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
 
- rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
- datastart=bpb->reservedsectors+fatsize+rootdirsize;
+	rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
+	datastart=bpb->reservedsectors+fatsize+rootdirsize;
 
- blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
 if(fattype == 32) {
- fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
- datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
- blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
+	datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
+	blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
 
 iobuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);
+
 if(iobuf == NULL) {
- kernelfree(iobuf);
- return(-1);
+	kernelfree(iobuf);
+	return(-1);
 }
 
 /* check if enough space before write */ 
 
 if(count > (bpb->sectorsperblock*bpb->sectorsize)) {
- count=size / (bpb->sectorsperblock*bpb->sectorsize);
+	count=size / (bpb->sectorsperblock*bpb->sectorsize);
 }
 else
 {
- count=1;
+	count=1;
 }
 
 while(count-- > 0) {
- newblock=fat_findfreeblock(onext.drive);
- if(newblock == -1) break;		/* not enough free space */
+	newblock=fat_findfreeblock(onext.drive);
+	if(newblock == -1) break;		/* not enough free space */
 }
 
 if(count == 0) {
- setlasterror(DISK_FULL);
- return(-1);
+	setlasterror(DISK_FULL);
+	return(-1);
 }	
 
- /* writing past end of file, add new blocks to FAT chain only needs to be done once per write past end */ 
+/* writing past end of file, add new blocks to FAT chain only needs to be done once per write past end */ 
 
- if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
-		/* empty file */
+if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
+	/* empty file */
 
-  kprintf_direct("empty file\n");
-  onext.filesize += size;
+	kprintf_direct("empty file\n");
+	onext.filesize += size;
 	
 
-  for(count=0;count< (size / (bpb->sectorsperblock*bpb->sectorsize))+1;count++) {
-	newblock=fat_findfreeblock(onext.drive);
+	for(count=0;count< (size / (bpb->sectorsperblock*bpb->sectorsize))+1;count++) {
+		newblock=fat_findfreeblock(onext.drive);
 
-	kprintf_direct("newblock=%X\n",newblock);
+		//kprintf_direct("newblock=%X\n",newblock);
 
-	if(count == 0) {
-	  lastblock=newblock;			/* first block in chain */ 	
-	  sblock=newblock;
+		if(count == 0) {
+			lastblock=newblock;			/* first block in chain */ 	
+			sblock=newblock;
 
-	  onext.startblock=newblock;
-	  onext.currentblock=newblock;	  
-        }	
+			onext.startblock=newblock;
+			onext.currentblock=newblock;			
+		}	
 
-	updatefat(onext.drive,lastblock,(newblock >> 16),(newblock & 0xffff));	/* update fat */
-	lastblock=newblock;
-   }
+		updatefat(onext.drive,lastblock,(newblock >> 16),(newblock & 0xffff));	/* update fat */
 
-/* end of fat chain */
+		lastblock=newblock;
+	}
+
+	/* end of fat chain */
 	if(fattype == 12) {
-	 updatefat(onext.drive,lastblock,0,0xff8);
+		updatefat(onext.drive,lastblock,0,0xff8);
 	}
 	else if(fattype == 16) {
-	 updatefat(onext.drive,lastblock,0,0xfff8);
+		updatefat(onext.drive,lastblock,0,0xfff8);
 	}
- 	else if(fattype == 32) {
-	 updatefat(onext.drive,lastblock,0xffff,0xfff8);
+	else if(fattype == 32) {
+		updatefat(onext.drive,lastblock,0xffff,0xfff8);
 	}
 
-/* update start block and file size in directory entry */
+	/* update start block and file size in directory entry */
 	if(strlen(onext.filename) > 11) {	/* long filename */
-	 createlfn(&onext,onext.findlastblock,onext.dirent);
+		createlfn(&onext,onext.findlastblock,onext.dirent);
 	}
 	else
 	{
-	 kprintf_direct("Updating directory entry\n");
+	// kprintf_direct("Updating directory entry\n");
 
-	 blockbuf=kernelalloc(MAX_BLOCK_SIZE);
-	 if(blockbuf == NULL) return(-1);
+		blockbuf=kernelalloc(MAX_BLOCK_SIZE);
+		if(blockbuf == NULL) return(-1);
 
-	 if(blockio(_READ,onext.drive,onext.findlastblock,blockbuf) == -1) return(-1); /* read block */
+		if(blockio(_READ,onext.drive,onext.findlastblock,blockbuf) == -1) return(-1); /* read block */
 
-	 memcpy(&dirent,blockbuf+(onext.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);	
-	 
-	 if(dirent.filesize == 0) {			/* first block */
-	  dirent.block_high_word=(sblock & 0xffff0000) >> 16;
-	  dirent.block_low_word=(sblock & 0xffff);
-         }
+		memcpy(&dirent,blockbuf+(onext.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);	
+		
+		if(dirent.filesize == 0) {			/* first block */
+			dirent.block_high_word=(sblock & 0xffff0000) >> 16;
+			dirent.block_low_word=(sblock & 0xffff);
+		}
 
-	 dirent.filesize += size;
+		dirent.filesize += size;
 
-	 memcpy(blockbuf+(onext.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);
-	 if(blockio(_WRITE,onext.drive,onext.findlastblock,blockbuf) == -1) return(-1); /* write block */
+		memcpy(blockbuf+(onext.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);
 
-	 kprintf_direct("Updated directory entry\n");
+		if(blockio(_WRITE,onext.drive,onext.findlastblock,blockbuf) == -1) return(-1); /* write block */
 
-	 kernelfree(blockbuf);
+		// kprintf_direct("Updated directory entry\n");
 
-	/* update blockno */
-	 if(fattype == 12 || fattype == 16) blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
-	 if(fattype == 32) blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+		kernelfree(blockbuf);
+
+		/* update blockno */
+		if(fattype == 12 || fattype == 16) blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+		if(fattype == 32) blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
 	}
-	kprintf_direct("done\n");
- }
+	
+		//kprintf_direct("done\n");
+}
 
 ioaddr=addr;					/* point to buffer */
 
@@ -1408,113 +1423,115 @@ blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distan
 
 if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
 
- if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
- count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
+	if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
+	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
 
- memcpy(iobuf+blockoffset,addr,size);	/* copy to buffer */
+	memcpy(iobuf+blockoffset,addr,size);	/* copy to buffer */
 
- if(blockio(_WRITE,onext.drive,blockno,iobuf) == -1) return(-1);
+	if(blockio(_WRITE,onext.drive,blockno,iobuf) == -1) return(-1);
 
- if(onext.currentpos+size >= (bpb->sectorsperblock*bpb->sectorsize)) {
-  onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get next block */	
-  updatehandle(handle,&onext);
+	if(onext.currentpos+size >= (bpb->sectorsperblock*bpb->sectorsize)) {
+		onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get next block */	
+		updatehandle(handle,&onext);
 
-  if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
+		if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
 
-   kprintf_direct("AT END OF FILE\n");
+			//kprintf_direct("AT END OF FILE\n");
 
-   onext.currentpos += count;
-   setlasterror(END_OF_FILE);
-   return(-1);
-   }
- }
+			onext.currentpos += count;
+			setlasterror(END_OF_FILE);
 
- onext.currentpos += count;
- updatehandle(handle,&onext);
+			return(-1);
+		}
+	}
 
- return(size);
+	onext.currentpos += count;
+	updatehandle(handle,&onext);
+
+	return(size);
 }
 
 
- for(count=0;count< (size / (bpb->sectorsperblock*bpb->sectorsize))+1;count++) {
+for(count=0;count< (size / (bpb->sectorsperblock*bpb->sectorsize))+1;count++) {
 
-  blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
-  count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
+	blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
+	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
 
-  memcpy(iobuf+blockoffset,addr,count);
-  
-  if(blockio(_WRITE,onext.drive,blockno,iobuf+blockoffset) == -1) {
-    kernelfree(iobuf);
-   return(-1);
-  }
+	memcpy(iobuf+blockoffset,addr,count);
+		
+	if(blockio(_WRITE,onext.drive,blockno,iobuf+blockoffset) == -1) {
+		kernelfree(iobuf);
 
-  if(fattype == 12 || fattype == 16) {
-   fatsize=(bpb->sectorsperfat*bpb->numberoffats);
-   rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsperblock;
-   datastart=bpb->reservedsectors+fatsize+rootdirsize;
-   blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
-  }
+		return(-1);
+	}
 
-  if(fattype == 32) {
-   fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
-   datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
-   blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
-  }
+	if(fattype == 12 || fattype == 16) {
+		fatsize=(bpb->sectorsperfat*bpb->numberoffats);
+		rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsperblock;
+		datastart=bpb->reservedsectors+fatsize+rootdirsize;
+		blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	}
+
+	if(fattype == 32) {
+		fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
+		datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
+		blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	}
 
 
-  onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get next block */	
+	onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get next block */	
 
-  ioaddr=ioaddr+bpb->sectorsperblock*bpb->sectorsize;      /* point to next address */
-  onext.currentpos=onext.currentpos+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */
-  bytesdone=bytesdone+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
- }
+	ioaddr=ioaddr+bpb->sectorsperblock*bpb->sectorsize;      /* point to next address */
+	onext.currentpos=onext.currentpos+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */
+	bytesdone=bytesdone+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
+}
 
 /* file is smaller than a block or is an end block with less than a block of data */
 
- if(size < (bpb->sectorsperblock*bpb->sectorsize) || size % (bpb->sectorsperblock*bpb->sectorsize)) {
-  ioaddr=kernelalloc((size % bpb->sectorsperblock*bpb->sectorsize));				/* allocate buffer */
-  if(ioaddr == NULL) return(-1);
+if(size < (bpb->sectorsperblock*bpb->sectorsize) || size % (bpb->sectorsperblock*bpb->sectorsize)) {
+	ioaddr=kernelalloc((size % bpb->sectorsperblock*bpb->sectorsize));				/* allocate buffer */
+	if(ioaddr == NULL) return(-1);
 
-  onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get next block */
-  updatehandle(handle,&onext);
+	onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock);		/* get next block */
+	updatehandle(handle,&onext);
 
-  if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
-   last=onext.currentblock;
-   onext.currentblock=fat_findfreeblock(onext.drive);
-   updatefat(onext.drive,last,(onext.currentblock & 0xffff0000) >> 16,(onext.currentblock >> 8));
-  }
+	if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
+		last=onext.currentblock;
+		onext.currentblock=fat_findfreeblock(onext.drive);
+		updatefat(onext.drive,last,(onext.currentblock & 0xffff0000) >> 16,(onext.currentblock >> 8));
+	}
 
-   if(blockio(_READ,onext.drive,onext.currentblock,ioaddr) == -1) {			/* readblock */
-     kernelfree(ioaddr);
-    return(-1);
-   }
+	if(blockio(_READ,onext.drive,onext.currentblock,ioaddr) == -1) {			/* readblock */
+		kernelfree(ioaddr);
+		return(-1);
+	}
 
-  count=size-(bpb->sectorsperblock*bpb->sectorsize);			/* remainder */
-  bytesdone=bytesdone+count;
-  memcpy(addr+count,addr,count);	/* copy to buffer */
+	count=size-(bpb->sectorsperblock*bpb->sectorsize);			/* remainder */
+	bytesdone=bytesdone+count;
+	memcpy(addr+count,addr,count);	/* copy to buffer */
 
-  if(blockio(_WRITE,onext.drive,onext.currentblock,ioaddr) == -1) {			/* readblock */
-    kernelfree(ioaddr);
-   return(-1);
-  }
+	if(blockio(_WRITE,onext.drive,onext.currentblock,ioaddr) == -1) {			/* readblock */
+		kernelfree(ioaddr);
+		return(-1);
+	}
 
-   kernelfree(ioaddr);
-  return;
- }
+	kernelfree(ioaddr);
+	return;
+}
 
 onext.currentblock=fat_getnextblock(onext.drive,onext.currentblock-(bpb->sectorsperfat*bpb->numberoffats)-((bpb->rootdirentries*FAT_ENTRY_SIZE)/bpb->sectorsperblock)-bpb->reservedsectors+2);
 updatehandle(handle,&onext);
 
 setlasterror(NO_ERROR);
-return(bytesdone);				/* return number of bytes */
 
+return(bytesdone);				/* return number of bytes */
 }
 
 /*
  * Set file attributes
  *
  * In:  name	File to change attributes
-        attribs Attributes. See fat.h for attributes
+					   attribs Attributes. See fat.h for attributes
  *
  * Returns: -1 on error, 0 on success
  *
@@ -1532,60 +1549,61 @@ lfnbuf=kernelalloc(sizeof(FILERECORD));	/* allocate split buffer */
 if(lfnbuf == NULL) return(-1);
 
 if((attribs & FAT_ATTRIB_DIRECTORY)) {		/* can't set directory bit */
- kernelfree(lfnbuf); 
+	kernelfree(lfnbuf); 
 
- setlasterror(ACCESS_DENIED);  
- return(-1);
+	setlasterror(ACCESS_DENIED);  
+	return(-1);
 }
 
 if((attribs & FAT_ATTRIB_VOLUME_LABEL)) {	/* can't set volume label bit */
- kernelfree(lfnbuf); 
+	kernelfree(lfnbuf); 
 
- setlasterror(ACCESS_DENIED);  
- return(-1);
+	setlasterror(ACCESS_DENIED);  
+	return(-1);
 }
 
 
 blockbuf=kernelalloc(MAX_BLOCK_SIZE);			/* allocate block buffers */
 if(blockbuf == NULL) {
- kernelfree(lfnbuf); 
+	kernelfree(lfnbuf); 
 
- setlasterror(NO_MEM);
- return(-1);
+	setlasterror(NO_MEM);
+	return(-1);
 }
 
 splitname(filename,&splitbuf);				/* split name */
 
 if(findfirst(filename,&buf) == -1) {		/* get file entry */
- kernelfree(lfnbuf); 
- kernelfree(blockbuf);
+	kernelfree(lfnbuf); 
+	kernelfree(blockbuf);
 
- setlasterror(FILE_NOT_FOUND);
- return(-1);
+	setlasterror(FILE_NOT_FOUND);
+	return(-1);
 }
 
 if(strlen(filename) > 11) {	/* long filename */
- kernelfree(lfnbuf); 
- kernelfree(blockbuf);
- 
- buf.attribs=attribs;
+	kernelfree(lfnbuf); 
+	kernelfree(blockbuf);
+	
+	buf.attribs=attribs;
 
- return(createlfn(&buf,buf.findlastblock,buf.dirent));
- }
-   
+	return(createlfn(&buf,buf.findlastblock,buf.dirent));
+}
+			
 
- if(blockio(_READ,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* read block */
+if(blockio(_READ,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* read block */
 
- memcpy(&dirent,blockbuf+(buf.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);
+memcpy(&dirent,blockbuf+(buf.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);
 
- dirent.attribs=(uint8_t) attribs;
+dirent.attribs=(uint8_t) attribs;
 
- memcpy(blockbuf+(buf.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);
+memcpy(blockbuf+(buf.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);
 
- if(blockio(_WRITE,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* write block */
+if(blockio(_WRITE,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* write block */
 
- setlasterror(NO_ERROR);  
- return(NO_ERROR);				/* no error */
+setlasterror(NO_ERROR);  
+
+return(NO_ERROR);				/* no error */
 }
 
 /*
@@ -1593,7 +1611,7 @@ if(strlen(filename) > 11) {	/* long filename */
  *
  * In:  filename	File to set file and date of
 	createtime	struct with create time and date information
-        lastmodtime	struct with last modified time and date information
+					   lastmodtime	struct with last modified time and date information
  *
  * Returns: -1 on error, 0 on success
  *
@@ -1611,47 +1629,47 @@ if(lfnbuf == NULL) return(-1);
 
 blockbuf=kernelalloc(MAX_BLOCK_SIZE);			/* allocate block buffers */
 if(blockbuf == NULL) {
- kernelfree(lfnbuf); 
+	kernelfree(lfnbuf); 
 
- setlasterror(NO_MEM);
- return(-1);
+	setlasterror(NO_MEM);
+	return(-1);
 }
 
 splitname(filename,&splitbuf);				/* split name */
 
 if(findfirst(filename,&buf) == -1) {		/* get file entry */
- kernelfree(lfnbuf); 
- kernelfree(blockbuf);
+	kernelfree(lfnbuf); 
+	kernelfree(blockbuf);
 
- setlasterror(FILE_NOT_FOUND);
- return(-1);
+	setlasterror(FILE_NOT_FOUND);
+	return(-1);
 }
 
 if(strlen(filename) > 11) {	/* long filename */
- kernelfree(lfnbuf); 
- kernelfree(blockbuf);
- 
- memcpy(&buf.timebuf,createtime,sizeof(TIMEBUF));
- memcpy(&buf.timebuf,last_modified_time,sizeof(TIMEBUF));
- return(createlfn(&buf,buf.findlastblock,buf.dirent));
+	kernelfree(lfnbuf); 
+	kernelfree(blockbuf);
+	
+	memcpy(&buf.timebuf,createtime,sizeof(TIMEBUF));
+	memcpy(&buf.timebuf,last_modified_time,sizeof(TIMEBUF));
+	return(createlfn(&buf,buf.findlastblock,buf.dirent));
 }
-   
- if(blockio(_READ,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* read block */
+			
+if(blockio(_READ,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* read block */
 
- memcpy(&dirent,blockbuf+(buf.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);
+memcpy(&dirent,blockbuf+(buf.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);
 
- dirent.createtime=(createtime->hours << 16)+(createtime->minutes << 11)+createtime->seconds;
- dirent.createdate=((createtime->year << 16)-1980)+(createtime->month << 9)+createtime->day;
+dirent.createtime=(createtime->hours << 16)+(createtime->minutes << 11)+createtime->seconds;
+dirent.createdate=((createtime->year << 16)-1980)+(createtime->month << 9)+createtime->day;
 
- dirent.last_modified_time=(last_modified_time->hours << 16)+(last_modified_time->minutes << 11)+last_modified_time->seconds;
- dirent.last_modified_date=((last_modified_time->year << 16)-1980)+(last_modified_time->month << 9)+last_modified_time->day;
+dirent.last_modified_time=(last_modified_time->hours << 16)+(last_modified_time->minutes << 11)+last_modified_time->seconds;
+dirent.last_modified_date=((last_modified_time->year << 16)-1980)+(last_modified_time->month << 9)+last_modified_time->day;
 
- memcpy(blockbuf+(buf.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);
+memcpy(blockbuf+(buf.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);
 
- if(blockio(_WRITE,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* write block */
+if(blockio(_WRITE,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* write block */
 
- setlasterror(NO_ERROR);  
- return(NO_ERROR);				/* no error */
+setlasterror(NO_ERROR);  
+return(NO_ERROR);				/* no error */
 }
 
 /*
@@ -1664,141 +1682,138 @@ if(strlen(filename) > 11) {	/* long filename */
  */
 
 size_t fat_findfreeblock(size_t drive) {
- size_t rb;
- size_t count;
- uint16_t *shortptr;
- uint32_t *longptr;
- size_t fattype;
- size_t countx;
- uint32_t longentry;
- size_t fatsize;
- uint16_t shortentry;
- uint32_t startblock;
- BLOCKDEVICE blockdevice;
- BPB *bpb;
- char *buf;
- size_t blockcount;
+size_t rb;
+size_t count;
+uint16_t *shortptr;
+uint32_t *longptr;
+size_t fattype;
+size_t countx;
+uint32_t longentry;
+size_t fatsize;
+uint16_t shortentry;
+uint32_t startblock;
+BLOCKDEVICE blockdevice;
+BPB *bpb;
+char *buf;
+size_t blockcount;
 
 fattype=fat_detectchange(drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
- if(getblockdevice(drive,&blockdevice) == -1) {		/* get block device struct */
-  setlasterror(INVALID_DISK);
-  return(-1);
- }		
+if(getblockdevice(drive,&blockdevice) == -1) {		/* get block device struct */
+	setlasterror(INVALID_DISK);
+	return(-1);
+}		
 
- bpb=blockdevice.superblock;		/* point to data */
- 
+bpb=blockdevice.superblock;		/* point to data */
+	
+buf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);
+if(buf == NULL) return(-1);
 
- buf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);
- if(buf == NULL) return(-1);
+blockcount=2;
 
- blockcount=2;
-
- /* until free block found */ 
+/* until free block found */ 
 
 if(fattype == 12) {				/* fat 12 */
-  fatsize=bpb->sectorsperfat;
-  rb=bpb->reservedsectors;
+	fatsize=bpb->sectorsperfat;
+	rb=bpb->reservedsectors;
 
-  while(rb < (fatsize*bpb->sectorsperblock)) {
+	while(rb < (fatsize*bpb->sectorsperblock)) {
 
-   b=buf;
+		b=buf;
 
-   for(countx=rb;countx<rb+3;countx++) {
-    if(blockio(_READ,drive,countx,b) == -1) {		 /* read block */ 
-     kernelfree(buf);
-     return(-1);
-    }
+		for(countx=rb;countx<rb+3;countx++) {
+			if(blockio(_READ,drive,countx,b) == -1) {			/* read block */ 
+				kernelfree(buf);
+				return(-1);
+			}
 
-    b += bpb->sectorsize;
-   }
-   
-   rb += 3;
-   countx=0;
-   shortptr=buf;
+			b += bpb->sectorsize;
+		}
+			
+		rb += 3;
+		countx=0;
+		shortptr=buf;
 
-   while(countx<(bpb->sectorsperblock*bpb->sectorsize)*3) {
+		while(countx<(bpb->sectorsperblock*bpb->sectorsize)*3) {
 			shortentry=shortptr[countx];
 
 			if(countx & 1) {	
- 			 if((shortentry >> 4) == 0) {
-			   setlasterror(NO_ERROR);
+				if((shortentry >> 4) == 0) {
+					setlasterror(NO_ERROR);
 
-			   kprintf_direct("freeblock=%X\n",blockcount);
-           		   return(blockcount);
-                        }
-                       }
-		       else
-		       {
-			if((shortentry & 0xfff) == 0) {
-			   setlasterror(NO_ERROR);
-
-			   kprintf_direct("freeblock=%X\n",blockcount);
-           		   return(blockcount);
+					//kprintf_direct("freeblock=%X\n",blockcount);
+					return(blockcount);
+			         }
 			}
-                       }
+			else
+			{
+				if((shortentry & 0xfff) == 0) {
+					setlasterror(NO_ERROR);
+	
+					//kprintf_direct("freeblock=%X\n",blockcount);
+					return(blockcount);
+			}
+					                  }
 
-		       blockcount++;
-		       countx++;
-
-           }
-
-    }
+			blockcount++;
+			countx++;
+	      }
+	}
 }
 
-  if(fattype == 16) {				/* fat 16 */
-    fatsize=bpb->sectorsperfat;
-    rb=bpb->reservedsectors;
+if(fattype == 16) {				/* fat 16 */
+	fatsize=bpb->sectorsperfat;
+	rb=bpb->reservedsectors;
 
-    for(count=rb;count<rb+(fatsize*bpb->sectorsperblock);count++) {  
-      if(blockio(_READ,drive,count,buf) == -1) {		 /* read block */ 
-	     kernelfree(buf);
-	     return(-1);
-      }
+	for(count=rb;count<rb+(fatsize*bpb->sectorsperblock);count++) {  
+		if(blockio(_READ,drive,count,buf) == -1) {			/* read block */ 
+			kernelfree(buf);
+			 return(-1);
+		}
 
+		shortptr=buf;
 
-     shortptr=buf;
+		for(countx=0;countx<(bpb->sectorsperblock*bpb->sectorsize);countx++) {
+			if(shortptr[countx] == 0) {
+				setlasterror(NO_ERROR);
 
-     for(countx=0;countx<(bpb->sectorsperblock*bpb->sectorsize);countx++) {
-	   if(shortptr[countx] == 0) {
- 	    setlasterror(NO_ERROR);
-            return(blockcount);
-           }
+				return(blockcount);
+			}
 
-           blockcount++;
-    }
-  }
- }
-
-   if(fattype == 32) {
-     for(count=bpb->reservedsectors;count<bpb->fat32sectorsperfat;count++) {  
-     	 if(blockio(_READ,drive,count,buf) == -1) {		 /* read block */ 
-	     kernelfree(buf);
-	     return(-1);
-	  }
-
-
-        longptr=buf;
-
- 	for(countx=0;countx<(bpb->sectorsperblock*bpb->sectorsize);countx++) {
-            
-            if(longptr[countx] == 0) {
- 	     setlasterror(NO_ERROR);
-             return(blockcount);
-	    }
-
-		blockcount++;
-        }
-
-  }
+			blockcount++;
+		}
+	}
 }
 
- kernelfree(buf);	
+if(fattype == 32) {
+	for(count=bpb->reservedsectors;count<bpb->fat32sectorsperfat;count++) {  
+		if(blockio(_READ,drive,count,buf) == -1) {			/* read block */ 
+			kernelfree(buf);
+			return(-1);
+		}
+
+		longptr=buf;
+
+		for(countx=0;countx<(bpb->sectorsperblock*bpb->sectorsize);countx++) {
+					       
+			if(longptr[countx] == 0) {
+				setlasterror(NO_ERROR);
+				return(blockcount);
+			}
+
+			blockcount++;
+		}
+
+	}
+}
+
+kernelfree(buf);	
 setlasterror(END_OF_DIR);
+
 return(-1);
 }
 
@@ -1812,25 +1827,25 @@ return(-1);
  */
 
 size_t fat_getstartblock(char *name) {
- char *token_buffer[MAX_PATH];
- size_t  rb;
- size_t  count;
- SPLITBUF *splitbuf;
- char *fullpath[MAX_PATH];
- size_t fattype;
- size_t tc;
- BLOCKDEVICE blockdevice;
- char *b;
- char *blockbuf;
- char *blockptr;
- char *file[11];
- size_t c;
- size_t startofdataarea=0;
- size_t rootdir=0;
- DIRENT directory_entry;
- FILERECORD *lfnbuf=NULL;
- size_t lfncount;
- BPB *bpb;
+char *token_buffer[MAX_PATH];
+size_t  rb;
+size_t  count;
+SPLITBUF *splitbuf;
+char *fullpath[MAX_PATH];
+size_t fattype;
+size_t tc;
+BLOCKDEVICE blockdevice;
+char *b;
+char *blockbuf;
+char *blockptr;
+char *file[11];
+size_t c;
+size_t startofdataarea=0;
+size_t rootdir=0;
+DIRENT directory_entry;
+FILERECORD *lfnbuf=NULL;
+size_t lfncount;
+BPB *bpb;
 
 splitbuf=kernelalloc(sizeof(SPLITBUF));
 if(splitbuf == NULL) return(-1);
@@ -1846,15 +1861,15 @@ splitname(fullpath,splitbuf);
 
 fattype=fat_detectchange(splitbuf->drive);
 if(fattype == -1) {
-  kernelfree(splitbuf);
- kernelfree(lfnbuf);
- setlasterror(INVALID_DISK);
- return(-1);
+	kernelfree(splitbuf);
+	kernelfree(lfnbuf);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(splitbuf->drive,&blockdevice) == -1) {
- setlasterror(INVALID_DISK);
- return(NULL);
+	setlasterror(INVALID_DISK);
+	return(NULL);
 }
 
 bpb=blockdevice.superblock;		/* point to data */
@@ -1862,10 +1877,10 @@ bpb=blockdevice.superblock;		/* point to data */
 
 blockbuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);			/* allocate block buffer */
 if(blockbuf == NULL) {
-  kernelfree(lfnbuf);
-  kernelfree(splitbuf);	
-  return(-1);
- }
+		kernelfree(lfnbuf);
+		kernelfree(splitbuf);	
+		return(-1);
+}
 
 /* read first block of directory to buffer
  *
@@ -1883,7 +1898,7 @@ if(blockbuf == NULL) {
  */
 
 c=0;
- 
+	
 old=NULL;
 
 c=get_filename_token(fullpath,token_buffer);					/* skip first token*/
@@ -1895,103 +1910,103 @@ count=1;
 if(fattype == 12 || fattype == 16) rb=bpb->reservedsectors+(bpb->sectorsperfat*bpb->numberoffats);  /* get start of root directory */
 if(fattype == 32) rb=bpb->fat32rootdirstart;  /* get start of root directory */
 
-if(strcmp(splitbuf->dirname,"\\") == 0) {		               /* root directory */
- if(strlen(splitbuf->filename) == 0) { 
-
-  kernelfree(lfnbuf);
-  kernelfree(blockbuf);
-  kernelfree(splitbuf);
-
-  return(rb);
- }
+if(strcmp(splitbuf->dirname,"\\") == 0) {						           /* root directory */
+	if(strlen(splitbuf->filename) == 0) { 
+		kernelfree(lfnbuf);
+		kernelfree(blockbuf);
+		kernelfree(splitbuf);
+		return(rb);
+	}
 }
 
 while(c != -1) {
- considered_harmful:
+	considered_harmful:
 
- memset(token_buffer,0,MAX_PATH);
- c=get_filename_token_count(fullpath);
- get_filename_token(fullpath,token_buffer);					/* tokenize filename */
+	memset(token_buffer,0,MAX_PATH);
+	c=get_filename_token_count(fullpath);
+	get_filename_token(fullpath,token_buffer);					/* tokenize filename */
 
- tc--;	
+	tc--;	
 
-  while((fattype == 12 && rb != 0xfff) || (fattype == 16 && rb !=0xffff) || (fattype == 32 && rb !=0xffffffff)) {
- 	 if(blockio(_READ,splitbuf->drive,rb+startofdataarea,blockbuf) == -1) {			/* read block for entry */
-	  kernelfree(splitbuf);
-	  kernelfree(blockbuf);
-          kernelfree(lfnbuf);
+	while((fattype == 12 && rb != 0xfff) || (fattype == 16 && rb !=0xffff) || (fattype == 32 && rb !=0xffffffff)) {
+		if(blockio(_READ,splitbuf->drive,rb+startofdataarea,blockbuf) == -1) {			/* read block for entry */
+			kernelfree(splitbuf);
+			kernelfree(blockbuf);
+		     	kernelfree(lfnbuf);
 	
- 	  setlasterror(PATH_NOT_FOUND);
-          return(-1);
-         }
+			setlasterror(PATH_NOT_FOUND);
+			return(-1);
+		}
 
-   blockptr=blockbuf;
+		blockptr=blockbuf;
 
-   for(count=0;count<bpb->sectorsperblock*bpb->sectorsize;count++) {
-    memcpy(&directory_entry,blockptr,FAT_ENTRY_SIZE);
+		for(count=0;count<bpb->sectorsperblock*bpb->sectorsize;count++) {
+			memcpy(&directory_entry,blockptr,FAT_ENTRY_SIZE);
 
-     if(*blockptr == 0) {				/* end of directory */     
-      kernelfree(lfnbuf);
-      kernelfree(splitbuf);
-      kernelfree(blockbuf);
-      setlasterror(PATH_NOT_FOUND);
-      return(-1);
-     }
+			if(*blockptr == 0) {				/* end of directory */     
+				kernelfree(lfnbuf);
+				kernelfree(splitbuf);
+				kernelfree(blockbuf);
+				setlasterror(PATH_NOT_FOUND);
+
+				return(-1);
+			}
 
 
-   fatentrytofilename(directory_entry.filename,file);			/* convert filename */
+			fatentrytofilename(directory_entry.filename,file);			/* convert filename */
 
-   touppercase(token_buffer);			/* convert to uppercase */
+			touppercase(token_buffer);			/* convert to uppercase */
 
-   if(wildcard(token_buffer,file) == 0) { 		/* if short entry filename found */         
+			if(wildcard(token_buffer,file) == 0) { 		/* if short entry filename found */         
 
-    if(fattype == 12 || fattype == 16) rb=directory_entry.block_low_word;		 	/* get next block */
-    if(fattype == 32) rb=((directory_entry.block_high_word << 16)+directory_entry.block_low_word); 	/* get next block */
+				if(fattype == 12 || fattype == 16) rb=directory_entry.block_low_word;				/* get next block */
+				if(fattype == 32) rb=((directory_entry.block_high_word << 16)+directory_entry.block_low_word); 	/* get next block */
 
-     if(strcmp(splitbuf->dirname,"\\") != 0) { /* not root */
-      if(fattype == 12 || fattype == 16) {
-       rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsperblock;
-       startofdataarea=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
-       }
-       else
-      {
-       startofdataarea=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
-      }
-    }
-    else
-    {
-     startofdataarea=0;
-    }
+				if(strcmp(splitbuf->dirname,"\\") != 0) { /* not root */
+					if(fattype == 12 || fattype == 16) {
+						rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsperblock;
+						startofdataarea=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
+					}
+					else
+					{
+						startofdataarea=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
+					}
+				}
+				else
+				{
+					startofdataarea=0;
+				}
 
-     if(tc == 0) {
-      setlasterror(NO_ERROR);
-       kernelfree(lfnbuf);
-       kernelfree(blockbuf);
-       kernelfree(splitbuf);
-      
-     return(rb);					/* at end, return block */
-     }
+					if(tc == 0) {
+						setlasterror(NO_ERROR);
+				
+						kernelfree(lfnbuf);
+					  	kernelfree(blockbuf);
+					  	kernelfree(splitbuf);
+					 
+						return(rb);					/* at end, return block */
+					}
 
-     goto  considered_harmful;
-    }
+					goto  considered_harmful;
+				}
 
-    blockptr=blockptr+FAT_ENTRY_SIZE;					/* point to next entry */
-   }
+				blockptr=blockptr+FAT_ENTRY_SIZE;					/* point to next entry */
+			}
 
-   rb=fat_getnextblock(splitbuf->drive,rb);
-  }
+			rb=fat_getnextblock(splitbuf->drive,rb);
+		}
 
 }
 
 
- kernelfree(lfnbuf);
- kernelfree(blockbuf);
- kernelfree(splitbuf);
+kernelfree(lfnbuf);
+kernelfree(blockbuf);
+kernelfree(splitbuf);
 
- setlasterror(PATH_NOT_FOUND);
- return(-1);
+setlasterror(PATH_NOT_FOUND);
+return(-1);
 }
- 
+	
 /*
  * Get next block in FAT chain
  *
@@ -2003,26 +2018,26 @@ while(c != -1) {
  */
 
 size_t fat_getnextblock(size_t drive,size_t block) {
- uint8_t *buf;
- size_t entriesperblock;
- size_t fattype;
- size_t blockno;
- uint16_t entry;
- uint32_t entry_dword;
- size_t entryno;
- uint32_t entry_offset;
- BLOCKDEVICE blockdevice;
- BPB *bpb;
+uint8_t *buf;
+size_t entriesperblock;
+size_t fattype;
+size_t blockno;
+uint16_t entry;
+uint32_t entry_dword;
+size_t entryno;
+uint32_t entry_offset;
+BLOCKDEVICE blockdevice;
+BPB *bpb;
 
 fattype=fat_detectchange(drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(drive,&blockdevice) == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 }
 
 buf=kernelalloc(MAX_BLOCK_SIZE);
@@ -2030,69 +2045,68 @@ if(buf == NULL) return(-1);
 
 bpb=blockdevice.superblock;		/* point to data */
 
+if(fattype == 12) {					/* fat12 */
+	entryno=(block+(block/2));
+	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
+	entry_offset=(entryno % (bpb->sectorsperblock*bpb->sectorsize));	/* offset into fat */
 
- if(fattype == 12) {					/* fat12 */
-  entryno=(block+(block/2));
-  blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-  entry_offset=(entryno % (bpb->sectorsperblock*bpb->sectorsize));	/* offset into fat */
+	if(blockio(_READ,drive,blockno,buf) == -1) { 	/* read block */
+		kernelfree(buf);
+		return(-1);
+	}
 
-  if(blockio(_READ,drive,blockno,buf) == -1) { 	/* read block */
-   kernelfree(buf);
-   return(-1);
-  }
+	blockio(_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)); 	/* read block+1 */
+	
+	entry=*(uint16_t*)&buf[entry_offset];		/* get entry */
 
-  blockio(_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)); 	/* read block+1 */
- 
-  entry=*(uint16_t*)&buf[entry_offset];		/* get entry */
-
-  if(block & 1) {					/* block is odd */
-   entry=entry >> 4;
-  }
-  else
-  {
-   entry=entry & 0xfff;
-  }
-  
-  kernelfree(buf);
-  return(entry);
- }
+	if(block & 1) {					/* block is odd */
+		entry=entry >> 4;
+	}
+	else
+	{
+		entry=entry & 0xfff;
+	}
+		
+	kernelfree(buf);
+	return(entry);
+}
 
 
- if(fattype == 16) {					/* fat16 */
+if(fattype == 16) {					/* fat16 */
 
-  entryno=block*2;				
-  blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-  entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
+	entryno=block*2;				
+	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
+	entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
 
-  if(blockio(_READ,drive,blockno,buf) == -1) { 	/* read block */
-   kernelfree(buf);
-   return(-1);
-  }
+	if(blockio(_READ,drive,blockno,buf) == -1) { 	/* read block */
+		kernelfree(buf);
+		return(-1);
+	}
 
-  entry=*(uint16_t*)&buf[entry_offset];		/* get entry */
+		entry=*(uint16_t*)&buf[entry_offset];		/* get entry */
 
-  kernelfree(buf);
-  return(entry);
- }
+		kernelfree(buf);
+		return(entry);
+	}
 
- if(fattype == 32) {					/* fat32 */
+	if(fattype == 32) {					/* fat32 */
 
-  entryno=block*4;				
-  blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-  entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
+		entryno=block*4;				
+		blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
+		entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
 
-  if(blockio(_READ,drive,blockno,buf) == -1) {			/* read block */
-   kernelfree(buf);
-   return(-1);
-  }
+		if(blockio(_READ,drive,blockno,buf) == -1) {			/* read block */
+			kernelfree(buf);
+			return(-1);
+		}
 
-  entry_dword=*(buf+entry_offset);				/* get entry */
+		entry_dword=*(buf+entry_offset);				/* get entry */
 
-  entry_dword=entry_dword+(bpb->fat32sectorsperfat*bpb->numberoffats)+((bpb->rootdirentries*FAT_ENTRY_SIZE)/bpb->sectorsperblock)-bpb->reservedsectors;
+		entry_dword=entry_dword+(bpb->fat32sectorsperfat*bpb->numberoffats)+((bpb->rootdirentries*FAT_ENTRY_SIZE)/bpb->sectorsperblock)-bpb->reservedsectors;
 
-  kernelfree(buf);
-  return(entry_dword & 0x0FFFFFFF);
- }
+		kernelfree(buf);
+		return(entry_dword & 0x0FFFFFFF);
+	}
 
 }
 
@@ -2109,97 +2123,98 @@ bpb=blockdevice.superblock;		/* point to data */
  */
 
 size_t updatefat(size_t drive,size_t block,uint16_t block_high_word,uint16_t block_low_word) {
- uint8_t buf[8196];
- uint16_t *b;
- size_t entriesperblock;
- size_t fattype;
- size_t blockno=0;
- size_t count;
- uint16_t entry;
- uint16_t e;
- size_t entryno;
- uint32_t entry_offset;
- BPB *bpb;
- BLOCKDEVICE blockdevice;
- uint8_t firstbyte;
- uint8_t secondbyte;
- uint8_t thirdbyte;
- size_t fatstart;
+uint8_t buf[8196];
+uint16_t *b;
+size_t entriesperblock;
+size_t fattype;
+size_t blockno=0;
+size_t count;
+uint16_t entry;
+uint16_t e;
+size_t entryno;
+uint32_t entry_offset;
+BPB *bpb;
+BLOCKDEVICE blockdevice;
+uint8_t firstbyte;
+uint8_t secondbyte;
+uint8_t thirdbyte;
+size_t fatstart;
 
 fattype=fat_detectchange(drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
- if(getblockdevice(drive,&blockdevice) == -1) {
-  setlasterror(INVALID_DISK);
-  return(NULL);
- }
+if(getblockdevice(drive,&blockdevice) == -1) {
+		setlasterror(INVALID_DISK);
+		return(NULL);
+	}
 
 bpb=blockdevice.superblock;		/* point to data */
 
- if(fattype == 12) {					/* fat12 */
-  entryno=block+(block/2);
-  blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-  entry_offset=(entryno % (bpb->sectorsperblock*bpb->sectorsize));	/* offset into fat */
+if(fattype == 12) {					/* fat12 */
+	entryno=block+(block/2);
+	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
+	entry_offset=(entryno % (bpb->sectorsperblock*bpb->sectorsize));	/* offset into fat */
 
-  if(blockio(_READ,drive,blockno,buf) == -1) return(-1); 	/* read block */
-  blockio(_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)); 	/* read block	+1 */
+	if(blockio(_READ,drive,blockno,buf) == -1) return(-1); 	/* read block */
+	blockio(_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)); 	/* read block	+1 */
 
-  firstbyte=buf[entry_offset];
-  secondbyte=buf[entry_offset+1];
-  thirdbyte=buf[entry_offset+2];
+	firstbyte=buf[entry_offset];
+	secondbyte=buf[entry_offset+1];
+	thirdbyte=buf[entry_offset+2];
 
- // 23 61 45
+	// 23 61 45
 
-  if(block & 1) {					/* block is odd */
-   secondbyte=(secondbyte & 0x0f)+(uint8_t) (block_low_word & 0xf0);
-   thirdbyte=((block_low_word & 0xff00) >> 8);
-  }
-  else
-  {
-   firstbyte=(uint8_t) (block_low_word & 0xff);
-   secondbyte=(secondbyte & 0x0f)+(uint8_t) ((block_low_word & 0xf00) >> 4);
-  }
+	if(block & 1) {					/* block is odd */
+		secondbyte=(secondbyte & 0x0f)+(uint8_t) (block_low_word & 0xf0);
+		thirdbyte=((block_low_word & 0xff00) >> 8);
+	}
+	else
+	{
+		firstbyte=(uint8_t) (block_low_word & 0xff);
+		secondbyte=(secondbyte & 0x0f)+(uint8_t) ((block_low_word & 0xf00) >> 4);
+	}
 
-  buf[entry_offset]=firstbyte;
-  buf[entry_offset+1]=secondbyte;
-  buf[entry_offset+2]=thirdbyte;
- }
+buf[entry_offset]=firstbyte;
+buf[entry_offset+1]=secondbyte;
+buf[entry_offset+2]=thirdbyte;
+}
 
 
- if(fattype == 16) {					/* fat16 */
-  entryno=block*2;				
-  blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-  entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
+if(fattype == 16) {					/* fat16 */
+	entryno=block*2;				
+	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
+	entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
 
-  if(blockio(_READ,drive,blockno,buf) == -1) return(-1); 	/* read block */
-  blockio(_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)); 	/* read block	+1 */
+	if(blockio(_READ,drive,blockno,buf) == -1) return(-1); 	/* read block */
+	blockio(_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)); 	/* read block	+1 */
 
-  *(uint16_t*)&buf[entry_offset]=block_low_word;
-  }
+	*(uint16_t*)&buf[entry_offset]=block_low_word;
+}
 
- if(fattype == 32) {					/* fat32 */
-  entryno=block*4;				
-  blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-  entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
+if(fattype == 32) {					/* fat32 */
+	entryno=block*4;				
+	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
+	entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
 
-  if(blockio(_READ,drive,blockno,buf) == -1) return(-1); 	/* read block */
-  blockio(_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)); 	/* read block	+1 */
+	if(blockio(_READ,drive,blockno,buf) == -1) return(-1); 	/* read block */
+	blockio(_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)); 	/* read block	+1 */
 
-  *(uint32_t*)&buf[entry_offset]=(block_high_word << 16)+block_low_word;
- }
+	*(uint32_t*)&buf[entry_offset]=(block_high_word << 16)+block_low_word;
+}
 
 /* write fats */
 
- for(count=0;count<bpb->numberoffats;count++) {
-	  if(blockio(_WRITE,drive,blockno,buf) == -1)  return(-1);
-  blockno=blockno+(((bpb->sectorsperfat*bpb->sectorsperblock)-blockno));
- }
+for(count=0;count<bpb->numberoffats;count++) {
+	if(blockio(_WRITE,drive,blockno,buf) == -1)  return(-1);
 
- setlasterror(NO_ERROR);
- return(NO_ERROR);
+	blockno=blockno+(((bpb->sectorsperfat*bpb->sectorsperblock)-blockno));
+}
+
+setlasterror(NO_ERROR);
+return(NO_ERROR);
 }
 
 /*
@@ -2213,98 +2228,97 @@ bpb=blockdevice.superblock;		/* point to data */
 
 
 size_t fat_detectchange(size_t drive) {
- size_t  count;
- size_t fattype;
- char *bootbuf;
- BPB bpb;
- BLOCKDEVICE blockdevice;
+size_t  count;
+size_t fattype;
+char *bootbuf;
+BPB bpb;
+BLOCKDEVICE blockdevice;
 
- getblockdevice(drive,&blockdevice);		/* get device */ 
+getblockdevice(drive,&blockdevice);		/* get device */ 
 
- bootbuf=kernelalloc(MAX_BLOCK_SIZE);				/* allocate buffer */
- if(bootbuf == NULL) return(-1); 
- 
- if(blockio(_READ,drive,0,bootbuf) == -1) {				/* get bios parameter block */
-   kernelfree(bootbuf);
-   return(-1); 
-  }
+bootbuf=kernelalloc(MAX_BLOCK_SIZE);				/* allocate buffer */
+if(bootbuf == NULL) return(-1); 
+	
+if(blockio(_READ,drive,0,bootbuf) == -1) {				/* get bios parameter block */
+	kernelfree(bootbuf);
+	return(-1); 
+}
 
-  memcpy(&bpb,bootbuf,54);		/* copy bpb */
+memcpy(&bpb,bootbuf,54);		/* copy bpb */
 
- blockdevice.sectorsperblock=bpb.sectorsperblock;
+blockdevice.sectorsperblock=bpb.sectorsperblock;
 
- if(blockdevice.numberofsectors/blockdevice.sectorsperblock < 4095) fattype=12;		/* get fat type */
- if(blockdevice.numberofsectors/blockdevice.sectorsperblock >= 4095 && blockdevice.numberofsectors/bpb.sectorsperblock < 268435445) fattype=16;
- if(blockdevice.numberofsectors/blockdevice.sectorsperblock/bpb.sectorsperblock >= 268435445) fattype=32;
- if(fattype == 32) memcpy((void *) &bpb.fat32sectorsperfat, (void *) bootbuf+54,62-36);		/* fat32 */
+if(blockdevice.numberofsectors/blockdevice.sectorsperblock < 4095) fattype=12;		/* get fat type */
+if(blockdevice.numberofsectors/blockdevice.sectorsperblock >= 4095 && blockdevice.numberofsectors/bpb.sectorsperblock < 268435445) fattype=16;
+if(blockdevice.numberofsectors/blockdevice.sectorsperblock/bpb.sectorsperblock >= 268435445) fattype=32;
+if(fattype == 32) memcpy((void *) &bpb.fat32sectorsperfat, (void *) bootbuf+54,62-36);		/* fat32 */
 
- kernelfree(bootbuf);
+kernelfree(bootbuf);
 
- if(blockdevice.superblock == NULL) {
-  blockdevice.superblock=kernelalloc(sizeof(BPB));	/* allocate buffer */
-  if(blockdevice.superblock == NULL) {
-   kernelfree(bootbuf);
-   return(-1);
-  }
- }
+if(blockdevice.superblock == NULL) {
+	blockdevice.superblock=kernelalloc(sizeof(BPB));	/* allocate buffer */
+	if(blockdevice.superblock == NULL) {
+		kernelfree(bootbuf);
+		return(-1);
+	}
+}
 
- memcpy(blockdevice.superblock,&bpb,sizeof(BPB));		/* update BPB */
+memcpy(blockdevice.superblock,&bpb,sizeof(BPB));		/* update BPB */
 
- update_block_device(drive,&blockdevice);			/* update block device information */
+update_block_device(drive,&blockdevice);			/* update block device information */
 
- return(fattype);
+return(fattype);
 }
 
 /*
  * Convert filenamw (only filename) to FAT entry name
  *
  * In:  name	Filename
- 	outname Buffer to hold converted name
+		outname Buffer to hold converted name
  *
  * Returns: nothing
  *
  */
 
 size_t fat_convertfilename(char *filename,char *outname) {
- char *s;
- char *d;
- size_t  count;
- 
- char *f[MAX_PATH];
+char *s;
+char *d;
+size_t  count;
+char *f[MAX_PATH];
 
- strcpy(f,filename);		/* copy filename */
+strcpy(f,filename);		/* copy filename */
 
- s=f;
- d=outname;
+s=f;
+d=outname;
 
- memset(outname,' ',11);				/* fill with spaces */
+memset(outname,' ',11);				/* fill with spaces */
 
- for(count=0;count<strlen(filename);count++) {
-   if(*s > 'a' && *s < 'z') *s=*s-32;			/* convert to uppercase */
+for(count=0;count<strlen(filename);count++) {
+	if(*s > 'a' && *s < 'z') *s=*s-32;			/* convert to uppercase */
 
-   s++;
-  }
+	s++;
+}
 
- s=filename;
+s=filename;
 
- for(count=0;count<strlen(filename);count++) { 
-  *d=*s++;
+for(count=0;count<strlen(filename);count++) { 
+	*d=*s++;
 
-  if(*d == '.') {					/* copy extension */
-   *d=' ';
-   memcpy((void *) outname+8,(void *) s,3);
- 
-   return;
-  }
+	if(*d == '.') {					/* copy extension */
+		*d=' ';
+		memcpy((void *) outname+8,(void *) s,3);
+	
+		return;
+	}
 
-  d++;
- }
+	d++;
+}
 
-  return;
+return;
 }
 
 
- /*
+/*
  * read long filename entry into of buffer starting from block, internal use only
  *
  * In:  drive	Drive
@@ -2337,14 +2351,14 @@ BLOCKDEVICE blockdevice;
 
 fattype=fat_detectchange(drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
- if(getblockdevice(drive,&blockdevice) == -1) {
-  setlasterror(INVALID_DISK);
-  return(NULL);
- }
+if(getblockdevice(drive,&blockdevice) == -1) {
+	setlasterror(INVALID_DISK);
+	return(NULL);
+}
 
 bpb=blockdevice.superblock;		/* get bpb */
 
@@ -2356,8 +2370,8 @@ if(blockbuf == NULL) return(-1);
 
 lfn=kernelalloc((bpb->sectorsperblock*bpb->sectorsize));
 if(lfn == NULL) {
- kernelfree(blockbuf);
- return(-1);
+	kernelfree(blockbuf);
+	return(-1);
 }
 
 blockptr=blockbuf+entryno*FAT_ENTRY_SIZE;		/* point to first entry */
@@ -2369,104 +2383,104 @@ lfncount=0;
 
 while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || (fattype == 32 && block !=0xffffffff)) {	/* until end of chain */
 
- if(blockio(_READ,drive,block,blockbuf) == -1) {	/* read block for entry */
-  kernelfree(blockbuf);
-  kernelfree(lfn);
-  return(-1);
- }
+	if(blockio(_READ,drive,block,blockbuf) == -1) {	/* read block for entry */
+		kernelfree(blockbuf);
+		kernelfree(lfn);
+		return(-1);
+	}
 
- for(count=0;count<((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)-(entryno*FAT_ENTRY_SIZE);count++) {
-  n->dirent=count;
-     
-  memset(lfn,0,sizeof(struct lfn_entry));
-  memcpy(lfn,(void *) blockptr,FAT_ENTRY_SIZE);
+	for(count=0;count<((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)-(entryno*FAT_ENTRY_SIZE);count++) {
+		n->dirent=count;
+					
+		memset(lfn,0,sizeof(struct lfn_entry));
+		memcpy(lfn,(void *) blockptr,FAT_ENTRY_SIZE);
 
-  if(lfn->sequence == 0) {
-   kernelfree(blockbuf);
-   kernelfree(lfn);
-   return(lfncount);		/* no more lfn */
-  }
- 	
-  blockptr=blockptr+FAT_ENTRY_SIZE;
+		if(lfn->sequence == 0) {
+			kernelfree(blockbuf);
+			kernelfree(lfn);
+			return(lfncount);		/* no more lfn */
+		}
+		
+		blockptr=blockptr+FAT_ENTRY_SIZE;
 
 //  if(lfn->sequence == 0xE5) continue;			/* skip deleted entries */
-  
-  entrycount=lfn->sequence;				/* get number of entries */
-  if(entrycount >= 0x40) entrycount=entrycount-0x40;
-  
-  if(strlen_unicode(lfn->lasttwo_chars,2) > 0) {  
-   d=d-strlen_unicode(lfn->lasttwo_chars,2);
+		
+		entrycount=lfn->sequence;				/* get number of entries */
+		if(entrycount >= 0x40) entrycount=entrycount-0x40;
+		
+		if(strlen_unicode(lfn->lasttwo_chars,2) > 0) {  
+			d=d-strlen_unicode(lfn->lasttwo_chars,2);
 
-   s=lfn->lasttwo_chars;
-   b=d;
+			s=lfn->lasttwo_chars;
+			b=d;
 
-    for(ec=0;ec<strlen_unicode(lfn->lasttwo_chars,2);ec++) {
+				for(ec=0;ec<strlen_unicode(lfn->lasttwo_chars,2);ec++) {
 
-//    if(*s == 0xFF) break;				/* at end */
-    *b++=*s;					/* copy */
-    s=s+2;
-   }   
+					//    if(*s == 0xFF) break;				/* at end */
+					*b++=*s;					/* copy */
+					s=s+2;
+				}   
 
-  lfncount++;
-  }
+			lfncount++;
+		}
 
-  if(strlen_unicode(lfn->nextsix_chars,6) > 0) {
-   d=d-strlen_unicode(lfn->nextsix_chars,6);
-   s=lfn->nextsix_chars;
+		if(strlen_unicode(lfn->nextsix_chars,6) > 0) {
+			d=d-strlen_unicode(lfn->nextsix_chars,6);
+			s=lfn->nextsix_chars;
 
-   b=d;
+			b=d;
 
-   for(ec=0;ec<strlen_unicode(lfn->nextsix_chars,6);ec++) {
-//    if(*s == 0xFF) break;				/* at end */
+			for(ec=0;ec<strlen_unicode(lfn->nextsix_chars,6);ec++) {
+				//    if(*s == 0xFF) break;				/* at end */
 
-    *b++=*s;						/* copy */
-    s=s+2;
-   }  
+				*b++=*s;						/* copy */
+				s=s+2;
+			}  
 
-  lfncount++;
-  }
+			lfncount++;
+		}
 
- if(strlen_unicode(lfn->firstfive_chars,5) > 0) {
-  d=d-strlen_unicode(lfn->firstfive_chars,5);
-  s=lfn->firstfive_chars;
-       
-   b=d;
+		if(strlen_unicode(lfn->firstfive_chars,5) > 0) {
+			d=d-strlen_unicode(lfn->firstfive_chars,5);
+			s=lfn->firstfive_chars;
+					  
+			b=d;
 
-   for(ec=0;ec<strlen_unicode(lfn->firstfive_chars,5);ec++) {
- //   if(*s == 0xFF) break;				/* at end */
+			for(ec=0;ec<strlen_unicode(lfn->firstfive_chars,5);ec++) {
+				//   if(*s == 0xFF) break;				/* at end */
 
-    *b++=*s;						/* copy */
-     s=s+2;	
-   } 
+				*b++=*s;						/* copy */
+				s=s+2;	
+			} 
 
-  lfncount++;
-  }
-
- 
-  if(lfn->sequence == 1 || lfn->sequence == 0x41) {		/* at end of filename copy filename */
-   strcpy(n->filename,d);			/* copy filename */
+			lfncount++;
+		}
+z
+	
+		if(lfn->sequence == 1 || lfn->sequence == 0x41) {		/* at end of filename copy filename */
+			strcpy(n->filename,d);			/* copy filename */
 
 /* at end, so will point to short entry */
 
-   memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);
+			memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);
 
-   n->attribs=dirent.attribs;
+			n->attribs=dirent.attribs;
 
-   n->timebuf.hours=(dirent.createtime & 0xf800) >> 11;
-   n->timebuf.minutes=(dirent.createtime  & 0x7e0) >> 6;
-   n->timebuf.seconds=(dirent.createtime & 0x1f);
-   n->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
-   n->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
-   n->timebuf.day=(dirent.createdate & 0x1f);
-   n->filesize=dirent.filesize;
-   n->startblock=(dirent.block_high_word << 16)+dirent.block_low_word;
+			n->timebuf.hours=(dirent.createtime & 0xf800) >> 11;
+			n->timebuf.minutes=(dirent.createtime  & 0x7e0) >> 6;
+			n->timebuf.seconds=(dirent.createtime & 0x1f);
+			n->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
+			n->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
+			n->timebuf.day=(dirent.createdate & 0x1f);
+			n->filesize=dirent.filesize;
+			n->startblock=(dirent.block_high_word << 16)+dirent.block_low_word;
 
-   kernelfree(blockbuf);
-   kernelfree(lfn);
-   return(lfncount);
-  }
+			kernelfree(blockbuf);
+			kernelfree(lfn);
+			return(lfncount);
+		}
 
- }
+	}
 
 
 }
@@ -2476,7 +2490,7 @@ kernelfree(lfn);
 
 return(lfncount);
 }
-  
+		
 /*
  * Write long filename, internal use only
  *
@@ -2514,13 +2528,13 @@ BPB *bpb;
 
 fattype=fat_detectchange(drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(drive,&blockdevice) == -1) {
- setlasterror(INVALID_DISK);
- return(NULL);
+	setlasterror(INVALID_DISK);
+	return(NULL);
 }
 
 bpb=blockdevice.superblock;		/* get bpb */
@@ -2537,146 +2551,149 @@ if(lfn == NULL) return(-1);
  *
  */
 
- if(strlen(newname) <= strlen(n)) {
+if(strlen(newname) <= strlen(n)) {
 
-  if(fat_readlfn(drive,block,entryno,lfn) == -1) {		/* read long filename */
-    kernelfree(blockbuf);
-   return(-1);
-  }
+	if(fat_readlfn(drive,block,entryno,lfn) == -1) {		/* read long filename */
+		kernelfree(blockbuf);
+		return(-1);
+	}
 
-  strcpy(lfn->filename,newname);
+	strcpy(lfn->filename,newname);
 
-  deletelfn(n,block,entryno);			/* delete filename and recreate it */
+	deletelfn(n,block,entryno);			/* delete filename and recreate it */
 
-   createlfn(lfn,block,entryno);
-   kernelfree(blockbuf);
-   return;
+	createlfn(lfn,block,entryno);
+
+	kernelfree(blockbuf);
+	return;
 }
- 
+	
 /*oherwise new long filename is longer than old long filename
  *
  */
 
-  /* attempt to create free entries in free directory entries,
-   if none could be found, create entries at end of directory */
+/* attempt to create free entries in free directory entries, if none could be found, create entries at end of directory */
 
-  getfullpath(n,fullpath);			/* get full path */
-  splitname(fullpath,&splitbuf);
+getfullpath(n,fullpath);			/* get full path */
+splitname(fullpath,&splitbuf);
 
-  block=fat_getstartblock(splitbuf.dirname);
-  firstblock=block;					/* save block number */
+block=fat_getstartblock(splitbuf.dirname);
+firstblock=block;					/* save block number */
 
- flen=strlen(newname)/13;				/* get number of 13 byte sections */
-  if(strlen(newname) % 13 > 0) flen++;
+flen=strlen(newname)/13;				/* get number of 13 byte sections */
+if(strlen(newname) % 13 > 0) flen++;
 
-  firstblock=block;					/* save block number */
-  entry=0;
-  blockptr=blockbuf;
+firstblock=block;					/* save block number */
+entry=0;
+blockptr=blockbuf;
 
-  while((fattype == 12 && firstblock != 0xfff) || (fattype == 16 && firstblock !=0xffff) || (fattype == 32 && firstblock !=0xffffffff)) {	/* until end of chain */
+while((fattype == 12 && firstblock != 0xfff) || (fattype == 16 && firstblock !=0xffff) || (fattype == 32 && firstblock !=0xffffffff)) {	/* until end of chain */
 
-   if(blockio(_READ,splitbuf.drive,firstblock,blockbuf) == -1) {	/* read block for entry */
-      kernelfree(blockbuf);
-     return(-1);
-   }
+	if(blockio(_READ,splitbuf.drive,firstblock,blockbuf) == -1) {	/* read block for entry */
+		kernelfree(blockbuf);
+		return(-1);
+	}
 
-   countx=0;
-   lastentry=0;
+	countx=0;
+	lastentry=0;
 
-   for(count=0;count<((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE);count++) {
-     if((*blockptr == 0) || (*blockptr == 0xE5)) {
-      countx++;	/* found free entry */
-     }
-     else
-     {
-      lastentry=count+1;
-      countx=0;	/* entries must be contingous */
-     }
+	for(count=0;count<((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE);count++) {
+		if((*blockptr == 0) || (*blockptr == 0xE5)) {
+			countx++;	/* found free entry */
+		}
+		else
+		{
+			lastentry=count+1;
+			countx=0;	/* entries must be contingous */
+		}
 
 
-     if(countx > flen) {			/* found free entries */
-        deletelfn(n,block,entryno);			/* delete filename and recreate it */
+		if(countx > flen) {			/* found free entries */
+			deletelfn(n,block,entryno);			/* delete filename and recreate it */
 
-	strcpy(lfn->filename,newname);
-	lfn->findlastblock=block;
-	lfn->dirent=lastentry;
+			strcpy(lfn->filename,newname);
+			lfn->findlastblock=block;
+			lfn->dirent=lastentry;
 
-	createlfn(lfn,block,lastentry);
-	kernelfree(blockbuf);
-	return(NO_ERROR);
-    }
-    blockptr=blockptr+FAT_ENTRY_SIZE;		/* point to next entry */
-  }
+			createlfn(lfn,block,lastentry);
 
-    block=fat_getnextblock(splitbuf.drive,block);
-    blockptr=blockbuf;
- }
+			kernelfree(blockbuf);
+			return(NO_ERROR);
+		}
+		
+		blockptr=blockptr+FAT_ENTRY_SIZE;		/* point to next entry */
+	}
+
+	block=fat_getnextblock(splitbuf.drive,block);
+	blockptr=blockbuf;
+}
 
 /* no free entries could be found, create entries at end of directory */
 
 /* root directory is fixed size for fat12 and fat16 */
 
-   if(fattype == 12 || fattype == 16) {
+if(fattype == 12 || fattype == 16) {
 	if(strcmp(splitbuf.dirname,"\\") == 0) {
-	  setlasterror(DIRECTORY_FULL);
-	  return(-1);
-        }
-   }
+		setlasterror(DIRECTORY_FULL);
+		return(-1);
+	}
+}
 
-   block=firstblock;
-   while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || (fattype == 32 && block !=0xffffffff)) {	/* until end of chain */
-    b=fat_getnextblock(splitbuf.drive,block);			/* get next block */
-   	
-    if((fattype == 12 && b != 0xfff) || (fattype == 16 && b !=0xffff) || (fattype == 32 && b !=0xffffffff)) break;
+block=firstblock;
 
-    block=b;
-   }
+while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || (fattype == 32 && block !=0xffffffff)) {	/* until end of chain */
+	b=fat_getnextblock(splitbuf.drive,block);			/* get next block */
+				
+	if((fattype == 12 && b != 0xfff) || (fattype == 16 && b !=0xffff) || (fattype == 32 && b !=0xffffffff)) break;
 
-   if(flen*FAT_ENTRY_SIZE < (bpb->sectorsperblock*bpb->sectorsize)) {		/* one block */
-    blockcount=1;
-   }
-   else
-   {
-    blockcount=(flen*FAT_ENTRY_SIZE)/(bpb->sectorsperblock*bpb->sectorsize);	/* more than one block */
-   }
+	block=b;
+}
+
+if(flen*FAT_ENTRY_SIZE < (bpb->sectorsperblock*bpb->sectorsize)) {		/* one block */
+	blockcount=1;
+}
+else
+{
+	blockcount=(flen*FAT_ENTRY_SIZE)/(bpb->sectorsperblock*bpb->sectorsize);	/* more than one block */
+}
 
 /* create free blocks at end of directory */
 
-   firstfreeblock=fat_findfreeblock(drive);			/* find free block */
-   if(firstfreeblock == -1) {
-     kernelfree(blockbuf);
-    return(-1);
-   }
-   
+firstfreeblock=fat_findfreeblock(drive);			/* find free block */
+if(firstfreeblock == -1) {
+	kernelfree(blockbuf);
+	return(-1);
+}
+			
+if(updatefat(drive,block,(freeblock >> 8),(freeblock & 0xffff)) == -1) {
+	kernelfree(blockbuf);
+	return(-1);
+}
 
-    if(updatefat(drive,block,(freeblock >> 8),(freeblock & 0xffff)) == -1) {
-      kernelfree(blockbuf);
-     return(-1);
-    }
+freeblock=firstfreeblock;
 
-   freeblock=firstfreeblock;
+for(count=0;count<blockcount;count++) {
+	freeblock=fat_findfreeblock(drive);			/* add remainder of blocks */
 
-   for(count=0;count<blockcount;count++) {
-    freeblock=fat_findfreeblock(drive);			/* add remainder of blocks */
+	if(freeblock == -1) {
+		kernelfree(blockbuf);
+		return(-1);
+	}
 
-    if(freeblock == -1) {
-      kernelfree(blockbuf);
-     return(-1);
-    }
+	if(updatefat(drive,block,(freeblock >> 8),(freeblock & 0xffff)) == -1) {
+		kernelfree(blockbuf);
+		return(-1);
+	}
 
-    if(updatefat(drive,block,(freeblock >> 8),(freeblock & 0xffff)) == -1) {
-      kernelfree(blockbuf);
-     return(-1);
-    }
-
-   }
+}
 
 
-   deletelfn(n,block,entryno);			/* delete filename and recreate it */
-  createlfn(lfn,block,entryno);
-   
-  kernelfree(blockbuf);
- return(NO_ERROR);
+deletelfn(n,block,entryno);			/* delete filename and recreate it */
+createlfn(lfn,block,entryno);
+			
+kernelfree(blockbuf);
+
+return(NO_ERROR);
 }
 
 /*
@@ -2690,89 +2707,89 @@ if(lfn == NULL) return(-1);
  */
 
 size_t createshortname(char *filename,char *out) {
- size_t  count;
- char *s;
- char *f;
- char *v;
- char *buf[11]; 
- char *b;
- char *e;
- size_t longfilecount;
- FILERECORD searchbuf;
- 
+size_t  count;
+char *s;
+char *f;
+char *v;
+char *buf[11]; 
+char *b;
+char *e;
+size_t longfilecount;
+FILERECORD searchbuf;
+	
 /* translate to uppercase, removing any illegal characters */
 
 for(longfilecount=1;longfilecount<9999;longfilecount++) {
- memset(out,0,11);				/* clear buffer */
+	memset(out,0,11);				/* clear buffer */
 
- s=out;						/* copy first 6 chars */
- f=filename;
+	s=out;						/* copy first 6 chars */
+	f=filename;
 
- count=0;
+	count=0;
 
- itoa(longfilecount,buf);			/* get length of number */
+	itoa(longfilecount,buf);			/* get length of number */
 
- while(count < 8-strlen(buf)) {
-  if((char) *f != 0x20) {
-   *s++=*f;
-   count++;
-  }
+	while(count < 8-strlen(buf)) {
+		if((char) *f != 0x20) {
+			*s++=*f;
+			count++;
+		}
 
-  f++;
- }
+		f++;
+	}
 
- s--;
- *s++='~';
+	s--;
+	*s++='~';
 
- b=s;
+	b=s;
 
- itoa(longfilecount,b);
+	itoa(longfilecount,b);
 
- f=filename;
- while(*f != 0) {
+	f=filename;
+	while(*f != 0) {
 
-  if(*f++ == 0x2e) {
-   f--;
-   break;		/* find extension */
-  }
- } 
+		if(*f++ == 0x2e) {
+			f--;
+			break;		/* find extension */
+		}
+	} 
 
- strcat(s,f);	/* append extension */
+	strcat(s,f);	/* append extension */
 
- s=out;
+	s=out;
 
- for(count=0;count<strlen(out);count++) {
-  if(*s > 'a' && *s < 'z') *s=*s-32;
-  s++;
- }    
+	for(count=0;count<strlen(out);count++) {
+		if(*s > 'a' && *s < 'z') *s=*s-32;
+		s++;
+	}    
 
- break;
+	break;
 
- if(findfirst(out,&searchbuf) == NULL) return(NO_ERROR);			/* check if file already exists */
+	if(findfirst(out,&searchbuf) == NULL) return(NO_ERROR);			/* check if file already exists */
 }
 
 
- return(-1);
+	return(-1);
 }
 
 uint8_t createlfnchecksum(char *filename) {
- uint8_t sum=0;
- uint32_t count;
+uint8_t sum=0;
+uint32_t count;
 
- for (count=0;count<11;count++) {
-  sum=(sum >> 1) + ((sum & 1) << 7);  /* rotate */
-  sum += filename[count];                       /* add next name byte */
- }
-
- return(sum); 
+for (count=0;count<11;count++) {
+	sum=(sum >> 1) + ((sum & 1) << 7);  /* rotate */
+	sum += filename[count];                       /* add next name byte */
 }
 
- /*
+return(sum); 
+}
+
+/*
  * Delete long filename
  *
  * In:  filename	Filename to delete
 	block		Block number of long filename
-	entryno		 FAT entry number of long filename
+	entryno			FAT entry number of long filename
  *
  * Returns: -1 on error, 0 on success
  *
@@ -2795,13 +2812,13 @@ splitname(fullpath,&splitbuf);				/* split filename */
 
 fattype=fat_detectchange(splitbuf.drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(splitbuf.drive,&blockdevice) == -1) {
- setlasterror(INVALID_DISK);
- return(NULL);
+	setlasterror(INVALID_DISK);
+	return(NULL);
 }
 
 bpb=blockdevice.superblock;	/* point to data */
@@ -2813,11 +2830,11 @@ if(strlen(splitbuf.filename) % 13) flen++;		/* get number of 13 byte sections */
 /* allocate buffer */
 
 if(flen*FAT_ENTRY_SIZE < (bpb->sectorsperblock*bpb->sectorsize)) {		/* one block */
- blockcount=1;
+	blockcount=1;
 }
 else
 {
- blockcount=(flen*FAT_ENTRY_SIZE)/(bpb->sectorsperblock*bpb->sectorsize);	/* more than one block */
+	blockcount=(flen*FAT_ENTRY_SIZE)/(bpb->sectorsperblock*bpb->sectorsize);	/* more than one block */
 }
 
 blockbuf=kernelalloc((bpb->sectorsperblock*bpb->sectorsize)*blockcount);	/* allocate block buffer */
@@ -2827,20 +2844,20 @@ if(blockbuf == NULL) return(-1);
 
 for(count=0;count<blockcount;count++) {
 
- if(blockio(_READ,splitbuf.drive,block,blockbuf) == -1) {	/* read block for entry */
-   kernelfree(blockbuf);
-  return(-1);
- }
+	if(blockio(_READ,splitbuf.drive,block,blockbuf) == -1) {	/* read block for entry */
+		kernelfree(blockbuf);
+		return(-1);
+	}
 
- blockptr=blockptr+(bpb->sectorsperblock*bpb->sectorsize);
+	blockptr=blockptr+(bpb->sectorsperblock*bpb->sectorsize);
 }
 
 blockptr=blockbuf;
 blockptr += (entry*FAT_ENTRY_SIZE);			/* point to entries */
 
 for(count=0;count<flen+1;count++) {
- *blockptr=0xE5;
- blockptr=blockptr+FAT_ENTRY_SIZE;
+	*blockptr=0xE5;
+	blockptr=blockptr+FAT_ENTRY_SIZE;
 }
 
 /* write out blocks */
@@ -2849,24 +2866,26 @@ blockptr=blockbuf;
 
 for(count=0;count<blockcount;count++) {
 
-  if(blockio(_WRITE,splitbuf.drive,block,blockbuf) == -1) {	/* read block for entry */
-    kernelfree(blockbuf);
-   return(-1);
-  }
+	if(blockio(_WRITE,splitbuf.drive,block,blockbuf) == -1) {	/* read block for entry */
+		kernelfree(blockbuf);
 
-   blockptr=blockptr+(bpb->sectorsperblock*bpb->sectorsize);	/* point to next */
- }
+		return(-1);
+	}
 
- kernelfree(blockbuf);
+	blockptr=blockptr+(bpb->sectorsperblock*bpb->sectorsize);	/* point to next */
+}
+
+kernelfree(blockbuf);
+
 return(NO_ERROR);
 }
 
- /*
+	/*
  * Create long filename
  *
  * In:  newname		FILERECORD of new filename
 	block		Block number of long filename
-	entry	 	FAT entry number of long filename
+	entry			FAT entry number of long filename
  *
  * Returns: -1 on error, 0 on success
  *
@@ -2901,13 +2920,13 @@ splitname(fullpath,&splitbuf);				/* split filename */
 
 fattype=fat_detectchange(splitbuf.drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 if(getblockdevice(splitbuf.drive,&blockdevice) == -1) {
- setlasterror(INVALID_DISK);
- return(NULL);
+	setlasterror(INVALID_DISK);
+	return(NULL);
 }
 
 bpb=blockdevice.superblock;	/* point to data */
@@ -2921,7 +2940,7 @@ flen++;
 
 /* copy filename to new lfn entries */
 
- seq=flen;
+seq=flen;
 
 createshortname(splitbuf.filename,file);			/* filename */
 fat_convertfilename(file,dirent.filename);
@@ -2931,46 +2950,46 @@ count=flen;
 fptr=&splitbuf.filename;		/* point to name */
 
 while(1) {
- lfn[count].attributes=0x0f;					/* attributes must be 0x0f */
- lfn[count].sc_alwayszero=0;					/* must be zero */
- lfn[count].checksum=createlfnchecksum(dirent.filename);	/* create checksum */
- lfn[count].typeindicator=0;
+	lfn[count].attributes=0x0f;					/* attributes must be 0x0f */
+	lfn[count].sc_alwayszero=0;					/* must be zero */
+	lfn[count].checksum=createlfnchecksum(dirent.filename);	/* create checksum */
+	lfn[count].typeindicator=0;
 
- lfn[count].sequence=fcount;
- if(fcount == flen) lfn[count].sequence |= 0x40;			/* last entry */
+	lfn[count].sequence=fcount;
+	if(fcount == flen) lfn[count].sequence |= 0x40;			/* last entry */
 
- seq--;
- s=lfn[count].firstfive_chars;
+	seq--;
+	s=lfn[count].firstfive_chars;
 
- for(ec=0;ec<5;ec++) {
-  if(*fptr == 0) goto lfn_over;
-  *s=*fptr++;
-  s=s+2;
- }
+	for(ec=0;ec<5;ec++) {
+		if(*fptr == 0) goto lfn_over;
+		*s=*fptr++;
+		s=s+2;
+	}
 
- s=lfn[count].nextsix_chars;
+	s=lfn[count].nextsix_chars;
 
- for(ec=0;ec<6;ec++) {
-  if(*fptr == 0) goto lfn_over;
-  *s=*fptr++;
-  s=s+2;
- }
+	for(ec=0;ec<6;ec++) {
+		if(*fptr == 0) goto lfn_over;
+		*s=*fptr++;
+		s=s+2;
+	}
 
 
- s=lfn[count].lasttwo_chars;
+	s=lfn[count].lasttwo_chars;
 
- for(ec=0;ec<2;ec++) {
-  if(*fptr == 0) goto lfn_over;
-  *s=*fptr++;
-  s=s+2;
- }
+	for(ec=0;ec<2;ec++) {
+		if(*fptr == 0) goto lfn_over;
+		*s=*fptr++;
+		s=s+2;
+	}
 
- fcount++;
- count--;
+	fcount++;
+	count--;
 }
 
 lfn_over:
- /* create short entry after */
+	/* create short entry after */
 
 dirent.attribs=newname->attribs;
 dirent.reserved=0;
@@ -2989,11 +3008,11 @@ dirent.block_high_word=(newname->startblock >> 16);
 /* allocate buffer */
 
 if(flen*FAT_ENTRY_SIZE < (bpb->sectorsperblock*bpb->sectorsize)) {		/* one block */
- blockcount=1;
+	blockcount=1;
 }
 else
 {
- blockcount=(flen*FAT_ENTRY_SIZE)/(bpb->sectorsperblock*bpb->sectorsize);	/* more than one block */
+	blockcount=(flen*FAT_ENTRY_SIZE)/(bpb->sectorsperblock*bpb->sectorsize);	/* more than one block */
 }
 
 blockbuf=kernelalloc((bpb->sectorsperblock*bpb->sectorsize)*blockcount);	/* allocate block buffer */
@@ -3006,10 +3025,10 @@ blockptr=blockbuf;
 
 for(countx=0;countx<blockcount;countx++) {
 
- if(blockio(_READ,splitbuf.drive,block,blockptr) == -1) {	/* read block for entry */
-   kernelfree(blockbuf);
-  return(-1);
- }
+	if(blockio(_READ,splitbuf.drive,block,blockptr) == -1) {	/* read block for entry */
+		kernelfree(blockbuf);
+		return(-1);
+	}
 
 }
 
@@ -3027,15 +3046,16 @@ blockptr=blockbuf;
 
 for(countx=0;countx<blockcount;countx++) {
 
-  if(blockio(_WRITE,splitbuf.drive,block,blockptr) == -1) {	/* read block for entry */
-    kernelfree(blockbuf);
-   return(-1);
-  }
+		if(blockio(_WRITE,splitbuf.drive,block,blockptr) == -1) {	/* read block for entry */
+			kernelfree(blockbuf);
+			return(-1);
+		}
 
-   blockptr=blockptr+(bpb->sectorsperblock*bpb->sectorsize);	/* point to next */
- }
+		blockptr=blockptr+(bpb->sectorsperblock*bpb->sectorsize);	/* point to next */
+}
 
- kernelfree(blockbuf);
+kernelfree(blockbuf);
+
 return(NO_ERROR);
 }
 
@@ -3060,20 +3080,20 @@ int fattype;
 BPB *bpb;
 
 if(gethandle(handle,&onext) == -1) {	/* bad handle */
- setlasterror(INVALID_HANDLE);
- return(-1);
+	setlasterror(INVALID_HANDLE);
+	return(-1);
 }
 
 fattype=fat_detectchange(onext.drive);
 if(fattype == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 } 
 
 /* update current block */
 if(getblockdevice(onext.drive,&blockdevice) == -1) {
- setlasterror(INVALID_DISK);
- return(-1);
+	setlasterror(INVALID_DISK);
+	return(-1);
 }
 
 bpb=blockdevice.superblock;		/* point to data */
@@ -3085,41 +3105,42 @@ if(pos % (bpb->sectorsperblock*bpb->sectorsize) > 0) posp -= (pos % (bpb->sector
 
 sb=fat_getstartblock(onext.filename);			/* get first block */
 
- if(posp < (bpb->sectorsperblock*bpb->sectorsize)) {
-  posp=1;
- }
- else
- {
-  posp=(pos/(bpb->sectorsperblock*bpb->sectorsize));
- }
- 
+	if(posp < (bpb->sectorsperblock*bpb->sectorsize)) {
+		posp=1;
+	}
+	else
+	{
+		posp=(pos/(bpb->sectorsperblock*bpb->sectorsize));
+	}
+	
 /* find block number from fat */
 
- for(count=0;count<posp;count++) {
-  sb=fat_getnextblock(onext.drive,sb);			/* get next block */
- }
+	for(count=0;count<posp;count++) {
+		sb=fat_getnextblock(onext.drive,sb);			/* get next block */
+	}
 
 onext.currentblock=sb;
 }
 
- switch(whence) {
+	switch(whence) {
 
-  case SEEK_SET:				/*set current position */
-   onext.currentpos=pos;
-   break;
+		case SEEK_SET:				/*set current position */
+			onext.currentpos=pos;
+			break;
 
-  case SEEK_END:
-   onext.currentpos=onext.filesize+pos;	/* end+pos */
-   break;
+		case SEEK_END:
+			onext.currentpos=onext.filesize+pos;	/* end+pos */
+			break;
 
-  case SEEK_CUR:				/* current location+pos */
-   onext.currentpos=onext.currentpos+pos;
-   break;
-  }
+		case SEEK_CUR:				/* current location+pos */
+			onext.currentpos=onext.currentpos+pos;
+			break;
+		}
 
- setlasterror(NO_ERROR);
+setlasterror(NO_ERROR);
 
 updatehandle(handle,&onext);		/* update */
+
 return(onext.currentpos);
 }
 
@@ -3146,19 +3167,20 @@ f=filename;
 o=out;
 
 for(count=0;count<8;count++) {
- if(*f == ' ') break;
- *o++=*f++;				/* get filename */
+	if(*f == ' ') break;
+
+	*o++=*f++;				/* get filename */
 }
 
 b=filename+8;				/* point to end */
 
 if(*b != ' ') {			/* get extension */
- f=b;
- *o++='.';
+	f=b;
+	*o++='.';
 
- for(count=0;count<3;count++) {			/* copy extension */
-  *o++=*f++;
-  }
+	for(count=0;count<3;count++) {			/* copy extension */
+		*o++=*f++;
+	}
 }
 
 return;
@@ -3195,6 +3217,4 @@ fatfilesystem.seek=&fat_seek;
 
 register_filesystem(&fatfilesystem);
 }
-
-
 

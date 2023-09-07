@@ -51,15 +51,15 @@ return;
 void null_init(char *init) {
 CHARACTERDEVICE device;
 
- strcpy(&device.dname,"NUL");
- device.charioread=&nul;
- device.chariowrite=NULL;
- device.ioctl=NULL;
- device.flags=0;
- device.data=NULL;
- device.next=NULL;
+strcpy(&device.dname,"NUL");
+device.charioread=&nul;
+device.chariowrite=NULL;
+device.ioctl=NULL;
+device.flags=0;
+device.data=NULL;
+device.next=NULL;
 
- add_char_device(&device);			
+add_char_device(&device);			
 }
 
 

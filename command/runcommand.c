@@ -1,20 +1,20 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020-2023
+	   (C) Matthew Boote 2020-2023
 
-    This file is part of CCP.
+	   This file is part of CCP.
 
-    CCP is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	   CCP is free software: you can redistribute it and/or modify
+	   it under the terms of the GNU General Public License as published by
+	   the Free Software Foundation, either version 3 of the License, or
+	   (at your option) any later version.
 
-    CCP is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	   CCP is distributed in the hope that it will be useful,
+	   but WITHOUT ANY WARRANTY; without even the implied warranty of
+	   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	   GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+	   You should have received a copy of the GNU General Public License
+	   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <stdint.h>
@@ -38,8 +38,8 @@ size_t batchmode;
  * Run external command
  *
  * In: char *filename		Filename to run
-       char *args		Arguments
-       unsigned long backg	Background/foreground flag
+	      char *args		Arguments
+	      unsigned long backg	Background/foreground flag
  *
  * Returns 0 on success, -1 on error
  *
@@ -57,37 +57,41 @@ touppercase(filename);				/* to upper case */
 
 b=filename;
 while(*b != 0) {
- if(*b == '.') {		/* found extension */
-  ext=b;
-  ext++;
+	if(*b == '.') {		/* found extension */
+		ext=b;
+		ext++;
 
-	  if(*b++ == 'R' && *b++ == 'U' && *b++ == 'N') {
-	   if(exec(filename,args,backg) == -1) {
-	    errorlevel=getlasterror();
-	    itoa(errorlevel,buf);
-	    setvar("ERRORLEVEL",buf);
-	    return(-1);
-	    }
+		if(*b++ == 'R' && *b++ == 'U' && *b++ == 'N') {
+			if(exec(filename,args,backg) == -1) {
+	    			errorlevel=getlasterror();
 
-	   return(0);
-          }
+				itoa(errorlevel,buf);
+				setvar("ERRORLEVEL",buf);
 
-  b=ext;
+	    			return(-1);
+	   		}
 
-	  if(*b++ == 'B' && *b++ == 'A' && *b++ == 'T') {
-	    if(dobatchfile(filename,args,backg) == -1) {
-	     errorlevel=getlasterror();
-	     itoa(errorlevel,buf);
-	     setvar("ERRORLEVEL",buf);
-	     return(-1);
-	    }
-        
-	    return(0);
-	   }
+	   		return(0);
+		}
+
+	 	b=ext;
+
+	  	if(*b++ == 'B' && *b++ == 'A' && *b++ == 'T') {
+	    		if(dobatchfile(filename,args,backg) == -1) {
+	     			errorlevel=getlasterror();
+
+	     			itoa(errorlevel,buf);
+
+	     			setvar("ERRORLEVEL",buf);
+	     			return(-1);
+		}
+	       
+		return(0);
+	}
 
 
-  break;
- }
+	break;
+}
 
 b++;
 }
@@ -106,21 +110,22 @@ ext=b;
 if(exec(filename,args,backg) == -1) {
 	b=ext;
 
-	*b='.';
-	*++b='B';
-	*++b='A';
-	*++b='T';
+ *b='.';
+ *++b='B';
+ *++b='A';
+ *++b='T';
 
-	if(dobatchfile(filename,args,backg) == -1) return(-1);
+if(dobatchfile(filename,args,backg) == -1) return(-1);
 }
+
 }
 
 /*
  * Run batchfile
  *
  * In: filename	Filename of batch file to run
-       args	Arguments
-       flags	Status flags, 0=run in foreground,1=run in background
+	      args	Arguments
+	      flags	Status flags, 0=run in foreground,1=run in background
  *
  *  Returns 0 on success, -1 on error
  *
@@ -135,26 +140,26 @@ size_t count;
 char c;
 
 if(flags == RUN_BACKGROUND) {				/* run batch file in background */
- if(getvar("COMSPEC",buf) == -1) {			/* get command interpreter */
-  kprintf("command: Missing COMSPEC variable\n");
-  return(-1);
- }
- 
- /* create arguments to command interpreter */
+	if(getvar("COMSPEC",buf) == -1) {			/* get command interpreter */
+		kprintf("command: Missing COMSPEC variable\n");
+		return(-1);
+	}
+	
+	/* create arguments to command interpreter */
 
- strcpy(batchfileargs,filename);
- strcat(batchfileargs," ");
- strcat(batchfileargs,args);
+	strcpy(batchfileargs,filename);
+	strcat(batchfileargs," ");
+	strcat(batchfileargs,args);
 
- return(exec(buf,batchfileargs,flags));
+	return(exec(buf,batchfileargs,flags));
 }
 
 set_batch_mode(TRUE);			/* set batch mode */
 
 handle=open(filename,_O_RDONLY);
 if(handle == -1) {
- set_batch_mode(FALSE);			/* set batch mode */
- return(-1);
+	set_batch_mode(FALSE);			/* set batch mode */
+	return(-1);
 }
 
 parsecount=tokenize_line(args,parsebuf," \t");
@@ -165,18 +170,18 @@ getfullpath(filename,buf);
 setvar("%0",buf);
 
 for(count=1;count<parsecount;count++) {
- bufptr=buf;
+	bufptr=buf;
 
- *bufptr++='%';			/* %0 %1 etc */
- itoa(count,bufptr);
+	*bufptr++='%';			/* %0 %1 etc */
+	itoa(count,bufptr);
 
- setvar(buf,parsebuf[count]);
+	setvar(buf,parsebuf[count]);
 }
 
 batchfilebuf=alloc(getfilesize(handle));		/* allocate buffer for batchfile */
 if(batchfilebuf == NULL) {
- set_batch_mode(FALSE);			/* set batch mode */
- return(-1);
+	set_batch_mode(FALSE);			/* set batch mode */
+	return(-1);
 }
 
 batchfileptr=batchfilebuf;
@@ -188,31 +193,31 @@ memset(buf,0,MAX_PATH);
 bufptr=buf;
 
 while(*batchfileptr != 0) {
- c=*batchfileptr;
- *bufptr++=*batchfileptr++;
+	c=*batchfileptr;
+	*bufptr++=*batchfileptr++;
 
- if(c == 0x0a) {			/* if at end of line */
-  doline(buf);
+	if(c == 0x0a) {			/* if at end of line */
+		doline(buf);
 
-  if(get_batch_mode() == TERMINATING) {	/* batch job was killed */
-	close(handle);
-	set_batch_mode(FALSE);			/* set batch mode */
+		if(get_batch_mode() == TERMINATING) {	/* batch job was killed */
+			close(handle);
+			set_batch_mode(FALSE);			/* set batch mode */
 
-	return(NO_ERROR);
-  }
+			return(NO_ERROR);
+	 	}
 
-  bufptr=buf;
-  memset(buf,0,MAX_PATH);
- }
+	 	bufptr=buf;
+	 	memset(buf,0,MAX_PATH);
+	}
 
 }
 
- set_batch_mode(FALSE);			/* set batch mode */
- return(NO_ERROR);
+set_batch_mode(FALSE);			/* set batch mode */
+return(NO_ERROR);
 }
 
 /*
- * Get batchfile buffer pointer
+ * Get batch file buffer pointer
  *
  * In: nothing
  *
@@ -220,7 +225,7 @@ while(*batchfileptr != 0) {
  *
  */
 char *get_buf_pointer(void) {
- return(batchfileptr);
+return(batchfileptr);
 }
 
 /*
@@ -232,7 +237,7 @@ char *get_buf_pointer(void) {
  *
  */
 size_t get_batch_mode(void) {
- return(batchmode);
+return(batchmode);
 }
 
 /*
@@ -244,7 +249,7 @@ size_t get_batch_mode(void) {
  *
  */
 size_t set_batch_mode(size_t bm) {
- batchmode=bm;
+batchmode=bm;
 }
 
 
@@ -257,5 +262,6 @@ size_t set_batch_mode(size_t bm) {
  *
  */
 void set_current_batchfile_pointer(char *b) {
- batchfileptr=b;
+batchfileptr=b;
 }
+

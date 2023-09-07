@@ -9,7 +9,7 @@
 #define _SHUTDOWN	 		0
 #define _RESET				1
 #define PROCESS_STACK_SIZE 65536
-#define DEFAULT_QUANTUM_COUNT 100
+#define DEFAULT_QUANTUM_COUNT 10
 
 #define SHUTDOWN_WAIT 10
 #define SIGNAL_COUNT 256
@@ -23,40 +23,41 @@ extern tss_esp0;
 
 
 typedef struct { 
- size_t pid;
- size_t ticks;	
- size_t maxticks;
- struct PROCESS *next;		
- uint8_t filename[MAX_PATH];		
- uint8_t args[MAX_PATH];		
- size_t parentprocess;
- size_t (*errorhandler)(char *,size_t,size_t,size_t);
- size_t (*signalhandler)(size_t);
- uint8_t currentdir[MAX_PATH];		
- size_t rc;			
- size_t flags;			
- size_t writeconsolehandle;	
- size_t readconsolehandle;	
- size_t kernelstackpointer;
- size_t kernelstacktop;
- size_t stackpointer;
- size_t stackbase;
- size_t lasterror;
- char *envptr;	
- struct PROCESS *findptr;
+	size_t pid;
+	size_t ticks;	
+	size_t maxticks;
+	struct PROCESS *next;		
+	uint8_t filename[MAX_PATH];		
+	uint8_t args[MAX_PATH];		
+	size_t parentprocess;
+	size_t (*errorhandler)(char *,size_t,size_t,size_t);
+	size_t (*signalhandler)(size_t);
+	uint8_t currentdir[MAX_PATH];		
+	size_t rc;			
+	size_t flags;
+	size_t regs[MAX_REGS];
+	size_t writeconsolehandle;	
+	size_t readconsolehandle;	
+	size_t kernelstackpointer;
+	size_t kernelstacktop;
+	size_t stackpointer;
+	size_t stackbase;
+	size_t lasterror;
+	char *envptr;	
+	struct PROCESS *findptr;
 }  __attribute__((packed)) PROCESS;
 
 typedef struct {
- uint8_t slack[127]; 
- uint8_t cmdlinesize;
- uint8_t commandline[127];			/* command line */
+	uint8_t slack[127]; 
+	uint8_t cmdlinesize;
+	uint8_t commandline[127];			/* command line */
 } __attribute__((packed)) PSP;
 
 typedef struct {
-  uint8_t name[MAX_PATH];
-  uint8_t magic[MAX_PATH];
-  size_t magicsize;
-  size_t (*callexec)(char *);
-  struct EXECUTABLEFORMAT *next;
+	 uint8_t name[MAX_PATH];
+	 uint8_t magic[MAX_PATH];
+	 size_t magicsize;
+	 size_t (*callexec)(char *);
+	 struct EXECUTABLEFORMAT *next;
 } EXECUTABLEFORMAT;
 

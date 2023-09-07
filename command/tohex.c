@@ -45,13 +45,13 @@ shiftamount=28;
 b=buf;
 
 for(count=1;count<9;count++) {
- h=((hex & mask) >> shiftamount);	/* shift nibbles to end */
+	h=((hex & mask) >> shiftamount);	/* shift nibbles to end */
 
- shiftamount=shiftamount-4;
- mask=mask >> 4;  
- strcpy(b++,hexbuf[h]);
+	shiftamount=shiftamount-4;
+	mask=mask >> 4;  
+	strcpy(b++,hexbuf[h]);
 }
 
- return(NULL);
+return(NULL);
 }
 

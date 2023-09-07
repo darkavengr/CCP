@@ -60,77 +60,77 @@ size_t irq14_handler(void);
 size_t irq15_handler(void);
 
 typedef struct {
- uint16_t general_configuration;		//0			
- uint16_t obsolete1;				//1
- uint16_t specific_configuration;		//2
- uint16_t obsolete2;				//3
- uint16_t retired[2];				//5
- uint16_t obsolete3;				//6
- uint16_t reserved_compact_flash[2];		//8
- uint16_t retired2;				//9
- uint16_t serial_number[8];			//18
- uint16_t retired3[2];				//20
- uint16_t obsolete4;				//21
- uint16_t firmware_revision[3];			//24
- uint16_t modelnumber[19];			//35
- uint16_t trusted_computer_feature_set_options; //36
- uint16_t capabilities; 			//37
- uint16_t capabilities2;			//38
- uint16_t obsolete5[2];				//40
- uint16_t valid_fields;				//41
- uint16_t obsolete666[4];			//43
- uint16_t lba28_size;				//44
- uint16_t obso[6];
- uint16_t dma;
- uint16_t dma2;
- uint16_t multiword_dma_transfer_cycle_time;
- uint16_t recommended_multiword_dma_transfer_cycle_time;
- uint16_t minimum_pio_transfer_time_control_flow;
- uint16_t minimum_pio_transfer_time_iordy_control_flow;
- uint16_t addsupport;
- uint16_t reserved999;
- uint16_t reserved7[4];
- uint16_t queuedepth;
- uint16_t serial_ata_capabilities;
- uint16_t reservedforserialata;
- uint16_t serial_ata_features_supported;
- uint16_t serial_ata_features_enabled;
- uint16_t major_version;
- uint16_t minor_version;
- uint16_t commands_and_feature_sets_supported;
- uint16_t commands_and_feature_sets_supported2;
- uint16_t commands_and_feature_sets_supported3;
- uint16_t commands_and_feature_sets_supported4;
- uint16_t commands_and_feature_sets_supported5;
- uint16_t commands_and_feature_sets_supported6;
- uint16_t ultra_dma_modes;
- uint16_t erase_time;
- uint16_t enhanced_erase_time;
- uint16_t current_apm_level_value;
- uint16_t master_password_identify;
- uint16_t hardware_reset_result;
- uint16_t aam_value;
- uint16_t reserved12[12];
- uint16_t stream_minimum_request_size;
- uint16_t stream_transfer_size;
- uint16_t stream_transfer_time;
- uint16_t streaming_access_latency;
- uint16_t streaming_performance_granularity[2];
- uint16_t lba48_size[4];
- uint16_t streaming_transfer_time_pio;
- uint16_t reserved14;
- uint16_t sector_size;
- uint16_t interseek_delay;
- uint16_t world_wide_name[3];
- uint16_t reserved15[3];
- uint16_t reserved16;
- uint16_t logical_sector_size[2];
+	uint16_t general_configuration;		//0			
+	uint16_t obsolete1;				//1
+	uint16_t specific_configuration;		//2
+	uint16_t obsolete2;				//3
+	uint16_t retired[2];				//5
+	uint16_t obsolete3;				//6
+	uint16_t reserved_compact_flash[2];		//8
+	uint16_t retired2;				//9
+	uint16_t serial_number[8];			//18
+	uint16_t retired3[2];				//20
+	uint16_t obsolete4;				//21
+	uint16_t firmware_revision[3];			//24
+	uint16_t modelnumber[19];			//35
+	uint16_t trusted_computer_feature_set_options; //36
+	uint16_t capabilities; 			//37
+	uint16_t capabilities2;			//38
+	uint16_t obsolete5[2];				//40
+	uint16_t valid_fields;				//41
+	uint16_t obsolete666[4];			//43
+	uint16_t lba28_size;				//44
+	uint16_t obso[6];
+	uint16_t dma;
+	uint16_t dma2;
+	uint16_t multiword_dma_transfer_cycle_time;
+	uint16_t recommended_multiword_dma_transfer_cycle_time;
+	uint16_t minimum_pio_transfer_time_control_flow;
+	uint16_t minimum_pio_transfer_time_iordy_control_flow;
+	uint16_t addsupport;
+	uint16_t reserved999;
+	uint16_t reserved7[4];
+	uint16_t queuedepth;
+	uint16_t serial_ata_capabilities;
+	uint16_t reservedforserialata;
+	uint16_t serial_ata_features_supported;
+	uint16_t serial_ata_features_enabled;
+	uint16_t major_version;
+	uint16_t minor_version;
+	uint16_t commands_and_feature_sets_supported;
+	uint16_t commands_and_feature_sets_supported2;
+	uint16_t commands_and_feature_sets_supported3;
+	uint16_t commands_and_feature_sets_supported4;
+	uint16_t commands_and_feature_sets_supported5;
+	uint16_t commands_and_feature_sets_supported6;
+	uint16_t ultra_dma_modes;
+	uint16_t erase_time;
+	uint16_t enhanced_erase_time;
+	uint16_t current_apm_level_value;
+	uint16_t master_password_identify;
+	uint16_t hardware_reset_result;
+	uint16_t aam_value;
+	uint16_t reserved12[12];
+	uint16_t stream_minimum_request_size;
+	uint16_t stream_transfer_size;
+	uint16_t stream_transfer_time;
+	uint16_t streaming_access_latency;
+	uint16_t streaming_performance_granularity[2];
+	uint16_t lba48_size[4];
+	uint16_t streaming_transfer_time_pio;
+	uint16_t reserved14;
+	uint16_t sector_size;
+	uint16_t interseek_delay;
+	uint16_t world_wide_name[3];
+	uint16_t reserved15[3];
+	uint16_t reserved16;
+	uint16_t logical_sector_size[2];
 } ATA_IDENTIFY __attribute__((__packed__));
 
 typedef struct {
- uint32_t address;
- uint16_t size;
- uint16_t last;
+	uint32_t address;
+	uint16_t size;
+	uint16_t last;
 } prdt_struct;
 
 

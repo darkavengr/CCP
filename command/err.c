@@ -98,11 +98,11 @@ char *terminatebatchjob = { "\nTerminate batch job (y/n)?" };
  */
 
 void writeerror(void) {
- unsigned long err=getlasterror();
+unsigned long err=getlasterror();
 
- if(err == 0) return;			/* no noerror */
+if(err == 0) return;			/* no noerror */
 
- kprintf("%s\n",errs[err]);
- kprintf("\n");
- return(0);
+kprintf("%s\n",errs[err]);
+kprintf("\n");
+return(0);
 }

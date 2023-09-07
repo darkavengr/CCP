@@ -34,11 +34,11 @@
  */
 
 void kernel(void) {
- if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run command interpreter */
-  kprintf_direct("Missing or corrupt command interpreter, system halted (%d)",getlasterror());
-  halt();
-  while(1) ;;
- }
+if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run command interpreter */
+	kprintf_direct("Missing or corrupt command interpreter, system halted (%d)",getlasterror());
+	halt();
+	while(1) ;;
+}
 
 }
 

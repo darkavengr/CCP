@@ -35,6 +35,8 @@ global initialize_interrupts
 extern exception						; exception handler
 extern exit
 extern dispatchhandler					; high-level dispatcher
+extern disablemultitasking
+extern enablemultitasking
 
 initialize_interrupts:
 push	0
@@ -389,7 +391,6 @@ ret
 ; low level dispatcher
 ;
 d_lowlevel:
-cli
 nop
 
 push	eax
@@ -399,20 +400,16 @@ push	edx
 push	esi
 push	edi
 
-sti
-
 mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
 mov 	ds,ax
 mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
 
-;call	disablemultitasking
-
+sti
 call	dispatchhandler
-;call	enablemultitasking
+cli
 
-cli	
 mov	[tempone],eax
 
 mov 	ax,USER_DATA_SELECTOR				; load the kernel data segment descriptor
@@ -427,14 +424,13 @@ pop	edx
 pop	ecx
 pop	ebx
 pop	eax
-sti
+
 cmp	eax,0ffffffffh					; if error ocurred
 je	iret_error
 
 mov	eax,[tempone]					; then return old eax
 
 iret_error:
-sti
 iret  
 
 idt:

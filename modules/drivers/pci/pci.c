@@ -1,16 +1,16 @@
 /*  CCP Version 0.0.1
-    (C) Matthew Boote 2020-2023
-    This file is part of CCP.
-    CCP is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-    CCP is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-    You should have received a copy of the GNU General Public License
-    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+	   (C) Matthew Boote 2020-2023
+	   This file is part of CCP.
+	   CCP is free software: you can redistribute it and/or modify
+	   it under the terms of the GNU General Public License as published by
+	   the Free Software Foundation, either version 3 of the License, or
+	   (at your option) any later version.
+	   CCP is distributed in the hope that it will be useful,
+	   but WITHOUT ANY WARRANTY; without even the implied warranty of
+	   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	   GNU General Public License for more details.
+	   You should have received a copy of the GNU General Public License
+	   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <stdint.h>
@@ -280,7 +280,7 @@ return(pci_read_word(bus,device,function,0x24));
  * In:  bus		PCI bus
 	device		PCI device
 	function 	PCI function
- 
+	
  * Returns: PCI CardBus CIS pointer
  *
  */
@@ -403,11 +403,11 @@ headertype=pci_get_header_type(bus,device,function);		/* check if information ex
 if(headertype == 0xffff) return(-1);
 
 if(headertype == 0 || headertype == 1) {			/* Size for type 0 and type 1 headers */
- headersize=64;
+	headersize=64;
 }
 else								
 {
- headersize=sizeof(pci_headertype02);
+	headersize=sizeof(pci_headertype02);
 }
 
 /* read pci data */
@@ -415,7 +415,7 @@ else
 b=buf;
 
 for(count=0;count<headersize;count++) {
- outd(PCI_COMMAND,(0x80000000+(bus << 23)+(device << 15)+(function << 10)+(count << 7)));
+	outd(PCI_COMMAND,(0x80000000+(bus << 23)+(device << 15)+(function << 10)+(count << 7)));
 
  *b++=ind(PCI_DATA);
 }
@@ -441,22 +441,24 @@ int count;
 uint16_t headertype;
 
 for(bus=0;bus < 256;bus++) {
- for(device=0;device != 31;device++) {
-   for(function=0;function<8;function++) {	
-	  if(pci_get_vendor(bus,device,function) == 0xffff) continue;		/* no device */
+	for(device=0;device != 31;device++) {
+		for(function=0;function<8;function++) {	
+			if(pci_get_vendor(bus,device,function) == 0xffff) continue;		/* no device */
 
-	  if(pci_get_class_code(bus,device,function) == 6 && pci_get_class_code(bus,device,function) == 4) { /* pci to pci */
-	     sbus=pci_get_secondary_bus(bus,device,function);
-  
-	     for(function=0;function<8;function++) {	
-		      add_pci_device(sbus,device,function);
-	      }
-	   }
-    	   
-	   add_pci_device(bus,device,function);
-   }
-  }
- }
+			if(pci_get_class_code(bus,device,function) == 6 && pci_get_class_code(bus,device,function) == 4) { /* pci to pci */
+				sbus=pci_get_secondary_bus(bus,device,function);
+	 
+				for(function=0;function<8;function++) {	
+					add_pci_device(sbus,device,function);
+				}
+			}
+	   	   
+	   		add_pci_device(bus,device,function);
+		}
+	}
+}
+
+
 }
 
 /*
@@ -480,15 +482,15 @@ chardevice.ioctl=NULL;
 
 chardevice.data=kernelalloc(sizeof(CHARACTERDEVICE));		/* allocate buffer */
 if(chardevice.data == NULL) {
- kprintf_direct("\npci: Out of memory\n");
- return(-1); 
+	kprintf_direct("\npci: Out of memory\n");
+	return(-1); 
 }
 
 bufptr=chardevice.data;
 
 for(count=0;count<(256/4);count++) {
- outb(PCI_COMMAND,count);		/* get byte from pci device */
- *bufptr++=ind(PCI_DATA);
+	outb(PCI_COMMAND,count);		/* get byte from pci device */
+	 *bufptr++=ind(PCI_DATA);
 }
 
 chardevice.next=NULL;
