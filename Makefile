@@ -1,7 +1,7 @@
 ASM=nasm
 CC=i386-elf-gcc
 LD=i386-elf-gcc
-FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c processmanager/module.c header/string.c hwdep/i386/page.c
+FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c processmanager/module.c header/string.c header/bootinfo.c  hwdep/i386/page.c
 
 #
 # Recipe to make everything
@@ -28,10 +28,10 @@ hwdep:
 #
 .PHONY: drivers
 drivers:
-	./gendrivelist   modules/drivers/ata modules/drivers/pci modules/drivers/clock modules/drivers/console modules/drivers/floppy modules/drivers/keyb modules/drivers/null modules/drivers/pci modules/drivers/pic modules/drivers/pit modules/drivers/pic modules/drivers/serialio modules/drivers/test modules/filesystems/fat modules/binfmt/elf32
+	./gendrivelist   modules/drivers/ata modules/drivers/pci modules/drivers/clock modules/drivers/console modules/drivers/floppy modules/drivers/keyb modules/drivers/null modules/drivers/pci modules/drivers/pic modules/drivers/pit modules/drivers/pic modules/drivers/serialio modules/filesystems/fat modules/binfmt/elf32
 	echo $(OBJFILES)
 
-	for f in  modules/drivers/ata modules/drivers/pci modules/drivers/clock modules/drivers/console modules/drivers/floppy modules/drivers/keyb modules/drivers/null modules/drivers/pci modules/drivers/pic modules/drivers/pit modules/drivers/pic modules/drivers/serialio modules/drivers/test modules/filesystems/fat modules/binfmt/elf32; do make -C $$f;done
+	for f in  modules/drivers/ata modules/drivers/pci modules/drivers/clock modules/drivers/console modules/drivers/floppy modules/drivers/keyb modules/drivers/null modules/drivers/pci modules/drivers/pic modules/drivers/pit modules/drivers/pic modules/drivers/serialio modules/filesystems/fat modules/binfmt/elf32; do make -C $$f;done
 	$(foreach f,$(FILES),$(CC) -c -w -w -ffreestanding -nostdlib -lgcc  $f -o $(patsubst %.c,%.o, obj/i386/$(notdir $(f)));)
 
 #

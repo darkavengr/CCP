@@ -2455,7 +2455,7 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 
 			lfncount++;
 		}
-z
+
 	
 		if(lfn->sequence == 1 || lfn->sequence == 0x41) {		/* at end of filename copy filename */
 			strcpy(n->filename,d);			/* copy filename */
