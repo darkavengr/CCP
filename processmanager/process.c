@@ -1,20 +1,20 @@
-/*  CCP Version 0.0.1
-	   (C) Matthew Boote 2020-2023
+/*  	CCP Version 0.0.1
+	(C) Matthew Boote 2020-2023
 
-	   This file is part of CCP.
+	This file is part of CCP.
 
-	   CCP is free software: you can redistribute it and/or modify
-	   it under the terms of the GNU General Public License as published by
-	   the Free Software Foundation, either version 3 of the License, or
-	   (at your option) any later version.
+	CCP is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-	   CCP is distributed in the hope that it will be useful,
-	   but WITHOUT ANY WARRANTY; without even the implied warranty of
-	   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	   GNU General Public License for more details.
+	CCP is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-	   You should have received a copy of the GNU General Public License
-	   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+	You should have received a copy of the GNU General Public License
+	along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <elf.h>
@@ -62,10 +62,13 @@ char *getenv();
 size_t load_executable(char *filename);
 size_t register_executable_format(EXECUTABLEFORMAT *format);
 PROCESS *get_next_process_pointer(void);
+void *get_process_registers_pointer(void);
 
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
+PROCESS *processes_end=NULL;
 PROCESS *currentprocess=NULL;
+size_t highest_pid_used=0;
 MUTEX process_mutex;
 size_t signalno;
 size_t thisprocess;
@@ -92,7 +95,6 @@ void *kernelstackbase;
 PROCESS *next;
 PROCESS *oldprocess;
 size_t stackp;
-size_t processcount;
 PROCESS *last;
 PSP *psp=0;
 size_t *stackinit;
@@ -102,48 +104,36 @@ disablemultitasking(); /* disable task switching without disabling interrupts - 
 
 /* add process to process list and find process id */
 
-processcount=0;
-
 if(processes == NULL) {  
 	processes=kernelalloc(sizeof(PROCESS));
 
 	if(processes == NULL) {
 		loadpagetable(getppid());
-		freepages(processcount);
+		freepages(highest_pid_used);
 		enablemultitasking();	
 
 		close(handle);
 		return(-1);
 	}
 
-next=processes;
+processes_end=processes;
 
-last=next;
+next=processes;
 }
 else
 {
-	next=processes;
-
-	while(next != NULL) {
-		last=next;
-
-		if(next->pid >= processcount) processcount=next->pid+1;		/* find new process ID */
-
-		next=next->next;				/* find end */
-	}
-
-	last->next=kernelalloc(sizeof(PROCESS));
-	next=last->next;
-
-	if(next == NULL) {
+	processes_end->next=kernelalloc(sizeof(PROCESS));
+	if(processes_end->next == NULL) {
 		loadpagetable(getppid());
-		freepages(processcount);
+		freepages(highest_pid_used);
 		enablemultitasking();	
 
 		close(handle);
 		setlasterror(NO_MEM);
 		return(-1);
 	}
+
+next=processes_end->next;
 }
 
 getfullpath(filename,fullpath);
@@ -160,7 +150,7 @@ next->maxticks=DEFAULT_QUANTUM_COUNT;
 next->ticks=0;
 next->parentprocess=getpid();
 next->next=NULL;
-next->pid=processcount;
+next->pid=highest_pid_used;
 next->errorhandler=NULL;
 next->signalhandler=NULL;
 next->rc=0;
@@ -172,7 +162,7 @@ next->next=NULL;
 
 /* if process 0, use default kernel stack */
 
-if(getpid() == 0) {
+if(highest_pid_used == 0) {
 	next->kernelstacktop=get_stack_top();
 	next->kernelstackpointer=get_stack_pointer();
 }
@@ -182,7 +172,7 @@ else
 	if(next->kernelstacktop == NULL) {
 	 currentprocess=oldprocess;
 	 loadpagetable(getpid());
-	 freepages(processcount);
+	 freepages(highest_pid_used);
 	 enablemultitasking();
 
 	 close(handle);
@@ -192,6 +182,23 @@ else
 	next->kernelstacktop += PROCESS_STACK_SIZE;
 	next->kernelstackpointer=next->kernelstacktop;
 }
+
+/* intitialize process registers */
+
+next->regs[0]=0;		/* EAX */
+next->regs[1]=0;		/* ECX */
+next->regs[2]=0;		/* EDX */
+next->regs[3]=0;		/* EBX */
+next->regs[4]=next->kernelstacktop;	/* ESP */
+next->regs[5]=next->kernelstacktop-PROCESS_STACK_SIZE;	/* EBP */
+next->regs[6]=0;		/* ESI */
+next->regs[7]=0;		/* EDI */
+next->regs[8]=0x1234ABCD; //entrypoint;	/* EIP */
+next->regs[9]=0x8;		/* cs */
+next->regs[10]=0x200;		/* eflags */
+
+
+
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -206,17 +213,19 @@ if(currentprocess != NULL) {
 	memcpy(saveenv,currentprocess->envptr,ENVIROMENT_SIZE);
 }
 
-page_init(processcount);				/* intialize page directory */	
-loadpagetable(processcount);				/* load page table */
+page_init(highest_pid_used);				/* intialize page directory */	
+loadpagetable(highest_pid_used);				/* load page table */
 
 oldprocess=currentprocess;				/* save current process pointer */
 currentprocess=next;					/* point to new process */
+
+highest_pid_used++;
 
 /* Part two of enviroment variables duplication
 *
 * copy variables from buffer */
 
-currentprocess->envptr=alloc_int(ALLOC_NORMAL,processcount,ENVIROMENT_SIZE,KERNEL_HIGH-ENVIROMENT_SIZE-1);
+currentprocess->envptr=alloc_int(ALLOC_NORMAL,getpid(),ENVIROMENT_SIZE,KERNEL_HIGH-ENVIROMENT_SIZE-1);
 
 if(saveenv != NULL) {
 	memcpy(currentprocess->envptr,saveenv,ENVIROMENT_SIZE);
@@ -224,11 +233,11 @@ if(saveenv != NULL) {
 }
 
 /* allocate user mode stack */
-stackp=alloc_int(ALLOC_NORMAL,processcount,PROCESS_STACK_SIZE,KERNEL_HIGH-PROCESS_STACK_SIZE-ENVIROMENT_SIZE);
+stackp=alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,KERNEL_HIGH-PROCESS_STACK_SIZE-ENVIROMENT_SIZE);
 if(stackp == NULL) {
 	currentprocess=oldprocess;
 	loadpagetable(getpid());
-	freepages(processcount);
+	freepages(highest_pid_used);
 	enablemultitasking();	
 	return(-1);
 }
@@ -1044,6 +1053,19 @@ currentprocess->errorhandler=addr;
 
 return;
 }
+
+/*
+* Get pointer to saved process registers for current process
+*
+* In: nothing
+*
+* Returns pointer to saved process registers
+*
+*/
+void *get_process_registers_pointer(void) {
+ return(&currentprocess->regs);
+}
+
 
 /*
 * Call critical error handler

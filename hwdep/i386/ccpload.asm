@@ -519,8 +519,16 @@ noinitrd:
 mov	ah,3h					; get cursor
 xor	bh,bh
 int	10h
+
+add	dh,3
 mov	[BOOT_INFO_CURSOR_ROW],dh
+					; go to next line
+xor	dl,dl					; go to start of line
 mov	[BOOT_INFO_CURSOR_COL],dl
+
+mov	ah,2h					; set cursor
+xor	bh,bh
+int	10h
 
 call	detect_memory				; get memory size
 
