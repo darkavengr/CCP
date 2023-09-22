@@ -31,10 +31,9 @@
 #include <elf.h>
 
 size_t load_kernel_module(char *filename,char *argsx);
-size_t getnameofsymbol(char *strtab,size_t which,char *name);
+size_t getnameofsymbol(char *strtab,char *buf,Elf32_Sym *symtab,size_t which,char *name);
 size_t getkernelsymbol(char *name);
 size_t add_external_module_symbol(char *name,size_t val);
-size_t getnameofsymbol(char *strtab,size_t which,char *name);
 size_t get_external_module_symbol(char *name);
 
 SYMBOL_TABLE_ENTRY *externalmodulesymbols=NULL;
@@ -43,8 +42,8 @@ SYMBOL_TABLE_ENTRY *externalmodulesymbols_end=NULL;
 /*
  * Load and execute kernel module
  *
- * In: char *filename		Filename of kernel module
- *	  char *argsx		Arguments
+ * In:	filename	Filename of kernel module
+ *	argsx		Arguments
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -61,8 +60,8 @@ char *bufptr;
 Elf32_Ehdr *elf_header;
 Elf32_Shdr *shptr;
 Elf32_Shdr *rel_shptr;
-Elf32_Rel *relbuf;
-Elf32_Rela *relbufa;
+Elf32_Rel *relptr;
+Elf32_Rela *relptra;
 size_t whichsym;
 size_t symtype;
 Elf32_Sym *symtab=NULL;
@@ -70,7 +69,7 @@ Elf32_Sym *symptr=NULL;
 char *strtab;
 char *strptr;
 char *entryptr;
-size_t *addr;
+size_t addr;
 size_t *ref;
 void *(*entry)(char *);
 size_t numberofrelocentries;
@@ -78,7 +77,6 @@ size_t symval;
 uint32_t codestart;
 char *sectionheader_strptr;
 size_t reloc_count;
-size_t codeaddress;
 
 disablemultitasking();
 
@@ -88,9 +86,17 @@ handle=open(fullname,_O_RDONLY);		/* open file */
 if(handle == -1) return(-1);		/* can't open */
 
 buf=kernelalloc(getfilesize(handle));
-if(buf == -1) return(-1);
+if(buf == NULL) {
+	close(handle);	
+	return(-1);
+}
 
-if(read(handle,buf,getfilesize(handle)) == -1) return(-1); /* read error */
+if(read(handle,buf,getfilesize(handle)) == -1) {
+	close(handle);	
+	return(-1); /* read error */
+}
+
+close(handle);
 
 elf_header=buf;
 
@@ -128,294 +134,198 @@ for(count=0;count < elf_header->e_shnum;count++) {
 	if(shptr->sh_type == SHT_STRTAB) {		/* string table */
 		bufptr=sectionheader_strptr+shptr->sh_name;	/* point to section header string table */
 
-		if(strcmp(bufptr,"strtab") == 0) {
-			strtab=buf+shptr->sh_offset+1;		/* find string table */
-  		 break;
-		 		}
+		if(strcmp(bufptr,"strtab") == 0) strtab=buf+shptr->sh_offset+1;		/* string table */
  	}
+
+	bufptr=sectionheader_strptr+shptr->sh_name;	/* point to section header string table */
+
+	if(strcmp(bufptr,"text") == 0) {		/* found code section */ 
+		codestart=buf+shptr->sh_offset;
+	}
 
 	shptr++;
 }
 
 /* check if symbol and string table present */
 
-if(symtab == NULL) {
+if((symtab == NULL) || (strtab == NULL)) {
 	setlasterror(INVALID_DRIVER);
 	kernelfree(buf);
 	return(-1); 
-}
-
-if(shptr == NULL) {
-	setlasterror(INVALID_DRIVER);
-	kernelfree(buf);
-	return(-1); 
-}
-
-
-shptr=buf+elf_header->e_shoff+(elf_header->e_shstrndx*elf_header->e_shentsize);	/* point to string table */
-entryptr=(buf+shptr->sh_offset)+1;
-
-count=1;
-
-while(*entryptr != 0) {
-	if((strcmpi(entryptr,".text") == 0) || (strcmpi(entryptr,".rel.text") == 0)) {	/* found name of section */
-		shptr=buf+(elf_header->e_shoff+(count*elf_header->e_shentsize));	/* point to section header */	
-		codestart=buf+shptr->sh_offset;	/* point to address */
-			break;
-  	}
-
-  	entryptr=entryptr+(strlen(entryptr))+1;
-  	count++;
-}
-
-if(count == elf_header->e_shnum) {
-	kprintf_direct("Missing symbol .text or .rel.text in %s\n",filename);
-
-	setlasterror(INVALID_DRIVER);
-
-	kernelfree(buf);
-	return(-1);
 }
 
 shptr=buf+elf_header->e_shoff;
 
 /* Relocate elf references
 
-  Search through section table to find SHT_REL or SHL_RELA sections */
+	The relocation is done by:
+	  Searching through section table to find SHT_REL or SHL_RELA sections 
+	  Processing each of the relocation entries in that section. The entries are relative to the start of the section.
+	  The section is referenced in the relocation by adding the relocation address to the start of the entry.		
+*/
 
-for(count=0;count < elf_header->e_shnum;count++) {
+for(count=0;count<elf_header->e_shnum;count++) {
 
-// kprintf_direct("shptr=%X\n",shptr);
-
-	if(shptr->sh_type == SHT_REL) {
-//	kprintf_direct("Found SHT_REL section\n");
+	if((shptr->sh_type == SHT_REL) || (shptr->sh_type == SHT_RELA)) {					/* found section */
+		/* perform relocations using relocation table in section */
  
 		numberofrelocentries=shptr->sh_size/sizeof(Elf32_Rel);
 
- //  kprintf_direct("Number of reloc entries=%d\n",numberofrelocentries);
+ 		kprintf_direct("Number of reloc entries=%d\n",numberofrelocentries);
 
-	for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
-	  			relbuf=(size_t) buf+shptr->sh_offset+(count*sizeof(Elf32_Rel));
+		if(shptr->sh_type == SHT_REL) {
+			relptr=buf+shptr->sh_offset;
+		}
+		else if(shptr->sh_type == SHT_RELA) {
+			relptra=buf+shptr->sh_offset;
+		}
 
-		/* 	Get the location where the symbol value is to be placed  */
+		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
 
-		  		whichsym=relbuf->r_info >> 8;			/* which symbol */
-				symtype=relbuf->r_info & 0xff;		/* symbol type */
+				kprintf_direct("reloc_count=%X\n",reloc_count);
 
-		  		asm("xchg %bx,%bx");
+				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
 
-		  		rel_shptr=(size_t) buf + shptr->sh_offset+((size_t) reloc_count*(sizeof(Elf32_Shdr)));	/* find section associated with relocation */
+				//kprintf_direct("rel_shptr=%X\n",rel_shptr);
 
-		  		kprintf_direct("reloc_count=%d\n",reloc_count);
+				if(shptr->sh_type == SHT_REL) {			
+			  		whichsym=relptr->r_info >> 8;			/* which symbol */
+					symtype=relptr->r_info & 0xff;		/* symbol type */
+	
+					kprintf_direct("rel_shptr->sh_offset=%X\n",rel_shptr->sh_offset);
+					kprintf_direct("relptr->r_offset=%X\n",relptr->r_offset);
 
-		  		kprintf_direct("rel_shptr=%X\n",rel_shptr);		  
-		  		asm("xchg %bx,%bx");
+					ref=(buf+rel_shptr->sh_offset)+relptr->r_offset;		  
+				}
+				else if(shptr->sh_type == SHT_RELA) { 
 
-		  		codeaddress=(size_t) buf+rel_shptr->sh_offset;		/* find address from sction */
-		  		*ref=codeaddress+relbuf->r_offset;				/* location of symbol */
+			  		whichsym=relptra->r_info >> 8;			/* which symbol */
+					symtype=relptra->r_info & 0xff;		/* symbol type */
 
+		  			ref=(buf+rel_shptr->sh_offset)+relptra->r_offset;		  
+		  
+				}
 
 				/* Get the value to place at the location ref into symval */
 
-		  asm("xchg %bx,%bx");
-				 symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
+				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
 
-		  		 kprintf_direct("relbuf->r_offset=%X\n",relbuf->r_offset);
-		  		 kprintf_direct("whichsym=%X\n",whichsym);
-		  		 kprintf_direct("symptr=%X\n",symptr);
+				kprintf("relptr=%X\n",relptr);
+				kprintf_direct("whichsym=%X\n",whichsym);					
+				kprintf_direct("st_shndx=%X %X\n",symptr->st_shndx,SHN_UNDEF);					
 
+				kprintf_direct("rebuf=%X\n",relptr->r_offset);
+				kprintf_direct("ref=%X\n",ref);
 
-				 if(symtype == SHN_UNDEF) {		/* it's an extern */
-		  		 	kprintf_direct("strtab=%X\n",strtab);
-		 
-				 	getnameofsymbol(strtab,whichsym,name);	/* get name of symbol */
+//				asm("xchg %bx,%bx");
 
-					kprintf_direct("external=%s\n",name);
-		//			asm("xchg %bx,%bx");
+				/* get symbol value */
+
+				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */		
+					kprintf("external\n");
+
+					getnameofsymbol(strtab,buf,symtab,whichsym,name);	/* get name of symbol */	
+
+					kprintf_direct("name=%s\n",name);
+
 					symval=getkernelsymbol(name);
-		
-					kprintf_direct("symval=%s %X\n",name,symval);
 
+					kprintf_direct("symval=%s %X\n",name,symval);
+					
 					if(symval == -1) {
 	 					kprintf_direct("not kernel symbol\n");
-		//				asm("xchg %bx,%bx");
 
 						/* if it's not a kernel symbol, check if it is a external module symbol */
 				 		symval=get_external_module_symbol(name);
-						if(symval == -1)	symval=symptr->st_value;
-					 }
-
+						if(symval == -1) symval=symptr->st_value;
+					}
+			
+					//		  asm("xchg %bx,%bx");
+					add_external_module_symbol(name,symval);		/* add external symbol to list */
 				}
-				else 
-				{	
-					  symval=symptr->st_value;
-		 		}
+				else
+				{
+					symval=symptr->st_value;
 
-//		  asm("xchg %bx,%bx");
-		  kprintf_direct("rebuf=%X\n",relbuf->r_offset);
-		  kprintf_direct("ref=%X\n",ref);
-			  kprintf_direct("%s\n",name);
-
-		  add_external_module_symbol(name,symval);		/* add external symbol to list */
-
-/* update reference in section */
-
-		  switch(symtype) {
-			case R_386_NONE:
-			 break;
-		
-			case R_386_32:
-			 *ref=DO_386_32(symval,*ref);
-			 break;
-
-			case R_386_PC32:
-			 *ref=DO_386_PC32(symval,*ref,(size_t) ref);
-			 break;
-
-	  			default:
-			 kprintf_direct("kernel: unknown relocation type %d in %s\n",symtype,filename);
-
-			 enablemultitasking();
-			 setlasterror(INVALID_DRIVER);
-			 return(-1);
-				 }
-
-//	kprintf_direct("**********\n");
-//	asm("xchg %bx,%bx");
-
-			relbuf++;
-		 }
-
-  asm("xchg %bx,%bx");
- }
-
-
- if(shptr->sh_type == SHT_RELA) {
-	//	kprintf_direct("Found SHT_RELA section\n");
-  //  asm("xchg %bx,%bx");
-
-	 numberofrelocentries=shptr->sh_size/sizeof(Elf32_Rela);
-	 relbufa=buf+shptr->sh_offset;
-
-	for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
-		  whichsym=relbufa->r_info >> 8;			/* which symbol */
-				 symtype=relbufa->r_info & 0xff;		/* symbol type */
-
-		  addr=buf+shptr->sh_info;		/* find location to do relocation */
-		  ref=codestart+relbufa->r_offset;	/* location of symbol */
-
-			/*	Get the value to place at the location ref into symval */
-
-				 symptr=symtab+(whichsym*sizeof(Elf32_Sym));
-	
-				 if((symptr->st_info >> 4) == STB_GLOBAL) {		/* it's an extern */
-							 getnameofsymbol(strtab,whichsym,name);	/* get name of symbol */
-
-				symval=getkernelsymbol(name);
-					  if(symval == -1) {
-			symval=get_external_module_symbol(name);			
-
-						 if(symval == -1) {
-					 kprintf_direct("Unknown external symbol %s in %s\n",filename,name);
-
-					 enablemultitasking();
-								  setlasterror(INVALID_DRIVER);
-					 kernelfree(buf);
-					 return(-1); 
-				  }
-							}
+					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
 				}
-		 else 
-				{	
-			 symval=symptr->st_value;
-		 }
+					
+				/* update reference in section */
 
-				 symval += relbufa->r_addend;
-/* update reference in section */
+				if(symtype == R_386_NONE) {
+					;;
+				}
+				else if(symtype == R_386_32) {
+					*ref=DO_386_32(symval,*ref);
+				}
+			 	else if(symtype == R_386_PC32) {
 
-		  add_external_module_symbol(name,symval);		/* add external symbol to list */
+					if(shptr->sh_type == SHT_REL) {
+						*ref=DO_386_PC32(symval,*ref,(size_t) ref);
+					}
+					else if(shptr->sh_type == SHT_RELA) {
+	  					*ref = DO_386_PC32(symval,*ref,symval);
+					}
+				}
+				else
+				{
+					kprintf_direct("kernel: unknown relocation type %d in %s\n",symtype,filename);
+			
+					enablemultitasking();
 
-		  switch(symtype) {
-			case R_386_NONE:
-			 break;
-		
-			case R_386_32:
-			 *ref=DO_386_32(symval,*ref);
-			 break;
+					setlasterror(INVALID_DRIVER);
+					return(-1);
+				}
+
+				if(shptr->sh_type == SHT_REL) {	  				
+					relptr++;
+				}
+
+				else if(shptr->sh_type == SHT_RELA) {
+					relptra++;
+				}
+
+		}		
+ 	}
 
 
-			case R_386_PC32:
-		*ref = DO_386_PC32(symval,*ref,symval);
-		break;
-
-
-	  			default:
-			 enablemultitasking();
-			 setlasterror(INVALID_DRIVER);
-			 return(-1);
-				 }
-
-			 relbufa++;	
-		 }
-	}
 			
 	
-shptr++;				
+	shptr++;
 }
 
-close(handle);
 
 asm("xchg %bx,%bx");
 
-/* find entry point */
-count=1;
-strptr=strtab;
-
-while(*strptr != 0) {
-	kprintf_direct("%s\n",strptr);
- asm("xchg %bx,%bx");
-
- if((strcmpi(strptr,"init") == 0)) {	/* found name of section */  
-	symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
-	codestart=symptr->st_value;
-
-	asm("xchg %bx,%bx");
-
-	entry=codestart;
-	entry(argsx);
+entry=codestart;
+entry(argsx);
   
-	setlasterror(NO_ERROR);
-	return(0);
-  }
-
-  strptr=strptr+(strlen(strptr))+1;
-  count++;
-}
-
-setlasterror(INVALID_DRIVER);
-return(-1);
+setlasterror(NO_ERROR);
+return(0);
 }
 
 /*
  * Get name of symbol from kernel module
  *
- * In: strtab	Pointer to ELF sting table
+ * In: strtab	Pointer to ELF string table
+		 strtab String table
+		 syntab Symbol table
 		 which	Symbol index
-		 name	Symbol name
+		 name	Symbol name buffer
  *
  * Returns 0 on success, -1 otherwise
  * 
  */
 
-size_t getnameofsymbol(char *strtab,size_t which,char *name) {
-	size_t count=0;
- char *strptr=strtab;
-	
- for(count=0;count<which;count++) {
-	 strptr += strlen(strptr)+1;
- }
+size_t getnameofsymbol(char *strtab,char *buf,Elf32_Sym *symtab,size_t which,char *name) {
+size_t count=0;
+char *strptr=strtab;
+Elf32_Sym *symptr;
 
- strcpy(name,strptr);
+symptr=(size_t) symtab+(sizeof(Elf32_Sym)*which);		/* point to symbol table entry */
+
+strcpy(name,(strtab+symptr->st_name)-1);
+return(0);
 }
 
 
@@ -430,7 +340,6 @@ size_t getnameofsymbol(char *strtab,size_t which,char *name) {
 
 size_t getkernelsymbol(char *name) {
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
-
 char *symptr;
 size_t count;
 size_t *valptr;
@@ -442,12 +351,11 @@ symptr += KERNEL_HIGH;		/* point to symbol table */
 
 for(count=0;count<bootinfo->number_of_symbols;count++) {
 	if(strcmp(symptr,name) == 0) {				/* symbol found */
-
-  symptr += strlen(name)+1;		/* skip over name */
+		symptr += strlen(name)+1;		/* skip over name */
   
-  valptr=symptr;			/* cast pointer to size_t */
-  return(*valptr);			/* return value */
- }
+		valptr=symptr;			/* cast pointer to size_t */
+		return(*valptr);			/* return value */
+ 	}
 
  symptr += strlen(symptr)+sizeof(size_t)+1;		/* skip over name and symbol */
 }
@@ -503,7 +411,7 @@ SYMBOL_TABLE_ENTRY *next;
 next=externalmodulesymbols;
 
 while(next != NULL) {
-	kprintf_direct("%s\n",next->name);
+//	kprintf_direct("%s\n",next->name);
 
 	if(strcmp(next->name,name) == 0) return(next->address);
 

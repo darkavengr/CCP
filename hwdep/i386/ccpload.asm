@@ -92,6 +92,15 @@ SH_INFO		equ 28
 SH_ADDRALIGN	equ 32
 SH_ENTSIZE	equ 36
 
+SYM_NAME	equ 0
+SYM_VALUE	equ 0x4
+SYM_SIZE	equ 0x8
+SYM_INFO	equ 0xC
+SYM_VISIBILITY	equ 0xD
+SYM_SECTION	equ 0xE
+
+SYM_ENTRY_SIZE	equ 0x10
+
 PROG_LOADABLE	equ 1
 PROG_EXECUTABLE equ 2
 
@@ -326,7 +335,7 @@ is_phok:
 
 ; find size of program segments to calculate destination address
 
-;
+
 mov	esi,[loadbuf]
 movsx	ecx,word [esi+ELF_PHCOUNT]			; number of program headers
 
@@ -373,8 +382,11 @@ mov	[symtab],eax
 
 mov	edx,[esi+SH_SIZE]				; get size
 shr	edx,4						; divide by sixteen
+
+dec	edx
+
 mov	[number_of_symbols],edx
-mov	[BOOT_INFO_NUM_SYMBOLS],eax
+mov	[BOOT_INFO_NUM_SYMBOLS],edx
 jmp	not_section
 
 save_strtab:
@@ -393,15 +405,17 @@ add	esi,eax						; point to next section header
 
 loop	next_find_sections
 
-; copy the symbol names and addresses to destination
-;**********************************************************************
+;
+; copy the symbol names and addresses to symbol table
 ;
 
 mov	edi,[symbols_start]				; output address
+mov	ebx,[symtab]					; point to symbol table
 
 next_symbol:
-;xchg	bx,bx
 mov	esi,[strtab]					; point to string table
+add	esi,[ebx+SYM_NAME]				; point to string
+dec	esi
 
 next_string:
 a32	movsb
@@ -409,45 +423,22 @@ a32	movsb
 cmp	byte [edi-1],0
 jne	next_string
 
-mov	[strtab],esi					; update address of string table
+mov	eax,[ebx+SYM_NAME]
 
-mov	esi,[symtab]					; point to symbol table
-
-next_sym:
-
-mov	al,[esi+12]					; get section type
-
-; skip invalid symbol types
-
-cmp	al,STT_SECTION					; section type
-je	bad_type
-
-mov	eax,[esi]					; get name index
-test	eax,eax
-jz	bad_type
-
-;xchg	bx,bx
-
-mov	eax,[esi+4]					; get value
-add	esi,16
-mov	[symtab],esi					; update address of symbol table
+mov	eax,[ebx+SYM_VALUE]				; get value
 
 mov	[edi],eax
 
 add	edi,4						; point to next
 
-mov	eax,[number_of_symbols]				; decrement counter
+add	ebx,SYM_ENTRY_SIZE
+
+mov	eax,[number_of_symbols]
 dec	eax
 mov	[number_of_symbols],eax
 
-test	eax,eax						; if at end
+test	eax,eax					; if at end
 jnz	next_symbol
-
-jmp	load_segments
-
-bad_type:
-add	esi,16
-jmp	next_sym
 
 ;
 ; load program segments
@@ -968,7 +959,6 @@ no_extensions:
 ; convert block number to cylinder,head,sector
 ;
 
-;;xchg	bx,bx
 xor	ecx,ecx
 
 push	ebx

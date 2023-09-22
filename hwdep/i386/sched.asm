@@ -105,12 +105,6 @@ push	eax
 call	loadpagetable						; load page tables
 add	esp,4
 
-call	getpid
-
-push	eax
-push	offset format
-call	kprintf_direct
-
 ;
 ; Load stack pointer for new process
 ;
@@ -129,5 +123,4 @@ end_switch:
 ret
 
 save_esp dd 0
-format db "%X",10,13,0
 

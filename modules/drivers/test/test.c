@@ -27,7 +27,7 @@
  *  Returns: Return parameters
  *
  */
-int test_init(char *init)
-{
+int init(char *initstr) {
+kprintf_direct("Test driver\n");
 return;
 }
