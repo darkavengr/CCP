@@ -88,6 +88,7 @@ clean:
 	rm *.map
 	rm drive.c
 	rm command/*.o
+	rm ccp.sym
 
 distclean:
 	rm obj/@arch@/*
@@ -96,5 +97,6 @@ distclean:
 	rm drive.c
 	rm *.map
 	rm command/*.o
+	rm ccp.sym
 
 

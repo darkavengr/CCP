@@ -31,7 +31,7 @@
 #include <elf.h>
 
 size_t load_kernel_module(char *filename,char *argsx);
-size_t getnameofsymbol(char *strtab,char *buf,Elf32_Sym *symtab,size_t which,char *name);
+size_t getnameofsymbol(char *strtab,char *sectionheader_strptr,char *buf,Elf32_Sym *symtab,size_t which,char *name);
 size_t getkernelsymbol(char *name);
 size_t add_external_module_symbol(char *name,size_t val);
 size_t get_external_module_symbol(char *name);
@@ -77,6 +77,8 @@ size_t symval;
 uint32_t codestart;
 char *sectionheader_strptr;
 size_t reloc_count;
+char *rodata;
+char *data;
 
 disablemultitasking();
 
@@ -124,7 +126,7 @@ if(elf_header->e_shnum == 0) {
 shptr=(size_t) buf+elf_header->e_shoff+(elf_header->e_shstrndx*sizeof(Elf32_Shdr));	/* find string section in table */
 sectionheader_strptr=(buf+shptr->sh_offset)+1;		/* point to section header string table */
 
-/* find the symbol table and string table from section header table */
+/* find the symbol table,string table, text section and rodata section from section header table */
 
 shptr=buf+elf_header->e_shoff;
 
@@ -143,6 +145,10 @@ for(count=0;count < elf_header->e_shnum;count++) {
 		codestart=buf+shptr->sh_offset;
 	}
 
+	if(strcmp(bufptr,"rodata") == 0) rodata=buf+shptr->sh_offset;	/* found rodata section */ 
+
+	if(strcmp(bufptr,"data") == 0) data=buf+shptr->sh_offset;	/* found data section */ 
+		
 	shptr++;
 }
 
@@ -171,7 +177,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
  
 		numberofrelocentries=shptr->sh_size/sizeof(Elf32_Rel);
 
- 		kprintf_direct("Number of reloc entries=%d\n",numberofrelocentries);
+ 		//kprintf_direct("Number of reloc entries=%d\n",numberofrelocentries);
 
 		if(shptr->sh_type == SHT_REL) {
 			relptr=buf+shptr->sh_offset;
@@ -182,18 +188,18 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
 
-				kprintf_direct("reloc_count=%X\n",reloc_count);
+				//kprintf_direct("reloc_count=%X\n",reloc_count);
 
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
 
-				//kprintf_direct("rel_shptr=%X\n",rel_shptr);
+				////kprintf_direct("rel_shptr=%X\n",rel_shptr);
 
 				if(shptr->sh_type == SHT_REL) {			
 			  		whichsym=relptr->r_info >> 8;			/* which symbol */
 					symtype=relptr->r_info & 0xff;		/* symbol type */
 	
-					kprintf_direct("rel_shptr->sh_offset=%X\n",rel_shptr->sh_offset);
-					kprintf_direct("relptr->r_offset=%X\n",relptr->r_offset);
+					//kprintf_direct("rel_shptr->sh_offset=%X\n",rel_shptr->sh_offset);
+					//kprintf_direct("relptr->r_offset=%X\n",relptr->r_offset);
 
 					ref=(buf+rel_shptr->sh_offset)+relptr->r_offset;		  
 				}
@@ -211,29 +217,25 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
 
 				kprintf("relptr=%X\n",relptr);
-				kprintf_direct("whichsym=%X\n",whichsym);					
-				kprintf_direct("st_shndx=%X %X\n",symptr->st_shndx,SHN_UNDEF);					
+				//kprintf_direct("whichsym=%X\n",whichsym);					
+				//kprintf_direct("st_shndx=%X %X\n",symptr->st_shndx,SHN_UNDEF);					
 
-				kprintf_direct("rebuf=%X\n",relptr->r_offset);
-				kprintf_direct("ref=%X\n",ref);
-
-//				asm("xchg %bx,%bx");
-
+				//kprintf_direct("rebuf=%X\n",relptr->r_offset);
+				//kprintf_direct("ref=%X\n",ref);
+			
 				/* get symbol value */
+				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,whichsym,name);	/* get name of symbol */	
+				//kprintf_direct("name=%s\n",name);
 
 				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */		
 					kprintf("external\n");
 
-					getnameofsymbol(strtab,buf,symtab,whichsym,name);	/* get name of symbol */	
-
-					kprintf_direct("name=%s\n",name);
-
 					symval=getkernelsymbol(name);
 
-					kprintf_direct("symval=%s %X\n",name,symval);
+					//kprintf_direct("symval=%s %X\n",name,symval);
 					
 					if(symval == -1) {
-	 					kprintf_direct("not kernel symbol\n");
+	 					//kprintf_direct("not kernel symbol\n");
 
 						/* if it's not a kernel symbol, check if it is a external module symbol */
 				 		symval=get_external_module_symbol(name);
@@ -245,11 +247,23 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				}
 				else
 				{
-					symval=symptr->st_value;
+					kprintf("internal\n");
+
+
+					if((strcmp(name,".data") == 0) || (strcmp(name,".rodata") == 0)) {				
+						symval=(data+symptr->st_name);
+					}
+					else
+					{
+						symval=symptr->st_value;
+					}
 
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
 				}
 					
+				//kprintf_direct("symval=%X\n",symval);
+				asm("xchg %bx,%bx");
+
 				/* update reference in section */
 
 				if(symtype == R_386_NONE) {
@@ -269,7 +283,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				}
 				else
 				{
-					kprintf_direct("kernel: unknown relocation type %d in %s\n",symtype,filename);
+					//kprintf_direct("kernel: unknown relocation type %d in %s\n",symtype,filename);
 			
 					enablemultitasking();
 
@@ -287,10 +301,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 		}		
  	}
-
-
-			
-	
+		
 	shptr++;
 }
 
@@ -309,6 +320,7 @@ return(0);
  *
  * In: strtab	Pointer to ELF string table
 		 strtab String table
+		 sectionheader_strptr Section header string table
 		 syntab Symbol table
 		 which	Symbol index
 		 name	Symbol name buffer
@@ -317,14 +329,27 @@ return(0);
  * 
  */
 
-size_t getnameofsymbol(char *strtab,char *buf,Elf32_Sym *symtab,size_t which,char *name) {
-size_t count=0;
+size_t getnameofsymbol(char *strtab,char *sectionheader_strptr,char *buf,Elf32_Sym *symtab,size_t which,char *name) {
+size_t count;
 char *strptr=strtab;
 Elf32_Sym *symptr;
+char *shptr;
 
 symptr=(size_t) symtab+(sizeof(Elf32_Sym)*which);		/* point to symbol table entry */
 
 strcpy(name,(strtab+symptr->st_name)-1);
+
+if(strcmp(name,"") == 0) {		/* not a symbol table entry */
+	shptr=sectionheader_strptr;
+	
+	for(count=1;count<which;count++) {
+		shptr += (strlen(shptr)+1);
+	}
+	
+	strcpy(name,shptr);
+	return(0);
+}
+	
 return(0);
 }
 
@@ -351,6 +376,7 @@ symptr += KERNEL_HIGH;		/* point to symbol table */
 
 for(count=0;count<bootinfo->number_of_symbols;count++) {
 	if(strcmp(symptr,name) == 0) {				/* symbol found */
+
 		symptr += strlen(name)+1;		/* skip over name */
   
 		valptr=symptr;			/* cast pointer to size_t */
@@ -411,7 +437,7 @@ SYMBOL_TABLE_ENTRY *next;
 next=externalmodulesymbols;
 
 while(next != NULL) {
-//	kprintf_direct("%s\n",next->name);
+//	//kprintf_direct("%s\n",next->name);
 
 	if(strcmp(next->name,name) == 0) return(next->address);
 
