@@ -32,7 +32,7 @@
 #define INVALID_PROCESS		0x1F
 #define INVALID_DEVICE 		0x20
 #define DEVICE_IN_USE 		0x21
-#define INVALID_DRIVER 		0x22
+#define INVALID_MODULE 		0x22
 #define DRIVER_ALREADY_LOADED 	0x23
 #define NO_PROCESSES		0x24
 #define END_OF_FILE     	0x25

@@ -986,7 +986,7 @@ else
 
 		if(strcmp(newfs->name,next->name) == 0) {		/* already loaded */
 			unlock_mutex(&vfs_mutex);
-			setlasterror(INVALID_DRIVER);
+			setlasterror(INVALID_MODULE);
 			return(-1);
 	}
 
@@ -1060,7 +1060,7 @@ while(next != NULL) {
 
 unlock_mutex(&vfs_mutex);
 
-setlasterror(INVALID_DRIVER);
+setlasterror(INVALID_MODULE);
 return(-1);
 }
 
