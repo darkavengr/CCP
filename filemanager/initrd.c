@@ -77,7 +77,7 @@ size_t newfindblock;
 if(op == FALSE) {
 	tarptr=boot_info->initrd_start+KERNEL_HIGH;		/* first */
 
-	memset(buf,0,sizeof(FILERECORD));
+//	memset(buf,0,sizeof(FILERECORD));
 }
 else
 {
@@ -106,6 +106,8 @@ else
 {
 	buf->startblock=buf->findblock+1;
 }
+
+//kprintf_direct("startblock=%X\n",buf->startblock);
 
 setlasterror(NO_ERROR);
 return(0);
@@ -290,7 +292,7 @@ do {
 
 	ksprintf(filename,"Z:\\%s",findmodule.filename);
 
-	if(strcmp(findmodule.filename,"null.o") == 0) asm("xchg %bx,%bx");
+	if(strcmp(findmodule.filename,"keyb.o") == 0) asm("xchg %bx,%bx");
 
 	if(load_kernel_module(filename,NULL) == -1) {	/* load module */
 		kprintf_direct("kernel: Error loading kernel module %s from initrd\n",filename);	

@@ -104,13 +104,13 @@ elf_header=buf;
 
 if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_header->e_ident[2] != 0x4C && elf_header->e_ident[3] != 0x46) {	/* not elf */
 	setlasterror(INVALID_MODULE);
-//	kernelfree(buf);
+	kernelfree(buf);
 	return(-1);
 }
 
 if((elf_header->e_type != ET_REL) || (elf_header->e_shnum == 0)) {	
 	setlasterror(INVALID_MODULE);
-//	kernelfree(buf);
+	kernelfree(buf);
 	return(-1);
 }
 
@@ -149,7 +149,7 @@ for(count=0;count < elf_header->e_shnum;count++) {
 
 if((symtab == NULL) || (strtab == NULL)) {
 	setlasterror(INVALID_MODULE);
-//	kernelfree(buf);
+	kernelfree(buf);
 	return(-1); 
 }
 
@@ -180,7 +180,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
 
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
-
+				
 				if(shptr->sh_type == SHT_REL) {			
 			  		whichsym=relptr->r_info >> 8;			/* which symbol */
 					symtype=relptr->r_info & 0xff;		/* symbol type */
@@ -196,21 +196,15 @@ for(count=0;count<elf_header->e_shnum;count++) {
 		  			ref=(buf+rel_shptr->sh_offset)+relptra->r_offset;		  
 		  
 				}
-
-				//kprintf_direct("whichsym=%X\n",whichsym);
-				//kprintf_direct("symtype=%X\n",symtype);
-
+				
 				/* Get the value to place at the location ref into symval */
 
 				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
 
 				/* get symbol value */
-				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,whichsym,name);	/* get name of symbol */	
+				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,whichsym,name);	/* get name of symbol */				
 
-				//kprintf_direct("name=%s\n",name);
-
-				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */		
-					//kprintf_direct("external\n");
+				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */							
 
 					symval=getkernelsymbol(name);
 
@@ -225,20 +219,13 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				else
 				{
 				
-					if((strcmp(name,".data") == 0) || (strcmp(name,".rodata") == 0)) {																
-						//kprintf_direct("string literal\n");
-			
+					if((strcmp(name,".data") == 0) || (strcmp(name,".rodata") == 0)) {
 						symval=data+symptr->st_name;
 					}
 					else
-					{
-						//kprintf_direct("internal\n");
-	
+					{	
 						if((symptr->st_shndx != SHN_COMMON) && (symptr->st_shndx != 0)) {
 							symval=codestart+symptr->st_value;	
-	
-							//kprintf_direct("ref=%X\n",ref);
-							//kprintf_direct("symval=%X\n",symval);
 						}
 						else
 						{
@@ -293,7 +280,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 entry=codestart;
 
-asm("xchg %bx,%bx");
 return(entry(argsx));
 }
 
