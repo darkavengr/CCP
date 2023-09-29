@@ -2,14 +2,22 @@
 
 export drivers_list=""
 
-directory=$1
+if [ $# -lt 3 ]; then
+	exit
+fi
 
-shift 1
+directory=$1
+outfile=$2
+
+shift 2
+
+olddir=`pwd`
 
 for f in $*; do
- drivers_list="$drivers_list $directory/`basename $f`.o"
+	drivers_list="$drivers_list $directory/`basename $f`.o" 
 done
 
 echo $drivers_list
-tar -cf bin/i386/INITRD.SYS $drivers_list
+
+tar -cf $outfile $drivers_list --transform=s,.*/,,
 

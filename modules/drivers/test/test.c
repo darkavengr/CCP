@@ -27,7 +27,11 @@
  *  Returns: Return parameters
  *
  */
+int *TestGlobalVariable;
+
 int init(char *initstr) {
-kprintf_direct("Test driver\n");
+//kprintf_direct("Test driver\n");
+
+TestGlobalVariable=0xABCD1234;
 return;
 }

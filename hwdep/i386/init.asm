@@ -52,7 +52,8 @@ extern initializepaging						; initialize paging
 extern unmap_lower_half						; unmap lower half
 extern initialize_tss						; initialize tss
 extern set_tss_esp0
-;
+extern load_modules_from_initrd
+
 ; globals
 ;
 global tss_esp0
@@ -316,6 +317,7 @@ out	dx,al
 
 call	init_multitasking
 call	driver_init				; initialize drivers and filesystems
+
 ;call	initrd_init
 
 mov	esp,(INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH)+KERNEL_STACK_SIZE	; temporary stack
@@ -323,6 +325,9 @@ push	esp
 call	set_tss_esp0
 
 call	initialize_tss					; initialize tss
+
+
+;call	load_modules_from_initrd
 
 sti
 

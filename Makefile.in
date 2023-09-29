@@ -28,11 +28,15 @@ hwdep:
 #
 .PHONY: drivers
 drivers:
-	./gendrivelist  @driverlist@
+	./gendrivelist  @driver_list@
 	echo $(OBJFILES)
 
-	for f in @driverlist@; do make -C $$f;done
+	for f in @driver_list@; do make -C $$f;done
+
+	for f in @initrd_driver_list@; do make -C $$f;done
 	$(foreach f,$(FILES),$(CC) -c -w -w -ffreestanding -nostdlib -lgcc  $f -o $(patsubst %.c,%.o, obj/@arch@/$(notdir $(f)));)
+
+	./gen_initrd  obj/@arch@ bin/@arch@/INITRD.SYS @initrd_driver_list@
 
 #
 # Recipe to make command interpreter
@@ -98,5 +102,4 @@ distclean:
 	rm *.map
 	rm command/*.o
 	rm ccp.sym
-
 

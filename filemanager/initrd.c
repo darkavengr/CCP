@@ -71,35 +71,44 @@ size_t initrd_findnext(char *filename,FILERECORD *buf) {
  *
  */
 size_t initrd_find(size_t op,char *filename,FILERECORD *buf) {
-size_t size;
 BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
-size_t ptr;
+size_t newfindblock;
 
-if(op == FALSE) tarptr=boot_info->initrd_start+KERNEL_HIGH;		/* first */
+if(op == FALSE) {
+	tarptr=boot_info->initrd_start+KERNEL_HIGH;		/* first */
+
+	memset(buf,0,sizeof(FILERECORD));
+}
+else
+{
+	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findblock*TAR_BLOCK_SIZE);		/* first */
+}
 
 if(*tarptr->name == 0) {			/* last file */
 	setlasterror(FILE_NOT_FOUND);
 	return(-1);
 }
 
-memset(buf,0,sizeof(FILERECORD));
-
 strcpy(buf->filename,tarptr->name);	/* copy information */
 
 buf->filesize=atoi(tarptr->size,8);
 buf->drive=25;
 
-buf->startblock=(size_t) tarptr;
-buf->startblock -= (boot_info->initrd_start+KERNEL_HIGH);
-buf->startblock += 512;
-buf-> startblock /= TAR_BLOCK_SIZE;
+newfindblock=(buf->filesize / TAR_BLOCK_SIZE)+1;
+if(newfindblock % TAR_BLOCK_SIZE) newfindblock++;
 
-ptr=tarptr;
-ptr += ((buf->filesize / TAR_BLOCK_SIZE) + 1) * TAR_BLOCK_SIZE;
+buf->findblock += newfindblock;
 
-if(buf->filesize % TAR_BLOCK_SIZE) ptr += TAR_BLOCK_SIZE;
+if(op == FALSE) {
+	buf->startblock=1;
+}
+else
+{
+	buf->startblock=buf->findblock+1;
+}
 
-tarptr=ptr;
+setlasterror(NO_ERROR);
+return(0);
 }
 
 /*
@@ -129,7 +138,6 @@ if(gethandle(handle,&onext) == -1) {	/* bad handle */
 //}
 
 dataptr=boot_info->initrd_start+KERNEL_HIGH;		/* point to start */
-
 
 dataptr += (onext.startblock*TAR_BLOCK_SIZE);
 dataptr += onext.currentpos;				/* point to current position */
@@ -268,20 +276,30 @@ return(0);
 size_t load_modules_from_initrd(void) {
 FILERECORD findmodule;
 char *filename[MAX_PATH];
+SPLITBUF split;
+size_t findresult;
 
 /* loop through modules in initrd and load them */
 
-findfirst("Z:\\*.o",&findmodule);
+findresult=findfirst("Z:\\*.o",&findmodule);
+if(findresult == -1) return(FILE_NOT_FOUND);
+
 
 do {
+	kprintf_direct("Loading module Z:\\%s\n",findmodule.filename);
+
 	ksprintf(filename,"Z:\\%s",findmodule.filename);
 
+	if(strcmp(findmodule.filename,"null.o") == 0) asm("xchg %bx,%bx");
+
 	if(load_kernel_module(filename,NULL) == -1) {	/* load module */
-		kprintf_direct("Error loading kernel module %s from initrd\n",filename);
-		return(-1);
+		kprintf_direct("kernel: Error loading kernel module %s from initrd\n",filename);	
 	}
 
-} while(findnext("Z:\\*.o",&findmodule) != -1);
+	  findresult=findnext("Z:\\*.o",&findmodule);
+	  if(findresult == -1) break;
+} while(findresult != -1);
+
 
 return(NO_ERROR);
 }

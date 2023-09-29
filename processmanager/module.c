@@ -104,13 +104,13 @@ elf_header=buf;
 
 if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_header->e_ident[2] != 0x4C && elf_header->e_ident[3] != 0x46) {	/* not elf */
 	setlasterror(INVALID_MODULE);
-	kernelfree(buf);
+//	kernelfree(buf);
 	return(-1);
 }
 
 if((elf_header->e_type != ET_REL) || (elf_header->e_shnum == 0)) {	
 	setlasterror(INVALID_MODULE);
-	kernelfree(buf);
+//	kernelfree(buf);
 	return(-1);
 }
 
@@ -149,7 +149,7 @@ for(count=0;count < elf_header->e_shnum;count++) {
 
 if((symtab == NULL) || (strtab == NULL)) {
 	setlasterror(INVALID_MODULE);
-	kernelfree(buf);
+//	kernelfree(buf);
 	return(-1); 
 }
 
@@ -170,8 +170,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
  
 		numberofrelocentries=shptr->sh_size/sizeof(Elf32_Rel);
 
- 		kprintf_direct("Number of reloc entries=%d\n",numberofrelocentries);
-
 		if(shptr->sh_type == SHT_REL) {
 			relptr=buf+shptr->sh_offset;
 		}
@@ -188,6 +186,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 					symtype=relptr->r_info & 0xff;		/* symbol type */
 
 					ref=(buf+rel_shptr->sh_offset)+relptr->r_offset;		  
+
 				}
 				else if(shptr->sh_type == SHT_RELA) { 
 
@@ -198,16 +197,20 @@ for(count=0;count<elf_header->e_shnum;count++) {
 		  
 				}
 
+				//kprintf_direct("whichsym=%X\n",whichsym);
+				//kprintf_direct("symtype=%X\n",symtype);
+
 				/* Get the value to place at the location ref into symval */
 
 				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
 
 				/* get symbol value */
 				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,whichsym,name);	/* get name of symbol */	
-				kprintf_direct("name=%s\n",name);
+
+				//kprintf_direct("name=%s\n",name);
 
 				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */		
-					//kprintf("external\n");
+					//kprintf_direct("external\n");
 
 					symval=getkernelsymbol(name);
 
@@ -216,21 +219,33 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				 		symval=get_external_module_symbol(name);
 						if(symval == -1) symval=symptr->st_value;
 					}
-			
-					//		  asm("xchg %bx,%bx");
+								
 					add_external_module_symbol(name,symval);		/* add external symbol to list */
 				}
 				else
 				{
 				
-					if((strcmp(name,".data") == 0) || (strcmp(name,".rodata") == 0)) {				
-						
+					if((strcmp(name,".data") == 0) || (strcmp(name,".rodata") == 0)) {																
+						//kprintf_direct("string literal\n");
+			
 						symval=data+symptr->st_name;
 					}
 					else
 					{
-						symval=symptr->st_value;
-					}
+						//kprintf_direct("internal\n");
+	
+						if((symptr->st_shndx != SHN_COMMON) && (symptr->st_shndx != 0)) {
+							symval=codestart+symptr->st_value;	
+	
+							//kprintf_direct("ref=%X\n",ref);
+							//kprintf_direct("symval=%X\n",symval);
+						}
+						else
+						{
+							symval=codestart+shptr->sh_offset+symptr->st_value;	
+						}
+
+					}	
 
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
 				}								
@@ -277,10 +292,9 @@ for(count=0;count<elf_header->e_shnum;count++) {
 }
 
 entry=codestart;
-entry(argsx);
-  
-setlasterror(NO_ERROR);
-return(0);
+
+asm("xchg %bx,%bx");
+return(entry(argsx));
 }
 
 /*
@@ -405,7 +419,7 @@ SYMBOL_TABLE_ENTRY *next;
 next=externalmodulesymbols;
 
 while(next != NULL) {
-//	kprintf_direct("%s\n",next->name);
+//	//kprintf_direct("%s\n",next->name);
 
 	if(strcmp(next->name,name) == 0) return(next->address);
 

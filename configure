@@ -141,8 +141,8 @@ done
 # choose which modules to compile
 #
 echo
-echo "Select the modules you want to compile, enter y to compile the module, or"
-echo "enter n to not compile the module."
+echo "Select the modules you want to compile, enter y to compile the module into the kernel,"
+echo "m to compile to external initrd module or enter n to not compile the module."
 echo
 
 #
@@ -179,8 +179,8 @@ for f in $SEARCH;do
 	  				DESCRIPTION=$varval
 	  				;;
 
-	 			compile_default_opt)			# Is optional feature
-	  				COMPILE_DEFAULT_OPT=$varval
+	 			compile_opt)			# Is optional feature
+	  				COMPILE_OPT=$varval
 	  				;;
 
 	 			requires)			# Required modules
@@ -205,37 +205,61 @@ for f in $SEARCH;do
 
 			printf "Include module $DRIVERNAME"	# prompt user
 
-			if [ "$COMPILE_DEFAULT_OPT" == "y" ]; then	# prompt if module is included by default
+			if [ "$COMPILE_OPT" == "y" ] || [ "$COMPILE_OPT" == "Y" ]; then	# prompt if module is built-in
 				echo -n " (Y/n)?"
-			else
-				echo -n " (y/N)?"		# not by default
+			elif [ "$COMPILE_OPT" == "m" ] || [ "$COMPILE_OPT" == "M" ]; then	# initrd modult
+				echo -n " (y/n/M)?"		# not by default
+			elif [ "$COMPILE_OPT" == "n" ] || [ "$COMPILE_OPT" == "N" ]; then	# not used by default
+				echo -n " (y/N/m)?"
 			fi
 
 			read response
 
-			if [  ${#response} == 0 ] || [ $response == "y" ] || [ $response == "Y" ]; then	# do response
+			if [  ${#response} == 0 ]; then		# use default response
+					if [ "$COMPILE_OPT" == "y" ] || [ "$COMPILE_OPT" == "Y" ]; then	# prompt if module is built-in
+						module_list="$module_list $f"	# add to list
+						module_names="$module_names $DRIVERNAME"	# add to list     
+				
+						response="y"
+
+					elif [ "$COMPILE_OPT" == "m" ] || [ "$COMPILE_OPT" == "M" ]; then	# initrd modult
+						initrd_module_list="$initrd_module_list $f"	# add to list
+						module_names="$module_names $DRIVERNAME"	# add to list     
+
+						response="m"
+					fi
+			else
+			   if  [ "$response" == "y" ] || [ "$response" == "Y" ] || [ "$response" == "m" ] || [ "$response" == "M" ]; then	# do response
 	
-		modulelist="$modulelist $f"	# add to list
-		module_names="$module_names $DRIVERNAME"	# add to list     
+				if  [ "$response" == "y" ] || [ "$response" == "Y" ]; then		# built-in module
+					module_list="$module_list $f"	# add to list
+					module_names="$module_names $DRIVERNAME"	# add to list     
+				fi
 
-#
-# add dependencies
-#
-		if ! [ "$REQUIRED" = "" ]; then		# there is a required modules
-	   		check_if_module_included "$REQUIRED"	# check if already included
+				if  [ "$response" == "m" ] || [ "$response" == "M" ]; then		# initrd module
+					initrd_module_list="$initrd_module_list $f"	# add to list
+					module_names="$module_names $DRIVERNAME"	# add to list     
+				fi		
 
-	   		rv=$?	# need to save it so it can be compared
+				#
+				# add dependencies
+				#
+				if ! [ "$REQUIRED" = "" ]; then		# there is a required check
+	   				check_if_module_included "$REQUIRED"	# check if already included
 
-	   		if [ "$rv" == "0" ]; then		# not already included
-				echo
-				echo Including required dependency $REQUIRED
-				echo
+	   				rv=$?	# need to save it so it can be compared
 
-		     		modulelist="$modulelist modules/drivers/$REQUIRED"	# add to list
-		     		module_names="$module_names $REQUIRED"	# add to list     
+	   				if [ "$rv" == "0" ]; then		# not already included
+						echo
+						echo Including required dependency $REQUIRED
+						echo
+
+		     				module_list="$module_list modules/drivers/$REQUIRED"	# add to list
+		     				module_names="$module_names $REQUIRED"	# add to list     
+					fi
+	  			fi
+			   fi
 			fi
-	  	fi
-	 fi
 
     fi
 fi
@@ -248,7 +272,7 @@ echo Generating Makefiles
 
 for f in $SEARCH;do			# for each directory in search path
 
-# check if makefile exists
+# check if makefile exists	
 
 	if [ ! -e $f/Makefile.in ]; then 		
 		echo configure: Missing file $f/Makefile.in
@@ -263,7 +287,8 @@ for f in $SEARCH;do			# for each directory in search path
 
 	cat $f/Makefile.in | sed s/\@asm\@/$ASM/g | sed s/\@cc\@/$CC/g | sed s/\@arch\@/$compile_arch/g \
 	| sed s/\@ld\@/"$LD"/g |  sed s/\@ldopts\@/$LDOPTS/g \
-	| sed s:\@driverlist\@:"$modulelist":g | sed s/\@asm_opts\@/"$ASM_OPTS"/g \
+	| sed s:\@driver_list\@:"$module_list":g | sed s/\@asm_opts\@/"$ASM_OPTS"/g \
+	| sed s:\@initrd_driver_list\@:"$initrd_module_list":g | sed s/\@asm_opts\@/"$ASM_OPTS"/g \
 	| sed s/\@cc_opts\@/"$CC_OPTS"/g \
 	| sed s:\@cc_base_files\@:"$CC_BASE_FILES":g \
 	| sed s:\@cc_opt_files\@:"$CC_OPT_FILES":g  > $f/Makefile

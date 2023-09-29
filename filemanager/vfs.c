@@ -310,7 +310,7 @@ getfullpath(filename,fullname);
 memset(next,0,sizeof(FILERECORD));
 memcpy(next,&dirent,sizeof(FILERECORD));  /* copy data */
 
-// strcpy(next->filename,fullname);	/* copy full filename */
+strcpy(next->filename,fullname);	/* copy full filename */
 
 next->currentpos=0;			/* set position to start of file */
 next->currentblock=getstartblock(fullname);		/* get start block */
