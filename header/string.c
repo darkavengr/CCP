@@ -501,7 +501,7 @@ return;
  * Returns converted number
  *
  */
-int atoi(char *hex,int base) {
+int atoi(char *numstr,int base) {
 int num=0;
 char *b;
 char c;
@@ -510,8 +510,8 @@ int shiftamount=0;
 
 if(base == 10) shiftamount=1;	/* for decimal */
 
-b=hex;
-count=strlen(hex);		/* point to end */
+b=numstr;
+count=strlen(numstr);		/* point to end */
 
 b=b+(count-1);
 
@@ -972,8 +972,6 @@ return(tc);
  *
  * In:	n				Base number
  *	e				Exponent
- *
- * Returns number of tokens
  */
 size_t ipow(size_t n,size_t e) {
 size_t num=n;				/* save number */

@@ -25,6 +25,7 @@
 #include "initrd.h"
 #include "../header/errors.h"
 #include "../header/bootinfo.h"
+#include "../header/debug.h"
 
 size_t initrd_findfirst(char *filename,FILERECORD *buf);
 size_t initrd_findnext(char *filename,FILERECORD *buf);
@@ -64,8 +65,10 @@ size_t initrd_findnext(char *filename,FILERECORD *buf) {
 /*
  * Find file in INITRD
  *
- * In:  name	Filename or wildcard of file to find
-	       buffer	Buffer to hold information about files
+ * In:  
+	op	0=First, 1=Next
+	name    Filename or wildcard of file to find
+        buffer	Buffer to hold information about files
  *
  * Returns: -1 on error, 0 on success
  *
@@ -74,40 +77,43 @@ size_t initrd_find(size_t op,char *filename,FILERECORD *buf) {
 BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 size_t newfindblock;
 
-if(op == FALSE) {
+if(op == 0) {
 	tarptr=boot_info->initrd_start+KERNEL_HIGH;		/* first */
 
-//	memset(buf,0,sizeof(FILERECORD));
+	memset(buf,0,sizeof(FILERECORD));
 }
 else
 {
+	newfindblock=(buf->filesize / TAR_BLOCK_SIZE)+1;
+	if(newfindblock % TAR_BLOCK_SIZE) newfindblock++;
+
+	buf->findblock += newfindblock;
+
 	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findblock*TAR_BLOCK_SIZE);		/* first */
 }
+
+DEBUG_PRINT_HEX(tarptr);
 
 if(*tarptr->name == 0) {			/* last file */
 	setlasterror(FILE_NOT_FOUND);
 	return(-1);
 }
 
-strcpy(buf->filename,tarptr->name);	/* copy information */
+if(wildcard(buf->filename,filename) == 0) { 	/* if file found */      	
+	strcpy(buf->filename,tarptr->name);	/* copy information */
 
-buf->filesize=atoi(tarptr->size,8);
-buf->drive=25;
+	buf->filesize=atoi(tarptr->size,8);
+	buf->drive='Z';
 
-newfindblock=(buf->filesize / TAR_BLOCK_SIZE)+1;
-if(newfindblock % TAR_BLOCK_SIZE) newfindblock++;
-
-buf->findblock += newfindblock;
-
-if(op == FALSE) {
-	buf->startblock=1;
-}
-else
-{
 	buf->startblock=buf->findblock+1;
-}
 
-//kprintf_direct("startblock=%X\n",buf->startblock);
+	DEBUG_PRINT_STRING(buf->filename);
+	DEBUG_PRINT_HEX(buf->findblock);
+	DEBUG_PRINT_HEX(buf->startblock);
+
+	setlasterror(NO_ERROR);
+	return(0);
+}
 
 setlasterror(NO_ERROR);
 return(0);
@@ -140,7 +146,6 @@ if(gethandle(handle,&onext) == -1) {	/* bad handle */
 //}
 
 dataptr=boot_info->initrd_start+KERNEL_HIGH;		/* point to start */
-
 dataptr += (onext.startblock*TAR_BLOCK_SIZE);
 dataptr += onext.currentpos;				/* point to current position */
 
@@ -148,7 +153,10 @@ memcpy(buf,dataptr,size);				/* copy data */
 
 onext.currentpos += size;				/* point to next data */
 
-updatehandle(handle,&onext);				/* update file information */
+if(updatehandle(handle,&onext) == -1) {				/* update file information */
+	setlasterror(INVALID_HANDLE);
+	return(-1);
+}
 
 return(size);
 }
@@ -279,12 +287,11 @@ size_t load_modules_from_initrd(void) {
 FILERECORD findmodule;
 char *filename[MAX_PATH];
 SPLITBUF split;
-size_t findresult;
+//int handle;
 
 /* loop through modules in initrd and load them */
 
-findresult=findfirst("Z:\\*.o",&findmodule);
-if(findresult == -1) return(FILE_NOT_FOUND);
+if(findfirst("Z:\\*.o",&findmodule) == -1) return(FILE_NOT_FOUND);
 
 
 do {
@@ -292,17 +299,14 @@ do {
 
 	ksprintf(filename,"Z:\\%s",findmodule.filename);
 
-	if(strcmp(findmodule.filename,"keyb.o") == 0) asm("xchg %bx,%bx");
+	//if(load_kernel_module(filename,NULL) == -1) {	/* load module */
+	//	kprintf_direct("kernel: Error loading kernel module %s from initrd\n",filename);	
+	//}
 
-	if(load_kernel_module(filename,NULL) == -1) {	/* load module */
-		kprintf_direct("kernel: Error loading kernel module %s from initrd\n",filename);	
-	}
+} while(findnext("Z:\\*.o",&findmodule) != -1);
 
-	  findresult=findnext("Z:\\*.o",&findmodule);
-	  if(findresult == -1) break;
-} while(findresult != -1);
-
-
-return(NO_ERROR);
+asm("xchg %bx,%bx");
+setlasterror(NO_ERROR);
+return(0);
 }
 

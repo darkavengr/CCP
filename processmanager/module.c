@@ -27,6 +27,7 @@
 #include "../header/errors.h"
 #include "../header/bootinfo.h"
 #include "../header/kernelhigh.h"
+#include "../header/debug.h"
 #include "module.h"
 #include <elf.h>
 
@@ -85,16 +86,23 @@ disablemultitasking();
 getfullpath(filename,fullname);
 
 handle=open(fullname,_O_RDONLY);		/* open file */
-if(handle == -1) return(-1);		/* can't open */
+if(handle == -1) {
+	enablemultitasking();
+	return(-1);		/* can't open */
+}
 
 buf=kernelalloc(getfilesize(handle));
 if(buf == NULL) {
 	close(handle);	
+
+	enablemultitasking();
 	return(-1);
 }
 
 if(read(handle,buf,getfilesize(handle)) == -1) {			/* read module into buffer */
-	close(handle);	
+	close(handle);
+
+	enablemultitasking();	
 	return(-1); /* read error */
 }
 
@@ -105,12 +113,16 @@ elf_header=buf;
 if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_header->e_ident[2] != 0x4C && elf_header->e_ident[3] != 0x46) {	/* not elf */
 	setlasterror(INVALID_MODULE);
 	kernelfree(buf);
+
+	enablemultitasking();
 	return(-1);
 }
 
 if((elf_header->e_type != ET_REL) || (elf_header->e_shnum == 0)) {	
 	setlasterror(INVALID_MODULE);
 	kernelfree(buf);
+
+	enablemultitasking();
 	return(-1);
 }
 
@@ -150,6 +162,8 @@ for(count=0;count < elf_header->e_shnum;count++) {
 if((symtab == NULL) || (strtab == NULL)) {
 	setlasterror(INVALID_MODULE);
 	kernelfree(buf);
+
+	enablemultitasking();
 	return(-1); 
 }
 
@@ -165,6 +179,8 @@ shptr=buf+elf_header->e_shoff;
 
 for(count=0;count<elf_header->e_shnum;count++) {
 
+	//DEBUG_PRINT_HEX(count);
+
 	if((shptr->sh_type == SHT_REL) || (shptr->sh_type == SHT_RELA)) {					/* found section */
 		/* perform relocations using relocation table in section */
  
@@ -178,6 +194,8 @@ for(count=0;count<elf_header->e_shnum;count++) {
 		}
 
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
+
+				//DEBUG_PRINT_HEX(reloc_count);
 
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
 				
@@ -223,9 +241,11 @@ for(count=0;count<elf_header->e_shnum;count++) {
 						symval=data+symptr->st_name;
 					}
 					else
-					{	
+					{
+	
 						if((symptr->st_shndx != SHN_COMMON) && (symptr->st_shndx != 0)) {
 							symval=codestart+symptr->st_value;	
+							
 						}
 						else
 						{
@@ -236,6 +256,13 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
 				}								
+
+				//DEBUG_PRINT_STRING(name);
+				//DEBUG_PRINT_HEX(relptr);
+				//DEBUG_PRINT_HEX(shptr);
+				//DEBUG_PRINT_HEX(ref);
+				//DEBUG_PRINT_HEX(symval);
+				//DEBUG_PRINT_HEX(symtype);
 
 				/* update reference in section */
 
@@ -280,6 +307,9 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 entry=codestart;
 
+if(strcmp(fullname,"Z:\\keyb.o") == 0) asm("xchg %bx,%bx");
+
+enablemultitasking();
 return(entry(argsx));
 }
 

@@ -17,6 +17,8 @@
     along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <stdint.h>
+#include <stddef.h>
 #define MODULE_INIT test_init
 
 /*
@@ -27,11 +29,9 @@
  *  Returns: Return parameters
  *
  */
-int *TestGlobalVariable;
 
-int init(char *initstr) {
+size_t test_init(char *initstr) {
 //kprintf_direct("Test driver\n");
 
-TestGlobalVariable=0xABCD1234;
 return;
 }

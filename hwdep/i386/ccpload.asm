@@ -505,8 +505,15 @@ mov	ecx,[ebx+_FILE_SIZE]			; save initrd size
 mov	[BOOT_INFO_INITRD_SIZE],ecx
 
 call	loadfile
+jmp	short continue
 
 noinitrd:
+xor	edx,edx
+
+mov	[BOOT_INFO_INITRD_START],edx
+mov	[BOOT_INFO_INITRD_SIZE],edx
+
+continue:
 mov	ah,3h					; get cursor
 xor	bh,bh
 int	10h
@@ -538,7 +545,7 @@ initrd_file_not_found:
 mov	esi,offset initrd_notfound
 call	output16				; display message
 
-jmp	short presskey
+jmp	short noinitrd
 ;
 ; not found
 ;
@@ -1211,7 +1218,7 @@ pop	ebx
 ret	
 
 ccpsys_notfound db "CCP.SYS not found",0
-initrd_notfound db 10,13,"INITRD.SYS not found",0
+initrd_notfound db 10,13,"No initrd found (INITRD.SYS), skipping it.",0
 noa20_error db "Can't enable A20 line",0
 loading_ccp db "Loading CCP.SYS...",0
 loading_initrd db 10,13,"Loading INITRD.SYS...",0
