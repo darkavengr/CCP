@@ -24,6 +24,7 @@
 global initialize_memory_map
 
 %include "init.inc"
+%include "bootinfo.inc"
 
 SYSTEM_USE equ 0FFFFFFFFh				; page marked for system use
 
@@ -103,6 +104,27 @@ mov	ecx,[stack_size]
 shr	ecx,12					; get number of 4096-byte pages
 mov	eax,SYSTEM_USE
 rep	stosd
+
+mov	edi,[BOOT_INFO_INITRD_START+KERNEL_HIGH]
+shr	edi,12					; get number of 4096-byte pages
+shl	edi,2					; multiply by 4,each 4096 byte page is represented by 4 byte entries
+add	edi,[memory_map_address]
+
+mov	ecx,[BOOT_INFO_INITRD_SIZE+KERNEL_HIGH]
+shr	ecx,12					; get number of 4096-byte pages
+mov	eax,SYSTEM_USE
+rep	stosd
+
+mov	edi,[BOOT_INFO_SYMBOL_START+KERNEL_HIGH]
+shr	edi,12					; get number of 4096-byte pages
+shl	edi,2					; multiply by 4,each 4096 byte page is represented by 4 byte entries
+add	edi,[memory_map_address]
+
+mov	ecx,[BOOT_INFO_SYMBOL_SIZE+KERNEL_HIGH]
+shr	ecx,12					; get number of 4096-byte pages
+mov	eax,SYSTEM_USE
+rep	stosd
+
 ret
 
 stack_size dd 0

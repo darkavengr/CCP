@@ -2,7 +2,7 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,../command.map
-LDFLAGS=-ffreestanding -nostdlib -T ld.script.command
+LDFLAGS=-ffreestanding -nostdlib -T ld.script.command  -Wl,-Map -Wl,../command.map
 OBJFILES=addvar.o command.o copyfile.o err.o getfullpath.o kprintf.o readline.o runcommand.o string.o tohex.o tokenize.o call.o
 OUTFILE=../bin/@arch@/COMMAND.RUN 
 

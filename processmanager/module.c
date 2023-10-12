@@ -99,6 +99,7 @@ if(buf == NULL) {
 	return(-1);
 }
 
+
 if(read(handle,buf,getfilesize(handle)) == -1) {			/* read module into buffer */
 	close(handle);
 
@@ -306,8 +307,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 }
 
 entry=codestart;
-
-if(strcmp(fullname,"Z:\\keyb.o") == 0) asm("xchg %bx,%bx");
 
 enablemultitasking();
 return(entry(argsx));

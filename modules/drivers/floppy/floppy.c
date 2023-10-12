@@ -271,8 +271,6 @@ size_t result;
 size_t retrycount;
 size_t dir;
 
-disablemultitasking();
-
 initialize_floppy(drive);
 
 motor_on(drive);					/* enable motor */ 

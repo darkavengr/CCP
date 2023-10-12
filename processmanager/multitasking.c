@@ -43,6 +43,8 @@ extern *switch_task();
  */
 void disablemultitasking(void) {
 multitaskingenabled=FALSE;
+
+disable_interrupts();
 return;
 }
 
@@ -56,6 +58,8 @@ return;
  */
 void enablemultitasking(void) {
 multitaskingenabled=TRUE;
+
+enable_interrupts();
 return;
 }
 

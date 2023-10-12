@@ -406,8 +406,11 @@ mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
 
+call	disablemultitasking
 sti
 call	dispatchhandler
+
+call	enablemultitasking
 cli
 
 mov	[tempone],eax

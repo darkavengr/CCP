@@ -21,11 +21,13 @@
 ; initialize stack
 ;
 
+%include "kernelselectors.inc"
 global initializestack
 global initializekernelstack
 global get_stack_pointer
 
 extern set_tss_esp0
+extern irq_exit
 
 initializestack:
 cli
@@ -42,7 +44,9 @@ mov	ebp,eax
 jmp	[tempeip]					; return without using stack
 
 initializekernelstack:
-mov	eax,[esp+4]					; get stack pointer value
+mov	eax,[esp+4]					; get stack address
+
+; initialize stack
 
 push	eax
 call	set_tss_esp0

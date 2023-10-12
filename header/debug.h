@@ -4,7 +4,7 @@
 
 #define MAGIC_BREAKPOINT(a,b) \
 if(a == b) { \
- kprintf_direct("MAGIC BREAKPOINT FOR CONDITION %X == %X\n",a,b); \
+ kprintf_direct("MAGIC BREAKPOINT FOR CONDITION " #a " == " #b "\n",a,b); \
  asm("xchg %bx,%bx"); \
 }
 

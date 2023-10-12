@@ -1,12 +1,12 @@
 ASM=@asm@
 CC=@cc@
 LD=@cc@
-FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c processmanager/module.c header/string.c header/bootinfo.c @cc_opt_files@
+FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c processmanager/module.c header/string.c @cc_opt_files@
 
 #
 # Recipe to make everything
 #
-all: hwdep drivers ccp command
+all: hwdep drivers ccp initrd command
 
 #
 # Recipe to make kernel
@@ -36,8 +36,6 @@ drivers:
 	for f in @initrd_driver_list@; do make -C $$f;done
 	$(foreach f,$(FILES),$(CC) -c -w -w -ffreestanding -nostdlib -lgcc  $f -o $(patsubst %.c,%.o, obj/@arch@/$(notdir $(f)));)
 
-	./gen_initrd  obj/@arch@ bin/@arch@/INITRD.SYS @initrd_driver_list@
-
 #
 # Recipe to make command interpreter
 #
@@ -48,9 +46,6 @@ command:
 #
 # Rules for building the core files
 #
-
-obj/@arch@/bootinfo.o:
-	$(CC) -c -w header/bootinfo.c
 
 obj/@arch@/drive.o:
 	$(CC) -c -w drive.c
@@ -85,6 +80,12 @@ obj/@arch@/string.o:
 $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))):
 	$(CC) -c -w @cc_opt_files@
 
+
+#
+# Recipe to make intial RAM disk
+#
+initrd:
+	./gen_initrd  obj/@arch@ bin/@arch@/INITRD.SYS @initrd_driver_list@
 
 clean:
 	rm bin/@arch@/*

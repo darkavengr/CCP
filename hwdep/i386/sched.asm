@@ -25,12 +25,12 @@
 ; You are not expected to understand this
 ;
 global switch_task
-
+global end_switch
 
 extern is_multitasking_enabled			
 extern save_kernel_stack_pointer
 extern getpid
-extern loadpagetable						; load page tables
+extern loadpagetable
 extern get_kernel_stack_pointer
 extern update_current_process_pointer
 extern set_tss_esp0
@@ -40,8 +40,9 @@ extern reset_process_ticks
 extern increment_tick_count
 extern get_kernel_stack_top
 extern increment_process_ticks
-extern kprintf_direct
 extern get_next_process_pointer
+extern get_current_process_pointer
+extern get_processes_pointer
 
 %define offset
 
@@ -55,27 +56,19 @@ jnz	multitasking_enabled
 jmp	end_switch
 
 multitasking_enabled:
-inc	byte [0x800b8001]
+push	esp
+call	save_kernel_stack_pointer
+add	esp,4
 
 call	increment_process_ticks
 
 call	is_process_ready_to_switch
-test	eax,eax					; if process not ready to switch, return
 jnz	task_time_slice_finished
+test	eax,eax					; if process not ready to switch, return
 
 jmp	end_switch
 
 task_time_slice_finished:
-;
-; Save stack pointer for current process
-;
-
-mov	eax,[save_esp]
-
-push	eax
-call	save_kernel_stack_pointer
-add	esp,4
-
 call	reset_process_ticks
 
 call	getpid
@@ -83,16 +76,13 @@ call	getpid
 cmp	eax,1
 jne	not_debug
 
-call	get_next_process_pointer
-test	eax,eax
-jnz	not_debug
-
 xchg	bx,bx
 
 not_debug:
 ;
 ; Switch to next process
 ;
+
 call	find_next_process_to_switch_to			; get pointer to next process to switch to
 
 push	eax						; update current process pointer
@@ -104,10 +94,6 @@ call	getpid
 push	eax
 call	loadpagetable						; load page tables
 add	esp,4
-
-;
-; Load stack pointer for new process
-;
 
 ; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
 call	get_kernel_stack_top

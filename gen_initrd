@@ -2,6 +2,8 @@
 
 export drivers_list=""
 
+echo Generating initial ramdisk....
+
 if [ $# -lt 3 ]; then
 	exit
 fi

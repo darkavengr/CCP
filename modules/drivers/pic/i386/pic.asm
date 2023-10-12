@@ -95,15 +95,6 @@ jmp	irq
 irq:
 pusha						; save registers
 
-mov	ax,ds
-push	eax
-
-mov	ax,0x10
-mov	ds,ax
-mov	es,ax
-mov	fs,ax
-mov	gs,ax
-
 mov	edx,[irqnumber]
 mov	eax,4
 mul	edx
@@ -129,15 +120,9 @@ mov	al,20h				          ; reset slave
 out	0a0h,al
 
 nslave:
-pop	ebx
-mov	ds,bx
-mov	es,bx
-mov	fs,bx
-mov	gs,bx
-
 popa					; restore registers
 iret			; return
 
 
 irqnumber dd 0
-
+save_segment dd 0

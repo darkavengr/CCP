@@ -35,7 +35,6 @@ typedef struct {
 	uint8_t currentdir[MAX_PATH];		
 	size_t rc;			
 	size_t flags;
-	size_t regs[MAX_REGS];
 	size_t writeconsolehandle;	
 	size_t readconsolehandle;	
 	size_t kernelstackpointer;

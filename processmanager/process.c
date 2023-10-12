@@ -29,10 +29,12 @@
 #include "process.h"
 #include "signal.h"
 #include "../header/bootinfo.h"
+#include "../header/debug.h"
 
 extern initializestack(void *ptr,size_t size);
 extern get_stack_top(void);
 extern get_stack_pointer(void);
+extern end_switch;
 
 size_t exec(char *filename,char *argsx,size_t flags);
 size_t kill(size_t process);
@@ -63,6 +65,7 @@ size_t load_executable(char *filename);
 size_t register_executable_format(EXECUTABLEFORMAT *format);
 PROCESS *get_next_process_pointer(void);
 void *get_process_registers_pointer(void);
+PROCESS *get_current_process_pointer(void);
 
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
@@ -100,7 +103,8 @@ PSP *psp=0;
 size_t *stackinit;
 char *fullpath[MAX_PATH];
 
-disablemultitasking(); /* disable task switching without disabling interrupts - interrupts need to be enabled for device I/O */
+disablemultitasking(); 
+disable_interrupts();
 
 /* add process to process list and find process id */
 
@@ -160,44 +164,18 @@ next->ticks=0;
 next->maxticks=DEFAULT_QUANTUM_COUNT;
 next->next=NULL;
 
-/* if process 0, use default kernel stack */
+next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);
+if(next->kernelstacktop == NULL) {
+	currentprocess=oldprocess;
+	loadpagetable(getpid());
+	freepages(highest_pid_used);
+	enablemultitasking();
 
-if(highest_pid_used == 0) {
-	next->kernelstacktop=get_stack_top();
-	next->kernelstackpointer=get_stack_pointer();
-}
-else
-{
-	next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);
-	if(next->kernelstacktop == NULL) {
-	 currentprocess=oldprocess;
-	 loadpagetable(getpid());
-	 freepages(highest_pid_used);
-	 enablemultitasking();
-
-	 close(handle);
-	 return(-1);
-	}
-
-	next->kernelstacktop += PROCESS_STACK_SIZE;
-	next->kernelstackpointer=next->kernelstacktop;
+	close(handle);
+	return(-1);
 }
 
-/* intitialize process registers */
-
-next->regs[0]=0;		/* EAX */
-next->regs[1]=0;		/* ECX */
-next->regs[2]=0;		/* EDX */
-next->regs[3]=0;		/* EBX */
-next->regs[4]=next->kernelstacktop;	/* ESP */
-next->regs[5]=next->kernelstacktop-PROCESS_STACK_SIZE;	/* EBP */
-next->regs[6]=0;		/* ESI */
-next->regs[7]=0;		/* EDI */
-next->regs[8]=0x1234ABCD; //entrypoint;	/* EIP */
-next->regs[9]=0x8;		/* cs */
-next->regs[10]=0x200;		/* eflags */
-
-
+next->kernelstacktop += PROCESS_STACK_SIZE;
 
 
 /* Enviroment variables are inherited
@@ -253,9 +231,9 @@ if(getpid() != 0) {
 	dup_internal(stderr,getppid());
 }
 
-//enable_interrupts();
+enable_interrupts();
 entrypoint=load_executable(tempfilename);			/* load executable */
-//disable_interrupts();
+disable_interrupts();
 
 if(entrypoint == -1) {
 	kernelfree(next);
@@ -272,17 +250,24 @@ ksprintf(psp->commandline,"%s %s",next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
 
-enable_interrupts();
+stackinit=next->kernelstacktop-(12*sizeof(size_t));
+next->kernelstackpointer=stackinit;
+
+kprintf_direct("next->kernelstacktop=%X\n",next->kernelstacktop);
 
 if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 	currentprocess=oldprocess;			/* restore previous process */
 
 	loadpagetable(getpid());
 	enablemultitasking();
+	enable_interrupts();
+
 	return;
 }
 else
 { 
+	initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);
+
 	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize user mode stack */
 
 	enablemultitasking();
@@ -291,6 +276,7 @@ else
 	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
 }
 
+return;
 }
 
 /*
@@ -827,8 +813,9 @@ return(NO_ERROR);				/* no error */
 */
 
 size_t getpid(void) {
-	if(currentprocess == NULL) return(0);
-	return(currentprocess->pid);
+if(currentprocess == NULL) return(0);
+
+return(currentprocess->pid);
 }
 
 /*
@@ -841,12 +828,12 @@ size_t getpid(void) {
 */
 
 size_t setlasterror(size_t err) {
-	if(currentprocess == NULL) {
+if(currentprocess == NULL) {
 		last_error_no_process=err;
 		return;
-	}
+}
 
-	currentprocess->lasterror=err;
+currentprocess->lasterror=err;
 }
 
 /*
@@ -1055,19 +1042,6 @@ return;
 }
 
 /*
-* Get pointer to saved process registers for current process
-*
-* In: nothing
-*
-* Returns pointer to saved process registers
-*
-*/
-void *get_process_registers_pointer(void) {
- return(&currentprocess->regs);
-}
-
-
-/*
 * Call critical error handler
 *
 * In: name	Error message to display
@@ -1177,22 +1151,32 @@ currentprocess->kernelstackpointer=new_stack_pointer;
 }
 
 size_t get_kernel_stack_pointer(void) {
-if(currentprocess == NULL) return(0);
+if(currentprocess == NULL) return(NULL);
 
 return(currentprocess->kernelstackpointer);
 }
 
 size_t get_kernel_stack_top(void) {
-if(currentprocess == NULL) return(0);
+if(currentprocess == NULL) return(NULL);
 
 return(currentprocess->kernelstacktop);
+}
+
+PROCESS *get_processes_pointer(void) {
+return(processes);
 }
 
 PROCESS *update_current_process_pointer(PROCESS *ptr) {
 currentprocess=ptr;
 }
 
+PROCESS *get_current_process_pointer(void) {
+return(currentprocess);
+}
+
 PROCESS *get_next_process_pointer(void) {
+if(currentprocess == NULL) return(NULL);
+
 return(currentprocess->next);
 }
 
