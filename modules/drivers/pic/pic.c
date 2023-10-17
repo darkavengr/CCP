@@ -43,23 +43,6 @@ extern irq14;
 extern irq15;
 
 /*
- * Set IRQ handler
- *
- * In: size_t irqnumber	IRQ number
-       void *handler		IRQ handler
- *
- *  Returns nothing
- *
- */
-void setirqhandler(size_t irqnumber,void *handler);
-void pic_init(void);
-
-void setirqhandler(size_t irqnumber,void *handler) {
- irq_handlers[irqnumber]=handler;
- return;
-}
-
-/*
  * Initialize PIC
  *
  * In: nothing
@@ -109,5 +92,22 @@ outb(0xa1,0);
 enable_interrupts();
 
 return;
+}
+
+/*
+ * Set IRQ handler
+ *
+ * In: size_t irqnumber	IRQ number
+       void *handler		IRQ handler
+ *
+ *  Returns nothing
+ *
+ */
+void setirqhandler(size_t irqnumber,void *handler);
+void pic_init(void);
+
+void setirqhandler(size_t irqnumber,void *handler) {
+ irq_handlers[irqnumber]=handler;
+ return;
 }
 

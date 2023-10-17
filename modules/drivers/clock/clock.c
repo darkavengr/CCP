@@ -32,6 +32,34 @@ size_t delay_loop(size_t delaycount);
 size_t clockio(size_t op,void *buf,size_t size);
 void clock_init(char *init);
 
+
+/*
+ * Initialize RTC
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
+
+void clock_init(char *init) {
+CHARACTERDEVICE device;
+
+strcpy(&device.dname,"CLOCK$");
+device.charioread=&clockio;
+device.ioctl=NULL;
+device.flags=0;
+device.data=NULL;
+device.next=NULL;
+
+if(add_char_device(&device) == -1) { /* can't intialize */
+	 kprintf_direct("kernel: can't intialize clock device\n");
+	 return(-1);
+}
+
+setlasterror(NO_ERROR);
+return(NO_ERROR);
+}
 /*
  * Get time and date
  *
@@ -137,31 +165,4 @@ setlasterror(DEVICE_IO_ERROR);
 return(-1);
 }
 
-/*
- * Initialize RTC
- *
- * In:  char *init	Initialization string
- *
- * Returns: nothing
- *
- */
-
-void clock_init(char *init) {
-CHARACTERDEVICE device;
-
-strcpy(&device.dname,"CLOCK$");
-device.charioread=&clockio;
-device.ioctl=NULL;
-device.flags=0;
-device.data=NULL;
-device.next=NULL;
-
-if(add_char_device(&device) == -1) { /* can't intialize */
-	 kprintf_direct("kernel: can't intialize clock device\n");
-	 return(-1);
-}
-
-setlasterror(NO_ERROR);
-return(NO_ERROR);
-}
 

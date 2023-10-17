@@ -25,20 +25,7 @@
 #define MODULE_INIT null_init
 
 void null_init(char *init);
-
-/*
- * Null device handler
- *
- * In: op 	Operation (0=read,1=write)
-       buf	Buffer
-       size	Size
- *
- *  Returns: nothing
- *
- */
-void nul(size_t op,void *buf,size_t size) {
-return;
-}
+void nul(size_t op,void *buf,size_t size);
 
 /*
  * Initialize null device
@@ -61,5 +48,20 @@ device.next=NULL;
 
 add_char_device(&device);			
 }
+
+/*
+ * Null device handler
+ *
+ * In: op 	Operation (0=read,1=write)
+       buf	Buffer
+       size	Size
+ *
+ *  Returns: nothing
+ *
+ */
+void nul(size_t op,void *buf,size_t size) {
+return;
+}
+
 
 

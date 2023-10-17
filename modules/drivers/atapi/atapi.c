@@ -32,6 +32,34 @@ size_t atapi_io(size_t op,size_t physdrive,size_t block,uint16_t *buf);
 size_t atapi_ident(size_t physdrive,ATA_IDENTIFY *buf);
 size_t atapi_init(char *initstring);
 
+
+/*
+ * Initialize ATAPI
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
+
+size_t atapi_init(char *initstring) {
+int physdiskcount;
+ATA_IDENTIFY ident;
+
+/* Add atapi partitions */
+
+for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk */
+
+	if(atapi_ident(physdiskcount,&ident) == -1) continue;		/* get ata identify */
+
+	if(partitions_init(physdiskcount,&atapi_io) == -1) {	/* can't initalize partitions */
+		kprintf_direct("atapi: Unable to intialize partitions for drive %X\n",physdiskcount);
+		return(-1);
+	}
+}
+
+return(0);	
+}
 /*
  * Send ATAPI command
  *
@@ -168,31 +196,4 @@ for(count=0;count<127;count++) {			/* read result words */
 return(0);
 }
 
-/*
- * Initialize ATAPI
- *
- * In:  char *init	Initialization string
- *
- * Returns: nothing
- *
- */
-
-size_t atapi_init(char *initstring) {
-int physdiskcount;
-ATA_IDENTIFY ident;
-
-/* Add atapi partitions */
-
-for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk */
-
-	if(atapi_ident(physdiskcount,&ident) == -1) continue;		/* get ata identify */
-
-	if(partitions_init(physdiskcount,&atapi_io) == -1) {	/* can't initalize partitions */
-		kprintf_direct("atapi: Unable to intialize partitions for drive %X\n",physdiskcount);
-		return(-1);
-	}
-}
-
-return(0);	
-}
 

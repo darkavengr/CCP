@@ -78,6 +78,7 @@ BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 size_t newfindblock;
 char *fullpath[MAX_PATH];
 SPLITBUF split;
+size_t filefound=FALSE;
 
 getfullpath(filename,fullpath);
 
@@ -90,37 +91,53 @@ if(op == 0) {
 }
 else
 {
-	newfindblock=(atoi(tarptr->size,8) / TAR_BLOCK_SIZE)+1;
-	if(newfindblock % TAR_BLOCK_SIZE) newfindblock++;
-
-	buf->findblock += newfindblock;
+//	DEBUG_PRINT_HEX(buf->findblock);
 
 	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findblock*TAR_BLOCK_SIZE);		/* first */
 }
 
-//DEBUG_PRINT_HEX(tarptr);
-//DEBUG_PRINT_HEX(buf->findblock);
+touppercase(split.filename);
 
-//DEBUG_PRINT_HEX(*tarptr->name);
+/* search for file */
 
-if(*tarptr->name == 0) {			/* last file */
-	setlasterror(FILE_NOT_FOUND);
-	return(-1);
+while(*tarptr->name != 0) {
+	if(*tarptr->name == 0) {		/* end of directory */
+		setlasterror(END_OF_DIR);
+		return(-1);
+	}
+
+	filefound=FALSE;
+	
+	touppercase(tarptr->name);
+
+	//DEBUG_PRINT_STRING(tarptr->name);
+	//DEBUG_PRINT_STRING(split.filename);
+	//DEBUG_PRINT_HEX(tarptr);
+
+	if(wildcard(split.filename,tarptr->name) == 0) { 	/* if file found */      	
+		strcpy(buf->filename,tarptr->name);	/* copy information */
+
+		buf->filesize=atoi(tarptr->size,8);
+		buf->drive=25;
+
+		buf->startblock=buf->findblock+1;
+
+		filefound=TRUE;
+	}
+
+	newfindblock=(atoi(tarptr->size,8) / TAR_BLOCK_SIZE)+1;		/* get number of blocks */
+	if(newfindblock % TAR_BLOCK_SIZE) newfindblock++;		/* round up */
+
+	buf->findblock += newfindblock;
+
+	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findblock*TAR_BLOCK_SIZE);
+
+	if(filefound == TRUE) break;
 }
 
-touppercase(split.filename);
-touppercase(tarptr->name);
-
-if(wildcard(split.filename,tarptr->name) == 0) { 	/* if file found */      	
-	strcpy(buf->filename,tarptr->name);	/* copy information */
-
-	buf->filesize=atoi(tarptr->size,8);
-	buf->drive='Z';
-
-	buf->startblock=buf->findblock+1;
-
-	setlasterror(NO_ERROR);
-	return(0);
+if(filefound == FALSE) {
+	setlasterror(FILE_NOT_FOUND);
+	return(-1);
 }
 
 setlasterror(NO_ERROR);
@@ -153,11 +170,13 @@ if(gethandle(handle,&onext) == -1) {	/* bad handle */
 // return(-1);
 //}
 
+//DEBUG_PRINT_HEX(onext.startblock);
+
 dataptr=boot_info->initrd_start+KERNEL_HIGH;		/* point to start */
 dataptr += (onext.startblock*TAR_BLOCK_SIZE);
 dataptr += onext.currentpos;				/* point to current position */
 
-DEBUG_PRINT_HEX(dataptr);
+//DEBUG_PRINT_HEX(dataptr);
 
 memcpy(buf,dataptr,size);				/* copy data */
 
@@ -297,10 +316,8 @@ size_t load_modules_from_initrd(void) {
 FILERECORD findmodule;
 char *filename[MAX_PATH];
 SPLITBUF split;
-//int handle;
 
 /* loop through modules in initrd and load them */
-
 if(findfirst("Z:\\*.o",&findmodule) == -1) return(FILE_NOT_FOUND);
 
 
@@ -313,9 +330,9 @@ do {
 		kprintf_direct("kernel: Error loading kernel module %s from initrd\n",filename);	
 	}
 
-asm("xchg %bx,%bx");
 } while(findnext("Z:\\*.o",&findmodule) != -1);
 
+asm("xchg %bx,%bx");
 setlasterror(NO_ERROR);
 return(0);
 }

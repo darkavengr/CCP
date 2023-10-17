@@ -58,6 +58,38 @@ size_t readcount=0;
 char *keylast=keybbuf;
 
 /*
+ * Initialize keyboard
+ *
+ * In: nothing
+ *
+ * Returns nothing
+ *
+ */
+void keyb_init(void) {
+CHARACTERDEVICE device;
+
+capson=FALSE;
+shiftpressed=FALSE;
+ctrlpressed=FALSE;
+altpressed=FALSE;
+
+/* create con devide */
+strcpy(&device.dname,"CON");
+device.charioread=&readconsole;
+device.chariowrite=NULL;
+device.ioctl=NULL;
+device.flags=0;
+device.data=NULL;
+device.next=NULL;
+
+add_char_device(&device);
+
+setirqhandler(1,&readkey);		/* set irq handler */
+	
+init_console_device(_READ,0,&readconsole);
+return;
+}
+/*
  * Read from console
  *
  * In: size_t ignore	Ignored value
@@ -380,36 +412,4 @@ else
 return;
 }
 
-/*
- * Initialize keyboard
- *
- * In: nothing
- *
- * Returns nothing
- *
- */
-void keyb_init(void) {
-CHARACTERDEVICE device;
-
-capson=FALSE;
-shiftpressed=FALSE;
-ctrlpressed=FALSE;
-altpressed=FALSE;
-
-/* create con devide */
-strcpy(&device.dname,"CON");
-device.charioread=&readconsole;
-device.chariowrite=NULL;
-device.ioctl=NULL;
-device.flags=0;
-device.data=NULL;
-device.next=NULL;
-
-add_char_device(&device);
-
-setirqhandler(1,&readkey);		/* set irq handler */
-	
-init_console_device(_READ,0,&readconsole);
-return;
-}
 

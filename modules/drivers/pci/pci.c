@@ -48,7 +48,43 @@ uint32_t pci_write_word(uint32_t bus,uint32_t device,uint32_t function,uint32_t 
 uint32_t pci_put_command(uint32_t bus,uint32_t device,uint32_t function,uint32_t data);
 uint32_t pci_put_status(uint32_t bus,uint32_t device,uint32_t function,uint32_t data);
 
+/*
+ * Initialize PCI
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
+void pci_init(char *initstring) {
+uint32_t function;
+uint32_t bus;
+uint32_t sbus;
+uint16_t pciword;
+uint32_t device;
+int count;
+uint16_t headertype;
 
+for(bus=0;bus < 256;bus++) {
+	for(device=0;device != 31;device++) {
+		for(function=0;function<8;function++) {	
+			if(pci_get_vendor(bus,device,function) == 0xffff) continue;		/* no device */
+
+			if(pci_get_class_code(bus,device,function) == 6 && pci_get_class_code(bus,device,function) == 4) { /* pci to pci */
+				sbus=pci_get_secondary_bus(bus,device,function);
+	 
+				for(function=0;function<8;function++) {	
+					add_pci_device(sbus,device,function);
+				}
+			}
+	   	   
+	   		add_pci_device(bus,device,function);
+		}
+	}
+}
+
+
+}
 /*
  * Get PCI device ID
  *
@@ -421,44 +457,6 @@ for(count=0;count<headersize;count++) {
 }
 
 return(0);
-}
-
-/*
- * Initialize PCI
- *
- * In:  char *init	Initialization string
- *
- * Returns: nothing
- *
- */
-void pci_init(char *initstring) {
-uint32_t function;
-uint32_t bus;
-uint32_t sbus;
-uint16_t pciword;
-uint32_t device;
-int count;
-uint16_t headertype;
-
-for(bus=0;bus < 256;bus++) {
-	for(device=0;device != 31;device++) {
-		for(function=0;function<8;function++) {	
-			if(pci_get_vendor(bus,device,function) == 0xffff) continue;		/* no device */
-
-			if(pci_get_class_code(bus,device,function) == 6 && pci_get_class_code(bus,device,function) == 4) { /* pci to pci */
-				sbus=pci_get_secondary_bus(bus,device,function);
-	 
-				for(function=0;function<8;function++) {	
-					add_pci_device(sbus,device,function);
-				}
-			}
-	   	   
-	   		add_pci_device(bus,device,function);
-		}
-	}
-}
-
-
 }
 
 /*

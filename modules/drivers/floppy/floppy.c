@@ -30,18 +30,26 @@
 
 #define MODULE_INIT floppy_init
 
-size_t checkstatus(void);
-size_t delay_loop(size_t delaycount);
-void floppy_writecommand(size_t drive,uint8_t c);
+size_t floppy_init(char *init);
+void motor_on(size_t drive);
+void motor_off(size_t drive);
+void initialize_floppy(size_t drive);
+size_t getstatus(size_t drive);
 size_t sector_io(size_t op,uint8_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf);
-void waitforirq6(void);
+size_t fd_io(size_t op,size_t drive,size_t block,char *buf);
+void irq6_handler(void);
+void reset_controller(size_t drive);
+void floppy_writecommand(size_t drive,uint8_t c);
+void waitforirq6(void); 
+size_t checkstatus(void);
+
+extern setirqhandler();
+
+size_t floppybuf;
 extern tickcount;
 volatile size_t irq6done=FALSE;
 void wait_for_irq6(void);
 extern setirqhandler();
-
-size_t floppybuf;
-
 uint8_t st0;
 uint8_t cyl;
 uint8_t st[7];
@@ -74,6 +82,79 @@ struct {
 	   { 18,2,2880 },\
 	   { 15,2,2400 },\
 	   { 36,2,5760 } };
+
+size_t floppy_init(char *init) {
+BLOCKDEVICE fdstruct;
+size_t floppycount=0;
+uint8_t ftype;
+size_t count;				 
+
+floppybuf=dma_alloc(512);					/* allocate dma buffer */
+if(floppybuf == -1) {					/* can't alloc */
+	kprintf_direct("floppy: can't allocate dma buffer\n");
+	return(-1);
+}
+
+#ifdef FLOPPY_DEBUG
+kprintf_direct("dma buf=%X\n",floppybuf);
+#endif
+
+outb(0x70,0x10);					/* check floppy disk presense */
+
+ftype=inb(0x71);
+
+if(ftype == 0) {				/* no floppy drives */
+	kprintf_direct("kernel: No floppy drives found\n");
+	return(-1);
+} 
+
+if((ftype >> 4) != 0) floppycount++;		/* number of floppy drives */
+if((ftype & 0x0f) != 0) floppycount++;
+
+outb(0x70,0x10);					/* check floppy disk presence */
+ftype=inb(0x71);
+
+for(count=0;count<floppycount;count++) {
+	if(count == 0) {
+		ftype=ftype >> 4;
+	}
+	else
+	{
+		ftype=ftype & 0x0f;
+	}
+
+	fdstruct.sectorspertrack=fdparams[ftype].sectorspertrack;
+	fdstruct.numberofheads=fdparams[ftype].numberofheads;
+	fdstruct.numberofsectors=fdparams[ftype].numberofsectors;
+	
+	 if(count == 0) {
+	 	strcpy(fdstruct.dname,"FD0");
+	 	fdstruct.blockio=&fd_io;		/*setup struct */
+	 	fdstruct.ioctl=NULL;
+	 	fdstruct.physicaldrive=0;
+	 	fdstruct.drive=0;
+	 	fdstruct.flags=0;
+	 	fdstruct.startblock=0;
+	 	fdstruct.sectorsperblock=1;
+	 }
+	 else
+	 {
+	 	strcpy(fdstruct.dname,"FD1");
+	 	fdstruct.blockio=&fd_io;		/*setup struct */
+	 	fdstruct.ioctl=NULL;
+	 	fdstruct.physicaldrive=1;
+	 	fdstruct.drive=1;
+	 	fdstruct.flags=0;
+	 	fdstruct.startblock=0;
+	 	fdstruct.sectorsize=512;
+	 	fdstruct.sectorsperblock=1;
+	 }
+
+	 add_block_device(&fdstruct);	 /* drive a */
+}
+
+setirqhandler(6,&irq6_handler);		/* set irq handler */
+}
 
 /*
  * Switch floppy motor on
@@ -534,81 +615,6 @@ if((inb(MAIN_STATUS_REG) & 0xc0) != 0x80) {	/* need to reset */
 
 outb(DATA_REGISTER,c);				/* write data */
 } 	
-
-
-
-size_t floppy_init(char *init) {
-BLOCKDEVICE fdstruct;
-size_t floppycount=0;
-uint8_t ftype;
-size_t count;				 
-
-floppybuf=dma_alloc(512);					/* allocate dma buffer */
-if(floppybuf == -1) {					/* can't alloc */
-	kprintf_direct("floppy: can't allocate dma buffer\n");
-	return(-1);
-}
-
-#ifdef FLOPPY_DEBUG
-kprintf_direct("dma buf=%X\n",floppybuf);
-#endif
-
-outb(0x70,0x10);					/* check floppy disk presense */
-
-ftype=inb(0x71);
-
-if(ftype == 0) {				/* no floppy drives */
-	kprintf_direct("kernel: No floppy drives found\n");
-	return(-1);
-} 
-
-if((ftype >> 4) != 0) floppycount++;		/* number of floppy drives */
-if((ftype & 0x0f) != 0) floppycount++;
-
-outb(0x70,0x10);					/* check floppy disk presence */
-ftype=inb(0x71);
-
-for(count=0;count<floppycount;count++) {
-	if(count == 0) {
-		ftype=ftype >> 4;
-	}
-	else
-	{
-		ftype=ftype & 0x0f;
-	}
-
-	fdstruct.sectorspertrack=fdparams[ftype].sectorspertrack;
-	fdstruct.numberofheads=fdparams[ftype].numberofheads;
-	fdstruct.numberofsectors=fdparams[ftype].numberofsectors;
-	
-	 if(count == 0) {
-	 	strcpy(fdstruct.dname,"FD0");
-	 	fdstruct.blockio=&fd_io;		/*setup struct */
-	 	fdstruct.ioctl=NULL;
-	 	fdstruct.physicaldrive=0;
-	 	fdstruct.drive=0;
-	 	fdstruct.flags=0;
-	 	fdstruct.startblock=0;
-	 	fdstruct.sectorsperblock=1;
-	 }
-	 else
-	 {
-	 	strcpy(fdstruct.dname,"FD1");
-	 	fdstruct.blockio=&fd_io;		/*setup struct */
-	 	fdstruct.ioctl=NULL;
-	 	fdstruct.physicaldrive=1;
-	 	fdstruct.drive=1;
-	 	fdstruct.flags=0;
-	 	fdstruct.startblock=0;
-	 	fdstruct.sectorsize=512;
-	 	fdstruct.sectorsperblock=1;
-	 }
-
-	 add_block_device(&fdstruct);	 /* drive a */
-}
-
-setirqhandler(6,&irq6_handler);		/* set irq handler */
-}	
 
 /*
  * Wait for IRQ6 to be called

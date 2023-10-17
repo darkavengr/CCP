@@ -48,6 +48,34 @@ size_t ppos;
 7 	Light Grey (White) 	15 	White (Light White) */
 
 /*
+ * Initialize screen
+ *
+ * In:  char *init	Initialization string
+ *
+ * Returns: nothing
+ *
+ */
+
+void console_init(char *init) {
+CHARACTERDEVICE device;
+
+strcpy(&device.dname,"CONOUT");
+device.charioread=NULL;
+device.chariowrite=&outputconsole;
+device.ioctl=NULL;
+device.flags=0;
+device.data=NULL;
+device.next=NULL;
+
+add_char_device(&device);			/* con */
+
+init_console_device(_WRITE,1,&outputconsole);
+init_console_device(_WRITE,2,&outputconsole);
+
+return(NULL);
+}
+
+/*
  * Console I/O function
  *
  * In:  op	Operation (0=read,1=write)
@@ -150,31 +178,4 @@ bootinfo->cursor_col=c;
 return;
 }
 
-/*
- * Initialize screen
- *
- * In:  char *init	Initialization string
- *
- * Returns: nothing
- *
- */
-
-void console_init(char *init) {
-CHARACTERDEVICE device;
-
-strcpy(&device.dname,"CONOUT");
-device.charioread=NULL;
-device.chariowrite=&outputconsole;
-device.ioctl=NULL;
-device.flags=0;
-device.data=NULL;
-device.next=NULL;
-
-add_char_device(&device);			/* con */
-
-init_console_device(_WRITE,1,&outputconsole);
-init_console_device(_WRITE,2,&outputconsole);
-
-return(NULL);
-}
 

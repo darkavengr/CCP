@@ -32,7 +32,7 @@
 #include <elf.h>
 
 size_t load_kernel_module(char *filename,char *argsx);
-size_t getnameofsymbol(char *strtab,char *sectionheader_strptr,char *buf,Elf32_Sym *symtab,size_t which,char *name);
+size_t getnameofsymbol(char *strtab,char *sectionheader_strptr,char *buf,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name);
 size_t getkernelsymbol(char *name);
 size_t add_external_module_symbol(char *name,size_t val);
 size_t get_external_module_symbol(char *name);
@@ -112,6 +112,9 @@ close(handle);
 elf_header=buf;
 
 if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_header->e_ident[2] != 0x4C && elf_header->e_ident[3] != 0x46) {	/* not elf */
+
+	kprintf_direct("kernel: Module is not valid ELF object file\n");
+
 	setlasterror(INVALID_MODULE);
 	kernelfree(buf);
 
@@ -120,6 +123,8 @@ if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_heade
 }
 
 if((elf_header->e_type != ET_REL) || (elf_header->e_shnum == 0)) {	
+	kprintf_direct("kernel: Module is not relocatable ELF object file\n");
+
 	setlasterror(INVALID_MODULE);
 	kernelfree(buf);
 
@@ -160,7 +165,19 @@ for(count=0;count < elf_header->e_shnum;count++) {
 
 /* check if symbol and string table present */
 
-if((symtab == NULL) || (strtab == NULL)) {
+if(symtab == NULL) {
+	kprintf_direct("kernel: Module has no symbol section(s)\n");
+
+	setlasterror(INVALID_MODULE);
+	kernelfree(buf);
+
+	enablemultitasking();
+	return(-1); 
+}
+
+if(strtab == NULL) {
+	kprintf_direct("kernel: Module has no string section(s)\n");
+
 	setlasterror(INVALID_MODULE);
 	kernelfree(buf);
 
@@ -196,8 +213,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
 
-				//DEBUG_PRINT_HEX(reloc_count);
-
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
 				
 				if(shptr->sh_type == SHT_REL) {			
@@ -221,8 +236,11 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
 
 				/* get symbol value */
-				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,whichsym,name);	/* get name of symbol */				
 
+
+				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,\
+					       (buf+elf_header->e_shoff)+(symptr->st_shndx*sizeof(Elf32_Shdr)),whichsym,name);	/* get name of symbol */				
+				
 				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */							
 
 					symval=getkernelsymbol(name);
@@ -236,34 +254,25 @@ for(count=0;count<elf_header->e_shnum;count++) {
 					add_external_module_symbol(name,symval);		/* add external symbol to list */
 				}
 				else
-				{
-				
-					if((strcmp(name,".data") == 0) || (strcmp(name,".rodata") == 0)) {
-						symval=data+symptr->st_name;
+				{					
+					if((strcmp(name,"data") == 0) || (strcmp(name,"rodata") == 0)) {
+						if(strcmp(name,"data") == 0)  symval=data+symptr->st_value;
+						if(strcmp(name,"rodata") == 0)  symval=rodata+symptr->st_value;
 					}
 					else
 					{
 	
-						if((symptr->st_shndx != SHN_COMMON) && (symptr->st_shndx != 0)) {
-							symval=codestart+symptr->st_value;	
-							
+						if(symtype == STT_FUNC) {
+							symval=codestart+symptr->st_value;								
 						}
-						else
-						{
-							symval=codestart+shptr->sh_offset+symptr->st_value;	
+						else if(symtype == STT_OBJECT || symtype == STT_COMMON) {
+							symval=data+shptr->sh_offset+symptr->st_value;	
 						}
 
 					}	
 
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
 				}								
-
-				//DEBUG_PRINT_STRING(name);
-				//DEBUG_PRINT_HEX(relptr);
-				//DEBUG_PRINT_HEX(shptr);
-				//DEBUG_PRINT_HEX(ref);
-				//DEBUG_PRINT_HEX(symval);
-				//DEBUG_PRINT_HEX(symtype);
 
 				/* update reference in section */
 
@@ -309,6 +318,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 entry=codestart;
 
 enablemultitasking();
+
 return(entry(argsx));
 }
 
@@ -318,7 +328,8 @@ return(entry(argsx));
  * In: strtab	Pointer to ELF string table
 		 strtab String table
 		 sectionheader_strptr Section header string table
-		 syntab Symbol table
+		 symtab Symbol table
+		 sectionptr Section header
 		 which	Symbol index
 		 name	Symbol name buffer
  *
@@ -326,7 +337,7 @@ return(entry(argsx));
  * 
  */
 
-size_t getnameofsymbol(char *strtab,char *sectionheader_strptr,char *buf,Elf32_Sym *symtab,size_t which,char *name) {
+size_t getnameofsymbol(char *strtab,char *sectionheader_strptr,char *buf,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name) {
 size_t count;
 char *strptr=strtab;
 Elf32_Sym *symptr;
@@ -338,10 +349,7 @@ strcpy(name,(strtab+symptr->st_name)-1);
 
 if(strcmp(name,"") == 0) {		/* not a symbol table entry */
 	shptr=sectionheader_strptr;
-	
-	for(count=1;count<which;count++) {
-		shptr += (strlen(shptr)+1);
-	}
+	shptr += sectionptr->sh_name;	
 	
 	strcpy(name,shptr);
 	return(0);
