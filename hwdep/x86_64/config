@@ -1,0 +1,28 @@
+#
+# interactiveconfigure config file
+#
+
+# assembler to use, @asm@ in Makefile.in is replaced with this
+ASM=nasm
+# compiler to use, @cc@ in Makefile.in is replaced with this
+CC=x86_64-elf-gcc
+
+# linker to use, @ld@ in Makefile.in is replaced with this
+LD=x86_64-elf-ld
+
+# options to pass to the compiler, @cc_opts@ in Makefile.in is replaced with this
+CC_OPTS=-c -w -ffreestanding -nostdlib -lgcc 
+
+# options to pass to the assembler, @asm_opts@ in Makefile.in is replaced with this
+
+ASM_OPTS=-felf64
+
+# optional files, these are files that will be added in if the user wants
+#   opt_question:opt_yes:opt_no
+
+# directories to search for Makefile.in files
+# either specify a directory by itself or directory/* to search subdirs
+
+SEARCH=. drivers/* filesystems/* command
+
+

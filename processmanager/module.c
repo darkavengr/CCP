@@ -213,6 +213,8 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
 
+				//DEBUG_PRINT_HEX(reloc_count);
+
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
 				
 				if(shptr->sh_type == SHT_REL) {			
@@ -240,7 +242,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,\
 					       (buf+elf_header->e_shoff)+(symptr->st_shndx*sizeof(Elf32_Shdr)),whichsym,name);	/* get name of symbol */				
-				
+
 				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */							
 
 					symval=getkernelsymbol(name);
@@ -254,25 +256,41 @@ for(count=0;count<elf_header->e_shnum;count++) {
 					add_external_module_symbol(name,symval);		/* add external symbol to list */
 				}
 				else
-				{					
-					if((strcmp(name,"data") == 0) || (strcmp(name,"rodata") == 0)) {
-						if(strcmp(name,"data") == 0)  symval=data+symptr->st_value;
-						if(strcmp(name,"rodata") == 0)  symval=rodata+symptr->st_value;
+				{								
+					if(strcmp(name,"rodata") == 0) {
+						symval=rodata+symptr->st_value;
 					}
 					else
 					{
 	
-						if(symtype == STT_FUNC) {
+						if(symtype == STT_FUNC) {				/* code symbol */
 							symval=codestart+symptr->st_value;								
 						}
-						else if(symtype == STT_OBJECT || symtype == STT_COMMON) {
-							symval=data+shptr->sh_offset+symptr->st_value;	
+						else if(symtype == STT_OBJECT || symtype == STT_COMMON) {		/* data symbol */
+							symval=data+symptr->st_value;		
 						}
+
+
 
 					}	
 
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
-				}								
+				}	
+				
+				//if(strcmp(fullname,"Z:\\SERIALIO.O") == 0) {
+				//	DEBUG_PRINT_STRING(name);
+				//
+				//	DEBUG_PRINT_HEX(symptr->st_value);
+				//	DEBUG_PRINT_HEX(relptr);
+				//	DEBUG_PRINT_HEX(shptr);
+				//	DEBUG_PRINT_HEX(ref);
+				//	DEBUG_PRINT_HEX(symtype);
+				//	DEBUG_PRINT_HEX(symval);
+
+				//	asm("xchg %bx,%bx");
+
+				//}
+
 
 				/* update reference in section */
 

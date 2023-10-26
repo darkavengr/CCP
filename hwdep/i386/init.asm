@@ -102,6 +102,7 @@ jz    %%a202
 
 [BITS 16]
 use16
+
 cli
 mov	sp,0e000h				; temporary stack
 
@@ -214,7 +215,7 @@ sub	edx,kernel_begin
 push	dword [BOOT_INFO_MEMORY_SIZE]	; memory size
 push	dword [BOOT_INFO_SYMBOL_SIZE]	; symbol table size
 push	dword [BOOT_INFO_INITRD_SIZE]	; initrd size
-push	edx				; kernel size
+push	dword [BOOT_INFO_KERNEL_SIZE]				; kernel size
 call	initializepaging		; initialize paging to lower and higher halves of memory
 
 mov	eax,higher_half
@@ -316,9 +317,10 @@ mov	dx,0A1h
 out	dx,al
 
 call	init_multitasking
+
 call	driver_init				; initialize drivers and filesystems
 
-call	initrd_init
+;call	initrd_init
 
 mov	esp,(INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH)+KERNEL_STACK_SIZE	; temporary stack
 push	esp
@@ -326,7 +328,7 @@ call	set_tss_esp0
 
 call	initialize_tss					; initialize tss
 
-call	load_modules_from_initrd
+;call	load_modules_from_initrd
 
 sti
 

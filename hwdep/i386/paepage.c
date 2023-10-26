@@ -39,6 +39,7 @@ XXAAAAAAAAABBBBBBBBBCCCCCCCCCCCC
 #include "page.h"
 #include "hwdefs.h"
 #include "../../header/errors.h"
+#include "../../header/debug.h"
 
 extern end(void);
 extern kernel_begin(void);
@@ -89,8 +90,7 @@ uint32_t addr;
 next=processpaging;					/* find process page directory */
 
 do {	
-	if(next->process == process) break;
-	
+	if(next->process == process) break;	
 	next=next->next;
 } while(next != NULL);
 
@@ -102,15 +102,8 @@ pdpt_of=page >> 30;			/*  directory pointer table */
 pd=(page & 0x3FE00000) >> 21;
 pt=(page & 0x1FF000) >> 12;
 
-//kprintf_direct("page=%X\n",page);
-//kprintf_direct("pdpt=%X\n",pdpt_of);
-//kprintf_direct("pd=%X\n",pd);
-//kprintf_direct("pt=%X\n",pt);
-//kprintf_direct("physaddr=%X\n",physaddr);
-
-// asm("xchg %bx,%bx");
-
 /* if pdpt empty, add page directory to it, the page tables in the page directory will appear at 0xc0000000+(pd*512) */
+
 
 if(next->pdpt[pdpt_of] == 0) {			/* if pdpt empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
@@ -120,14 +113,10 @@ if(next->pdpt[pdpt_of] == 0) {			/* if pdpt empty */
 		return(-1);
 	}
 
-
 next->pdpt[pdpt_of]=(c & 0xfffff000) | PAGE_PRESENT;
 }
 
 v=KERNEL_HIGH+(next->pdpt[pdpt_of] & 0xfffff000);
-
-//kprintf_direct("pd v=%X\n",v);
-//asm("xchg %bx,%bx");
 
 if(v[pd] == 0) {				/* if page directory empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
@@ -137,20 +126,12 @@ if(v[pd] == 0) {				/* if page directory empty */
 		return(-1);
 	}
 
-	v[pd]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;
-
-	//kprintf_direct("c=%X\n",c);
-	// asm("xchg %bx,%bx");
+	v[pd]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;	
 }
 	
 /* page tables are mapped at 0xc0000000 via recursive paging */
-v=0xc0000000+(pdpt_of << 21+(pdpt_of*PAGE_SIZE))+(pd << 12);
 
-//kprintf_direct("v=%X\n",v);
-//asm("xchg %bx,%bx");
-
-//////kprintf_direct("&pt[v]=%X\n",&v[pt]);
-//////kprintf_direct("mode=%X\n",mode);
+v=0xc0000000+(pdpt_of << 21) | (pd << 12);
 	
 addr=physaddr;
 

@@ -1,0 +1,4 @@
+pci.c: In function ‘pci_init’:
+pci.c:80:1: error: expected declaration or statement at end of input
+ }
+ ^

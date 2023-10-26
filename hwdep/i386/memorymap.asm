@@ -54,8 +54,6 @@ mov	edi,[memory_map_address]
 mov	ecx,[memory_size]
 and	ecx,0fffff000h
 shr	ecx,12					; get number of 4096-byte pages
-shl	ecx,2
-
 xor	eax,eax
 rep	stosd
 
