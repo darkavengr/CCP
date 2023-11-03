@@ -116,7 +116,7 @@ if(next->pagedir[pd] == 0) {				/* if page directory empty */
 v=(uint32_t *) 0xffc00000 + (pd*1024);
 v[pt]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
 
-	return;
+return;
 }
 
 /*
@@ -260,7 +260,7 @@ return;
 * Returns first free virtual address of size on success or -1 on error
 * 
 */
-size_t  findfreevirtualpage(size_t size,size_t alloc,size_t process) {
+size_t findfreevirtualpage(size_t size,size_t alloc,size_t process) {
 uint32_t s;
 size_t start;
 size_t end;

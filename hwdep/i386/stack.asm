@@ -34,19 +34,22 @@ cli
 mov	eax,[esp]					; get eip
 mov	[tempeip],eax
 
-mov	ebx,[esp+4]					; get esp
-mov	eax,ebx
-;sub	eax,[esp+8]					; minus stack size
+mov	ebx,[esp+8]					; get stack size
+mov	eax,[esp+4]					; get stack pointer
 
-mov	esp,ebx
-mov	ebp,eax
+mov	ebx,eax
+sub	ebx,[esp+8]					; minus stack size
+
+mov	esp,eax
+mov	ebp,ebx
 
 jmp	[tempeip]					; return without using stack
 
+
+; initialize kernel stack
+
 initializekernelstack:
 mov	eax,[esp+4]					; get stack address
-
-; initialize stack
 
 push	eax
 call	set_tss_esp0

@@ -37,12 +37,14 @@
  * Returns nothing
  */
 
+
 /*
 extern PROCESS *processes;
 extern PROCESS *currentprocess;
 extern irq_exit;
 
 void kernel_thread1(void) {
+
 enablemultitasking(); 
 enable_interrupts();
 
@@ -69,6 +71,7 @@ while(1) {
 
 */
 void kernel(void) {
+
 
 /*
 size_t *stackinit;
@@ -139,7 +142,6 @@ currentprocess=processes;
 
 init_task=&kernel_thread1;
 init_task();
-
 */
 
 if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run command interpreter */

@@ -1,2 +1,0 @@
-Fixed errors in remove_block_device, remove_char_device, fat_chmod, fat_setfiletimedate and kill.
-

@@ -63,8 +63,9 @@ add	esp,4
 call	increment_process_ticks
 
 call	is_process_ready_to_switch
-jnz	task_time_slice_finished
+
 test	eax,eax					; if process not ready to switch, return
+jnz	task_time_slice_finished
 
 jmp	end_switch
 
@@ -92,19 +93,18 @@ add	esp,4
 call	getpid
 
 push	eax
-call	loadpagetable						; load page tables
+call	loadpagetable					; load page tables
 add	esp,4
 
 ; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
-call	get_kernel_stack_top
+
+call	get_kernel_stack_pointer			; switch stack
 
 push	eax
 call	set_tss_esp0
 add	esp,4
 
-call	get_kernel_stack_pointer
 mov	esp,eax
-
 end_switch:
 ret
 

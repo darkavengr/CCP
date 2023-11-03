@@ -69,10 +69,10 @@ struct ppt *next;							/* pointer to next paging entry */
 /*
 * Add page
 *
-* In: uint32_t mode	Allocation mode(ALLOC_KERNEL or ALLOC_NORMAL)
-	     uint32_t process Process ID
-	     uint32_t page	Virtual address
-	     void *physaddr	Physical address
+* In: 	mode		Allocation mode(ALLOC_KERNEL or ALLOC_NORMAL)
+	process 	Process ID
+	page		Virtual address
+	physaddr	Physical address
 *
 * Returns 0 on success or -1 on error
 * 
@@ -90,7 +90,7 @@ uint32_t addr;
 next=processpaging;					/* find process page directory */
 
 do {	
-	if(next->process == process) break;	
+	if(next->process == process) break;
 	next=next->next;
 } while(next != NULL);
 
@@ -102,21 +102,37 @@ pdpt_of=page >> 30;			/*  directory pointer table */
 pd=(page & 0x3FE00000) >> 21;
 pt=(page & 0x1FF000) >> 12;
 
+if(process == 1) {
+	DEBUG_PRINT_HEX(pdpt_of);
+	DEBUG_PRINT_HEX(pd);
+	DEBUG_PRINT_HEX(pt);
+}
+
 /* if pdpt empty, add page directory to it, the page tables in the page directory will appear at 0xc0000000+(pd*512) */
 
 
 if(next->pdpt[pdpt_of] == 0) {			/* if pdpt empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
-
 	if(c == -1) {					/* allocation error */
 		setlasterror(NO_MEM);
 		return(-1);
 	}
 
-next->pdpt[pdpt_of]=(c & 0xfffff000) | PAGE_PRESENT;
+	asm("xchg %bx,%bx");
+	next->pdpt[pdpt_of]=(c & 0xfffff000) | PAGE_PRESENT;
+
+	if(process == 1) {
+		DEBUG_PRINT_HEX(c);
+		asm("xchg %bx,%bx");
+	}
+
+	v=KERNEL_HIGH+(next->pdpt[pdpt_of] & 0xfffff000);
 }
 
 v=KERNEL_HIGH+(next->pdpt[pdpt_of] & 0xfffff000);
+
+
+if(process == 1) DEBUG_PRINT_HEX(v);
 
 if(v[pd] == 0) {				/* if page directory empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
@@ -126,13 +142,18 @@ if(v[pd] == 0) {				/* if page directory empty */
 		return(-1);
 	}
 
-	v[pd]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;	
+	v[pd]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;
 }
 	
 /* page tables are mapped at 0xc0000000 via recursive paging */
 
 v=0xc0000000+(pdpt_of << 21) | (pd << 12);
-	
+
+if(process == 1) {
+	DEBUG_PRINT_HEX(v);
+	asm("xchg %bx,%bx");
+}
+
 addr=physaddr;
 
 v[pt]=(addr & 0xfffff000)+mode;			/* page table */
@@ -190,14 +211,13 @@ for(count=0;count<(size/PAGE_SIZE)+1;count++) {
 last->next=oldvirtaddress;
 last=last->next;
 
-memset(last,0,sizeof(struct ppt));
-
-last->pdptphys=pp;
+last->pdptphys=oldpp;
 last->process=process;
 
-memcpy(&last->pdpt[2],&processpaging->pdpt[2],64*2);			/* copy pdpt */
+memset(last->pdpt,0,sizeof(struct ppt));
 
-loadpagetable(process);
+last->pdpt[2]=processpaging->pdpt[2];		/* copy top-half PDPTs */
+last->pdpt[3]=processpaging->pdpt[3];
 
 last->next=NULL;
 return;
@@ -234,8 +254,6 @@ size_t *v;
 struct ppt *last;
 uint64_t *pagedir;
 size_t pdptcount;
-
-//kprintf_direct("free pages\n");
 
 next=processpaging;
 
@@ -313,8 +331,6 @@ start=2;
 end=3;
 }
 
-//kprintf_direct("search page tables\n");
-
 /* search through mapped in page tables for a free entry */
 
 last=0;
@@ -323,8 +339,7 @@ for(pdptcount=start;pdptcount<end;pdptcount++) {
 
 	if(next->pdpt[pdptcount] != 0) {
 
-		pagedirptr=0xc0000000+(pdptcount << 21);
-		//kprintf_direct("pagedirptr=%X\n",pagedirptr);
+			pagedirptr=0xc0000000+(pdptcount << 21);
 
 			for(pdcount=0;pdcount<512;pdcount++) {			/* pdpts */     
 
@@ -348,19 +363,13 @@ for(pdptcount=start;pdptcount<end;pdptcount++) {
 last=0;
 s=0;
 
-//kprintf_direct("search page directories\n");
-
 for(pdcount=start;pdcount<end;pdcount++) {			/* pdpts */     
-
-	 //////kprintf_direct("p=%X\n",next->pdpt[pdcount]);
 
 	  	 if(next->pdpt[pdcount] != 0) {
 			pagedirptr=KERNEL_HIGH+(next->pdpt[pdcount] & 0xfffff000);
 
 			ptptr=KERNEL_HIGH+(next->pdpt[pdcount] & 0xfffff000);
-			//	   kprintf_direct("ptptr=%X\n",ptptr);
-		 	//  asm("xchg %bx,%bx");
-
+		
 			 for(ptcount=0;ptcount<512;ptcount++) {			/* pdpts */     
 		 		if(ptptr[ptcount] == 0) {
 	         			if(s == 0) last=ptcount;
@@ -372,15 +381,7 @@ for(pdcount=start;pdcount<end;pdcount++) {			/* pdpts */
 		               		last=pdcount;
 				}
 
-		        	if(s >= size) {
-					// kprintf_direct("Use new page directory\n");
-					// kprintf_direct("pdcount=%X\n",pdcount);
-					// kprintf_direct("last=%X\n",last);
-					// kprintf_direct("freeaddr=%X\n",(pdcount << 30)+(last << 21));
-					// asm("xchg %bx,%bx");
-	
-					 return((pdcount << 30)+(last << 21)); /* found enough */	        
-		        	}               
+		        	if(s >= size) return((pdcount << 30)+(last << 21)); /* found enough */	         
 		  	}
 	       }
 	
@@ -388,14 +389,11 @@ for(pdcount=start;pdcount<end;pdcount++) {			/* pdpts */
 
 /* search through pdpts for a free entry */
 
-//kprintf_direct("search PDPTs\n");
-
 for(pdcount=start;pdcount != end;pdcount++) {			/* page directories */
 	if(next->pdpt[pdcount] == 0) {
-		//kprintf_direct("Use new pdpt\n");
 		s=s+(1024*1024*1024)*2;						/* found 2gb */
 
-		if(s >= size)  return(pdptcount << 30);
+		if(s >= size) return(pdptcount << 30);
 	}
 }
 	
@@ -417,26 +415,23 @@ struct ppt *next;
 next=processpaging;
 size_t count;
 
-if(process == 1) kprintf_direct("load page table 1\n");
-
-/* Clear unecessary bits in the PDPT, the accessed and dirty bits are set
-* whenever they are accessed via recursive paging. 
-* This can cause problems when loading cr3 with a PDPT, so the bits must be cleared. */
-
-for(count=0;count<4;count++) {
-	if(next->pdpt[count] != 0) next->pdpt[count]=(next->pdpt[count] & 0xfffffffffffff000) | PAGE_PRESENT;
-}
-
 /* Find process */
 
 while(next != NULL) {
+
 	if(next->process == process) {
-		if(process == 1) {
-			kprintf_direct("load page table 123\n");
-			asm("xchg %bx,%bx");
+
+		/* Clear unecessary bits in the PDPT, the accessed and dirty bits are set
+		 * whenever they are accessed via recursive paging. 
+		 * This can cause problems when loading cr3 with a PDPT so the bits must be cleared. */
+
+		for(count=0;count<4;count++) {
+			if(next->pdpt[count] != 0) next->pdpt[count]=(next->pdpt[count] & 0xfffffffffffff000) | PAGE_PRESENT;
 		}
-	
+
 		asm volatile("mov %0, %%cr3":: "b"(next->pdptphys));		/* load cr3 with PDPT */
+
+		if(process == 1) asm("xchg %bx,%bx");
 		return;
 	}
 
@@ -463,8 +458,6 @@ uint64_t pt;
 uint64_t *p;
 uint64_t *v;
 
-//kprintf_direct("get physical address\n");
-
 next=processpaging;					/* find process page directory */
 
 do {
@@ -478,11 +471,6 @@ pd=(virtaddr & 0x3FE00000) >> 21;
 pt=(virtaddr & 0x1FF000) >> 12;
 
 v=0xc0000000+(pdpt_of << 21+(pdpt_of*PAGE_SIZE))+(pd << 12);
-//kprintf_direct("get physical address pdpt_of=%X\n",pdpt_of);
-//kprintf_direct("get physical address pd=%X\n",pd);
-//kprintf_direct("get physical address pt=%X\n",pt);
-
-//kprintf_direct("get physical address v=%X\n",v);
 
 return(v[pt] & 0xfffff000);				/* return physical address */
 }
