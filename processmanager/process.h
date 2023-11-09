@@ -20,8 +20,6 @@
 
 extern tss_esp0;
 
-
-
 typedef struct { 
 	size_t pid;
 	size_t ticks;	
@@ -59,4 +57,42 @@ typedef struct {
 	 size_t (*callexec)(char *);
 	 struct EXECUTABLEFORMAT *next;
 } EXECUTABLEFORMAT;
+
+size_t exec(char *filename,char *argsx,size_t flags);
+size_t kill(size_t process);
+size_t exit(size_t val);
+void shutdown(size_t shutdown_status); 
+size_t findfirstprocess(PROCESS *buf); 
+size_t findnextprocess(PROCESS *buf); 
+size_t wait(size_t pid);
+size_t dispatchhandler(void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone);
+size_t getcwd(char *dir);
+size_t chdir(char *dirname);
+size_t getpid(void);
+size_t setlasterror(size_t err);
+size_t getlasterror(void);
+size_t getprocessfilename(char *buf);
+size_t getwriteconsolehandle(void);
+size_t getreadconsolehandle(void);
+size_t getprocessargs(char *buf);
+size_t getppid(void);
+size_t getreturncode(void);
+size_t ksleep(size_t wait);
+size_t signal(void *handler);
+size_t sendsignal(size_t process,size_t signal);
+size_t set_critical_error_handler(void *addr);
+size_t call_critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
+size_t processmanager_init(void);
+size_t blockprocess(size_t pid);
+size_t unblockprocess(size_t pid);
+char *getenv();
+void save_kernel_stack_pointer(size_t new_stack_pointer);
+size_t get_kernel_stack_pointer(void);
+size_t get_kernel_stack_top(void);
+PROCESS *get_processes_pointer(void);
+void update_current_process_pointer(PROCESS *ptr);
+PROCESS *get_current_process_pointer(void);
+PROCESS *get_next_process_pointer(void);
+size_t register_executable_format(EXECUTABLEFORMAT *format);
+size_t load_executable(char *filename);
 

@@ -29,6 +29,8 @@ global get_stack_pointer
 extern set_tss_esp0
 extern irq_exit
 
+section .text
+
 initializestack:
 cli
 mov	eax,[esp]					; get eip
@@ -59,5 +61,7 @@ ret
 get_stack_pointer:
 mov	eax,esp
 ret
+
+section .data
 
 tempeip dd 0

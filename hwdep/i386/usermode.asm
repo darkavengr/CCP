@@ -22,6 +22,7 @@ global switch_to_usermode_and_call_process
 
 %include "kernelselectors.inc"
 
+section .text
 ;
 ; switch to user mode
 ;

@@ -36,18 +36,13 @@ void keyb_init(void);
 size_t readkey(void);
 void keyb_init(void);
 
-uint32_t capson=FALSE;
-uint32_t shiftpressed=FALSE;
-uint32_t ctrlpressed=FALSE;
-uint32_t altpressed=FALSE;
-
 /* characters from scan codes */
 char *scancodes_unshifted[] = { "`",0x22,"1","2","3","4","5","6","7","8","9","0","-","="," ","\t","q","w","e","r","t","y","u", \
 			    "i","o","p","[","]","\n"," ","a","s","d","f","g","h","j","k","l",";","@","#"," ","\\","z","x","c", \
 		           	"v","b","n","m",",",".","/",",","/"," "," "," "," "," "," "," "," "," "," "," ", \
 			    " "," "," "," "," "," "," ","7","8","9","-","4","5","6","+","1","2","3","0"," " };
 
-	char *scancodes_shifted[] = { "`",0x22,"!","@","\£","$","%%","^","&","*","(",")","_","+","\b","\t","Q","W","E","R","T","Y","U", \
+char *scancodes_shifted[] = { "`",0x22,"!","@","\£","$","%%","^","&","*","(",")","_","+","\b","\t","Q","W","E","R","T","Y","U", \
 			    "I","O","P","{","}","\n"," ","A","S","D","F","G","H","J","K","L",":","%","`","£","|","Z", \
 			    "X","C","V","B","N","M","<",">","?"," "," "," "," "," "," "," "," "," "," "," "," ", \
 			    " "," "," "," "," "," "," ","7","8","9","-","4","5","6","+","1","2","3","0","." };
@@ -56,6 +51,7 @@ char *keybbuf[KEYB_BUFFERSIZE];
 char *keybuf=keybbuf;
 size_t readcount=0;
 char *keylast=keybbuf;
+uint8_t keyboardflags;		/* for caps lock, shift, control and alt keys */
 
 /*
  * Initialize keyboard
@@ -68,10 +64,7 @@ char *keylast=keybbuf;
 void keyb_init(void) {
 CHARACTERDEVICE device;
 
-capson=FALSE;
-shiftpressed=FALSE;
-ctrlpressed=FALSE;
-altpressed=FALSE;
+keyboardflags=0;
 
 /* create con devide */
 strcpy(&device.dname,"CON");
@@ -92,9 +85,9 @@ return;
 /*
  * Read from console
  *
- * In: size_t ignore	Ignored value
-		 char *buf		Buffer
-		 size_t size		Number of character to read
+ * In: ignore		Ignored value
+       buf		Buffer
+       size_t size	Number of character to read
  *
  *  Returns nothing
  *
@@ -110,7 +103,7 @@ while(readcount < size) {
 	 
 	if(*keybuf == 0x8) {
 	  
-/* overwrite character on screen */
+		/* overwrite character on screen */
 
 		if(bootinfo->cursor_col > 0) {
 			bootinfo->cursor_col--;
@@ -118,6 +111,8 @@ while(readcount < size) {
 			outputconsole(" ",1);
 
 			bootinfo->cursor_col--;
+	
+			*keybuf=0;
 		 }
 
 		return;
@@ -152,18 +147,20 @@ keycode=inb(0x60);
 /* if it's a break code, then do various keys */
 
 if((keycode & 128) == 128) {
+/* clear keyboard flags if key is up */
+
 	if(keycode == LEFT_SHIFT_UP || keycode == RIGHT_SHIFT_UP) {
-		shiftpressed=FALSE;
+		keyboardflags &= !SHIFT_PRESSED;
 		return;
 	}
 
 	if(keycode == LEFT_ALT_UP || keycode == RIGHT_ALT_UP) {
-		ctrlpressed=FALSE;
+		keyboardflags &= !ALT_PRESSED;
 		return;
 	}
 
 	if(keycode == LEFT_CTRL_UP || keycode == RIGHT_CTRL_UP) {
-		ctrlpressed=FALSE;
+		keyboardflags &= !CTRL_PRESSED;
 		return;
 	}
 
@@ -191,19 +188,19 @@ switch(keycode) {								/* control characters */
 		return;
 
 	case LEFT_SHIFT:
-		shiftpressed=TRUE;
+		keyboardflags |= SHIFT_PRESSED;
 
-		readcount--;					/* decrement readcount because shift shouldn't count as a character on it's own */
+		readcount--;				/* decrement readcount because shift shouldn't count this as a character on it's own */
 		return;
 	
 	case RIGHT_SHIFT:
-		shiftpressed=TRUE;
+		keyboardflags |= SHIFT_PRESSED;
 
 	 	readcount--;				/* see above comment */
 	 	return;
 
 	case KEY_ALT:
-		altpressed=TRUE;
+		keyboardflags |= ALT_PRESSED;
 	
 		readcount--;				/* see above comment */
 		return;
@@ -213,27 +210,27 @@ switch(keycode) {								/* control characters */
 		return;							
 	
 	case KEY_CAPSLOCK:
-		if(capson == TRUE) {
-			capson=FALSE;
+		if((keyboardflags & CAPSLOCK_PRESSED)) {	/* toggle capslock */
+			keyboardflags &= !CAPSLOCK_PRESSED;
 	 	}
 	 	else
 	 	{
-			capson=TRUE;
+			keyboardflags |= CAPSLOCK_PRESSED;
 		}
 
 		readcount--;				/* see above comment */
 	 	return;
 
-	case KEY_CTRL:									/* ctrl characters and ctrl alt del */
+	case KEY_CTRL:					/* ctrl characters and ctrl alt del */
 		keycode=inb(0x60);
 
-		ctrlpressed=TRUE;
+		keyboardflags |= CTRL_PRESSED;
 
-		readcount--;				/* see above comment */
+		readcount--;				/* see above comment about ignoring keys */
 		return;
 }
 
-if(ctrlpressed == TRUE) { 							/* control characters */
+if((keyboardflags & CTRL_PRESSED)) { 							/* control characters */
 
 switch(keycode) {
 	case KEY_SINGQUOTE_AT:
@@ -373,40 +370,41 @@ switch(keycode) {
 
 }
 
-if(ctrlpressed == TRUE && altpressed == TRUE && keycode == KEY_DEL) {
+if((keyboardflags & CTRL_PRESSED) && (keyboardflags & ALT_PRESSED) && keycode == KEY_DEL) {	/* press ctrl-alt-del */
 	kprintf("CTRL-ALT-DEL\n\n");
 	shutdown(1);
 }
 
 /* if caps lock in on only shift letters */
 
-if(capson == TRUE) {
+if((keyboardflags & CAPSLOCK_PRESSED)) {
 	c=*scancodes_shifted[keycode];		/* get character */
 
- 	if((c > 'A'-1 && c < 'Z'+1) && shiftpressed == TRUE) {
+ 	if((c >= 'A' && c <= 'Z') && ((keyboardflags & SHIFT_PRESSED) == 0)) {
 		c=c+32;				/* to lowercase */
-		*keybuf++=c;
-		kprintf(scancodes_unshifted[keycode]);
-		return;
-	}
-
-	if((c > 'A'-1 && c < 'Z'+1) && shiftpressed == FALSE) {
 		*keybuf++=c;
 		kprintf(scancodes_shifted[keycode]);
 		return;
 	}
 
+	if((c >= 'A' && c <= 'Z') && (keyboardflags & SHIFT_PRESSED)) {
+		*keybuf++=c;
+		kprintf(scancodes_unshifted[keycode]);
+		return;
+	}
+
 }
 	
-if(shiftpressed == FALSE) {
-	kprintf(scancodes_unshifted[keycode]);
+/* If capslock is not on, use uppercase letters if shift pressed. Use lowercase letters otherwise */
 
-	*keybuf++=*scancodes_unshifted[keycode];
+if((keyboardflags & SHIFT_PRESSED)) {
+	kprintf(scancodes_shifted[keycode]);
+	*keybuf++=*scancodes_shifted[keycode];
 }
 else
 {
-	kprintf(scancodes_shifted[keycode]);
-	*keybuf++=*scancodes_shifted[keycode];
+	kprintf(scancodes_unshifted[keycode]);
+	*keybuf++=*scancodes_unshifted[keycode];	
 }
 
 return;

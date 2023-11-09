@@ -38,6 +38,8 @@ extern dispatchhandler					; high-level dispatcher
 extern disablemultitasking
 extern enablemultitasking
 
+section .text
+
 initialize_interrupts:
 push	0
 push	offset int0_handler
@@ -433,6 +435,7 @@ mov	eax,[tempone]					; then return old eax
 iret_error:
 iret  
 
+section .data
 idt:
 dw 0x3FFF					; limit
 dd offset idttable				; base

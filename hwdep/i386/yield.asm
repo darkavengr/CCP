@@ -27,6 +27,7 @@
 extern switch_task
 global yield
 
+section .text
 [BITS 32]
 use32
 
@@ -84,5 +85,6 @@ popa						; restore new registers
 ;sti
 iret						; jump to cs:EIP
 
+section .data
 saveeip dd 0
 

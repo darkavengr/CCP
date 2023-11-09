@@ -28,6 +28,7 @@ global initialize_memory_map
 
 SYSTEM_USE equ 0FFFFFFFFh				; page marked for system use
 
+section .text
 initialize_memory_map:
 mov	eax,[esp+4]			; get memory map address
 mov	[memory_map_address],eax
@@ -122,9 +123,9 @@ mov	ecx,[BOOT_INFO_SYMBOL_SIZE+KERNEL_HIGH]
 shr	ecx,12					; get number of 4096-byte pages
 mov	eax,SYSTEM_USE
 rep	stosd
-
 ret
 
+.data
 stack_size dd 0
 stack_address dd 0
 kernel_size dd 0

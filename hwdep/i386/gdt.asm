@@ -11,6 +11,8 @@ GDT_ACCESS equ 5
 GDT_GRANULARITY equ 6
 GDT_BASE_HIGH equ 7
 
+section .text
+
 set_gdt:
 mov	edi,[esp+4]					; get gdt entry number
 mov	edx,[esp+8]					; get base

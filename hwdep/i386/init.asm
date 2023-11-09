@@ -100,6 +100,8 @@ test  al,1
 jz    %%a202
 %endmacro
 
+section.text
+
 [BITS 16]
 use16
 
@@ -335,6 +337,7 @@ sti
 ; jump to highlevel code
 jmp	kernel
 
+section .data
 gdtinfo:
 dw offset gdt_end - offset gdt-1
 dd offset gdt-KERNEL_HIGH
@@ -381,7 +384,6 @@ db 0						; last byte of base
 times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0		; extra entries for TSS and other things
 
 gdt_end:
-
 
 MEMBUF_START dd offset end
 

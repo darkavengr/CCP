@@ -24,6 +24,8 @@
 global halt
 global restart
 
+section.text
+
 halt:
 hlt
 

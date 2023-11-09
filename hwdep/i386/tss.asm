@@ -10,6 +10,7 @@ extern set_gdt
 
 TSS_GDT_ENTRY equ 5
 
+section .text
 ; intialize tss
 
 set_tss_esp0:
@@ -44,6 +45,7 @@ mov	ax,TSS_SELECTOR + 3				; load tss for interrupt calls from ring 3
 ltr	ax
 ret
 
+section .data
 
 tss:
 prev dd 0

@@ -36,37 +36,6 @@ extern get_stack_top(void);
 extern get_stack_pointer(void);
 extern end_switch;
 
-size_t exec(char *filename,char *argsx,size_t flags);
-size_t kill(size_t process);
-size_t exit(size_t val);
-void shutdown(size_t shutdown_status); 
-size_t findfirstprocess(PROCESS *buf); 
-size_t findnextprocess(PROCESS *buf); 
-size_t dispatchhandler(void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone);
-size_t getcwd(char *dir);
-size_t chdir(char *dirname);
-size_t getpid(void);
-size_t setlasterror(size_t err);
-size_t getlasterror(void);
-size_t getprocessfilename(char *buf);
-size_t getwriteconsolehandle(void);
-size_t getreadconsolehandle(void);
-size_t getprocessargs(char *buf);
-size_t getppid(void);
-size_t getreturncode(void);
-size_t getprocessflags(void);
-size_t ksleep(size_t wait);
-size_t signal(void *handler);
-size_t sendsignal(size_t process,size_t signal);
-size_t set_critical_error_handler(void *addr);
-size_t call_critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
-char *getenv();
-size_t load_executable(char *filename);
-size_t register_executable_format(EXECUTABLEFORMAT *format);
-PROCESS *get_next_process_pointer(void);
-void *get_process_registers_pointer(void);
-PROCESS *get_current_process_pointer(void);
-
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
 PROCESS *processes_end=NULL;
@@ -251,7 +220,18 @@ ksprintf(psp->commandline,"%s %s",next->filename,next->args);
 psp->cmdlinesize=strlen(psp->commandline);
 
 stackinit=next->kernelstacktop-(12*sizeof(size_t));
-next->kernelstackpointer=stackinit;
+
+*++stackinit=0xFFFFFFFF;
+*++stackinit=0xEEEEEEEE;
+*++stackinit=0xDDDDDDDD;
+*++stackinit=0xCCCCCCCC;
+*++stackinit=next->kernelstacktop;
+*++stackinit=next->kernelstacktop-PROCESS_STACK_SIZE;
+*++stackinit=0xBBBBBBBB;
+*++stackinit=0xAAAAAAAA;
+*++stackinit=entrypoint;
+*++stackinit=0x8;
+*++stackinit=0x200;
 
 kprintf_direct("next->kernelstacktop=%X\n",next->kernelstacktop);
 
@@ -1165,7 +1145,7 @@ PROCESS *get_processes_pointer(void) {
 return(processes);
 }
 
-PROCESS *update_current_process_pointer(PROCESS *ptr) {
+void update_current_process_pointer(PROCESS *ptr) {
 currentprocess=ptr;
 }
 

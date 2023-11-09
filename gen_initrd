@@ -2,11 +2,16 @@
 
 export drivers_list=""
 
-echo Generating initial ramdisk....
-
-if [ $# -lt 3 ]; then
+if [ $# -lt 2 ]; then
 	exit
 fi
+
+if [ ! -e $1/INITRD.SYS ]; then 
+	echo gen_initrd: File $1/INITRD.SYS not found, not creating initial ramdisk 
+	exit
+fi
+
+echo Generating initial ramdisk....
 
 directory=$1
 outfile=$2

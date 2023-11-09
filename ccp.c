@@ -37,42 +37,32 @@
  * Returns nothing
  */
 
-
 /*
 extern PROCESS *processes;
 extern PROCESS *currentprocess;
 extern irq_exit;
 
 void kernel_thread1(void) {
+	enablemultitasking(); 
+	enable_interrupts();
 
-enablemultitasking(); 
-enable_interrupts();
-
-while(1) {
-
-	asm(".intel_syntax noprefix");
-	asm("inc byte ptr [0x800b8000]");
-	asm(".att_syntax prefix");
-}
+	while(1) {
+		kprintf_direct("A");
+	}
 
 }
 
 void kernel_thread2(void) {
-enablemultitasking(); 
-enable_interrupts();
+	enablemultitasking(); 
+	enable_interrupts();
 
-while(1) {
-	asm(".intel_syntax noprefix");
-	asm("inc byte ptr [0x800b8002]");
-	asm(".att_syntax prefix");
+	while(1) {
+		kprintf_direct("B");
+	}
 }
-
-}
-
 */
+
 void kernel(void) {
-
-
 /*
 size_t *stackinit;
 PROCESS *next;

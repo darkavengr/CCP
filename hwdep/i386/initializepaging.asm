@@ -34,6 +34,9 @@ ROOT_EMPTY		equ	0x4000
 
 PAGE_PRESENT		equ	1
 PAGE_RW			equ	2
+
+section .text
+
 ;
 ; Intialize paging
 ;
@@ -250,6 +253,7 @@ mov	[edi],eax
 endunmap:
 ret
 
+section .data
 kernel_size dd 0
 initrd_size dd 0
 symtab_size dd 0

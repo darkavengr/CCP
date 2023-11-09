@@ -4,11 +4,6 @@
 #define TRUE		1
 #define	FALSE		0
 
-#define KEYB_CAPSLOCK_FLAG	1
-#define KEYB_SHIFT_FLAG		2
-#define KEYB_CTRL_FLAG		4
-#define KEYB_ALT_FLAG		8
-
 #define CTRL_AT		0
 #define CTRL_A 		1
 #define CTRL_B 		2
@@ -130,8 +125,8 @@
 #define KEY_PAGEDOWN3		82
 #define KEY_DEL			83
 #define KEY_DELPOINT		84
-#define RIGHT_SHIFT		0x2a
-#define LEFT_SHIFT		 0x36
+#define RIGHT_SHIFT		0x36
+#define LEFT_SHIFT		0x2a
 
 #define LEFT_SHIFT_UP		0xAA
 #define RIGHT_SHIFT_UP		0xB7
@@ -141,5 +136,11 @@
 #define RIGHT_CTRL_UP		0x9D
 
 #define KEYB_BUFFERSIZE 256
+
+#define SHIFT_PRESSED 		1
+#define ALT_PRESSED		2
+#define CTRL_PRESSED		4
+#define CAPSLOCK_PRESSED	8
+
 
 
