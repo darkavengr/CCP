@@ -102,14 +102,7 @@ pdpt_of=page >> 30;			/*  directory pointer table */
 pd=(page & 0x3FE00000) >> 21;
 pt=(page & 0x1FF000) >> 12;
 
-if(process == 1) {
-	DEBUG_PRINT_HEX(pdpt_of);
-	DEBUG_PRINT_HEX(pd);
-	DEBUG_PRINT_HEX(pt);
-}
-
 /* if pdpt empty, add page directory to it, the page tables in the page directory will appear at 0xc0000000+(pd*512) */
-
 
 if(next->pdpt[pdpt_of] == 0) {			/* if pdpt empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
@@ -118,21 +111,11 @@ if(next->pdpt[pdpt_of] == 0) {			/* if pdpt empty */
 		return(-1);
 	}
 
-	asm("xchg %bx,%bx");
+
 	next->pdpt[pdpt_of]=(c & 0xfffff000) | PAGE_PRESENT;
-
-	if(process == 1) {
-		DEBUG_PRINT_HEX(c);
-		asm("xchg %bx,%bx");
-	}
-
-	v=KERNEL_HIGH+(next->pdpt[pdpt_of] & 0xfffff000);
 }
 
 v=KERNEL_HIGH+(next->pdpt[pdpt_of] & 0xfffff000);
-
-
-if(process == 1) DEBUG_PRINT_HEX(v);
 
 if(v[pd] == 0) {				/* if page directory empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
@@ -149,11 +132,6 @@ if(v[pd] == 0) {				/* if page directory empty */
 
 v=0xc0000000+(pdpt_of << 21) | (pd << 12);
 
-if(process == 1) {
-	DEBUG_PRINT_HEX(v);
-	asm("xchg %bx,%bx");
-}
-
 addr=physaddr;
 
 v[pt]=(addr & 0xfffff000)+mode;			/* page table */
@@ -163,7 +141,7 @@ return(0);
 /*
 * Initialize process address space
 *
-* In: size_t process	Process ID
+* In: process	Process ID
 *
 * Returns nothing
 * 
@@ -214,10 +192,19 @@ last=last->next;
 last->pdptphys=oldpp;
 last->process=process;
 
-memset(last->pdpt,0,sizeof(struct ppt));
+/* add bottom half PDPTs */
 
-last->pdpt[2]=processpaging->pdpt[2];		/* copy top-half PDPTs */
-last->pdpt[3]=processpaging->pdpt[3];
+for(count=0;count != 2;count++) {
+	pp=kernelalloc_nopaging(PAGE_SIZE);
+	if(pp == NULL) return(-1);
+
+	last->pdpt[count]=pp | PAGE_PRESENT;
+
+	addpage_system(pp+KERNEL_HIGH,0,(void *) pp);
+}
+
+last->pdpt[2]=processpaging->pdpt[2];		/* copy top-half PDPT */
+last->pdpt[3]=oldpp | PAGE_PRESENT;		/* map last PDPT to PDPT */
 
 last->next=NULL;
 return;
@@ -242,7 +229,7 @@ return(NULL);
 /*
 * Free address space
 *
-* In: size_t process	Process ID
+* In: process	Process ID
 *
 */
 
@@ -292,9 +279,9 @@ return(NULL);
 /*
 * find free virtual address
 *
-* In: size_t size	Number of free bytes to find
-	     size_t alloc	Allocation flags (ALLOC_KERNEL to find in top half of memory, ALLOC_NORMAL to find in bottom half)
-	     size_t process		Process ID
+* In:  size	Number of free bytes to find
+       alloc	Allocation flags (ALLOC_KERNEL to find in top half of memory, ALLOC_NORMAL to find in bottom half)
+       process	Process ID
 
 * Returns NULL
 * 
@@ -404,7 +391,7 @@ return(-1);
 /*
 * Load page tables for process
 *
-* In: size_t process		Process ID
+* In: process		Process ID
 *
 * Returns NULL
 * 
@@ -430,8 +417,6 @@ while(next != NULL) {
 		}
 
 		asm volatile("mov %0, %%cr3":: "b"(next->pdptphys));		/* load cr3 with PDPT */
-
-		if(process == 1) asm("xchg %bx,%bx");
 		return;
 	}
 
@@ -444,8 +429,8 @@ return(-1);
 /*
 * Get physical address from virtual address
 *
-* In: size_t process		Process ID
-	     uint32_t virtaddr	Virtual address
+* In: process		Process ID
+      virtaddr	Virtual address
 *
 * Returns NULL
 * 
@@ -478,9 +463,9 @@ return(v[pt] & 0xfffff000);				/* return physical address */
 /*
 * Add user page
 *
-* In: uint32_t page		Virtual address       
-	     size_t process		Process ID
-	     void *physaddr		Physical address
+* In: page		Virtual address       
+      process		Process ID
+      physaddr		Physical address
 
 * Returns NULL
 * 
@@ -503,4 +488,4 @@ return(addpage_int(PAGE_USER+PAGE_RW+PAGE_PRESENT,process,page,physaddr));
 size_t addpage_system(uint32_t page,size_t process,void *physaddr) { 
 return(addpage_int(PAGE_SYSTEM+PAGE_RW+PAGE_PRESENT,process,page,physaddr));
 }
-	
+

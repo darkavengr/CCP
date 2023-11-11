@@ -97,8 +97,6 @@ while(next != NULL) {					/* find process */
 	next=next->next;
 }
 
-if(next == NULL) return(-1);
-
 pd=(page >> 22) & 0x3ff;				/* page directory offset */
 pt=(page >> 12) & 0x3ff;				/* page table offset */
 p=page & 0xFFF;

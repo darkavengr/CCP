@@ -43,6 +43,7 @@ extern increment_process_ticks
 extern get_next_process_pointer
 extern get_current_process_pointer
 extern get_processes_pointer
+extern increment_tick_count
 
 %define offset
 
@@ -52,6 +53,7 @@ switch_task:
 ;xchg	bx,bx
 mov	[save_esp],esp
 
+call	increment_tick_count
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled

@@ -22,7 +22,6 @@
 extern PROCESS *currentprocess;
 extern PROCESS *processes;
 
-size_t tickcount;
 size_t multitaskingenabled=FALSE;
 
 void disablemultitasking(void);
@@ -73,7 +72,6 @@ return;
  */
 
 void init_multitasking(void) {
-
 multitaskingenabled=FALSE;
 setirqhandler(0,switch_task);		/* Register timer */
 return;
@@ -115,23 +113,4 @@ size_t is_process_ready_to_switch(void) {
  return(TRUE);
 }
 
-void reset_process_ticks(void) {
- currentprocess->ticks=0;
-}
-
-size_t get_tick_count(void) {
- return(tickcount);
-}
-
-size_t increment_tick_count(void) {
- tickcount++;
-}
-
-void kwait(size_t ticks) {
- size_t newticks;
-
- newticks=get_tick_count()+ticks;
-
- while(get_tick_count() < newticks) ;;
-}
 

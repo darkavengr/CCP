@@ -235,7 +235,7 @@ xor	eax,eax
 mov	dword [edi],ROOT_EMPTY
 mov	[edi+4],eax
 
-mov	edi,ROOT_PDPT+(3*8)	; map last entry to page directory - page tables will be present at 0xc0000000 - 0xfffff000
+mov	edi,ROOT_PDPT+(3*8)	; map last entry to pdpt[0] - page tables will be present at 0xc0000000 - 0xfffff000
 mov	edx,ROOT_PDPT | PAGE_PRESENT
 mov	[edi],edx	
 mov	[edi+4],eax	

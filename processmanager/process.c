@@ -46,6 +46,7 @@ size_t signalno;
 size_t thisprocess;
 char *saveenv=NULL;
 EXECUTABLEFORMAT *executableformats=NULL;
+size_t tickcount;
 
 /*
 * Execute program
@@ -376,7 +377,7 @@ void shutdown(size_t shutdown_status) {
 	sendsignal(-1,SIGTERM);		/*  send terminate signal */
 
 	kprintf_direct("Waiting %d seconds for processes to terminate\n",SHUTDOWN_WAIT);
-	ksleep(SHUTDOWN_WAIT);
+	kwait(SHUTDOWN_WAIT);
 	
 	if(processes != NULL) kprintf_direct("processes did not terminate in time (too bad)\n");
 
@@ -578,7 +579,7 @@ switch(highbyte) {		/* function */
 		return(blockio(_WRITE,argthree,argfour));
 
 	case 0x8c:				/* set signal handler */
-		return(signal(argfour));
+		signal(argfour);
 
 	case 0x8d:				/* send signal */
 		return(sendsignal((size_t) argtwo,argfour));
@@ -806,7 +807,7 @@ return(currentprocess->pid);
 *
 */
 
-size_t setlasterror(size_t err) {
+void setlasterror(size_t err) {
 if(currentprocess == NULL) {
 		last_error_no_process=err;
 		return;
@@ -887,7 +888,7 @@ return(currentprocess->readconsolehandle);
 *
 */
 
-size_t getprocessargs(char *buf) {
+void getprocessargs(char *buf) {
 if(currentprocess == NULL) return;
 
 strcpy(buf,currentprocess->args);
@@ -930,23 +931,6 @@ currentprocess->ticks++;
 }
 
 /*
-* Sleep for specified time
-*
-* In: size_t wait	Time to sleep for  
-*
-* Returns nothing
-*
-*/
-
-size_t ksleep(size_t wait) {
-size_t newtick;
-
-newtick=get_tick_count()+wait;
-
-while(get_tick_count() <= newtick) ;;
-}
-
-/*
 * Set signal handler
 *
 * In: void *handler	Handler function to call on signal receipt
@@ -955,11 +939,9 @@ while(get_tick_count() <= newtick) ;;
 *
 */
 
-size_t signal(void *handler) {
+void signal(void *handler) {
 currentprocess->signalhandler=handler;
-
-setlasterror(NO_ERROR);
-return(NO_ERROR);
+return;
 }
 
 /*
@@ -1014,7 +996,7 @@ return(0);
 *
 */
 
-size_t set_critical_error_handler(void *addr) {
+void set_critical_error_handler(void *addr) {
 currentprocess->errorhandler=addr;
 
 return;
@@ -1049,7 +1031,7 @@ return(currentprocess->errorhandler(name,drive,flags,error));
 *
 */
 
-size_t processmanager_init(void) {
+void processmanager_init(void) {
 processes=NULL;
 currentprocess=NULL;
 
@@ -1235,3 +1217,23 @@ setlasterror(INVALID_BINFMT);
 return(-1);
 }
 
+
+void reset_process_ticks(void) {
+ currentprocess->ticks=0;
+}
+
+size_t get_tick_count(void) {
+ return(tickcount);
+}
+
+void increment_tick_count(void) {
+ tickcount++;
+}
+
+void kwait(size_t ticks) {
+ size_t newticks;
+
+ newticks=get_tick_count()+ticks;
+
+ while(get_tick_count() < newticks) ;;
+}
