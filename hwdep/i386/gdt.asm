@@ -1,17 +1,33 @@
 global set_gdt
 
 extern gdt
+extern gdt_end
 
 %define offset
 
-GDT_LIMIT_LOW equ 0
-GDT_BASE_LOW equ 2
+GDT_LIMIT_LOW	equ 0
+GDT_BASE_LOW	equ 2
 GDT_BASE_MIDDLE equ 4
-GDT_ACCESS equ 5
+GDT_ACCESS	equ 5
 GDT_GRANULARITY equ 6
-GDT_BASE_HIGH equ 7
+GDT_BASE_HIGH	equ 7
 
 section .text
+[BITS 32]
+use32
+
+;
+; Set GDT entry
+;
+; In: 
+; [esp+4]	GDT entry number
+; [esp+8]	Base address
+; [esp+12]	Limit
+; [esp+16]	Access bits
+; [esp+20]	Granularity bits
+;
+; Returns: -1 on error or 0 on success
+;
 
 set_gdt:
 mov	edi,[esp+4]					; get gdt entry number
@@ -23,6 +39,13 @@ mov	eax,[esp+20]					; get granularity
 shl	edi,3						; multiply by size of gdt entry (8)
 add	edi,offset gdt					; point to gdt entry
 
+cmp	edi,offset gdt_end				; check if past end of GDT
+jl	gdt_is_ok
+
+mov	eax,0xffffffff					; return error
+ret
+
+gdt_is_ok:
 ; put base
 mov	esi,edx
 and	edx,0xffff
@@ -51,6 +74,9 @@ and	eax,0xf0
 or	ecx,eax
 mov	[edi+GDT_GRANULARITY],cl
 
-
 mov	[edi+GDT_ACCESS],bl		; put access
+
+xor	eax,eax			; return success
+ret
+
 ret

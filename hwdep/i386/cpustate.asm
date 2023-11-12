@@ -25,10 +25,25 @@ global halt
 global restart
 
 section.text
-
+[BITS 32]
+use32
+;
+; Halt CPU
+;
+; In: Nothing
+;
+; Returns: Nothing
+;
 halt:
 hlt
 
+;
+; Restart CPU
+;
+; In: Nothing
+;
+; Returns: Nothing
+;
 restart:
 in	al,64h					; get status
 

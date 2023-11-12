@@ -155,8 +155,8 @@ return(size);
 /*
  * Move cursor
  *
- * In:  bootinfo->cursor_row	bootinfo->cursor_row to move to
-			    bootinfo->cursor_col	bootinfo->cursor_column to move to
+ * In:  r	Row move to
+	c	Column to move to
  *
  *  Returns: nothing
  *

@@ -16,14 +16,6 @@
 ;  You should have received a copy of the GNU General Public License
 ;  along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
-;
-; Switch task
-;
-; This function is called by a function which is expected to save the registers onto the stack and call switch_task.
-; After returning from switch_task, the calling function will then restore the registers and return, transferring control to the new process.
-;
-; You are not expected to understand this
-;
 global switch_task
 global end_switch
 
@@ -48,12 +40,27 @@ extern increment_tick_count
 %define offset
 
 section .text
+[BITS 32]
+use32
 
+;
+; Switch task
+;
+; In: Address of stack frame
+;
+; Returns: Never returns
+;
+; This function is called by a function which is expected to save the registers onto the stack and call switch_task.
+; After returning from switch_task, the calling function will then restore the registers and return, transferring control to the new process.
+;
+; You are not expected to understand this
+;
 switch_task:
 ;xchg	bx,bx
 mov	[save_esp],esp
 
 call	increment_tick_count
+
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled
@@ -120,6 +127,5 @@ end_switch:
 ret
 
 section .data
-
 save_esp dd 0
 

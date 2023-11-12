@@ -11,17 +11,40 @@ extern set_gdt
 TSS_GDT_ENTRY equ 5
 
 section .text
-; intialize tss
+[BITS 32]
+use32
+
+;
+; Set TSS ring 0 ESP value
+;
+; In: New ring 0 ESP value
+;
+; Returns: Nothing
+;
 
 set_tss_esp0:
 mov	eax,[esp+4]					; get address
 mov	[tss_esp0],eax
 ret
 
+;
+; Get top of kernel mode stack
+;
+; In: Nothing
+;
+; Returns: top of kernel mode stack
+;
 get_stack_top:
 mov	eax,[tss_esp0]
 ret
 
+;
+; Initialize TSS
+;
+; In: Nothing
+;
+; Returns: Nothing
+;
 initialize_tss:
 ;xchg	bx,bx
 push	dword 0						; granularity
@@ -46,7 +69,6 @@ ltr	ax
 ret
 
 section .data
-
 tss:
 prev dd 0
 tss_esp0 dd 0

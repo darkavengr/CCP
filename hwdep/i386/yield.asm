@@ -34,6 +34,10 @@ use32
 ;
 ; Force switch to next process
 ;
+; In: Nothing
+;
+; Returns: Nothing
+;
 yield:
 cli
 

@@ -26,9 +26,24 @@ global initialize_memory_map
 %include "init.inc"
 %include "bootinfo.inc"
 
-SYSTEM_USE equ 0FFFFFFFFh				; page marked for system use
+SYSTEM_USE equ 0FFFFFFFFh				; page frame marked for system use
 
 section .text
+[BITS 32]
+use32
+
+;
+; Initialize memory map
+;
+; In:	Initial kernel stack size
+;	Initial kernel stack address
+;	Kernel size
+;	Kernel start address
+;	Memory size
+;	Memory map address
+;
+; Returns: Nothing
+;
 initialize_memory_map:
 mov	eax,[esp+4]			; get memory map address
 mov	[memory_map_address],eax

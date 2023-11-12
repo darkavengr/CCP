@@ -30,7 +30,17 @@ extern set_tss_esp0
 extern irq_exit
 
 section .text
+[BITS 32]
+use32
 
+;
+; Initialize user-mode stack
+;
+; In:	Stack pointer address
+;	Stack size
+;
+; Returns: Nothing
+;
 initializestack:
 cli
 mov	eax,[esp]					; get eip
@@ -47,9 +57,13 @@ mov	ebp,ebx
 
 jmp	[tempeip]					; return without using stack
 
-
-; initialize kernel stack
-
+;
+; Initialize kernel-mode stack
+;
+; In:	Stack pointer address
+;
+; Returns: Nothing
+;
 initializekernelstack:
 mov	eax,[esp+4]					; get stack address
 
@@ -58,10 +72,17 @@ call	set_tss_esp0
 add	esp,4
 ret
 
+;
+; Get stack pointer
+;
+; In:	Nothing
+;
+; Returns: Stack pointer
+;
 get_stack_pointer:
 mov	eax,esp
 ret
 
 section .data
-
 tempeip dd 0
+

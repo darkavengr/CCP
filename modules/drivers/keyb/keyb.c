@@ -106,13 +106,16 @@ while(readcount < size) {
 		/* overwrite character on screen */
 
 		if(bootinfo->cursor_col > 0) {
+			if(keybuf > keybbuf) *--keybuf=0;
+
 			bootinfo->cursor_col--;
+
+			movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
 
 			outputconsole(" ",1);
 
 			bootinfo->cursor_col--;
-	
-			*keybuf=0;
+			movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
 		 }
 
 		return;

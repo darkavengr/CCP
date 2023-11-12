@@ -46,10 +46,9 @@ while(1) {
 	if(count++ >= size) return;
 
 	if(*bufptr == 0x8) {			/* if backspace, erase character */
-
-		*bufptr--=0;
-		*bufptr--=0;
-		count -= 2;
+		*bufptr=0;
+		*--bufptr=0;
+		count--;
 	}
 
 	if(*bufptr == '\n') {			/* if newline, return */

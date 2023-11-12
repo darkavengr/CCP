@@ -23,18 +23,28 @@ global switch_to_usermode_and_call_process
 %include "kernelselectors.inc"
 
 section .text
-;
-; switch to user mode
-;
+[BITS 32]
+use32
 
+;
+; Jump to address and switch to user mode
+;
+; In:	Address to jump to
+;
+; Return: Does not return
+;
+; Warning: the address must be accessible from user-mode or it will cause a general protection fault.
+;
 switch_to_usermode_and_call_process:
 mov	ebx,[esp+4]				; get entry point
 
-mov	ax,USER_DATA_SELECTOR
+mov	ax,USER_DATA_SELECTOR			; load user-mode selector
 mov	ds,ax
 mov	es,ax
 mov	fs,ax
 mov	gs,ax
+
+; Create a stack frame to transfer to user-mode
 
 mov	eax,esp
 

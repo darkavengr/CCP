@@ -70,7 +70,7 @@ prdtptr=p;
 prdtptr->address=dma_alloc(ATA_DMA_BUFFER_SIZE);	/* allocate dma buffer */
 
 if(prdtptr->address == -1) {
-	kprintf_direct("\nhd: Error allocating memory for hd initialization\n");
+	kprintf_direct("\nhardddrive: Error allocating memory for initialization\n");
 	return(-1);
 }
 
@@ -82,7 +82,7 @@ for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk *
 	 if(ata_ident(physdiskcount,&ident) == 0) {	/* get ata identify */
 
 	 	if(scan_partitions(physdiskcount,&ata_io) == -1) {	/* can't initalize partitions */
-	 		kprintf_direct("Unable to intialize partitions for drive %X\n",physdiskcount);
+	 		kprintf_direct("harddrive: Unable to intialize partitions for drive %X\n",physdiskcount);
 	 		continue;
 	  	}
 	 
@@ -243,7 +243,7 @@ return(NO_ERROR);
  * ATA I/O function using Cylinder, Head, Sector addressing
  *
  * In:  op		Operation (0=read,1=write)
-	       physdrive	Physical drive number
+	physdrive	Physical drive number
 	blocksize	Block size
 	Head		Head number
 	Cylinder	Cylinder number
@@ -433,7 +433,7 @@ if(barfour == -1) {
 	return(-1);
 }
 
-barfour &= 0xFFFFFFFC;			/* clear bottom bits */
+barfour &= 0xFFFFFFFC;			/* clear bottom two bits */
 
 kprintf_direct("bar4=%X\n",barfour);
 

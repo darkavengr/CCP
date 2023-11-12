@@ -36,11 +36,16 @@ PAGE_PRESENT		equ	1
 PAGE_RW			equ	2
 
 section .text
-
+[BITS 32]
+use32
 ;
 ; Intialize paging
 ;
 ; Maps memory to higher and lower halves of memory
+;
+; In: Nothing
+;
+; Returns: Nothing
 ;
 initializepaging:
 ; subtract KERNEL_HIGH from addresses

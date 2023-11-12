@@ -47,20 +47,20 @@ size_t thisprocess;
 char *saveenv=NULL;
 EXECUTABLEFORMAT *executableformats=NULL;
 size_t tickcount;
+size_t entrypoint;
+char *tempfilename[MAX_PATH];
+char *tempargs[MAX_PATH];
 
 /*
 * Execute program
 *
 * In: filename	Filename of file to execute
-	      argsx	Arguments
-	      flags	Flags
+      argsx	Arguments
+      flags	Flags
 *
-* Returns -1 on error, doesn't return on success if it is a foreground process
+* Returns -1 on error, doesn't return on success if it is a foreground process. Returns 0 on success if it is a background process.
 *
 */
-size_t entrypoint;
-char *tempfilename[MAX_PATH];
-char *tempargs[MAX_PATH];
 
 size_t exec(char *filename,char *argsx,size_t flags) {
 size_t handle;
@@ -262,7 +262,7 @@ return;
 /*
 * Terminate process
 *
-* In: size_t process	Process ID
+* In: process	Process ID
 *
 * Returns -1 on error doesn't return on success
 *
@@ -348,7 +348,7 @@ return;
 /*
 * Exit from process
 *
-* In: size_t val	Return value
+* In: val	Return value
 *
 * Returns -1 on error, doesn't return on success
 *
@@ -362,7 +362,7 @@ size_t exit(size_t val) {
 /*
 * Shutdown
 *
-* In: size_t shutdown_status	Shutdown or restart
+* In: shutdown_status	Shutdown or restart
 *
 * Returns nothing
 *
@@ -397,7 +397,7 @@ void shutdown(size_t shutdown_status) {
 /*
 * Find first process
 *
-* In: PROCESS *buf	Object to store information about process
+* In:	buf	Object to store information about process
 *
 * Returns -1 on error or 0 on success
 *
@@ -413,7 +413,7 @@ size_t findfirstprocess(PROCESS *buf) {
 /*
 * Find next process
 *
-* In: PROCESS *buf	Object to store information about process
+* In: buf	Object to store information about process
 *
 * Returns -1 on error or 0 on success
 *
@@ -436,7 +436,7 @@ size_t findnextprocess(PROCESS *buf) {
 /*
 * Wait for process to change state
 *
-* In: size_t pid	Process ID
+* In: pid	Process ID
 *
 * Returns -1 on error or 0 on success
 *
@@ -474,12 +474,12 @@ return(-1);
 /*
 * Dispatcher
 *
-* In: void *argsix			Arguments to pass to functions
-	      void *argfive
-	      void *argfour
-	      void *argthree
-	      void *argtwo
-	      void *argsone			Function code of function to call
+* In: argsix			\ 
+      argfive			|
+      argfour			| Arguments to pass to functions
+      argthree			|
+      argtwo		        /
+      argsone			Function code of function to call
 *
 * Returns -1 on error or function return value on success
 *
@@ -801,7 +801,7 @@ return(currentprocess->pid);
 /*
 * Set last error
 *
-* In: size_t err	Error number
+* In: err	Error number
 *
 * Returns nothing
 *
@@ -947,7 +947,7 @@ return;
 /*
 * Send signal to process
 *
-* In: size_t process	Process to send signal to
+* In: process	Process to send signal to
 	      size_t signal	Signal to send
 *
 * Returns -1 on error or 0 on success
@@ -1041,7 +1041,7 @@ initialize_mutex(&process_mutex);
 /*
 * Block process
 *
-* In: size_t pid	PID of process to block
+* In: pid	PID of process to block
 *
 * Returns -1 on error or function return value on success
 *
@@ -1055,6 +1055,8 @@ next=processes;
 while(next != NULL) {
 	if(next->pid == pid) {			/* found process */
 	  next->flags |= PROCESS_BLOCKED;			/* block process */
+
+  	  if(pid == getpid()) yield();		/* switch to next process if blocking current process */
 	  return(0);
 	}
 	
@@ -1068,7 +1070,7 @@ return(-1);
 /*
 * Unblock process
 *
-* In:  size_t pid		PID of process to block
+* In: pid		PID of process to unblock
 *
 * Returns -1 on error or function return value on success
 *
@@ -1081,8 +1083,8 @@ next=processes;
 	
 while(next != NULL) {
 	if(next->pid == pid) {			/* found process */
-	  next->flags &= PROCESS_BLOCKED;			/* block process */
-	  return(0);
+		next->flags &= PROCESS_BLOCKED;			/* block process */
+		return(0);
 	}
 	
 	next=next->next;
@@ -1105,62 +1107,128 @@ char *getenv() {
 return(currentprocess->envptr);
 }
 
+/*
+* Save kernel stack pointer for current process
+*
+* In:  new_stack_pointer	stack pointer
+*
+* Returns: Nothing
+*
+*/
 void save_kernel_stack_pointer(size_t new_stack_pointer) {
 if(currentprocess == NULL) return;
 
 currentprocess->kernelstackpointer=new_stack_pointer;
 }
 
+/*
+* Save kernel stack pointer for current process
+*
+* In:  Nothing
+*
+* Returns:  stack pointer or NULL if there are no processes running
+*
+*/
 size_t get_kernel_stack_pointer(void) {
 if(currentprocess == NULL) return(NULL);
 
 return(currentprocess->kernelstackpointer);
 }
 
+/*
+* Get top of kernel stack
+*
+* In:  Nothing
+*
+* Returns: Address of top of kernel stack or NULL if there are no processes running
+*
+*/
 size_t get_kernel_stack_top(void) {
 if(currentprocess == NULL) return(NULL);
 
 return(currentprocess->kernelstacktop);
 }
 
+/*
+* Get pointer to processes list
+*
+* In:  Nothing
+*
+* Returns: Pointer to processes list
+*
+*/
+
 PROCESS *get_processes_pointer(void) {
 return(processes);
 }
+
+/*
+* Update current process pointer
+*
+* In:  Pointer to process
+*
+* Returns: Nothing
+*
+*/
 
 void update_current_process_pointer(PROCESS *ptr) {
 currentprocess=ptr;
 }
 
+/*
+* Get current process pointer
+*
+* In:  Nothing
+*
+* Returns: current process pointer
+*
+*/
 PROCESS *get_current_process_pointer(void) {
 return(currentprocess);
 }
 
+/*
+* Get next process pointer
+*
+* In:  Nothing
+*
+* Returns: next process pointer or NULL if no current process exists
+*
+*/
 PROCESS *get_next_process_pointer(void) {
 if(currentprocess == NULL) return(NULL);
 
 return(currentprocess->next);
 }
 
+/*
+* Register executable format.
+*
+* In:  format	Pointer to executable format struct
+*
+* Returns: current process pointer
+*
+*/
 size_t register_executable_format(EXECUTABLEFORMAT *format) {
 EXECUTABLEFORMAT *next;
 EXECUTABLEFORMAT *last;
 
-/* check if executable format exists */
-
-if(executableformats == NULL) {
-	executableformats=kernelalloc(sizeof(EXECUTABLEFORMAT));
+if(executableformats == NULL) {				/* first in list */
+	executableformats=kernelalloc(sizeof(EXECUTABLEFORMAT));		/* add first */
 	if(executableformats == NULL) return(-1);
 
 	next=executableformats;
 }
-else
+else						
 {
+	/* Find end of list and check if executable format exists */
+
 	next=executableformats;
 
 	while(next != NULL) {
 	 last=next;
 
-	 if(strcmpi(next->name,format->name)) {		/* format exists */
+	 if(strcmpi(next->name,format->name)) {		/* Return error if format exists */
 	  setlasterror(DRIVER_ALREADY_LOADED);
 	  return(-1);
 	 }
@@ -1168,7 +1236,7 @@ else
 	 next=next->next;
 	}
 
-/* add new format */
+/* add new format entry to end */
 
 	last->next=kernelalloc(sizeof(EXECUTABLEFORMAT));
 	if(last->next == NULL) return(-1);
@@ -1176,7 +1244,7 @@ else
 	next=last->next;
 }
 
-memcpy(next,format,sizeof(EXECUTABLEFORMAT));
+memcpy(next,format,sizeof(EXECUTABLEFORMAT));		/* copy data to entry */
 
 next->next=NULL;
 
@@ -1184,6 +1252,14 @@ setlasterror(NO_ERROR);
 return(0);
 }
 
+/*
+* Load executable
+*
+* In:  filename		Name of file to load
+*
+* Returns: 0 on success or -1 on error
+*
+*/
 size_t load_executable(char *filename) {
 EXECUTABLEFORMAT *next;
 char *buffer[MAX_PATH];
@@ -1218,18 +1294,50 @@ return(-1);
 }
 
 
+/*
+* Reset process tick counter
+*
+* In:  Nothing
+*
+* Returns: Nothing
+*
+*/
 void reset_process_ticks(void) {
  currentprocess->ticks=0;
 }
 
+/*
+* Get process tick count
+*
+* In:  Nothing
+*
+* Returns: Process tick count
+*
+*/
 size_t get_tick_count(void) {
  return(tickcount);
 }
 
+/*
+* Increment process tick counter
+*
+* In:  Nothing
+*
+* Returns: Nothing
+*
+*/
 void increment_tick_count(void) {
  tickcount++;
 }
 
+/*
+* Wait for x ticks
+*
+* In:  ticks	Number of ticks to wait
+*
+* Returns: Nothing
+*
+*/
 void kwait(size_t ticks) {
  size_t newticks;
 
@@ -1237,3 +1345,4 @@ void kwait(size_t ticks) {
 
  while(get_tick_count() < newticks) ;;
 }
+

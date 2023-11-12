@@ -18,7 +18,7 @@
 ;    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
 ;
-; Interrupts
+; Interrupt functions
 ;
 
 %define offset
@@ -32,21 +32,37 @@ global get_interrupt					; get interrupt
 global load_idt
 global initialize_interrupts
 
-extern exception						; exception handler
+extern exception					; exception handler
 extern exit
 extern dispatchhandler					; high-level dispatcher
 extern disablemultitasking
 extern enablemultitasking
 
 section .text
+[BITS 32]
+use32
+
+;
+; Initialize interrupts
+;
+; In: Nothing
+;
+; Returns: Nothing
 
 initialize_interrupts:
+
+; Initialize exception interrupts
+
+; Divide by zero
+
 push	0
 push	offset int0_handler
 push	8				; selector
 push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
+
+; Debug exception
 
 push	1
 push	offset int1_handler
@@ -55,12 +71,16 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+; Non-maskable interrupt
+
 push	2
 push	offset int2_handler
 push	8				; selector
 push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
+
+; Breakpoint exception
 
 push	3
 push	offset int3_handler
@@ -69,12 +89,16 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+;'Into detected overflow'
+
 push	4
 push	offset int4_handler
 push	8				; selector
 push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
+
+; Out of bounds exception
 
 push	5
 push	offset int5_handler
@@ -83,12 +107,16 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+;  Invalid opcode exception
+
 push	6
 push	offset int6_handler
 push	8				; selector
 push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
+
+; No coprocessor exception
 
 push	7
 push	offset int7_handler
@@ -97,12 +125,16 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+; Double fault
+
 push	8
 push	offset int8_handler
 push	8				; selector
 push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
+
+; Coprocessor segment overrun
 
 push	9
 push	offset int9_handler
@@ -111,12 +143,16 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+; Bad TSS
+
 push	10
 push	offset int10_handler
 push	8				; selector
 push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
+
+; Segment not present
 
 push	11
 push	offset int11_handler
@@ -125,12 +161,16 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+; Stack fault
+
 push	12
 push	offset int12_handler
 push	8				; selector
 push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
+
+; General protection fault
 
 push	13
 push	offset int13_handler
@@ -139,12 +179,16 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+; Page fault
+
 push	14
 push	offset int14_handler
 push	8				; selector
 push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
+
+; Unknown interrupt exception
 
 push	15
 push	offset int15_handler
@@ -153,12 +197,16 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+; Coprocessor fault
+
 push	16
 push	offset int16_handler
 push	8				; selector
 push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
+
+; Alignment check exception
 
 push	17
 push	offset int17_handler
@@ -167,6 +215,8 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+; Machine check exception
+
 push	18
 push	offset int18_handler
 push	8				; selector
@@ -174,6 +224,9 @@ push	8eh				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
+;
+; Set syscall interrupt
+;
 push	0x21
 push	offset d_lowlevel
 push	8				; selector
@@ -182,21 +235,52 @@ call	set_interrupt
 add	esp,16				; fix stack pointer
 ret
 
+;
+; Enable interrupts
+;
+; In: Nothing
+;
+; Returns: Nothing
+;
 enable_interrupts:
 sti
 ret
 
+;
+; Disable interrupts
+;
+; In: Nothing
+;
+; Returns: Nothing
+;
 disable_interrupts:
 cli
 ret
 
+;
+; Load IDT
+;
+; In: Nothing
+;
+; Returns: Nothing
+;
 load_idt:
 nop
 lidt	[idt]					; load interrupts
 ret
 
+;
+; Set interrupt
+;
+; [ESP+36]			; Interrupt number
+; [ESP+32]			; Address of interrupt handler
+; [ESP+28]			; Selector
+; [ESP+24]			; Flags
+;
+; Returns -1 on error or 0 on success
+;
+
 set_interrupt:
-push	eax		;+4
 push	ebx		;+8
 push	ecx		;+12
 push	edx		;+16
@@ -205,11 +289,18 @@ push	edi		;+24
 nop
 nop
 
-mov	edx,[esp+40]			; get interrupt number
-mov	eax,[esp+36]			; get address of interrupt handler
-mov	ecx,[esp+32]			; get selector
-mov	ebx,[esp+28]			; get flags
+mov	edx,[esp+36]			; get interrupt number
+mov	eax,[esp+32]			; get address of interrupt handler
+mov	ecx,[esp+28]			; get selector
+mov	ebx,[esp+24]			; get flags
 
+cmp	edx,256				; check if valid
+jl	set_interrupt_number_is_ok
+
+mov	eax,0xffffffff
+jmp	end_set_interrupt
+
+set_interrupt_number_is_ok:
 shl	edx,3				; each interrupt is eight bytes long
 mov	edi,edx
 add	edi,offset idttable
@@ -226,13 +317,23 @@ mov	[edi+6],ax			; put high word
 
 ;lidt	[idttable]
 
+xor	eax,eax				; return success
+
+end_set_interrupt:
 pop	edi
 pop	esi
 pop	edx
 pop	ecx
 pop	ebx
-pop	eax
 ret
+
+;
+; Get address of interrupt handler
+;
+; In: Interrupt number
+;
+; Returns: -1 on error or address of interrupt handler
+;
 
 get_interrupt:
 push	ebx
@@ -244,8 +345,15 @@ nop
 nop
 
 mov	ecx,[esp+32]			; get address of interrupt handler
-mov	ebx,[esp+28]			; get irq number
+mov	ebx,[esp+28]			; get interrupt number
 
+cmp	ebx,256				; check if valid
+jl	get_interrupt_number_is_ok
+
+mov	eax,0xffffffff			; return error
+ret
+
+get_interrupt_number_is_ok:
 mov	eax,8				; each interrupt is eight bytes long
 mul	ebx
 
@@ -255,6 +363,8 @@ xor	eax,eax
 mov	ax,[ebx+6]
 shl	eax,16
 mov	ax,[ebx]
+
+xor	eax,eax				; return success
 
 pop	edi
 pop	esi
@@ -358,7 +468,7 @@ push	18
 jmp	int_common	
 
 int_common:
-mov	[regbuf+4],esp			; save other registers
+mov	[regbuf+4],esp			; save other registers into buffer to pass to exception handler
 mov	[regbuf+8],eax
 mov	[regbuf+12],ebx
 mov	[regbuf+16],ecx
@@ -385,12 +495,23 @@ end_process:
 call exit
 iret
 
+;
+; Get stack base pointer
+;
+; In: Nothing
+;
+; Returns: stack base pointer
+;
 get_stack_base_pointer:
 mov	eax,ebp
 ret
 
 ;
 ; low level dispatcher
+;
+; In: Nothing
+;
+; Returns: Nothing
 ;
 d_lowlevel:
 nop
@@ -442,6 +563,7 @@ dd offset idttable				; base
 
 idttable:
 times 256 db 0,0,0,0,0,0,0,0
+idt_end:
 
 tempone dd 0
 temptwo dd 0

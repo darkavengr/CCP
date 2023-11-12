@@ -60,6 +60,7 @@ global tss_esp0
 global _asm_init
 global MEMBUF_START
 global gdt
+global gdt_end
 
 KERNEL_STACK_SIZE equ  65536*2				; size of initial kernel stack
 
