@@ -2244,6 +2244,11 @@ if(blockio(_READ,drive,0,bootbuf) == -1) {				/* get bios parameter block */
 	return(-1); 
 }
 
+if(drive == 2) {
+	kprintf_direct("bootbuf=%X\n",bootbuf);
+	asm("xchg %bx,%bx");
+}
+
 memcpy(&bpb,bootbuf,54);		/* copy bpb */
 
 blockdevice.sectorsperblock=bpb.sectorsperblock;

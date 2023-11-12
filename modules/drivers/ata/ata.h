@@ -53,12 +53,6 @@
 
 #define IOCTL_ATA_IDENTIFY 0
 
-size_t ata_hdio_dma(size_t op,size_t drive,size_t block,char *buf);
-size_t hdio_chs (size_t op,size_t physdrive,size_t blocksize,size_t head,size_t cylinder,size_t sector,uint16_t *buf);
-
-size_t irq14_handler(void);
-size_t irq15_handler(void);
-
 typedef struct {
 	uint16_t general_configuration;		//0			
 	uint16_t obsolete1;				//1
@@ -133,4 +127,12 @@ typedef struct {
 	uint16_t last;
 } prdt_struct;
 
+size_t ata_init(char *initstring);
+size_t ata_io(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
+size_t ata_io_chs (size_t op,size_t physdrive,size_t blocksize,size_t head,size_t cylinder,size_t sector,uint16_t *buf);
+size_t ata_ident(size_t physdrive,ATA_IDENTIFY *buf);
+size_t ata_io_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
+size_t irq14_handler(void);
+size_t irq15_handler(void);
+size_t ata_ioctl(size_t handle,unsigned long request,char *buffer);
 

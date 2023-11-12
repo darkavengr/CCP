@@ -152,9 +152,9 @@ return(NO_ERROR);
  *
  * calls a hardware-specific routine
  *
- * In: size_t op		Operation (0=read, 1=write)
- *     size_t block		Block number
-     void *buf		Buffer
+ * In: op		Operation (0=read, 1=write)
+ *     block		Block number
+       buf		Buffer
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -190,7 +190,7 @@ if(next->sectorsperblock == 0) next->sectorsperblock=1;
 
 
 for(count=0;count<next->sectorsperblock;count++) {
-	if(next->blockio(op,next->physicaldrive,(next->startblock+block)+count,b) == -1) {
+	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {
 		lasterr=getlasterror();
 
 		if(lasterr == WRITE_PROTECT_ERROR || lasterr == DRIVE_NOT_READY || lasterr == INVALID_CRC \

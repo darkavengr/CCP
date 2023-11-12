@@ -24,20 +24,13 @@
 #include "../../../filemanager/vfs.h"
 #include "ata.h"
 #include "../pci/pci.h"
+#include "../../../header/debug.h"
 
 #define ATA_DEBUG 1
 
-//#define MODULE_INIT ata_init
+#define MODULE_INIT ata_init
 
 prdt_struct *prdt;
-
-size_t ata_io(size_t op,size_t physdrive,size_t block,uint16_t *buf);
-size_t ata_io_chs (size_t op,size_t physdrive,size_t blocksize,size_t head,size_t cylinder,size_t sector,uint16_t *buf);
-size_t ata_ident(size_t physdrive,ATA_IDENTIFY *buf);
-size_t ata_io_dma(size_t op,size_t physdrive,size_t block,uint16_t *buf);
-size_t irq14_handler(void);
-size_t irq15_handler(void);
-size_t ata_init(char *initstring);
 
 char *hddmastruct;
 size_t ata_irq14done=FALSE;
@@ -81,7 +74,7 @@ for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk *
 
 	 if(ata_ident(physdiskcount,&ident) == 0) {	/* get ata identify */
 
-	 	if(scan_partitions(physdiskcount,&ata_io) == -1) {	/* can't initalize partitions */
+	 	if(partitions_init(physdiskcount,&ata_io) == -1) {	/* can't initalize partitions */
 	 		kprintf_direct("harddrive: Unable to intialize partitions for drive %X\n",physdiskcount);
 	 		continue;
 	  	}
@@ -103,14 +96,15 @@ return(0);
 /*
  * ATA I/O function
  *
- * In:  op	Operation (0=read,1=write)
-	       buf	Buffer
-	len	Number of bytes to read/write
+ * In:  op		Operation (0=read,1=write)
+	physdrive	Physical drive numbe
+	block		Block to read
+	buf		I/O buffer
  *
  *  Returns: 0 on success, -1 on error
  *
  */	
-size_t ata_io(size_t op,size_t physdrive,size_t block,uint16_t *buf) {
+size_t ata_io(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
 size_t count;
 size_t cylinder;
 size_t b;
@@ -213,7 +207,6 @@ if(islba == 48) {				/* use lba48 */
 	 outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (lowblock >> 8));		/* lba 2 */
 	 outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (lowblock >> 16));	/* lba 3 */
 
-
 	if(op == _READ) outb(controller+ATA_COMMAND_PORT,READ_SECTORS_EXT);
 	if(op == _WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS_EXT);
 }
@@ -223,6 +216,7 @@ do {
 
 	 if((atastatus & ATA_DRIVE_FAULT) || (atastatus & ATA_ERROR)) {			/* controller returned error */
 	  kprintf_direct("kernel: drive returned error\n");
+
 	  setlasterror(DEVICE_IO_ERROR);
 	  return(-1);
 	 }
@@ -402,13 +396,13 @@ return(NO_ERROR);
  * ATA I/O function using DMA
  *
  * In:  op	Operation (0=read,1=write)
-	       buf	Buffer
+	buf	Buffer
 	len	Number of bytes to read/write
  *
  *  Returns: 0 on success, -1 on error
  *
  */	
-size_t ata_io_dma(size_t op,size_t physdrive,size_t block,uint16_t *buf) {
+size_t ata_io_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
 uint32_t prdt_phys;
 ATA_IDENTIFY result;
 size_t count;

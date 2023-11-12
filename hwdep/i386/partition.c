@@ -24,8 +24,8 @@
 #define NULL 0
 #define GPT_BLOCK_SIZE 65536
 
-void partitions_init(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *));
-size_t gpt_hd_init(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *));
+void partitions_init(size_t physdrive,size_t (*handler)(size_t,size_t,uint64_t,void *));
+size_t gpt_hd_init(size_t physdrive,size_t (*handler)(size_t,size_t,uint64_t,void *));
 
 struct partitions { 
 	uint8_t bootableflag;
@@ -49,7 +49,7 @@ struct partitions {
 * Returns 0
 * 
 */
-void scan_partitions(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *)) {
+void partitions_init(size_t physdrive,size_t (*handler)(size_t,size_t,uint64_t,void *)) {
 size_t partition_count;
 size_t head;
 size_t cyl;
@@ -61,7 +61,7 @@ struct partitions partition[3];
 size_t relstart;
 size_t hdcount;
 
-if(handler(_READ,physdrive,0,buf) == -1) return(-1);	/* read boot sector */
+if(handler(_READ,physdrive,(uint64_t) 0,buf) == -1) return(-1);	/* read boot sector */
 
 memcpy((void *) partition,(void *) buf+0x1be,64);  				/* copy partition table to struct */
 
@@ -122,7 +122,7 @@ sector=(partition[partition_count].startsectorcylinder);
 cyl=((partition[partition_count].startsectorcylinder & 0xc0) << 2)+partition[partition_count].startcylinder;
 head=partition[partition_count].starthead;
 
-handler(_READ,physdrive,partition[partition_count].firstsector,bootbuf);
+handler(_READ,physdrive,(uint64_t) partition[partition_count].firstsector,bootbuf);
 
 
 hdstruct.sectorspertrack=(partition[partition_count].endsectorcylinder & 0x3f);
@@ -152,13 +152,14 @@ return(0);
 /*
 * Initialize GPT partitions; add partitions as drives to block devices
 *
-* In: size_t physdrive								Physical drive
+* In: size_t physdrive					Physical drive
       size_t (*handler)(size_t,size_t,size_t,void *)	I/O handler function to call to read blocks
 *
 * Returns 0
 * 
 */
-size_t gpt_hd_init(size_t physdrive,size_t (*handler)(size_t,size_t,size_t,void *)) {
+
+size_t gpt_hd_init(size_t physdrive,size_t (*handler)(size_t,size_t,uint64_t,void *)) {
 size_t partition_count;
 char *z[10];
 BLOCKDEVICE *next;
@@ -166,7 +167,7 @@ BLOCKDEVICE *last;
 BLOCKDEVICE hdstruct;
 size_t size;
 size_t count;
-size_t sector;
+uint64_t sector;
 char *buf[MAX_PATH];
 
 struct guidhead { 
@@ -203,7 +204,7 @@ struct guidpart *guidbuf;
 guidbuf=kernelalloc(GPT_BLOCK_SIZE);
 if(guidbuf == NULL) return(-1);			/* no memory */
 
-handler(_READ,physdrive,1,guidbuf);		/* read guid header */
+handler(_READ,physdrive,(uint64_t) 1,guidbuf);		/* read guid header */
 memcpy(&guid_header,guidbuf,sizeof(struct guidhead));
 
 size=(guid_header.partition_count*128)/512;		/* size of partition list */
