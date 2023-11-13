@@ -28,6 +28,7 @@
 #include "../header/errors.h"
 #include "../header/bootinfo.h"
 #include "../header/kernelhigh.h"
+#include "../header/debug.h"
 
 size_t add_block_device(BLOCKDEVICE *driver);
 size_t add_char_device(CHARACTERDEVICE *device);
@@ -190,6 +191,7 @@ if(next->sectorsperblock == 0) next->sectorsperblock=1;
 
 
 for(count=0;count<next->sectorsperblock;count++) {
+
 	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {
 		lasterr=getlasterror();
 

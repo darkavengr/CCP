@@ -80,8 +80,8 @@ typedef struct {
 	uint32_t filesize;
 	uint64_t startblock;
 	size_t drive;
-	size_t currentblock;
-	size_t findblock; 	/* block containing the directory entry for this file */
+	uint64_t currentblock;
+	uint64_t findblock; 	/* block containing the directory entry for this file */
 	size_t dirent; 		/* directory entry number */
 	size_t access; 		/* access */
 	size_t currentpos;

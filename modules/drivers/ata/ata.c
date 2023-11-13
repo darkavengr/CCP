@@ -26,7 +26,7 @@
 #include "../pci/pci.h"
 #include "../../../header/debug.h"
 
-#define ATA_DEBUG 1
+//#define ATA_DEBUG 1
 
 #define MODULE_INIT ata_init
 
@@ -417,6 +417,8 @@ uint32_t status=0;
 uint16_t controller;
 uint16_t control_base;
 uint16_t commandregister;
+uint32_t highblock;
+uint32_t lowblock;
 
 if(ata_ident(physdrive,&result) == -1) return(-1);	/* bad drive */
 
@@ -426,6 +428,9 @@ if(barfour == -1) {
 
 	return(-1);
 }
+
+highblock=((uint64_t) block >> 32);			/* get high block */
+lowblock=((uint64_t) block & 0x000000000ffffffff);	/* get low block */
 
 barfour &= 0xFFFFFFFC;			/* clear bottom two bits */
 
@@ -495,48 +500,51 @@ islba=0;
 if(result.lba28_size != 0) islba=28;	/* is 28bit lba */
 if(result.commands_and_feature_sets_supported2 & 1024) islba=48; /* is 48bit lba */
 
+if((physdrive == 0x80) || (physdrive == 0x81)) {
+	ata_irq14done=FALSE;
+}
+else
+{
+	ata_irq15done=FALSE;
+}
+
 kprintf_direct("is_lba=%d\n",islba);
 
 if(islba == 28) {						/* use lba28 */
 	switch(blockdevice.physicaldrive) {					/* master or slave */
 	
 		case 0x80:							/* master */
-			outb(controller+ATA_DRIVE_HEAD_PORT, 0xe0 | (0 << 4) | ((block >> 24) & 0xf));
+			outb(controller+ATA_DRIVE_HEAD_PORT, 0xe0 | (0 << 4) | ((lowblock >> 24) & 0xf));
 			break;
 
 		case 0x81:							/* slave */
-			outb(controller+ATA_DRIVE_HEAD_PORT, 0xf0 | (1 << 4) | ((block >> 24) & 0xf));
+			outb(controller+ATA_DRIVE_HEAD_PORT, 0xf0 | (1 << 4) | ((lowblock >> 24) & 0xf));
 			break;
 
 		case 0x82:							/* master */
-			outb(controller+ATA_DRIVE_HEAD_PORT, 0xe0 | (0 << 4) | ((block >> 24) & 0xf));
+			outb(controller+ATA_DRIVE_HEAD_PORT, 0xe0 | (0 << 4) | ((lowblock >> 24) & 0xf));
 			break;
 
 		case 0x83:							/* slave */
-			outb(controller+ATA_DRIVE_HEAD_PORT, 0xf0 | (1 << 4) | ((block >> 24) & 0xf));
+			outb(controller+ATA_DRIVE_HEAD_PORT, 0xf0 | (1 << 4) | ((lowblock >> 24) & 0xf));
 			break;
 	}
 
-	if((physdrive == 0x80) || (physdrive == 0x81)) {
-		ata_irq14done=FALSE;
-	}
-	else
-	{
-		ata_irq15done=FALSE;
-	}
 
 	outb(controller+ATA_ALT_STATUS_PORT,0);
 
 	outb(controller+ATA_SECTOR_COUNT_PORT,1);					/* sector count */
 	outb(controller+ATA_FEATURES_PORT,0);
 
-	outb(controller+ATA_SECTOR_NUMBER_PORT,(uint8_t) (block & 0xff));			/* bits 0-7 */
-	outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (block >> 8));				/* lba 2 */
-	outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (block >> 16));				/* lba 3 */
+	outb(controller+ATA_SECTOR_NUMBER_PORT,(uint8_t) (lowblock & 0xff));			/* bits 0-7 */
+	outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (lowblock >> 8));				/* lba 2 */
+	outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (lowblock >> 16));				/* lba 3 */
 	
 	commandregister=pci_get_command(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
+
 	commandregister |= 0x04;		/* enable bus mastering */
-	commandregister=pci_put_command(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER,commandregister);
+
+	pci_put_command(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER,commandregister);
 
 	if(op == _READ) outb(controller+ATA_COMMAND_PORT,READ_SECTORS_DMA);			/* operation */
 	if(op == _WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS_DMA);
@@ -563,13 +571,13 @@ if(islba == 48) {						/* use lba48 */
 		}
 
 	 outb(controller+ATA_SECTOR_COUNT_PORT,0);					/* sectorcount high byte */
-	 outb(controller+ATA_SECTOR_NUMBER_PORT,(uint8_t) (block >> 24));				/* lba 4 */
-	 outb(controller+ATA_CYLINDER_LOW_PORT,0);					/* lba 5 */
-	 outb(controller+ATA_CYLINDER_HIGH_PORT,0);					/* lba 6 */
+	 outb(controller+ATA_SECTOR_NUMBER_PORT,(uint8_t) (lowblock >> 24));		/* lba 4 */
+	 outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (highblock >> 16));		/* lba 5 */
+	 outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (highblock & 0xff));		/* lba 6 */
 	 outb(controller+ATA_SECTOR_COUNT_PORT,1);					/* sectorcount low byte */
-	 outb(controller+ATA_SECTOR_NUMBER_PORT,(uint8_t) block);					/* lba 1 */
-	 outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (block >> 8));				/* lba 2 */
-	 outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (block >> 16));				/* lba 3 */
+	 outb(controller+ATA_SECTOR_NUMBER_PORT,(uint8_t) lowblock);					/* lba 1 */
+	 outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (lowblock >> 8));				/* lba 2 */
+	 outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (lowblock >> 16));				/* lba 3 */
 	
 	commandregister=pci_get_command(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
 	commandregister |= 0x04;		/* enable bus mastering */
@@ -624,7 +632,9 @@ return(NO_ERROR);
  *
  */	
 size_t irq14_handler(void) {
-kprintf_direct("received irq 14\n");
+#ifdef ATA_DEBUG
+	kprintf_direct("received irq 14\n");
+#endif
 
 ata_irq14done=TRUE;
 return;
@@ -639,7 +649,10 @@ return;
  *
  */	
 size_t irq15_handler(void) {
-kprintf_direct("received irq 15\n");
+
+#ifdef ATA_DEBUG
+	kprintf_direct("received irq 15\n");
+#endif
 ata_irq15done=TRUE;
 return;
 }

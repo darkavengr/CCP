@@ -572,12 +572,6 @@ switch(highbyte) {		/* function */
 	case 0x4d:	
 		return(getlasterror());
 
-	case 0x90:				/* disk block read */
-		return(blockio(_READ,argthree,argfour));
-
-	case 0x91:				/* disk block write */
-		return(blockio(_WRITE,argthree,argfour));
-
 	case 0x8c:				/* set signal handler */
 		signal(argfour);
 

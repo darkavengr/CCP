@@ -50,16 +50,16 @@ size_t fat_chmod(char *filename,size_t attribs);
 size_t fat_setfiletimedate(char *filename,TIMEBUF *createtime,TIMEBUF *lastmodtime);
 size_t fat_findfreeblock(size_t drive);
 size_t fat_getstartblock(char *name);
-size_t fat_getnextblock(size_t drive,size_t block);
-size_t updatefat(size_t drive,size_t block,uint16_t block_high_word,uint16_t block_low_word);
+size_t fat_getnextblock(size_t drive,uint64_t block);
+size_t updatefat(size_t drive,uint64_t block,uint16_t block_high_word,uint16_t block_low_word);
 size_t fat_detectchange(size_t drive);
 size_t fat_convertfilename(char *filename,char *outname);
-size_t fat_readlfn(size_t drive,size_t block,size_t entryno,FILERECORD *n);
-size_t fat_writelfn(size_t drive,size_t block,size_t entryno,char *n,char *newname);
+size_t fat_readlfn(size_t drive,uint64_t block,size_t entryno,FILERECORD *n);
+size_t fat_writelfn(size_t drive,uint64_t block,size_t entryno,char *n,char *newname);
 size_t createshortname(char *filename,char *out);
 uint8_t createlfnchecksum(char *filename);
-size_t deletelfn(char *filename,size_t block,size_t entry);
-size_t createlfn(FILERECORD *newname,size_t block,size_t entry);
+size_t deletelfn(char *filename,uint64_t block,size_t entry);
+size_t createlfn(FILERECORD *newname,uint64_t block,size_t entry);
 size_t fat_seek(size_t handle,size_t pos,size_t whence);
 void fatentrytofilename(char *filename,char *out);
 size_t fat_init(char *i);							// TESTED
@@ -187,7 +187,7 @@ else
 
 blockptr=blockbuf+(buf->findentry*FAT_ENTRY_SIZE);	/* point to next file */
 
-if(blockio(_READ,splitbuf->drive,buf->findlastblock+startofdataarea,blockbuf) == -1) { /* read directory block */
+if(blockio(_READ,splitbuf->drive,(uint64_t) buf->findlastblock+startofdataarea,blockbuf) == -1) { /* read directory block */
 	kernelfree(blockbuf);
 	kernelfree(lfnbuf);
 	kernelfree(splitbuf);
@@ -352,7 +352,7 @@ size_t fat_rename(char *filename,char *newname) {
 char *fullname[MAX_PATH];
 char *newfullname[MAX_PATH];
 size_t count;
-size_t rb;
+uint64_t rb;
 size_t fattype;
 size_t lfncount;
 BLOCKDEVICE blockdevice;
@@ -583,7 +583,7 @@ size_t drive;
 size_t subdir;
 size_t dirstart;
 char *fullname[MAX_PATH];
-size_t  rb;
+uint64_t rb;
 unsigned fattype;
 size_t block;
 size_t count;
@@ -907,7 +907,7 @@ while((fattype == 12 && rb < 0xff8) || (fattype == 16 && rb < 0xfff8) || (fattyp
 			memcpy(blockbuf+(count*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE*2);
 		}
 
-		if(blockio(_WRITE,splitbuf->drive,subdir+startofdataarea,blockbuf) == -1) {	/* write block */
+		if(blockio(_WRITE,splitbuf->drive,(uint64_t) subdir+startofdataarea,blockbuf) == -1) {	/* write block */
 			kernelfree(splitbuf);
 			kernelfree(blockbuf);
 
@@ -930,7 +930,7 @@ char *fullname[MAX_PATH];
 size_t fattype;
 size_t lfncount;
 size_t count;
-size_t rb;
+uint64_t rb;
 BLOCKDEVICE blockdevice;
 char *blockbuf;
 char *blockptr;
@@ -1071,7 +1071,7 @@ TIMEBUF timebuf;
 FILERECORD onext;
 size_t count;
 size_t blockoffset;
-size_t blockno;
+uint64_t blockno;
 size_t datastart;
 size_t rootdirsize;
 size_t fatsize;
@@ -1259,7 +1259,7 @@ BLOCKDEVICE blockdevice;
 TIMEBUF timebuf;
 FILERECORD onext;
 size_t count;
-size_t blockno;
+uint64_t blockno;
 size_t blockoffset;
 size_t datastart;
 size_t fatsize;
@@ -1682,12 +1682,12 @@ return(NO_ERROR);				/* no error */
  */
 
 size_t fat_findfreeblock(size_t drive) {
-size_t rb;
-size_t count;
+uint64_t rb;
+uint64_t count;
 uint16_t *shortptr;
 uint32_t *longptr;
 size_t fattype;
-size_t countx;
+uint64_t countx;
 uint32_t longentry;
 size_t fatsize;
 uint16_t shortentry;
@@ -1828,8 +1828,8 @@ return(-1);
 
 size_t fat_getstartblock(char *name) {
 char *token_buffer[MAX_PATH];
-size_t  rb;
-size_t  count;
+uint64_t rb;
+size_t count;
 SPLITBUF *splitbuf;
 char *fullpath[MAX_PATH];
 size_t fattype;
@@ -1929,7 +1929,7 @@ while(c != -1) {
 	tc--;	
 
 	while((fattype == 12 && rb != 0xfff) || (fattype == 16 && rb !=0xffff) || (fattype == 32 && rb !=0xffffffff)) {
-		if(blockio(_READ,splitbuf->drive,rb+startofdataarea,blockbuf) == -1) {			/* read block for entry */
+		if(blockio(_READ,splitbuf->drive,(uint64_t) rb+startofdataarea,blockbuf) == -1) {			/* read block for entry */
 			kernelfree(splitbuf);
 			kernelfree(blockbuf);
 		     	kernelfree(lfnbuf);
@@ -2017,11 +2017,11 @@ return(-1);
  *
  */
 
-size_t fat_getnextblock(size_t drive,size_t block) {
+size_t fat_getnextblock(size_t drive,uint64_t block) {
 uint8_t *buf;
 size_t entriesperblock;
 size_t fattype;
-size_t blockno;
+uint64_t blockno;
 uint16_t entry;
 uint32_t entry_dword;
 size_t entryno;
@@ -2122,12 +2122,12 @@ if(fattype == 16) {					/* fat16 */
  *
  */
 
-size_t updatefat(size_t drive,size_t block,uint16_t block_high_word,uint16_t block_low_word) {
+size_t updatefat(size_t drive,uint64_t block,uint16_t block_high_word,uint16_t block_low_word) {
 uint8_t buf[8196];
 uint16_t *b;
 size_t entriesperblock;
 size_t fattype;
-size_t blockno=0;
+uint64_t blockno;
 size_t count;
 uint16_t entry;
 uint16_t e;
@@ -2155,7 +2155,7 @@ bpb=blockdevice.superblock;		/* point to data */
 
 if(fattype == 12) {					/* fat12 */
 	entryno=block+(block/2);
-	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
+	blockno=(uint64_t) (bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
 	entry_offset=(entryno % (bpb->sectorsperblock*bpb->sectorsize));	/* offset into fat */
 
 	if(blockio(_READ,drive,blockno,buf) == -1) return(-1); 	/* read block */
@@ -2239,14 +2239,9 @@ getblockdevice(drive,&blockdevice);		/* get device */
 bootbuf=kernelalloc(MAX_BLOCK_SIZE);				/* allocate buffer */
 if(bootbuf == NULL) return(-1); 
 	
-if(blockio(_READ,drive,0,bootbuf) == -1) {				/* get bios parameter block */
+if(blockio(_READ,drive,(uint64_t) 0,bootbuf) == -1) {				/* get bios parameter block */
 	kernelfree(bootbuf);
 	return(-1); 
-}
-
-if(drive == 2) {
-	kprintf_direct("bootbuf=%X\n",bootbuf);
-	asm("xchg %bx,%bx");
 }
 
 memcpy(&bpb,bootbuf,54);		/* copy bpb */
@@ -2335,7 +2330,7 @@ return;
  *
  */
 
-size_t fat_readlfn(size_t drive,size_t block,size_t entryno,FILERECORD *n) {
+size_t fat_readlfn(size_t drive,uint64_t block,size_t entryno,FILERECORD *n) {
 char *s;
 size_t entrycount=0;
 size_t ec;
@@ -2509,7 +2504,7 @@ return(lfncount);
  *
  */
 
-size_t fat_writelfn(size_t drive,size_t block,size_t entryno,char *n,char *newname) {
+size_t fat_writelfn(size_t drive,uint64_t block,size_t entryno,char *n,char *newname) {
 BLOCKDEVICE blockdevice;
 char *buf[MAX_PATH];
 size_t countx;
@@ -2800,7 +2795,7 @@ return(sum);
  *
  */
 
-size_t deletelfn(char *filename,size_t block,size_t entry) {
+size_t deletelfn(char *filename,uint64_t block,size_t entry) {
 size_t count;
 char *blockptr;
 char *blockbuf;
@@ -2811,6 +2806,7 @@ size_t flen;
 BLOCKDEVICE blockdevice;
 BPB *bpb;
 int fattype;
+uint64_t block_write_count;
 
 getfullpath(filename,fullpath);				/* get full path */
 splitname(fullpath,&splitbuf);				/* split filename */
@@ -2869,7 +2865,7 @@ for(count=0;count<flen+1;count++) {
 
 blockptr=blockbuf;
 
-for(count=0;count<blockcount;count++) {
+for(block_write_count=0;block_write_count<blockcount;count++) {
 
 	if(blockio(_WRITE,splitbuf.drive,block,blockbuf) == -1) {	/* read block for entry */
 		kernelfree(blockbuf);
@@ -2896,7 +2892,7 @@ return(NO_ERROR);
  *
  */
 
-size_t createlfn(FILERECORD *newname,size_t block,size_t entry) {
+size_t createlfn(FILERECORD *newname,uint64_t block,size_t entry) {
 size_t count;
 size_t countx;
 size_t fcount;

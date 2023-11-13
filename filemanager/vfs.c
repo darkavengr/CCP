@@ -25,6 +25,7 @@
 #include "../processmanager/mutex.h"
 #include "../devicemanager/device.h"
 #include "../header/bootinfo.h"
+#include "../header/debug.h"
 
 size_t findfirst(char *name,FILERECORD *buf);
 size_t findnext(char *name,FILERECORD *buf);
@@ -1033,7 +1034,7 @@ lock_mutex(&vfs_mutex);
 blockbuf=kernelalloc(VFS_MAX);
 if(blockbuf == NULL) return(-1);
 
-if(blockio(0,drive,0,blockbuf) == -1) return(-1);		/* read block */
+if(blockio(0,drive,(uint64_t) 0,blockbuf) == -1) return(-1);		/* read block */
 
 /* check magic number */
 

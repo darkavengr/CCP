@@ -27,6 +27,7 @@
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
 #include "floppy.h"
+#include "../../../header/debug.h"
 
 #define MODULE_INIT floppy_init
 
@@ -36,7 +37,7 @@ void motor_off(size_t drive);
 void initialize_floppy(size_t drive);
 size_t getstatus(size_t drive);
 size_t sector_io(size_t op,uint8_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf);
-size_t fd_io(size_t op,size_t drive,size_t block,char *buf);
+size_t fd_io(size_t op,size_t drive,uint64_t block,char *buf);
 void irq6_handler(void);
 void reset_controller(size_t drive);
 void floppy_writecommand(size_t drive,uint8_t c);
@@ -478,7 +479,7 @@ return(NO_ERROR);
  *
  */
 
-size_t fd_io(size_t op,size_t drive,size_t block,char *buf) {
+size_t fd_io(size_t op,size_t drive,uint64_t block,char *buf) {
 BLOCKDEVICE blockdevice;
 BLOCKDEVICE *old;
 size_t count;
@@ -492,7 +493,6 @@ uint8_t floppytype;
 void *bootbuf;
 b=buf;
 size_t rv;
-
 
 /* if this is the first time the floppy drive has been used, there will
 	be no bios paramter block read in, so it must be read into the drive struct */
@@ -513,8 +513,8 @@ while(count++ < blockdevice.sectorsperblock) {
 	}
 	else
 	{
-		cylinder=block / (blockdevice.numberofheads  * blockdevice.sectorspertrack);			/* convert block number to CHS */
-		temp=block % (blockdevice.numberofheads * blockdevice.sectorspertrack);
+		cylinder=(uint32_t) block / (blockdevice.numberofheads  * blockdevice.sectorspertrack);			/* convert block number to CHS */
+		temp=(uint32_t) block % (blockdevice.numberofheads * blockdevice.sectorspertrack);
 		head=temp / blockdevice.sectorspertrack;
 		sector=temp % blockdevice.sectorspertrack+1;
 	}
