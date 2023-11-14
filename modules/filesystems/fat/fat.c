@@ -29,6 +29,7 @@
 #include "../../../filemanager/vfs.h"
 #include "../../../memorymanager/memorymanager.h"
 #include "fat.h"
+#include "../../../header/debug.h"
 
 #define MODULE_INIT fat_init
 
@@ -98,7 +99,7 @@ size_t count;
 size_t lfncount;
 size_t fattype;
 size_t rootdir;
-size_t startofdataarea;
+size_t start_of_data_area;
 char *fp[MAX_PATH];
 char *file[11];
 BLOCKDEVICE blockdevice;
@@ -127,6 +128,8 @@ if(find_type == FALSE) {
 	splitname(fp,splitbuf);					/* split filename */
 
 	buf->findentry=0;
+	
+	DEBUG_PRINT_HEX(filename);
 
 	buf->findlastblock=fat_getstartblock(splitbuf->dirname);
 	if(buf->findlastblock == -1) return(-1);
@@ -172,22 +175,22 @@ if(blockbuf == NULL) {
 if(strcmp(splitbuf->dirname,"\\") != 0) { /* not root */
 	if(fattype == 12 || fattype == 16) {
 		rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
-		startofdataarea=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
+		start_of_data_area=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
 	}
 	else
 	{
-		startofdataarea=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
+		start_of_data_area=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
 	}
 	
 }
 else
 {
-	startofdataarea=0;
+	start_of_data_area=0;
 }
 
 blockptr=blockbuf+(buf->findentry*FAT_ENTRY_SIZE);	/* point to next file */
 
-if(blockio(_READ,splitbuf->drive,(uint64_t) buf->findlastblock+startofdataarea,blockbuf) == -1) { /* read directory block */
+if(blockio(_READ,splitbuf->drive,(uint64_t) buf->findlastblock+start_of_data_area,blockbuf) == -1) { /* read directory block */
 	kernelfree(blockbuf);
 	kernelfree(lfnbuf);
 	kernelfree(splitbuf);
@@ -198,7 +201,6 @@ if(blockio(_READ,splitbuf->drive,(uint64_t) buf->findlastblock+startofdataarea,b
 
 while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1) {
 	buf->findentry++;
-	blockptr=blockptr+FAT_ENTRY_SIZE;
 
 	memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);				/* copy entry */
 
@@ -243,7 +245,14 @@ while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1
 			buf->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
 			buf->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
 			buf->timebuf.day=(dirent.createdate & 0x1f);
-			if(buf->attribs & FAT_ATTRIB_DIRECTORY) buf->flags=FILE_DIRECTORY;
+
+			if(buf->attribs & FAT_ATTRIB_DIRECTORY) {
+				buf->flags=FILE_DIRECTORY;
+			}
+			else
+			{
+				buf->flags=FILE_REGULAR;
+			}
 
 /* get next block */
 
@@ -274,7 +283,13 @@ while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1
 			if(wildcard(splitbuf->filename,file) == 0) { 				/* if file found */     
 				fatentrytofilename(dirent.filename,buf->filename);			/* convert filename */
 
-				if(dirent.attribs & FAT_ATTRIB_DIRECTORY) buf->flags= FILE_DIRECTORY;
+				if(buf->attribs & FAT_ATTRIB_DIRECTORY) {
+					buf->flags=FILE_DIRECTORY;
+				}
+				else
+				{
+					buf->flags=FILE_REGULAR;
+				}
 
 				buf->attribs=dirent.attribs;
 
@@ -314,6 +329,9 @@ while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1
 				setlasterror(NO_ERROR);
 				return(0);
 			}
+
+			blockptr=blockptr+FAT_ENTRY_SIZE;
+
 		}
 
 if(buf->findentry >= ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1) {		/* at end of block */
@@ -600,8 +618,8 @@ uint16_t date;
 size_t flen;
 FILERECORD findbuf;
 BPB *bpb;
-uint32_t startofdataarea;
-uint32_t thisdir_startofdataarea;
+uint32_t start_of_data_area;
+uint32_t thisdir_start_of_data_area;
 uint32_t rootdir;
 char *cwd[MAX_PATH];
 SPLITBUF cwdsplit;
@@ -705,7 +723,7 @@ while((fattype == 12 && rb < 0xff8) || (fattype == 16 && rb < 0xfff8) || (fattyp
 		blockptr=blockptr+FAT_ENTRY_SIZE;
 	}
 
-	if(strcmp(splitbuf->dirname,"\\") != 0) rb += startofdataarea;		/* If not root directory, add start of data area */
+	if(strcmp(splitbuf->dirname,"\\") != 0) rb += start_of_data_area;		/* If not root directory, add start of data area */
 
 	if(blockio(_READ,splitbuf->drive,rb,blockbuf) == -1) {	/* read block */
 		kernelfree(blockbuf);
@@ -796,19 +814,19 @@ while((fattype == 12 && rb < 0xff8) || (fattype == 16 && rb < 0xfff8) || (fattyp
 
 		if(fattype == 12 || fattype == 16) {
 			rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
-			startofdataarea=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
+			start_of_data_area=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
 		}
 		else
 		{
-			startofdataarea=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
+			start_of_data_area=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
 		}
 
 		if(strcmp(cwdsplit.dirname,"\\") != 0) { /* not root */
-			thisdir_startofdataarea=startofdataarea;
+			thisdir_start_of_data_area=start_of_data_area;
 		}
 		else
 		{
-			thisdir_startofdataarea=0;
+			thisdir_start_of_data_area=0;
 		}
 
 		if(strlen(filename) > 11) {		/* create long filename */
@@ -907,7 +925,7 @@ while((fattype == 12 && rb < 0xff8) || (fattype == 16 && rb < 0xfff8) || (fattyp
 			memcpy(blockbuf+(count*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE*2);
 		}
 
-		if(blockio(_WRITE,splitbuf->drive,(uint64_t) subdir+startofdataarea,blockbuf) == -1) {	/* write block */
+		if(blockio(_WRITE,splitbuf->drive,(uint64_t) subdir+start_of_data_area,blockbuf) == -1) {	/* write block */
 			kernelfree(splitbuf);
 			kernelfree(blockbuf);
 
@@ -1840,12 +1858,14 @@ char *blockbuf;
 char *blockptr;
 char *file[11];
 size_t c;
-size_t startofdataarea=0;
-size_t rootdir=0;
+uint64_t start_of_data_area=0;
+uint64_t rootdir_size=0;
 DIRENT directory_entry;
 FILERECORD *lfnbuf=NULL;
 size_t lfncount;
 BPB *bpb;
+
+DEBUG_PRINT_STRING(name);
 
 splitbuf=kernelalloc(sizeof(SPLITBUF));
 if(splitbuf == NULL) return(-1);
@@ -1929,7 +1949,7 @@ while(c != -1) {
 	tc--;	
 
 	while((fattype == 12 && rb != 0xfff) || (fattype == 16 && rb !=0xffff) || (fattype == 32 && rb !=0xffffffff)) {
-		if(blockio(_READ,splitbuf->drive,(uint64_t) rb+startofdataarea,blockbuf) == -1) {			/* read block for entry */
+		if(blockio(_READ,splitbuf->drive,(uint64_t) rb+start_of_data_area,blockbuf) == -1) {			/* read block for entry */
 			kernelfree(splitbuf);
 			kernelfree(blockbuf);
 		     	kernelfree(lfnbuf);
@@ -1960,21 +1980,35 @@ while(c != -1) {
 			if(wildcard(token_buffer,file) == 0) { 		/* if short entry filename found */         
 
 				if(fattype == 12 || fattype == 16) rb=directory_entry.block_low_word;				/* get next block */
-				if(fattype == 32) rb=((directory_entry.block_high_word << 16)+directory_entry.block_low_word); 	/* get next block */
+				if(fattype == 32) rb=(uint64_t) ((directory_entry.block_high_word << 16)+directory_entry.block_low_word); 	/* get next block */
 
-				if(strcmp(splitbuf->dirname,"\\") != 0) { /* not root */
+				DEBUG_PRINT_STRING(splitbuf->dirname);
+				DEBUG_PRINT_STRING(splitbuf->filename);
+
+				if(directory_entry.attribs & FAT_ATTRIB_DIRECTORY) { /* not root */
 					if(fattype == 12 || fattype == 16) {
-						rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsperblock;
-						startofdataarea=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
+						kprintf_direct("FOUND DIR\n");
+
+						rootdir_size=(uint64_t) ((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
+		
+						start_of_data_area=(uint64_t) rootdir_size+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
+	
+						DEBUG_PRINT_HEX(rootdir_size);
+						DEBUG_PRINT_HEX(bpb->reservedsectors);
+						DEBUG_PRINT_HEX(bpb->numberoffats);
+						DEBUG_PRINT_HEX(bpb->sectorsperfat);
+						DEBUG_PRINT_HEX(start_of_data_area);
+						DEBUG_PRINT_HEX(directory_entry.block_low_word);
+
 					}
 					else
 					{
-						startofdataarea=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
+						start_of_data_area=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
 					}
 				}
 				else
 				{
-					startofdataarea=0;
+					start_of_data_area=0;
 				}
 
 					if(tc == 0) {
@@ -1983,8 +2017,8 @@ while(c != -1) {
 						kernelfree(lfnbuf);
 					  	kernelfree(blockbuf);
 					  	kernelfree(splitbuf);
-					 
-						return(rb);					/* at end, return block */
+					
+						return(rb);				/* at end, return block */
 					}
 
 					goto  considered_harmful;

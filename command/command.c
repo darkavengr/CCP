@@ -1062,7 +1062,7 @@ while(findresult != -1) {
 	  kprintf("%s\n",direntry.filename);
 	  fcount++;
 
-	  memset(&direntry.filename,0,MAX_PATH);
+	  memset(&direntry,sizeof(FILERECORD));
 
 	  findresult=findnext(parsebuf[1],&direntry);
 	  if(findresult == -1) break;
