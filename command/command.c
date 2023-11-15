@@ -28,10 +28,10 @@
 	  EXIT		 *T
 	  GOTO		 *
 	  IF		 *T
-	  MKDIR	 *T
+	  MKDIR	 	 *T
 	  REM		 *T
 	  RENAME	 *T
-	  RMDIR	 *T
+	  RMDIR	 	 *T
 	  SET   	 *T
 	  TYPE		 *T
 	  PS		 *T
@@ -366,6 +366,7 @@ int statementcount;
 char c;
 char firstchar;
 char lastchar;
+size_t drivenumber;
 
 if(strcmp(buf,"\n") == 0) return;	/* blank line */
 
@@ -461,18 +462,17 @@ for(count=0;count<tc;count++) {
 
 } 
 
+
 b=parsebuf[0];
 b++;
-//asm("xchg %bx,%bx");
 
-c=*b;					/* get drive letter */
+if(*b == ':' && strlen(parsebuf[0]) == 2) {
+	drivenumber=(char) *parsebuf[0]-'A';		/* get drive number */
 
-if(c == ':' && strlen(parsebuf[0]) == 2) {
-	c=*parsebuf[0];
+	kprintf("directory=%s\n",directories[drivenumber]);
 
-	c=c-'A';					/* get drive number */
-	 
-	chdir(directories[c]);
+	chdir(directories[drivenumber]);
+
 	writeerror();
 	return;	
 }
@@ -652,20 +652,26 @@ if(condition == TRUE) {
  */
 
 int cd_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-char *buffer[MAX_PATH];
+char *directoryname[MAX_PATH];
+size_t drivenumber;
 
 if(tc == 1) {			/* not enough args */
-	getcwd(buffer);
+	getcwd(directoryname);
 
-	kprintf("%s\n",buffer);
+	kprintf("%s\n",directoryname);
 	return;
 }
+
+getfullpath(parsebuf[1],directoryname);	/* get full path of directory */
 
 if(chdir(parsebuf[1]) == -1) {		/* set directory */
 	writeerror();
 	return;
 }
 
+drivenumber=(char) *directoryname-'A';	/* get drive number */
+
+strcpy(directories[drivenumber],directoryname);	/* save directory name */
 return;
 }
 
@@ -1056,7 +1062,7 @@ while(findresult != -1) {
 	  	memset(z,' ',10-strlen(buffer));
 	  	kprintf(z);
 
-	  	kprintf("%u ",direntry.filesize);
+	  	kprintf("%d ",direntry.filesize);
 	 }
 
 	  kprintf("%s\n",direntry.filename);

@@ -77,7 +77,8 @@ while(*b != 0) {
 	   			num=va_arg(args,size_t);
 	   			itoa(num,z);
 
-	   			if(num < 10) write(stdout,"0",1);
+	   			if((num > 0 && num < 10)) write(stdout,"0",1);
+
 	   			write(stdout,z,strlen(z));
 	   
 	   			b++;
@@ -190,7 +191,7 @@ c=*b;
 	  		case 'u':				/* unsigned decimal */
 	   			num=va_arg(args,size_t);
 
-	  			if(num < 10) strcat(bufptr,"0");
+	  			if((num > 0 && num < 10)) strcat(bufptr,"0");
 
 	  			itoa(num,z);
 	 			strcat(bufptr,z);

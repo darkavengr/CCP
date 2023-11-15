@@ -1,20 +1,18 @@
-/*  CCP Version 0.0.1
-				(C) Matthew Boote 2020-2023
+/* CCP Version 0.0.1
+   (C) Matthew Boote 2020-2023
 
-				This file is part of CCP.
+   This file is part of CCP.
+   CCP is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   CCP is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
-				CCP is free software: you can redistribute it and/or modify
-				it under the terms of the GNU General Public License as published by
-				the Free Software Foundation, either version 3 of the License, or
-				(at your option) any later version.
-
-				CCP is distributed in the hope that it will be useful,
-				but WITHOUT ANY WARRANTY; without even the implied warranty of
-				MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-				GNU General Public License for more details.
-
-				You should have received a copy of the GNU General Public License
-				along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+   You should have received a copy of the GNU General Public License
+   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 /* 
@@ -66,6 +64,38 @@ void fatentrytofilename(char *filename,char *out);
 size_t fat_init(char *i);							// TESTED
 size_t fat_create_int(size_t entrytype,char *filename);
 
+
+/*
+ * Initialize FAT filesystem module
+ *
+ * In:  initstr	Initialisation string
+ *
+ * Returns: nothing
+ *
+ */
+size_t fat_init(char *initstr) {
+FILESYSTEM fatfilesystem;
+
+strcpy(fatfilesystem.name,"FAT");
+strcpy(fatfilesystem.magicnumber,"FAT");
+fatfilesystem.size=3;
+fatfilesystem.location=0x36;
+fatfilesystem.findfirst=&fat_findfirst;
+fatfilesystem.findnext=&fat_findnext;
+fatfilesystem.read=&fat_read;
+fatfilesystem.write=&fat_write;
+fatfilesystem.rename=&fat_rename;
+fatfilesystem.delete=&fat_delete;
+fatfilesystem.mkdir=&fat_mkdir;
+fatfilesystem.rmdir=&fat_rmdir;
+fatfilesystem.create=&fat_create;
+fatfilesystem.chmod=&fat_chmod;
+fatfilesystem.setfiletd=&fat_setfiletimedate;
+fatfilesystem.getstartblock=&fat_getstartblock;
+fatfilesystem.seek=&fat_seek;
+
+register_filesystem(&fatfilesystem);
+}
 
 /*
  * Find first or next file in directory
@@ -129,8 +159,6 @@ if(find_type == FALSE) {
 
 	buf->findentry=0;
 	
-	DEBUG_PRINT_HEX(filename);
-
 	buf->findlastblock=fat_getstartblock(splitbuf->dirname);
 	if(buf->findlastblock == -1) return(-1);
 
@@ -239,12 +267,12 @@ while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1
 			buf->access=0;
 			buf->currentpos=0;
 
-			buf->timebuf.hours=(dirent.createtime & 0xf800) >> 11;
-			buf->timebuf.minutes=(dirent.createtime  & 0x7e0) >> 6;
-			buf->timebuf.seconds=(dirent.createtime & 0x1f);
-			buf->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
-			buf->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
-			buf->timebuf.day=(dirent.createdate & 0x1f);
+			buf->timebuf.hours=(dirent.last_modified_time & 0xf800) >> 11;
+			buf->timebuf.minutes=(dirent.last_modified_time  & 0x7e0) >> 6;
+			buf->timebuf.seconds=(dirent.last_modified_time & 0x1f);
+			buf->timebuf.year=((dirent.last_modified_date & 0xfe00) >> 9)+1980;
+			buf->timebuf.month=(dirent.last_modified_date & 0x1e0) >> 5;
+			buf->timebuf.day=(dirent.last_modified_date & 0x1f);
 
 			if(buf->attribs & FAT_ATTRIB_DIRECTORY) {
 				buf->flags=FILE_DIRECTORY;
@@ -283,14 +311,6 @@ while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1
 			if(wildcard(splitbuf->filename,file) == 0) { 				/* if file found */     
 				fatentrytofilename(dirent.filename,buf->filename);			/* convert filename */
 
-				if(buf->attribs & FAT_ATTRIB_DIRECTORY) {
-					buf->flags=FILE_DIRECTORY;
-				}
-				else
-				{
-					buf->flags=FILE_REGULAR;
-				}
-
 				buf->attribs=dirent.attribs;
 
 				buf->filesize=dirent.filesize;
@@ -301,14 +321,22 @@ while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)+1
 				buf->access=0;
 				buf->currentpos=0;
 
-				buf->timebuf.hours=(dirent.createtime & 0xf800) >> 11;
-				buf->timebuf.minutes=(dirent.createtime  & 0x7e0) >> 6;
-				buf->timebuf.seconds=(dirent.createtime & 0x1f);
-				buf->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
-				buf->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
-				buf->timebuf.day=(dirent.createdate & 0x1f);
+				buf->timebuf.hours=(dirent.last_modified_time & 0xf800) >> 11;
+				buf->timebuf.minutes=(dirent.last_modified_time  & 0x7e0) >> 6;
+				buf->timebuf.seconds=(dirent.last_modified_time & 0x1f);
+				buf->timebuf.year=((dirent.last_modified_date & 0xfe00) >> 9)+1980;
+				buf->timebuf.month=(dirent.last_modified_date & 0x1e0) >> 5;
+				buf->timebuf.day=(dirent.last_modified_date & 0x1f);
 	
-				buf->drive=splitbuf->drive;		/* additonal information */
+				buf->drive=splitbuf->drive;		/* additional information */
+
+				if(buf->attribs & FAT_ATTRIB_DIRECTORY) {
+					buf->flags=FILE_DIRECTORY;
+				}
+				else
+				{
+					buf->flags=FILE_REGULAR;
+				}
 
 				if(fattype == 12 || fattype == 16) {
 					buf->currentblock=(bpb->sectorsperfat*bpb->numberoffats) \
@@ -1308,8 +1336,6 @@ if(getblockdevice(onext.drive,&blockdevice) == -1) {
 }
 
 
-//kprintf_direct("fat write\n");
-
 bpb=blockdevice.superblock;		/* point to data */
 
 /* find block to read from */
@@ -1362,14 +1388,11 @@ if(count == 0) {
 if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
 	/* empty file */
 
-	kprintf_direct("empty file\n");
 	onext.filesize += size;
 	
 
 	for(count=0;count< (size / (bpb->sectorsperblock*bpb->sectorsize))+1;count++) {
 		newblock=fat_findfreeblock(onext.drive);
-
-		//kprintf_direct("newblock=%X\n",newblock);
 
 		if(count == 0) {
 			lastblock=newblock;			/* first block in chain */ 	
@@ -1401,8 +1424,6 @@ if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.cur
 	}
 	else
 	{
-	// kprintf_direct("Updating directory entry\n");
-
 		blockbuf=kernelalloc(MAX_BLOCK_SIZE);
 		if(blockbuf == NULL) return(-1);
 
@@ -1421,8 +1442,6 @@ if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.cur
 
 		if(blockio(_WRITE,onext.drive,onext.findlastblock,blockbuf) == -1) return(-1); /* write block */
 
-		// kprintf_direct("Updated directory entry\n");
-
 		kernelfree(blockbuf);
 
 		/* update blockno */
@@ -1430,7 +1449,6 @@ if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.cur
 		if(fattype == 32) blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
 	}
 	
-		//kprintf_direct("done\n");
 }
 
 ioaddr=addr;					/* point to buffer */
@@ -1453,9 +1471,6 @@ if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
 		updatehandle(handle,&onext);
 
 		if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
-
-			//kprintf_direct("AT END OF FILE\n");
-
 			onext.currentpos += count;
 			setlasterror(END_OF_FILE);
 
@@ -1762,8 +1777,6 @@ if(fattype == 12) {				/* fat 12 */
 			if(countx & 1) {	
 				if((shortentry >> 4) == 0) {
 					setlasterror(NO_ERROR);
-
-					//kprintf_direct("freeblock=%X\n",blockcount);
 					return(blockcount);
 			         }
 			}
@@ -1771,8 +1784,6 @@ if(fattype == 12) {				/* fat 12 */
 			{
 				if((shortentry & 0xfff) == 0) {
 					setlasterror(NO_ERROR);
-	
-					//kprintf_direct("freeblock=%X\n",blockcount);
 					return(blockcount);
 			}
 					                  }
@@ -1864,8 +1875,6 @@ DIRENT directory_entry;
 FILERECORD *lfnbuf=NULL;
 size_t lfncount;
 BPB *bpb;
-
-DEBUG_PRINT_STRING(name);
 
 splitbuf=kernelalloc(sizeof(SPLITBUF));
 if(splitbuf == NULL) return(-1);
@@ -1982,43 +1991,14 @@ while(c != -1) {
 				if(fattype == 12 || fattype == 16) rb=directory_entry.block_low_word;				/* get next block */
 				if(fattype == 32) rb=(uint64_t) ((directory_entry.block_high_word << 16)+directory_entry.block_low_word); 	/* get next block */
 
-				DEBUG_PRINT_STRING(splitbuf->dirname);
-				DEBUG_PRINT_STRING(splitbuf->filename);
-
-				if(directory_entry.attribs & FAT_ATTRIB_DIRECTORY) { /* not root */
-					if(fattype == 12 || fattype == 16) {
-						kprintf_direct("FOUND DIR\n");
-
-						rootdir_size=(uint64_t) ((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
+				if(tc == 0) {
+					setlasterror(NO_ERROR);
 		
-						start_of_data_area=(uint64_t) rootdir_size+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
-	
-						DEBUG_PRINT_HEX(rootdir_size);
-						DEBUG_PRINT_HEX(bpb->reservedsectors);
-						DEBUG_PRINT_HEX(bpb->numberoffats);
-						DEBUG_PRINT_HEX(bpb->sectorsperfat);
-						DEBUG_PRINT_HEX(start_of_data_area);
-						DEBUG_PRINT_HEX(directory_entry.block_low_word);
-
-					}
-					else
-					{
-						start_of_data_area=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
-					}
-				}
-				else
-				{
-					start_of_data_area=0;
-				}
-
-					if(tc == 0) {
-						setlasterror(NO_ERROR);
-				
-						kernelfree(lfnbuf);
-					  	kernelfree(blockbuf);
-					  	kernelfree(splitbuf);
+					kernelfree(lfnbuf);
+				  	kernelfree(blockbuf);
+				  	kernelfree(splitbuf);
 					
-						return(rb);				/* at end, return block */
+					return(rb);				/* at end, return block */
 					}
 
 					goto  considered_harmful;
@@ -3221,35 +3201,4 @@ if(*b != ' ') {			/* get extension */
 return;
 }
 
-/*
- * Initialize FAT filesystem module
- *
- * In:  initstr	Initialisation string
- *
- * Returns: nothing
- *
- */
-size_t fat_init(char *initstr) {
-FILESYSTEM fatfilesystem;
-
-strcpy(fatfilesystem.name,"FAT");
-strcpy(fatfilesystem.magicnumber,"FAT");
-fatfilesystem.size=3;
-fatfilesystem.location=0x36;
-fatfilesystem.findfirst=&fat_findfirst;
-fatfilesystem.findnext=&fat_findnext;
-fatfilesystem.read=&fat_read;
-fatfilesystem.write=&fat_write;
-fatfilesystem.rename=&fat_rename;
-fatfilesystem.delete=&fat_delete;
-fatfilesystem.mkdir=&fat_mkdir;
-fatfilesystem.rmdir=&fat_rmdir;
-fatfilesystem.create=&fat_create;
-fatfilesystem.chmod=&fat_chmod;
-fatfilesystem.setfiletd=&fat_setfiletimedate;
-fatfilesystem.getstartblock=&fat_getstartblock;
-fatfilesystem.seek=&fat_seek;
-
-register_filesystem(&fatfilesystem);
-}
 
