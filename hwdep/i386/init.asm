@@ -323,7 +323,7 @@ call	init_multitasking
 
 call	driver_init				; initialize drivers and filesystems
 
-;call	initrd_init
+call	initrd_init
 
 mov	esp,(INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH)+KERNEL_STACK_SIZE	; temporary stack
 push	esp

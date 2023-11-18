@@ -63,6 +63,124 @@ parity parityvals[] = { { "none", 0 },\
 			{ "",-1 } };
 
 /*
+ * Initialize serial and parallel ports
+ *
+ * In: char *init	Initialization string
+ *
+ *  Returns nothing
+ *
+ */
+void serialio_init(char *init) {
+CHARACTERDEVICE device;
+char *tokens[10][255];
+char *op[2][255];
+int count;
+int tc;
+int subtc;
+int whichp;
+int countx;
+
+ports[0].readhandler=&read_com1;		/* intialize function pointers */
+ports[1].readhandler=&read_com2;
+ports[2].readhandler=&read_com3;
+ports[3].readhandler=&read_com4;
+
+ports[0].writehandler=&write_com1;		/* intialize function pointers */
+ports[1].writehandler=&write_com2;
+ports[2].writehandler=&write_com3;
+ports[3].writehandler=&write_com4;
+
+//port=com1 baud=115200 databits=8 stopbits=1 parity=even interrupts=data buffersize=1024
+
+if(init != NULL) {			/* args found */
+	tc=tokenize_line(init,tokens," ");	/* tokenize line */
+
+	for(count=0;count<tc;count++) {
+		tokenize_line(tokens[count],op,"=");	/* tokenize line */
+
+		if(strcmp(op[0],"port") == 0) {		/* set port */
+			for(whichp=0;whichp<5;whichp++) {
+				if(strcmp(ports[whichp],op[1]) == 0) break;
+			}
+
+	
+			if(whichp == 5) {		/* bad serial */
+	   			kprintf_direct("serial: Unknown port %s\n",op[1]);
+	   			return;
+	  		}
+	 	}
+
+	 	if(strcmp(op[0],"buffersize") == 0) {
+	  		ports[whichp].buffersize=atoi(op[1]);
+	  		return;
+	 	}
+
+	 	if(strcmp(op[0],"baud") == 0) {		/* set baud */
+	  		ports[whichp].baud=atoi(op[0]);
+	 	}
+
+	 	if(strcmp(op[0],"databits") == 0) {		/* set databits */
+	  		ports[whichp].databits=atoi(op[1]);
+	 	}
+
+
+	 	if(strcmp(op[0],"stopbits") == 0) {		/* set stop bits */
+	 		ports[whichp].stopbits=atoi(op[1]);
+	 	}
+
+	 	if(strcmp(tokens[count],"parity") == 0) {		/* set baud */
+	 		countx=0;
+	  
+			while(countx != -1) {
+				if(strcmp(parityvals[countx].name,op[1]) == 0) ports[whichp].parity=parityvals[countx].val;
+
+	   			countx++;
+			}
+	 
+	  		if(countx == -1) {		/* bad value */
+	   			kprintf_direct("serial: parity must be odd or even\n");
+	   			return;
+	  		}
+	 	}
+	}
+}
+
+setirqhandler(3,&com2_irq_handler);		/* set irq handler */
+setirqhandler(4,&com1_irq_handler);		/* set irq handler */
+setirqhandler(4,&com3_irq_handler);		/* set irq handler */
+setirqhandler(3,&com4_irq_handler);		/* set irq handler */
+
+/* configure ports */
+
+for(count=0;count<4;count++) {
+	ports[count].buffer=kernelalloc(ports[count].buffersize);		/* allocate buffer */
+	if(ports[count].buffer == NULL) return(-1);
+
+	ports[count].bufptr= ports[count].buffer;
+
+	strcpy(&device.dname,ports[count].name);		/* add device */
+	device.charioread=ports[count].readhandler;
+	device.chariowrite=ports[count].writehandler;
+
+	device.flags=0;
+	device.data=NULL;
+	device.next=NULL;
+	add_char_device(&device);			
+
+	outb(ports[count].port+1, 0x00);    			/* Disable all interrupts */
+	outb(ports[count].port+3, 0x80);    			/* Enable DLAB (set baud rate divisor) */
+	outb(ports[count].port+0, (115200/ports[count].baud)); /* set divisor  */
+	outb(ports[count].port+1, 0x00);    			/* hi byte */
+	outb(ports[count].port+3, ports[count].parity);    	/* Parity  */
+	outb(ports[count].port+2, 0xC7);    		/* Enable FIFO, clear them, with 14-byte threshold  */
+	outb(ports[count].port+4, 0x0B);    				/* IRQs enabled, RTS/DSR set  */
+}
+
+return;
+}	
+
+
+/*
  * Serial/parallel port I/O common function
  *
  * In: size_t op	Operation (0=read, 1=write)
@@ -260,124 +378,6 @@ if(ports[1].bufptr == ports[1].buffer+ports[3].buffersize) ports[1].bufptr=ports
 ports[1].portrcount++;
 return;
 }
-
-
-/*
- * Initialize serial and parallel ports
- *
- * In: char *init	Initialization string
- *
- *  Returns nothing
- *
- */
-void serialio_init(char *init) {
-CHARACTERDEVICE device;
-char *tokens[10][255];
-char *op[2][255];
-int count;
-int tc;
-int subtc;
-int whichp;
-int countx;
-
-ports[0].readhandler=&read_com1;		/* intialize function pointers */
-ports[1].readhandler=&read_com2;
-ports[2].readhandler=&read_com3;
-ports[3].readhandler=&read_com4;
-
-ports[0].writehandler=&write_com1;		/* intialize function pointers */
-ports[1].writehandler=&write_com2;
-ports[2].writehandler=&write_com3;
-ports[3].writehandler=&write_com4;
-
-//port=com1 baud=115200 databits=8 stopbits=1 parity=even interrupts=data buffersize=1024
-
-if(init != NULL) {			/* args found */
-	tc=tokenize_line(init,tokens," ");	/* tokenize line */
-
-	for(count=0;count<tc;count++) {
-		tokenize_line(tokens[count],op,"=");	/* tokenize line */
-
-		if(strcmp(op[0],"port") == 0) {		/* set port */
-			for(whichp=0;whichp<5;whichp++) {
-				if(strcmp(ports[whichp],op[1]) == 0) break;
-			}
-
-	
-			if(whichp == 5) {		/* bad serial */
-	   			kprintf_direct("serial: Unknown port %s\n",op[1]);
-	   			return;
-	  		}
-	 	}
-
-	 	if(strcmp(op[0],"buffersize") == 0) {
-	  		ports[whichp].buffersize=atoi(op[1]);
-	  		return;
-	 	}
-
-	 	if(strcmp(op[0],"baud") == 0) {		/* set baud */
-	  		ports[whichp].baud=atoi(op[0]);
-	 	}
-
-	 	if(strcmp(op[0],"databits") == 0) {		/* set databits */
-	  		ports[whichp].databits=atoi(op[1]);
-	 	}
-
-
-	 	if(strcmp(op[0],"stopbits") == 0) {		/* set stop bits */
-	 		ports[whichp].stopbits=atoi(op[1]);
-	 	}
-
-	 	if(strcmp(tokens[count],"parity") == 0) {		/* set baud */
-	 		countx=0;
-	  
-			while(countx != -1) {
-				if(strcmp(parityvals[countx].name,op[1]) == 0) ports[whichp].parity=parityvals[countx].val;
-
-	   			countx++;
-			}
-	 
-	  		if(countx == -1) {		/* bad value */
-	   			kprintf_direct("serial: parity must be odd or even\n");
-	   			return;
-	  		}
-	 	}
-	}
-}
-
-setirqhandler(3,&com2_irq_handler);		/* set irq handler */
-setirqhandler(4,&com1_irq_handler);		/* set irq handler */
-setirqhandler(4,&com3_irq_handler);		/* set irq handler */
-setirqhandler(3,&com4_irq_handler);		/* set irq handler */
-
-/* configure ports */
-
-for(count=0;count<4;count++) {
-	ports[count].buffer=kernelalloc(ports[count].buffersize);		/* allocate buffer */
-	if(ports[count].buffer == NULL) return(-1);
-
-	ports[count].bufptr= ports[count].buffer;
-
-	strcpy(&device.dname,ports[count].name);		/* add device */
-	device.charioread=ports[count].readhandler;
-	device.chariowrite=ports[count].writehandler;
-
-	device.flags=0;
-	device.data=NULL;
-	device.next=NULL;
-	add_char_device(&device);			
-
-	outb(ports[count].port+1, 0x00);    			/* Disable all interrupts */
-	outb(ports[count].port+3, 0x80);    			/* Enable DLAB (set baud rate divisor) */
-	outb(ports[count].port+0, (115200/ports[count].baud)); /* set divisor  */
-	outb(ports[count].port+1, 0x00);    			/* hi byte */
-	outb(ports[count].port+3, ports[count].parity);    	/* Parity  */
-	outb(ports[count].port+2, 0xC7);    		/* Enable FIFO, clear them, with 14-byte threshold  */
-	outb(ports[count].port+4, 0x0B);    				/* IRQs enabled, RTS/DSR set  */
-}
-
-return;
-}	
 
 /*
  * ioctl handler for serial and parallel ports

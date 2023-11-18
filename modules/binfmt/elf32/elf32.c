@@ -12,6 +12,27 @@
 
 #define MODULE_INIT elf32_init
 
+int elf32_init(char *init) {
+EXECUTABLEFORMAT exec;
+uint8_t magicnumber[] = { 0x7f,'E','L','F',1,1,1 };
+
+strcpy(exec.name,"ELF32");
+memcpy(exec.magic,magicnumber,ELF32_MAGIC_SIZE);
+
+exec.magicsize=ELF32_MAGIC_SIZE;
+exec.callexec=&load_elf32;
+
+if(register_executable_format(&exec) == -1) {
+	kprintf_direct("elf32: Can't register binary format\n");
+
+	setlasterror(INVALID_BINFMT);
+	return(-1);
+}
+
+setlasterror(NO_ERROR);
+return(0);
+}	
+
 size_t load_elf32(char *filename) {
 size_t handle;
 uint32_t entry;
@@ -114,24 +135,3 @@ setlasterror(NO_ERROR);
 return(elf_header.e_entry);
 }
 
-
-int elf32_init(char *init) {
-EXECUTABLEFORMAT exec;
-uint8_t magicnumber[] = { 0x7f,'E','L','F',1,1,1 };
-
-strcpy(exec.name,"ELF32");
-memcpy(exec.magic,magicnumber,ELF32_MAGIC_SIZE);
-
-exec.magicsize=ELF32_MAGIC_SIZE;
-exec.callexec=&load_elf32;
-
-if(register_executable_format(&exec) == -1) {
-	kprintf_direct("elf32: Can't register binary format\n");
-
-	setlasterror(INVALID_BINFMT);
-	return(-1);
-}
-
-setlasterror(NO_ERROR);
-return(0);
-}	

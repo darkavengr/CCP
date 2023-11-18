@@ -981,9 +981,8 @@ if(handle == -1) {				/* can't open */
 	
 findresult=0;
 
-while(findresult != -1) {
+while(findresult != -1) {	 
 	 findresult=read(handle,readbuf,MAX_READ_SIZE);			/* read from file */
-
 	 if(findresult == -1) {				/* can't open */
 	 	if(getlasterror() != END_OF_FILE) {
 	 		writeerror();

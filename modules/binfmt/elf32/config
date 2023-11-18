@@ -1,8 +1,4 @@
 name=elf32
 description=Adds support for 32-bit ELF executables
-compile_opt=m
-compile_external_module=y
-
-
-
-
+compile_opt=y
+compile_external_module=n

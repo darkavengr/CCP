@@ -153,86 +153,78 @@ FILERECORD dirent;
 
 lock_mutex(&vfs_mutex);
 
+/* check if:
+	 file exists and is owned by the caller and return handle if it is,
+	 file exists and is not owned by the called and is not opened for exclusive access. Return error if it is.
+*/
+
 next=openfiles;
 handle=0;
 
 while(next != NULL) {					/* return error if open */
-	if(strcmp(filename,next->filename) == 0) {	/* found filename */
+	last=next;
+
+	if(strcmpi(filename,next->filename) == 0) {	/* found filename */
 	
-	if(next->owner_process == getpid()) {
-		unlock_mutex(&vfs_mutex);
-		return(next->handle);	/* opening by owner process */
+		if(next->owner_process == getpid()) {
+			unlock_mutex(&vfs_mutex);
+			return(next->handle);	/* opening by owner process */
+		}
+
+		if(next->access & FILE_ACCESS_EXCLUSIVE) {		/* reopening file with exclusive access */
+			unlock_mutex(&vfs_mutex);
+
+			setlasterror(ACCESS_DENIED);
+			return(-1);
+		}
 	}
 
-	if(next->access & FILE_ACCESS_EXCLUSIVE) {		/* reopening file with exclusive access */
-		unlock_mutex(&vfs_mutex);
-
-		setlasterror(ACCESS_DENIED);
-		return(-1);
-	}
+	if(next->handle >= handle) handle=next->handle+1;	/* find highest handle number */
+	next=next->next;
 }
 
-handle++;
-
-next=next->next;
-}
-
-/* file being opened by another process - either first time or again by another process */
-
-handle++;
+/* Open block device */
 
 if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
+	if(openfiles == NULL) {
+		openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+		next=openfiles;
+	}
+	else
+	{
+		last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+		next=last->next;
+	}
 
-next=openfiles;
+	strcpy(next->filename,blockdevice.dname);
 
-while(next != NULL) {
-		last=next;
-		next=next->next;		/* find second to last entry */
-}
+	next->findblock=0;
+	next->currentblock=0;
+	next->currentpos=0;
+	next->owner_process=getpid();
+	next->blockio=blockdevice.blockio;
+	next->flags=FILE_BLOCK_DEVICE;
+	next->handle=handle;
+	next->access=access;
+	next->next=NULL;
+	
+	unlock_mutex(&vfs_mutex);
 
-last->next=kernelalloc(sizeof(FILERECORD));			/* allocate */
-next=last->next;
-
-if(next == NULL) {
-	lock_mutex(&vfs_mutex);
-	return(-1);
-}
-
-strcpy(next->filename,blockdevice.dname);
-
-next->findblock=0;
-next->currentblock=getstartblock(next->filename);
-next->currentpos=0;
-next->owner_process=getpid();
-next->blockio=blockdevice.blockio;
-next->flags=FILE_BLOCK_DEVICE;
-next->handle=handle;
-next->access=access;
-next->next=NULL;
-
-unlock_mutex(&vfs_mutex);
-
-setlasterror(NO_ERROR);
-return(handle);					/* return handle */
+	setlasterror(NO_ERROR);
+	return(handle);					/* return handle */
 }
 
 /* If opening character device */
 
-if(findcharacterdevice(filename,&chardevice) == 0) {
-	next=openfiles;
-	last=openfiles;
-
-	while(next != NULL) {
-		last=next;
-		next=next->next;
+if(findcharacterdevice(filename,&chardevice) == 0) {	
+	if(openfiles == NULL) {
+		openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+		next=openfiles;
 	}
-
-	last->next=kernelalloc(sizeof(FILERECORD));			/* allocate */
-	next=last->next;
-	
-	if(next == NULL) {
-		lock_mutex(&vfs_mutex);
-		return(-1);
+	else
+	{
+		last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+		next=last->next;
 	}
 
 	strcpy(next->filename,chardevice.dname);
@@ -242,7 +234,7 @@ if(findcharacterdevice(filename,&chardevice) == 0) {
 	next->ioctl=chardevice.ioctl;
 	next->flags=FILE_CHAR_DEVICE;
 	next->currentpos=0;
-	next->access=access;		/* access */
+	next->access=access;				/* access */
 	next->handle=handle;
 	next->next=NULL;
 
@@ -252,9 +244,11 @@ if(findcharacterdevice(filename,&chardevice) == 0) {
 	return(handle);					/* return handle */
 }
 
-getfullpath(filename,fullname);
+/* opening regular file */
 
-if(findfirst(fullname,&dirent) == -1) {
+getfullpath(filename,fullname);				/* get full path of file */
+
+if(findfirst(fullname,&dirent) == -1) {			/* check if file exists */
 	unlock_mutex(&vfs_mutex);
 	return(-1);
 }
@@ -268,43 +262,18 @@ if((dirent.attribs & _DIR) == _DIR) {
 	return(-1);
 }
 
-if(openfiles == NULL) {					/* first in chain */
-	handle=3;
+if(openfiles == NULL) {
 	openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+	next=openfiles;
+}
+else
+{
+	last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+	next=last->next;
+}
 
-	if(openfiles == NULL) {
-		unlock_mutex(&vfs_mutex);
-		setlasterror(NO_MEM);				/* out of memory */
-		return(-1);
-	}
-
-		next=openfiles;
-	}
-	else
-	{
-		next=openfiles;
-		last=next;
-		handle=3;
-
-		while(next != NULL) {					/* FIND END */
-			last=next;
-			next=next->next;
-			handle++;
-	}
-
-		handle++;						/* new handle */	
-
-
-		last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
-		next=last->next;
-
-		if(next == NULL) {
-			unlock_mutex(&vfs_mutex);
-
-			setlasterror(NO_MEM);				/* out of memory */
-			return(-1);
-		}
-	}
+DEBUG_PRINT_HEX(last->next);
+asm("xchg %bx,%bx");
 
 getfullpath(filename,fullname);
 	

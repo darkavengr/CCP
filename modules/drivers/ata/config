@@ -1,6 +1,7 @@
 name=ata
 description=Driver for ATA hard disk, it's recommended that you include this.
-compile_opt=m
+compile_opt=y
 requires=pci
-compile_external_module=y
+compile_external_module=n
+
 

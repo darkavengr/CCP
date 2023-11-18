@@ -32,7 +32,7 @@ size_t initrd_findnext(char *filename,FILERECORD *buf);
 size_t initrd_find(size_t op,char *filename,FILERECORD *buf);
 size_t initrd_read(size_t handle,void *buf,size_t size);
 size_t initrd_init(void);
-size_t initrd_io(size_t op,size_t drive,size_t block,char *buf);
+size_t initrd_io(size_t op,size_t drive,uint64_t block,char *buf);
 
 TAR_HEADER *tarptr;
 
@@ -253,7 +253,7 @@ bd.ioctl=NULL;
 bd.physicaldrive=0;
 bd.drive=25;
 bd.flags=0;
-bd.startblock=0;
+bd.startblock=(uint64_t) 0;
 bd.sectorsperblock=1;
 add_block_device(&bd);
 
@@ -293,7 +293,7 @@ register_filesystem(&fs);
  *  Returns: 0 on success or -1
  *
  */
-size_t initrd_io(size_t op,size_t drive,size_t block,char *buf) { 
+size_t initrd_io(size_t op,size_t drive,uint64_t block,char *buf) { 
 BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 char *tptr;
 
@@ -318,11 +318,12 @@ char *filename[MAX_PATH];
 SPLITBUF split;
 
 /* loop through modules in initrd and load them */
+
 if(findfirst("Z:\\*.o",&findmodule) == -1) return(FILE_NOT_FOUND);
 
 
 do {
-	kprintf_direct("Loading module Z:\\%s\n",findmodule.filename);
+	//kprintf_direct("Loading module Z:\\%s\n",findmodule.filename);
 
 	ksprintf(filename,"Z:\\%s",findmodule.filename);
 
@@ -332,8 +333,9 @@ do {
 
 } while(findnext("Z:\\*.o",&findmodule) != -1);
 
-asm("xchg %bx,%bx");
 setlasterror(NO_ERROR);
+
+kprintf_direct("End of initrd load\n");
 return(0);
 }
 

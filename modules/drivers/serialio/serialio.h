@@ -39,4 +39,19 @@ typedef struct _parity {
 } parity;
 
 
+void serialio_init(char *init);
+uint8_t comport(size_t op,uint16_t port,char *buf,size_t size);
+void read_com1(char *buf,size_t size);
+void write_com1(char *buf,size_t size);
+void read_com2(char *buf,size_t size);
+void write_com2(char *buf,size_t size);
+void read_com3(char *buf,size_t size);
+void write_com3(char *buf,size_t size);
+void read_com4(char *buf,size_t size);
+void write_com4(char *buf,size_t size);
+void com1_irq_handler(void *regs);
+void com2_irq_handler(void *regs);
+void com3_irq_handler(void *regs);
+void com4_irq_handler(void *regs);
+size_t serial_ioctl(size_t handle,unsigned long request,char *buffer);
 
