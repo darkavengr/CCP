@@ -197,8 +197,6 @@ shptr=buf+elf_header->e_shoff;
 
 for(count=0;count<elf_header->e_shnum;count++) {
 
-	//DEBUG_PRINT_HEX(count);
-
 	if((shptr->sh_type == SHT_REL) || (shptr->sh_type == SHT_RELA)) {					/* found section */
 		/* perform relocations using relocation table in section */
  
@@ -212,9 +210,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 		}
 
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
-
-				//DEBUG_PRINT_HEX(reloc_count);
-
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
 				
 				if(shptr->sh_type == SHT_REL) {			
@@ -277,21 +272,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
 				}	
 				
-				//if(strcmp(fullname,"Z:\\SERIALIO.O") == 0) {
-				//	DEBUG_PRINT_STRING(name);
-				//
-				//	DEBUG_PRINT_HEX(symptr->st_value);
-				//	DEBUG_PRINT_HEX(relptr);
-				//	DEBUG_PRINT_HEX(shptr);
-				//	DEBUG_PRINT_HEX(ref);
-				//	DEBUG_PRINT_HEX(symtype);
-				//	DEBUG_PRINT_HEX(symval);
-
-				//	asm("xchg %bx,%bx");
-
-				//}
-
-
 				/* update reference in section */
 
 				if(symtype == R_386_NONE) {

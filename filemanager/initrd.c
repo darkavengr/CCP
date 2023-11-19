@@ -91,8 +91,6 @@ if(op == 0) {
 }
 else
 {
-//	DEBUG_PRINT_HEX(buf->findblock);
-
 	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findblock*TAR_BLOCK_SIZE);		/* first */
 }
 
@@ -109,10 +107,6 @@ while(*tarptr->name != 0) {
 	filefound=FALSE;
 	
 	touppercase(tarptr->name);
-
-	//DEBUG_PRINT_STRING(tarptr->name);
-	//DEBUG_PRINT_STRING(split.filename);
-	//DEBUG_PRINT_HEX(tarptr);
 
 	if(wildcard(split.filename,tarptr->name) == 0) { 	/* if file found */      	
 		strcpy(buf->filename,tarptr->name);	/* copy information */
@@ -170,13 +164,10 @@ if(gethandle(handle,&onext) == -1) {	/* bad handle */
 // return(-1);
 //}
 
-//DEBUG_PRINT_HEX(onext.startblock);
 
 dataptr=boot_info->initrd_start+KERNEL_HIGH;		/* point to start */
 dataptr += (onext.startblock*TAR_BLOCK_SIZE);
 dataptr += onext.currentpos;				/* point to current position */
-
-//DEBUG_PRINT_HEX(dataptr);
 
 memcpy(buf,dataptr,size);				/* copy data */
 

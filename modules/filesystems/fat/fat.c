@@ -216,15 +216,6 @@ else
 	start_of_data_area=0;
 }
 
-//if(splitbuf->drive == 2) {
-//	DEBUG_PRINT_STRING(splitbuf->dirname);
-//	/DEBUG_PRINT_STRING(splitbuf->filename);
-//	DEBUG_PRINT_HEX(buf->findlastblock);
-//	DEBUG_PRINT_HEX(start_of_data_area);
-
-//	asm("xchg %bx,%bx");
-//}
-
 blockptr=blockbuf+(buf->findentry*FAT_ENTRY_SIZE);	/* point to next file */
 
 if(blockio(_READ,splitbuf->drive,(uint64_t) buf->findlastblock+start_of_data_area,blockbuf) == -1) { /* read directory block */
@@ -1174,10 +1165,8 @@ if(iobuf == NULL) {
 
 if(fattype == 12 || fattype == 16) {
 	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
-
 	rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
 	datastart=bpb->reservedsectors+fatsize+rootdirsize;
-
 	blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
@@ -1208,8 +1197,6 @@ if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
 		updatehandle(handle,&onext);
 
 		if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff0) || (fattype == 32 && onext.currentblock >= 0xfffffff0)) {
-			kprintf_direct("end of partial block\n");
-
 			onext.currentpos += count;
 
 			updatehandle(handle,&onext);
@@ -1231,13 +1218,6 @@ if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
 for(blockcount=0;blockcount< (size / (bpb->sectorsperblock*bpb->sectorsize));blockcount++) {    
 	blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
-
-	if(strcmpi(onext.filename,"A:\\TESTDIR\\BOOTLOG.TXT") == 0)  {
-		DEBUG_PRINT_HEX(datastart);
-		DEBUG_PRINT_HEX(blockno);
-		DEBUG_PRINT_HEX(iobuf);
-		asm("xchg %bx,%bx");
-	}
 
 	if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
 
@@ -1895,6 +1875,9 @@ DIRENT directory_entry;
 FILERECORD *lfnbuf=NULL;
 size_t lfncount;
 BPB *bpb;
+size_t datastart;
+size_t fatsize;
+size_t rootdirsize;
 
 splitbuf=kernelalloc(sizeof(SPLITBUF));
 if(splitbuf == NULL) return(-1);
@@ -1968,6 +1951,17 @@ if(strcmp(splitbuf->dirname,"\\") == 0) {						           /* root directory */
 	}
 }
 
+if(fattype == 12 || fattype == 16) {
+	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
+	rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
+	datastart=bpb->reservedsectors+fatsize+rootdirsize;
+}
+
+if(fattype == 32) {
+	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
+	datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
+}
+
 while(c != -1) {
 	considered_harmful:
 
@@ -2007,7 +2001,6 @@ while(c != -1) {
 			touppercase(token_buffer);			/* convert to uppercase */
 
 			if(wildcard(token_buffer,file) == 0) { 		/* if short entry filename found */         
-
 				if(fattype == 12 || fattype == 16) rb=directory_entry.block_low_word;				/* get next block */
 				if(fattype == 32) rb=(uint64_t) ((directory_entry.block_high_word << 16)+directory_entry.block_low_word); 	/* get next block */
 
@@ -2017,10 +2010,11 @@ while(c != -1) {
 					kernelfree(lfnbuf);
 				  	kernelfree(blockbuf);
 				  	kernelfree(splitbuf);
-				
-					DEBUG_PRINT_HEX(rb);	
+			
 					return(rb);				/* at end, return block */
 				 }
+
+					rb += (datastart-2);			/* add start of data area */
 
 					goto  considered_harmful;
 				}
@@ -2041,7 +2035,7 @@ kernelfree(splitbuf);
 setlasterror(PATH_NOT_FOUND);
 return(-1);
 }
-	
+
 /*
  * Get next block in FAT chain
  *

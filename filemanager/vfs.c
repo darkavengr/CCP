@@ -47,7 +47,7 @@ size_t getfullpath(char *filename,char *buf);
 size_t seek(size_t handle,size_t pos,size_t whence);
 size_t tell(size_t handle);
 size_t setfiletimedate(char *filename,TIMEBUF *createtime,TIMEBUF *lastmodtime);
-size_t getstartblock(char *name);
+uint64_t getstartblock(char *name);
 size_t gethandle(size_t handle,FILERECORD *buf);
 size_t getfilesize(size_t handle);
 size_t splitname(char *name,SPLITBUF *splitbuf);
@@ -271,9 +271,6 @@ else
 	last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
 	next=last->next;
 }
-
-DEBUG_PRINT_HEX(last->next);
-asm("xchg %bx,%bx");
 
 getfullpath(filename,fullname);
 	
@@ -1375,7 +1372,7 @@ return(fs.setfiletd(filename,createtime,lastmodtime));
  *
  */
 
-size_t getstartblock(char *name) {
+uint64_t getstartblock(char *name) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
 SPLITBUF splitbuf;
@@ -1576,8 +1573,7 @@ return(0);
 
 size_t get_filename_token(char *filename,void *buf) {
 char *f;
-char *sf;
-size_t count=0;
+char *bufptr;
 
 if(old == NULL)  {					/* start of filename */
 	old=filename;
@@ -1585,28 +1581,22 @@ if(old == NULL)  {					/* start of filename */
 }
 
 f=old;
+bufptr=buf;
 
-sf=f;
+while(*f != 0) {
+	*bufptr++=*f++;					/* copy character from path */
 
-while(*f != '\\') {
-
-	count++;					/* at end of token */
-	
-	if(*f++ == 0) { 
-		count++;
-		memcpy(buf,sf++,count);
-		return(-1);				/* at end of filename */
+	if((*f == '\\') || (*f == 0)) {				/* found separator */ 
+		old=f+1;
+		return(0);
 	}
 
 }
 
-count++;
 
-memcpy(buf,sf++,count-1);
-old=f+1;
-
-return(0);
+return(-1);
 }
+
 
 /*
  * Get number of parts in filename seperated by \\
