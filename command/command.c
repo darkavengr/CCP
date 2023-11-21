@@ -148,11 +148,7 @@ char c;
 		case SIGHUP:
 			kprintf("command: Caught signal SIGHUP. Terminating\n");
 			exit(0);
-			break;
-
-		case SIGINT:
-			kprintf("command: Caught signal SIGINT.\n");
-			break;
+			break;	
 
 		case SIGQUIT:
 			kprintf("command: Caught signal SIGQUIT. Terminating\n");
@@ -192,6 +188,8 @@ char c;
 			kprintf("command: Caught signal SIGALRM.\n");
 			break;
 
+	case SIGINT:
+		/* fall through to SIGTERM */
 	case SIGTERM:
 			if(get_batch_mode() == TRUE) {		/* running in batch mode */
 				/* ask user to terminate batch job */
@@ -249,65 +247,34 @@ argcount=tokenize_line(psp->commandline,commandlinearguments," \t");		/* tokeniz
 
 if(argcount >= 2) {
 	for(count=1;count<argcount;count++) {
-		b=commandlinearguments[count];
+		if(strcmpi(commandlinearguments[count],"/C") == 0) {		/* run command and exit */
+			doline(commandlinearguments[count+1]);
+			exit(0);
+		}
 
-		if(*b == '/') {
-			b++;
+		if(strcmpi(commandlinearguments[count],"/K") == 0) {		/* run command */
+			doline(commandlinearguments[count+1]);
 	
-			c=*b;
-			switch(c) {
-				case 'c':
-				/* fall through */
-
-				case 'C':
-					commandlineoptions |= RUN_COMMAND_AND_EXIT;
-					strcpy(buffer,commandlinearguments[count+1]);
-					count++;
-					break;
+		}
 	
-				case 'k':
-				/* fall through */
+		if(strcmpi(commandlinearguments[count],"/P") == 0) {		/* Make command interpreter pemenant */
+			commandlineoptions |= COMMAND_PERMENANT;
+		}	
 		
-				case 'K':
-					commandlineoptions |= RUN_COMMAND_AND_CONTINUE;
-					strcpy(buffer,commandlinearguments[count+1]);
-					count++;
-					break;
-	
-				case 'p':
-				/* fall through */
+		if(strcmpi(commandlinearguments[count],"/?") == 0) {		/* Show help */
+			kprintf("Command interpreter\n");
+			kprintf("\n");
+			kprintf("COMMAND [/C command] [/K command] /P\n");
+			kprintf("\n");
+			kprintf("/C run command and exit\n");
+			kprintf("\n");
+			kprintf("/K run command and continue running command interpreter\n");
+			kprintf("\n");
+			kprintf("/P make command interpreter permanent (no exit)\n");
 		
-				case 'P':
-					commandlineoptions |= COMMAND_PERMENANT;
-					count++;
-					break;
-	
-				case '?':
-					kprintf("Command interpreter\n");
-					kprintf("\n");
-					kprintf("COMMAND [/C command] [/K command] /P\n");
-					kprintf("\n");
-					kprintf("/C run command and exit\n");
-					kprintf("\n");
-					kprintf("/K run command and continue running command interpreter\n");
-					kprintf("\n");
-					kprintf("/P make command interpreter permanent (no exit)\n");
-					count++;
-					break;
-
-				default:
-					kprintf("command: Invalid parameter\n");
-				}
-			}
-	 	}
-}
-
-if((commandlineoptions & RUN_COMMAND_AND_EXIT)) {
-	doline(buffer);
-	exit(0);
-}
-else if((commandlineoptions & RUN_COMMAND_AND_CONTINUE)) {
-	doline(buffer);
+			count++;
+		}
+	}
 }
 
 set_critical_error_handler(critical_error_handler);		/* set critical error handler */
@@ -350,9 +317,10 @@ for(count=0;count<26;count++) {		/* fill directory struct */
 
 /* do command */
 
-unsigned long doline(char *buf) {
+unsigned long doline(char *command) {
 unsigned long count;
 char *buffer[MAX_PATH];
+char *temp[MAX_PATH];
 unsigned long xdir;
 unsigned long backg;
 unsigned char *b;
@@ -368,14 +336,14 @@ char firstchar;
 char lastchar;
 size_t drivenumber;
 
-if(strcmp(buf,"\n") == 0) return;	/* blank line */
+if(strcmp(command,"\n") == 0) return;	/* blank line */
 
-b=buf+strlen(buf)-1;
+b=command+strlen(command)-1;
 if(*b == '\n') *b=0;		/* remove newline */
 
 memset(parsebuf,0,COMMAND_TOKEN_COUNT*MAX_PATH);
 
-tc=tokenize_line(buf,parsebuf," \t");	
+tc=tokenize_line(command,parsebuf," \t");	
 
 touppercase(parsebuf[0]);		/* convert to uppercase */
 	
@@ -392,8 +360,8 @@ for(count=1;count<tc;count++) {	/* replace variables with value */
 	 	b=parsebuf[count];
 	 	b++;
 	  
-		if(getvar(b,buffer) != -1) {
-	   		strcpy(parsebuf[count],buffer); 			/* replace with value */
+		if(getvar(b,temp) != -1) {
+	   		strcpy(parsebuf[count],temp); 			/* replace with value */
 	  	}
 	  	else
 	  	{
@@ -401,8 +369,8 @@ for(count=1;count<tc;count++) {	/* replace variables with value */
 	  	}
 	 }
 	 else if(firstchar == '%' && (lastchar >= '0' || lastchar <= '9')) {	/* command-line parameter */
-	 	if(getvar(parsebuf[count],buffer) != -1) {
-	 		strcpy(parsebuf[count],buffer); 			/* replace with value */
+	 	if(getvar(parsebuf[count],temp) != -1) {
+	 		strcpy(parsebuf[count],temp); 			/* replace with value */
 	 	}
 	 	else
 	 	{
@@ -469,8 +437,6 @@ b++;
 if(*b == ':' && strlen(parsebuf[0]) == 2) {
 	drivenumber=(char) *parsebuf[0]-'A';		/* get drive number */
 
-	kprintf("directory=%s\n",directories[drivenumber]);
-
 	chdir(directories[drivenumber]);
 
 	writeerror();
@@ -510,41 +476,41 @@ else
 /* don't put anything here, drop through to below */
 
 if(tc > 1) {						/* copy args if any */
-	memset(buffer,0,MAX_PATH);
+	memset(temp,0,MAX_PATH);
 
 	for(count=1;count<tc;count++) {				/* get args */
-		strcat(buffer,parsebuf[count]);
-		if(count < tc) strcat(buffer," ");
+		strcat(temp,parsebuf[count]);
+		if(count < tc) strcat(temp," ");
 	}
 
-	strtrunc(buffer,1);
+	strtrunc(temp,1);
 
 }
 
 /* run program or script in current directory */
-	if(runcommand(parsebuf[0],buffer,backg) != -1) return;	/* run ok */
+if(runcommand(parsebuf[0],temp,backg) != -1) return;	/* run ok */
 
 /* prepend each directory in PATH to filename in turn and execute */
 
-	if(getvar("PATH",d) != -1) {			/* get path */
-		b=buf;
+if(getvar("PATH",d) != -1) {			/* get path */
+	b=temp;
 
-		while(*d != 0) {
-		 *b++=*d++;    
+	/* copy each directory in path in turn, append filename and execute */
+
+	while(*d != 0) {
+	 	*b++=*d++;    
 	
-			if(*b == ';') {			/* seperator */ 
-				b--;
-	   		 *b='\\';
+		if(*b == ';') {			/* seperator */ 
+			b--;
+   			*b++='\\';
+   
+  			memcpy(b,parsebuf[0],strlen(parsebuf[0]));		/* append filename */
 	   
-				b++;
+			if(runcommand(parsebuf[1],temp,backg) != -1) return;	/* run ok */
 
-	  			memcpy(buf,parsebuf[0],strlen(parsebuf[0]));		/* append filename */
-	   
-				if(runcommand(parsebuf[1],buffer,backg) != -1) return;	/* run ok */
-
-	   			b=buf;
-	  		}
-	 	}
+   			b=temp;
+  		}
+ 	}
 
 }
 
@@ -983,7 +949,7 @@ findresult=0;
 
 while(findresult != -1) {	 
 	 findresult=read(handle,readbuf,MAX_READ_SIZE);			/* read from file */
-	 if(findresult == -1) {				/* can't open */
+	 if(findresult == -1) {				/* can't read */
 	 	if(getlasterror() != END_OF_FILE) {
 	 		writeerror();
 	 		break;

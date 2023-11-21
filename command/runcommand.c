@@ -138,6 +138,7 @@ char *bufptr;
 size_t parsecount;
 size_t count;
 char c;
+size_t filesize;
 
 if(flags == RUN_BACKGROUND) {				/* run batch file in background */
 	if(getvar("COMSPEC",buf) == -1) {			/* get command interpreter */
@@ -154,13 +155,8 @@ if(flags == RUN_BACKGROUND) {				/* run batch file in background */
 	return(exec(buf,batchfileargs,flags));
 }
 
-set_batch_mode(TRUE);			/* set batch mode */
-
 handle=open(filename,_O_RDONLY);
-if(handle == -1) {
-	set_batch_mode(FALSE);			/* set batch mode */
-	return(-1);
-}
+if(handle == -1) return(-1);
 
 parsecount=tokenize_line(args,parsebuf," \t");
 
@@ -178,7 +174,9 @@ for(count=1;count<parsecount;count++) {
 	setvar(buf,parsebuf[count]);
 }
 
-batchfilebuf=alloc(getfilesize(handle));		/* allocate buffer for batchfile */
+filesize=getfilesize(handle);
+
+batchfilebuf=alloc(filesize);		/* allocate buffer for batchfile */
 if(batchfilebuf == NULL) {
 	set_batch_mode(FALSE);			/* set batch mode */
 	return(-1);
@@ -186,11 +184,12 @@ if(batchfilebuf == NULL) {
 
 batchfileptr=batchfilebuf;
 
-read(handle,batchfilebuf,getfilesize(filename));	/* read batchfile to buffer */
+if(read(handle,batchfilebuf,filesize) == -1) return(-1);	/* read batchfile to buffer */
 
 memset(buf,0,MAX_PATH);
-
 bufptr=buf;
+
+set_batch_mode(TRUE);			/* set batch mode */
 
 while(*batchfileptr != 0) {
 	c=*batchfileptr;

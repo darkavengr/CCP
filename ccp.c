@@ -45,5 +45,6 @@ if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run com
 	while(1) ;;
 }
 
+asm("xchg %bx,%bx");
 }
 

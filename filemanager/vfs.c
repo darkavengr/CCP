@@ -285,6 +285,7 @@ next->access=access;			/* access mode */
 next->flags=FILE_REGULAR;		/* file information flags */
 next->handle=handle;			/* file handle */
 next->owner_process=getpid();		/* owner process */
+
 next->next=NULL;
 	
 setlasterror(NO_ERROR);
@@ -1438,23 +1439,23 @@ return(-1);
  */
 
 size_t getfilesize(size_t handle) {
-	FILERECORD *next;
+FILERECORD *next;
 
-	lock_mutex(&vfs_mutex);
+lock_mutex(&vfs_mutex);
 
-	next=openfiles;
+next=openfiles;
 
-	while(next != NULL) {
-		if((next->handle == handle) && (next->owner_process == getpid())) {
-			unlock_mutex(&vfs_mutex);
-			return(next->filesize);
-		}
-
-		next=next->next;
+while(next != NULL) {
+	if((next->handle == handle) && (next->owner_process == getpid())) {
+		unlock_mutex(&vfs_mutex);
+		return(next->filesize);
 	}
 
-	unlock_mutex(&vfs_mutex); 
-	return(-1);
+	next=next->next;
+}
+
+unlock_mutex(&vfs_mutex); 
+return(-1);
 }
 
 /*
