@@ -273,7 +273,7 @@ else
 }
 
 getfullpath(filename,fullname);
-	
+
 memset(next,0,sizeof(FILERECORD));
 memcpy(next,&dirent,sizeof(FILERECORD));  /* copy data */
 
@@ -285,7 +285,6 @@ next->access=access;			/* access mode */
 next->flags=FILE_REGULAR;		/* file information flags */
 next->handle=handle;			/* file handle */
 next->owner_process=getpid();		/* owner process */
-
 next->next=NULL;
 	
 setlasterror(NO_ERROR);

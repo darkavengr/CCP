@@ -23,7 +23,7 @@ typedef struct {
 	uint32_t filesize;			// 28
 } __attribute__((packed)) DIRENT;
 
-struct lfn_entry {
+typedef struct {
 	uint8_t sequence;
 	uint8_t firstfive_chars[10];				/* unicode uses two bytes */
 	uint8_t attributes;
@@ -32,7 +32,7 @@ struct lfn_entry {
 	uint8_t nextsix_chars[12];
 	uint16_t sc_alwayszero;
 	uint8_t lasttwo_chars[4];	
-}  __attribute__((packed)) lfn;
+}  __attribute__((packed)) LFN_ENTRY;
 
 typedef struct {
 /* dos 1.x+ bpb */

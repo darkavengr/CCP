@@ -1,0 +1,769 @@
+Archive member included because of file (symbol)
+
+/usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+                              obj/i386/memorymanager.o (__udivdi3)
+
+Allocating common symbols
+Common symbol       size              file
+
+ppos                0x4               obj/i386/console.o
+prdt                0x4               obj/i386/ata.o
+signalno            0x4               obj/i386/process.o
+b                   0x4               obj/i386/fat.o
+process_mutex       0x8               obj/i386/process.o
+entrypoint          0x4               obj/i386/process.o
+cyl                 0x1               obj/i386/floppy.o
+hddmastruct         0x4               obj/i386/ata.o
+tempfilename        0x3fc             obj/i386/process.o
+vfs_mutex           0x8               obj/i386/vfs.o
+tickcount           0x4               obj/i386/process.o
+tempargs            0x3fc             obj/i386/process.o
+old                 0x4               obj/i386/vfs.o
+characterdevice_mutex
+                    0x8               obj/i386/device.o
+tarptr              0x4               obj/i386/initrd.o
+irq_handlers        0x3c              obj/i386/pic.o
+memmanager_mutex    0x8               obj/i386/memorymanager.o
+keybbuf             0x400             obj/i386/keyb.o
+st0                 0x1               obj/i386/floppy.o
+flags               0x4               obj/i386/ex.o
+st                  0x7               obj/i386/floppy.o
+floppybuf           0x4               obj/i386/floppy.o
+keyboardflags       0x1               obj/i386/keyb.o
+blockdevice_mutex   0x8               obj/i386/device.o
+thisprocess         0x4               obj/i386/process.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD obj/i386/aainit.o
+LOAD obj/i386/aamemorymap.o
+LOAD obj/i386/ata.o
+LOAD obj/i386/ccp.o
+LOAD obj/i386/clock.o
+LOAD obj/i386/console.o
+LOAD obj/i386/cpustate.o
+LOAD obj/i386/device.o
+LOAD obj/i386/drive.o
+LOAD obj/i386/elf32.o
+LOAD obj/i386/ex.o
+LOAD obj/i386/fat.o
+LOAD obj/i386/floppy.o
+LOAD obj/i386/gdt.o
+LOAD obj/i386/initializepaging.o
+LOAD obj/i386/initrd.o
+LOAD obj/i386/interrupts.o
+LOAD obj/i386/keyb.o
+LOAD obj/i386/memorymanager.o
+LOAD obj/i386/module.o
+LOAD obj/i386/multitasking.o
+LOAD obj/i386/mutex.o
+LOAD obj/i386/null.o
+LOAD obj/i386/page.o
+LOAD obj/i386/partition.o
+LOAD obj/i386/pci.o
+LOAD obj/i386/pic386.o
+LOAD obj/i386/pic.o
+LOAD obj/i386/pit.o
+LOAD obj/i386/port.o
+LOAD obj/i386/process.o
+LOAD obj/i386/sched.o
+LOAD obj/i386/serialio.o
+LOAD obj/i386/stack.o
+LOAD obj/i386/string.o
+LOAD obj/i386/tss.o
+LOAD obj/i386/usermode.o
+LOAD obj/i386/vfs.o
+LOAD obj/i386/yield.o
+LOAD /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a
+                0x0000000080100000                . = 0x80100000
+                0x0000000080100000                kernel_begin = 0x80100000
+
+.text           0x0000000080100000    0x13d2c
+ *(.text)
+ .text          0x0000000080100000      0x1f6 obj/i386/aainit.o
+                0x0000000080100000                _asm_init
+ *fill*         0x00000000801001f6        0xa 
+ .text          0x0000000080100200      0x14e obj/i386/aamemorymap.o
+                0x0000000080100200                initialize_memory_map
+ .text          0x000000008010034e     0x13b9 obj/i386/ata.o
+                0x000000008010034e                ata_init
+                0x0000000080100476                ata_io
+                0x0000000080100a4d                ata_io_chs
+                0x0000000080100cf8                ata_ident
+                0x0000000080100eb1                ata_io_dma
+                0x000000008010167f                irq14_handler
+                0x000000008010168f                irq15_handler
+                0x000000008010169f                ata_ioctl
+ .text          0x0000000080101707       0x54 obj/i386/ccp.o
+                0x0000000080101707                kernel
+ .text          0x000000008010175b      0x37a obj/i386/clock.o
+                0x000000008010175b                clock_init
+                0x00000000801017cd                gettime
+                0x00000000801018c5                settime
+                0x00000000801019e4                delay_loop
+                0x0000000080101a42                clockio
+ .text          0x0000000080101ad5      0x350 obj/i386/console.o
+                0x0000000080101ad5                console_init
+                0x0000000080101b67                outputconsole
+                0x0000000080101d78                movecursor
+ *fill*         0x0000000080101e25        0xb 
+ .text          0x0000000080101e30        0xc obj/i386/cpustate.o
+                0x0000000080101e30                halt
+                0x0000000080101e31                restart
+ .text          0x0000000080101e3c      0x924 obj/i386/device.o
+                0x0000000080101e3c                add_block_device
+                0x0000000080101f55                add_char_device
+                0x000000008010207e                blockio
+                0x0000000080102279                findcharacterdevice
+                0x0000000080102309                getblockdevice
+                0x000000008010239d                getdevicebyname
+                0x0000000080102454                update_block_device
+                0x00000000801024f4                remove_block_device
+                0x00000000801025d2                remove_char_device
+                0x00000000801026ae                allocatedrive
+                0x00000000801026f9                freedrive
+                0x0000000080102722                devicemanager_init
+ .text          0x0000000080102760       0xb0 obj/i386/drive.o
+                0x0000000080102760                driver_init
+ .text          0x0000000080102810      0x3ef obj/i386/elf32.o
+                0x0000000080102810                elf32_init
+                0x00000000801028d8                load_elf32
+ .text          0x0000000080102bff      0x1b5 obj/i386/ex.o
+                0x0000000080102bff                exception
+ .text          0x0000000080102db4     0x6816 obj/i386/fat.o
+                0x0000000080102db4                fat_init
+                0x0000000080102e67                fat_findfirst
+                0x0000000080102e89                fat_findnext
+                0x0000000080102eab                fat_find
+                0x00000000801037bf                fat_rename
+                0x00000000801039a2                fat_rmdir
+                0x00000000801039b5                fat_mkdir
+                0x00000000801039d0                fat_create
+                0x00000000801039eb                fat_create_int
+                0x0000000080103ef6                fat_create_entry
+                0x000000008010438e                fat_delete
+                0x0000000080104523                fat_read
+                0x0000000080104e14                fat_write
+                0x0000000080105d32                fat_chmod
+                0x0000000080105f76                fat_setfiletimedate
+                0x00000000801061f4                fat_findfreeblock
+                0x00000000801066b3                fat_getstartblock
+                0x0000000080106ccd                fat_getnextblock
+                0x0000000080107102                updatefat
+                0x000000008010767b                fat_detectchange
+                0x000000008010786d                fat_convertfilename
+                0x0000000080107967                fat_readlfn
+                0x0000000080107f0b                fat_writelfn
+                0x000000008010863a                fat_create_short_name
+                0x00000000801087b3                createlfnchecksum
+                0x00000000801087f8                deletelfn
+                0x0000000080108b1b                createlfn
+                0x00000000801092e0                fat_seek
+                0x0000000080109515                fatentrytofilename
+ .text          0x00000000801095ca      0xd83 obj/i386/floppy.o
+                0x00000000801095ca                floppy_init
+                0x00000000801097cd                motor_on
+                0x0000000080109806                motor_off
+                0x0000000080109847                initialize_floppy
+                0x0000000080109a7c                getstatus
+                0x0000000080109ace                sector_io
+                0x0000000080109e30                fd_io
+                0x000000008010a08f                irq6_handler
+                0x000000008010a09f                reset_controller
+                0x000000008010a0f3                floppy_writecommand
+                0x000000008010a143                waitforirq6
+                0x000000008010a153                checkstatus
+ *fill*         0x000000008010a34d        0x3 
+ .text          0x000000008010a350       0x75 obj/i386/gdt.o
+                0x000000008010a350                set_gdt
+ *fill*         0x000000008010a3c5        0xb 
+ .text          0x000000008010a3d0      0x201 obj/i386/initializepaging.o
+                0x000000008010a3d0                initializepaging
+                0x000000008010a586                unmap_lower_half
+ .text          0x000000008010a5d1      0x71a obj/i386/initrd.o
+                0x000000008010a5d1                initrd_findfirst
+                0x000000008010a5f3                initrd_findnext
+                0x000000008010a615                initrd_find
+                0x000000008010a875                initrd_read
+                0x000000008010a93a                initrd_seek
+                0x000000008010a9e4                initrd_getstartblock
+                0x000000008010aa10                initrd_init
+                0x000000008010ab97                initrd_io
+                0x000000008010ac32                load_modules_from_initrd
+ *fill*         0x000000008010aceb        0x5 
+ .text          0x000000008010acf0      0x35a obj/i386/interrupts.o
+                0x000000008010acf0                initialize_interrupts
+                0x000000008010aea9                enable_interrupts
+                0x000000008010aeab                disable_interrupts
+                0x000000008010aead                load_idt
+                0x000000008010aeb6                set_interrupt
+                0x000000008010af05                get_interrupt
+ .text          0x000000008010b04a      0x866 obj/i386/keyb.o
+                0x000000008010b04a                keyb_init
+                0x000000008010b0db                readconsole
+                0x000000008010b1ee                readkey
+ .text          0x000000008010b8b0      0x763 obj/i386/memorymanager.o
+                0x000000008010b8b0                alloc_int
+                0x000000008010bccc                free_internal
+                0x000000008010bdda                alloc
+                0x000000008010be06                free
+                0x000000008010be2f                free_physical
+                0x000000008010be58                kernelalloc
+                0x000000008010be84                kernelfree
+                0x000000008010bea8                kernelalloc_nopaging
+                0x000000008010bed4                dma_alloc
+                0x000000008010bf6e                memorymanager_init
+ .text          0x000000008010c013      0x884 obj/i386/module.o
+                0x000000008010c013                load_kernel_module
+                0x000000008010c69b                getnameofsymbol
+                0x000000008010c718                getkernelsymbol
+                0x000000008010c799                add_external_module_symbol
+                0x000000008010c84d                get_external_module_symbol
+ .text          0x000000008010c897       0xc8 obj/i386/multitasking.o
+                0x000000008010c897                disablemultitasking
+                0x000000008010c8af                enablemultitasking
+                0x000000008010c8c7                init_multitasking
+                0x000000008010c8ee                is_multitasking_enabled
+                0x000000008010c8f8                find_next_process_to_switch_to
+                0x000000008010c921                is_process_ready_to_switch
+ .text          0x000000008010c95f       0x71 obj/i386/mutex.o
+                0x000000008010c95f                lock_mutex
+                0x000000008010c9a1                unlock_mutex
+                0x000000008010c9b2                initialize_mutex
+ .text          0x000000008010c9d0       0x5f obj/i386/null.o
+                0x000000008010c9d0                null_init
+                0x000000008010ca29                nul
+ .text          0x000000008010ca2f      0x60e obj/i386/page.o
+                0x000000008010ca2f                addpage_int
+                0x000000008010cb46                page_init
+                0x000000008010ccb4                removepage
+                0x000000008010ccdf                freepages
+                0x000000008010cd92                findfreevirtualpage
+                0x000000008010cf0e                loadpagetable
+                0x000000008010cf54                getphysicaladdress
+                0x000000008010cfeb                addpage_user
+                0x000000008010d014                addpage_system
+ .text          0x000000008010d03d      0x67b obj/i386/partition.o
+                0x000000008010d03d                partitions_init
+                0x000000008010d4bc                gpt_hd_init
+ .text          0x000000008010d6b8      0x787 obj/i386/pci.o
+                0x000000008010d6b8                pci_init
+                0x000000008010d7dc                pci_get_deviceid
+                0x000000008010d808                pci_get_vendor
+                0x000000008010d834                pci_get_status
+                0x000000008010d860                pci_get_command
+                0x000000008010d88c                pci_put_command
+                0x000000008010d90b                pci_put_status
+                0x000000008010d96a                pci_get_class_code
+                0x000000008010d996                pci_get_subclass
+                0x000000008010d9c7                pci_get_progif
+                0x000000008010d9f5                pci_get_revisionid
+                0x000000008010da23                pci_get_bar0
+                0x000000008010da4c                pci_get_bar1
+                0x000000008010da75                pci_get_bar2
+                0x000000008010da9e                pci_get_bar3
+                0x000000008010dac7                pci_get_bar4
+                0x000000008010daf0                pci_get_bar5
+                0x000000008010db19                pci_get_cardbus_cis_pointer
+                0x000000008010db42                pci_get_subsystemid
+                0x000000008010db6e                pci_get_subsytem_vendor_id
+                0x000000008010db9a                pci_get_header_type
+                0x000000008010dbc6                pci_get_secondary_bus
+                0x000000008010dbf4                pci_read_word
+                0x000000008010dc45                pci_write_word
+                0x000000008010dc9d                pci_find_device
+                0x000000008010dd64                add_pci_device
+ *fill*         0x000000008010de3f        0x1 
+ .text          0x000000008010de40      0x10e obj/i386/pic386.o
+                0x000000008010de40                irq0
+                0x000000008010de4f                irq1
+                0x000000008010de5e                irq2
+                0x000000008010de6d                irq3
+                0x000000008010de7c                irq4
+                0x000000008010de8b                irq5
+                0x000000008010de97                irq6
+                0x000000008010dea3                irq7
+                0x000000008010deaf                irq8
+                0x000000008010debe                irq9
+                0x000000008010deca                irq10
+                0x000000008010ded9                irq11
+                0x000000008010dee5                irq12
+                0x000000008010def1                irq13
+                0x000000008010defd                irq14
+                0x000000008010df09                irq15
+                0x000000008010df30                irq_exit
+ .text          0x000000008010df4e      0x32e obj/i386/pic.o
+                0x000000008010df4e                pic_init
+                0x000000008010e269                setirqhandler
+ .text          0x000000008010e27c      0x162 obj/i386/pit.o
+                0x000000008010e27c                pit_init
+                0x000000008010e319                pit_io
+                0x000000008010e3ce                pit_read
+                0x000000008010e3d6                pit_write
+ .text          0x000000008010e3de       0xb0 obj/i386/port.o
+                0x000000008010e3de                outb
+                0x000000008010e3fd                inb
+                0x000000008010e41a                outw
+                0x000000008010e43b                inw
+                0x000000008010e45a                outd
+                0x000000008010e472                ind
+ .text          0x000000008010e48e     0x17d5 obj/i386/process.o
+                0x000000008010e48e                exec
+                0x000000008010eabe                kill
+                0x000000008010ec15                exit
+                0x000000008010ec2d                shutdown
+                0x000000008010ecb9                findfirstprocess
+                0x000000008010ecf3                findnextprocess
+                0x000000008010ed55                wait
+                0x000000008010edd7                dispatchhandler
+                0x000000008010f480                getcwd
+                0x000000008010f541                chdir
+                0x000000008010f611                getpid
+                0x000000008010f62d                setlasterror
+                0x000000008010f653                getlasterror
+                0x000000008010f673                getprocessfilename
+                0x000000008010f6b0                getwriteconsolehandle
+                0x000000008010f6d0                getreadconsolehandle
+                0x000000008010f6f0                getprocessargs
+                0x000000008010f71c                getppid
+                0x000000008010f73c                getreturncode
+                0x000000008010f75c                increment_process_ticks
+                0x000000008010f77a                signal
+                0x000000008010f78e                sendsignal
+                0x000000008010f83a                set_critical_error_handler
+                0x000000008010f84e                call_critical_error_handler
+                0x000000008010f8a4                processmanager_init
+                0x000000008010f8cc                blockprocess
+                0x000000008010f935                unblockprocess
+                0x000000008010f98f                getenv
+                0x000000008010f99f                save_kernel_stack_pointer
+                0x000000008010f9bd                get_kernel_stack_pointer
+                0x000000008010f9dd                get_kernel_stack_top
+                0x000000008010f9fd                get_processes_pointer
+                0x000000008010fa07                update_current_process_pointer
+                0x000000008010fa14                get_current_process_pointer
+                0x000000008010fa1e                get_next_process_pointer
+                0x000000008010fa3b                register_executable_format
+                0x000000008010fb3a                load_executable
+                0x000000008010fc16                reset_process_ticks
+                0x000000008010fc27                get_tick_count
+                0x000000008010fc31                increment_tick_count
+                0x000000008010fc43                kwait
+ *fill*         0x000000008010fc63        0xd 
+ .text          0x000000008010fc70       0x78 obj/i386/sched.o
+                0x000000008010fc70                switch_task
+                0x000000008010fce7                end_switch
+ .text          0x000000008010fce8      0xb87 obj/i386/serialio.o
+                0x000000008010fce8                serialio_init
+                0x0000000080110246                comport
+                0x0000000080110395                read_com1
+                0x00000000801103c0                write_com1
+                0x00000000801103eb                read_com2
+                0x0000000080110416                write_com2
+                0x0000000080110441                read_com3
+                0x000000008011046c                write_com3
+                0x0000000080110497                read_com4
+                0x00000000801104c2                write_com4
+                0x00000000801104ed                com1_irq_handler
+                0x0000000080110545                com2_irq_handler
+                0x000000008011059d                com3_irq_handler
+                0x00000000801105f5                com4_irq_handler
+                0x000000008011064d                serial_ioctl
+ *fill*         0x000000008011086f        0x1 
+ .text          0x0000000080110870       0x32 obj/i386/stack.o
+                0x0000000080110870                initializestack
+                0x0000000080110891                initializekernelstack
+                0x000000008011089f                get_stack_pointer
+ .text          0x00000000801108a2     0x1108 obj/i386/string.o
+                0x00000000801108a2                strlen
+                0x00000000801108e1                strlen_unicode
+                0x0000000080110947                strcpy
+                0x000000008011098a                strcat
+                0x00000000801109dd                memcpy
+                0x0000000080110a22                memcmp
+                0x0000000080110a73                strcmp
+                0x0000000080110ace                strcmpi
+                0x0000000080110b37                memset
+                0x0000000080110b77                itoa
+                0x0000000080110beb                reverse
+                0x0000000080110c50                wildcard
+                0x0000000080110ddb                touppercase
+                0x0000000080110e1d                wildcard_rename
+                0x0000000080110f5e                strtrunc
+                0x0000000080110f88                atoi
+                0x00000000801110da                kprintf
+                0x000000008011134b                kprintf_direct
+                0x0000000080111589                ksprintf
+                0x00000000801117ec                tohex
+                0x00000000801118c3                tokenize_line
+                0x000000008011197f                ipow
+ *fill*         0x00000000801119aa        0x6 
+ .text          0x00000000801119b0       0x5b obj/i386/tss.o
+                0x00000000801119b0                set_tss_esp0
+                0x00000000801119ba                get_stack_top
+                0x00000000801119c0                initialize_tss
+ *fill*         0x0000000080111a0b        0x5 
+ .text          0x0000000080111a10       0x21 obj/i386/usermode.o
+                0x0000000080111a10                switch_to_usermode_and_call_process
+ .text          0x0000000080111a31     0x2191 obj/i386/vfs.o
+                0x0000000080111a31                findfirst
+                0x0000000080111ac5                findnext
+                0x0000000080111b59                open
+                0x000000008011200a                delete
+                0x00000000801120d0                rename
+                0x000000008011219d                create
+                0x0000000080112285                rmdir
+                0x000000008011234b                mkdir
+                0x00000000801123d5                chmod
+                0x0000000080112466                read
+                0x00000000801125f6                write
+                0x000000008011277a                ioctl
+                0x0000000080112865                close
+                0x0000000080112943                shut
+                0x00000000801129c0                dup_internal
+                0x0000000080112b19                dup
+                0x0000000080112b35                dup2
+                0x0000000080112c51                register_filesystem
+                0x0000000080112d80                detect_filesystem
+                0x0000000080112eb2                getfullpath
+                0x00000000801132aa                openfiles_init
+                0x000000008011345e                init_console_device
+                0x00000000801134ce                seek
+                0x00000000801135ac                tell
+                0x000000008011363d                setfiletimedate
+                0x00000000801136a6                getstartblock
+                0x000000008011372a                gethandle
+                0x00000000801137c9                getfilesize
+                0x0000000080113846                splitname
+                0x0000000080113955                updatehandle
+                0x0000000080113a9d                get_filename_token
+                0x0000000080113b18                get_filename_token_count
+                0x0000000080113b54                change_file_owner_pid
+ *fill*         0x0000000080113bc2        0xe 
+ .text          0x0000000080113bd0       0x2f obj/i386/yield.o
+                0x0000000080113bd0                yield
+ *fill*         0x0000000080113bff        0x1 
+ .text          0x0000000080113c00      0x12c /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+                0x0000000080113c00                __udivdi3
+
+.iplt           0x0000000080113d30        0x0
+ .iplt          0x0000000000000000        0x0 obj/i386/aainit.o
+
+.data           0x0000000080113d40      0xea0
+ *(.data)
+ .data          0x0000000080113d40       0x40 obj/i386/aainit.o
+                0x0000000080113d4c                gdt
+                0x0000000080113d7c                gdt_end
+                0x0000000080113d7c                MEMBUF_START
+ .data          0x0000000080113d80        0x0 obj/i386/ata.o
+ .data          0x0000000080113d80        0x0 obj/i386/ccp.o
+ .data          0x0000000080113d80        0x0 obj/i386/clock.o
+ .data          0x0000000080113d80        0x0 obj/i386/console.o
+ .data          0x0000000080113d80        0x4 obj/i386/device.o
+                0x0000000080113d80                lastdrive
+ .data          0x0000000080113d84        0x0 obj/i386/drive.o
+ .data          0x0000000080113d84        0x0 obj/i386/elf32.o
+ *fill*         0x0000000080113d84       0x1c 
+ .data          0x0000000080113da0       0xd8 obj/i386/ex.o
+                0x0000000080113da0                exp
+                0x0000000080113e00                regnames
+                0x0000000080113e40                flagsname
+ .data          0x0000000080113e78        0x0 obj/i386/fat.o
+ *fill*         0x0000000080113e78        0x8 
+ .data          0x0000000080113e80       0x74 obj/i386/floppy.o
+                0x0000000080113e80                floppy_parameters
+                0x0000000080113e84                floppytype
+                0x0000000080113ea0                fdparams
+ .data          0x0000000080113ef4       0x10 obj/i386/initializepaging.o
+ .data          0x0000000080113f04        0x0 obj/i386/initrd.o
+ .data          0x0000000080113f04      0x862 obj/i386/interrupts.o
+ *fill*         0x0000000080114766       0x1a 
+ .data          0x0000000080114780      0x2c0 obj/i386/keyb.o
+                0x0000000080114780                scancodes_unshifted
+                0x00000000801148e0                scancodes_shifted
+                0x0000000080114a38                keybuf
+                0x0000000080114a3c                keylast
+ .data          0x0000000080114a40        0x0 obj/i386/memorymanager.o
+ .data          0x0000000080114a40        0x0 obj/i386/module.o
+ .data          0x0000000080114a40        0x0 obj/i386/multitasking.o
+ .data          0x0000000080114a40        0x0 obj/i386/mutex.o
+ .data          0x0000000080114a40        0x0 obj/i386/null.o
+ .data          0x0000000080114a40        0xc obj/i386/page.o
+                0x0000000080114a40                PAGE_SIZE
+                0x0000000080114a44                paging_type
+                0x0000000080114a48                processpaging
+ .data          0x0000000080114a4c        0x0 obj/i386/partition.o
+ .data          0x0000000080114a4c        0x0 obj/i386/pci.o
+ .data          0x0000000080114a4c        0x0 obj/i386/pic.o
+ .data          0x0000000080114a4c        0x0 obj/i386/pit.o
+ .data          0x0000000080114a4c        0x0 obj/i386/port.o
+ .data          0x0000000080114a4c        0x0 obj/i386/process.o
+ .data          0x0000000080114a4c        0x4 obj/i386/sched.o
+ *fill*         0x0000000080114a50       0x10 
+ .data          0x0000000080114a60      0x110 obj/i386/serialio.o
+                0x0000000080114a60                ports
+                0x0000000080114b40                parityvals
+ .data          0x0000000080114b70        0x4 obj/i386/stack.o
+ .data          0x0000000080114b74        0x0 obj/i386/string.o
+ .data          0x0000000080114b74       0x68 obj/i386/tss.o
+ .data          0x0000000080114bdc        0x0 obj/i386/vfs.o
+ .data          0x0000000080114bdc        0x4 obj/i386/yield.o
+ .data          0x0000000080114be0        0x0 /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+
+.igot.plt       0x0000000080114be0        0x0
+ .igot.plt      0x0000000000000000        0x0 obj/i386/aainit.o
+
+.rodata         0x0000000080114be0     0x13b1
+ *(.rodata)
+ .rodata        0x0000000080114be0      0x153 obj/i386/ata.o
+ *fill*         0x0000000080114d33        0x1 
+ .rodata        0x0000000080114d34       0x73 obj/i386/ccp.o
+ *fill*         0x0000000080114da7        0x1 
+ .rodata        0x0000000080114da8       0x2e obj/i386/clock.o
+ .rodata        0x0000000080114dd6        0x7 obj/i386/console.o
+ *fill*         0x0000000080114ddd        0x3 
+ .rodata        0x0000000080114de0       0x2d obj/i386/elf32.o
+ *fill*         0x0000000080114e0d        0x3 
+ .rodata        0x0000000080114e10      0x27e obj/i386/ex.o
+ .rodata        0x000000008011508e       0xfa obj/i386/fat.o
+ .rodata        0x0000000080115188       0xc0 obj/i386/floppy.o
+ .rodata        0x0000000080115248       0x68 obj/i386/initrd.o
+ .rodata        0x00000000801152b0      0x2b8 obj/i386/keyb.o
+ .rodata        0x0000000080115568       0x27 obj/i386/memorymanager.o
+ *fill*         0x000000008011558f        0x1 
+ .rodata        0x0000000080115590      0x106 obj/i386/module.o
+ .rodata        0x0000000080115696        0x4 obj/i386/null.o
+ .rodata        0x000000008011569a        0x5 obj/i386/partition.o
+ .rodata        0x000000008011569f       0x22 obj/i386/pci.o
+ .rodata        0x00000000801156c1        0x6 obj/i386/pit.o
+ *fill*         0x00000000801156c7        0x1 
+ .rodata        0x00000000801156c8      0x366 obj/i386/process.o
+ *fill*         0x0000000080115a2e        0x2 
+ .rodata        0x0000000080115a30       0xa0 obj/i386/serialio.o
+ .rodata        0x0000000080115ad0      0x418 obj/i386/string.o
+ .rodata        0x0000000080115ee8       0xa9 obj/i386/vfs.o
+
+.eh_frame       0x0000000080115f94     0x2464
+ .eh_frame      0x0000000080115f94      0x138 obj/i386/ata.o
+ .eh_frame      0x00000000801160cc       0x20 obj/i386/ccp.o
+                                         0x38 (size before relaxing)
+ .eh_frame      0x00000000801160ec       0xa0 obj/i386/clock.o
+                                         0xb8 (size before relaxing)
+ .eh_frame      0x000000008011618c       0x60 obj/i386/console.o
+                                         0x78 (size before relaxing)
+ .eh_frame      0x00000000801161ec      0x18c obj/i386/device.o
+                                        0x1a4 (size before relaxing)
+ .eh_frame      0x0000000080116378       0x20 obj/i386/drive.o
+                                         0x38 (size before relaxing)
+ .eh_frame      0x0000000080116398       0x4c obj/i386/elf32.o
+                                         0x64 (size before relaxing)
+ .eh_frame      0x00000000801163e4       0x20 obj/i386/ex.o
+                                         0x38 (size before relaxing)
+ .eh_frame      0x0000000080116404      0x474 obj/i386/fat.o
+                                        0x48c (size before relaxing)
+ .eh_frame      0x0000000080116878      0x198 obj/i386/floppy.o
+                                        0x1b0 (size before relaxing)
+ .eh_frame      0x0000000080116a10      0x12c obj/i386/initrd.o
+                                        0x144 (size before relaxing)
+ .eh_frame      0x0000000080116b3c       0x60 obj/i386/keyb.o
+                                         0x78 (size before relaxing)
+ .eh_frame      0x0000000080116b9c      0x150 obj/i386/memorymanager.o
+                                        0x168 (size before relaxing)
+ .eh_frame      0x0000000080116cec       0xa4 obj/i386/module.o
+                                         0xbc (size before relaxing)
+ .eh_frame      0x0000000080116d90       0xc0 obj/i386/multitasking.o
+                                         0xd8 (size before relaxing)
+ .eh_frame      0x0000000080116e50       0x64 obj/i386/mutex.o
+                                         0x7c (size before relaxing)
+ .eh_frame      0x0000000080116eb4       0x40 obj/i386/null.o
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000080116ef4      0x138 obj/i386/page.o
+                                        0x150 (size before relaxing)
+ .eh_frame      0x000000008011702c       0x50 obj/i386/partition.o
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000008011707c      0x348 obj/i386/pci.o
+                                        0x360 (size before relaxing)
+ .eh_frame      0x00000000801173c4       0x40 obj/i386/pic.o
+                                         0x58 (size before relaxing)
+ .eh_frame      0x0000000080117404       0x84 obj/i386/pit.o
+                                         0x9c (size before relaxing)
+ .eh_frame      0x0000000080117488       0xc0 obj/i386/port.o
+                                         0xd8 (size before relaxing)
+ .eh_frame      0x0000000080117548      0x528 obj/i386/process.o
+                                        0x540 (size before relaxing)
+ .eh_frame      0x0000000080117a70      0x1f8 obj/i386/serialio.o
+                                        0x210 (size before relaxing)
+ .eh_frame      0x0000000080117c68      0x2c4 obj/i386/string.o
+                                        0x2dc (size before relaxing)
+ .eh_frame      0x0000000080117f2c      0x460 obj/i386/vfs.o
+                                        0x478 (size before relaxing)
+ .eh_frame      0x000000008011838c       0x6c /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+                                         0x84 (size before relaxing)
+
+.rel.dyn        0x00000000801183f8        0x0
+ .rel.iplt      0x0000000000000000        0x0 obj/i386/aainit.o
+ .rel.data      0x0000000000000000        0x0 obj/i386/aainit.o
+ .rel.text      0x0000000000000000        0x0 obj/i386/aainit.o
+
+.bss            0x0000000080118400      0xd2c
+ *(.bss)
+ .bss           0x0000000080118400        0x8 obj/i386/ata.o
+                0x0000000080118400                ata_irq14done
+                0x0000000080118404                ata_irq15done
+ .bss           0x0000000080118408        0x0 obj/i386/ccp.o
+ .bss           0x0000000080118408        0x0 obj/i386/clock.o
+ .bss           0x0000000080118408        0x0 obj/i386/console.o
+ .bss           0x0000000080118408        0xc obj/i386/device.o
+                0x0000000080118408                blockdevices
+                0x000000008011840c                characterdevs
+                0x0000000080118410                drive_bitmap
+ .bss           0x0000000080118414        0x0 obj/i386/drive.o
+ .bss           0x0000000080118414        0x0 obj/i386/elf32.o
+ .bss           0x0000000080118414        0x0 obj/i386/ex.o
+ .bss           0x0000000080118414        0x0 obj/i386/fat.o
+ .bss           0x0000000080118414        0x4 obj/i386/floppy.o
+                0x0000000080118414                irq6done
+ .bss           0x0000000080118418        0x0 obj/i386/initrd.o
+ .bss           0x0000000080118418        0x4 obj/i386/keyb.o
+                0x0000000080118418                readcount
+ .bss           0x000000008011841c        0xc obj/i386/memorymanager.o
+                0x000000008011841c                dmabuf
+                0x0000000080118420                dmaptr
+                0x0000000080118424                dmabufsize
+ .bss           0x0000000080118428        0x8 obj/i386/module.o
+                0x0000000080118428                externalmodulesymbols
+                0x000000008011842c                externalmodulesymbols_end
+ .bss           0x0000000080118430        0x4 obj/i386/multitasking.o
+                0x0000000080118430                multitaskingenabled
+ .bss           0x0000000080118434        0x0 obj/i386/mutex.o
+ .bss           0x0000000080118434        0x0 obj/i386/null.o
+ .bss           0x0000000080118434        0x0 obj/i386/page.o
+ .bss           0x0000000080118434        0x0 obj/i386/partition.o
+ .bss           0x0000000080118434        0x0 obj/i386/pci.o
+ .bss           0x0000000080118434        0x0 obj/i386/pic.o
+ .bss           0x0000000080118434        0x0 obj/i386/pit.o
+ .bss           0x0000000080118434        0x0 obj/i386/port.o
+ .bss           0x0000000080118434       0x1c obj/i386/process.o
+                0x0000000080118434                last_error_no_process
+                0x0000000080118438                processes
+                0x000000008011843c                processes_end
+                0x0000000080118440                currentprocess
+                0x0000000080118444                highest_pid_used
+                0x0000000080118448                saveenv
+                0x000000008011844c                executableformats
+ .bss           0x0000000080118450        0x0 obj/i386/serialio.o
+ .bss           0x0000000080118450        0x0 obj/i386/string.o
+ .bss           0x0000000080118450        0xc obj/i386/vfs.o
+                0x0000000080118450                openfiles
+                0x0000000080118454                filesystems
+                0x0000000080118458                timescalled
+ .bss           0x000000008011845c        0x0 /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+ COMMON         0x000000008011845c        0x8 obj/i386/ata.o
+                0x000000008011845c                prdt
+                0x0000000080118460                hddmastruct
+ COMMON         0x0000000080118464        0x4 obj/i386/console.o
+                0x0000000080118464                ppos
+ COMMON         0x0000000080118468       0x10 obj/i386/device.o
+                0x0000000080118468                characterdevice_mutex
+                0x0000000080118470                blockdevice_mutex
+ COMMON         0x0000000080118478        0x4 obj/i386/ex.o
+                0x0000000080118478                flags
+ COMMON         0x000000008011847c        0x4 obj/i386/fat.o
+                0x000000008011847c                b
+ COMMON         0x0000000080118480       0x10 obj/i386/floppy.o
+                0x0000000080118480                cyl
+                0x0000000080118481                st0
+                0x0000000080118482                st
+                0x000000008011848c                floppybuf
+ COMMON         0x0000000080118490        0x4 obj/i386/initrd.o
+                0x0000000080118490                tarptr
+ *fill*         0x0000000080118494        0xc 
+ COMMON         0x00000000801184a0      0x401 obj/i386/keyb.o
+                0x00000000801184a0                keybbuf
+                0x00000000801188a0                keyboardflags
+ *fill*         0x00000000801188a1        0x3 
+ COMMON         0x00000000801188a4        0x8 obj/i386/memorymanager.o
+                0x00000000801188a4                memmanager_mutex
+ *fill*         0x00000000801188ac       0x14 
+ COMMON         0x00000000801188c0       0x3c obj/i386/pic.o
+                0x00000000801188c0                irq_handlers
+ *fill*         0x00000000801188fc        0x4 
+ COMMON         0x0000000080118900      0x820 obj/i386/process.o
+                0x0000000080118900                signalno
+                0x0000000080118904                process_mutex
+                0x000000008011890c                entrypoint
+                0x0000000080118920                tempfilename
+                0x0000000080118d1c                tickcount
+                0x0000000080118d20                tempargs
+                0x000000008011911c                thisprocess
+ COMMON         0x0000000080119120        0xc obj/i386/vfs.o
+                0x0000000080119120                vfs_mutex
+                0x0000000080119128                old
+                0x000000008011912c                end = .
+OUTPUT(bin/i386/CCP.SYS elf32-i386)
+
+.comment        0x0000000000000000       0x11
+ .comment       0x0000000000000000       0x11 obj/i386/ata.o
+                                         0x12 (size before relaxing)
+ .comment       0x0000000000000000       0x12 obj/i386/ccp.o
+ .comment       0x0000000000000000       0x12 obj/i386/clock.o
+ .comment       0x0000000000000000       0x12 obj/i386/console.o
+ .comment       0x0000000000000000       0x12 obj/i386/device.o
+ .comment       0x0000000000000000       0x12 obj/i386/drive.o
+ .comment       0x0000000000000000       0x12 obj/i386/elf32.o
+ .comment       0x0000000000000000       0x12 obj/i386/ex.o
+ .comment       0x0000000000000000       0x12 obj/i386/fat.o
+ .comment       0x0000000000000000       0x12 obj/i386/floppy.o
+ .comment       0x0000000000000000       0x12 obj/i386/initrd.o
+ .comment       0x0000000000000000       0x12 obj/i386/keyb.o
+ .comment       0x0000000000000000       0x12 obj/i386/memorymanager.o
+ .comment       0x0000000000000000       0x12 obj/i386/module.o
+ .comment       0x0000000000000000       0x12 obj/i386/multitasking.o
+ .comment       0x0000000000000000       0x12 obj/i386/mutex.o
+ .comment       0x0000000000000000       0x12 obj/i386/null.o
+ .comment       0x0000000000000000       0x12 obj/i386/page.o
+ .comment       0x0000000000000000       0x12 obj/i386/partition.o
+ .comment       0x0000000000000000       0x12 obj/i386/pci.o
+ .comment       0x0000000000000000       0x12 obj/i386/pic.o
+ .comment       0x0000000000000000       0x12 obj/i386/pit.o
+ .comment       0x0000000000000000       0x12 obj/i386/port.o
+ .comment       0x0000000000000000       0x12 obj/i386/process.o
+ .comment       0x0000000000000000       0x12 obj/i386/serialio.o
+ .comment       0x0000000000000000       0x12 obj/i386/string.o
+ .comment       0x0000000000000000       0x12 obj/i386/vfs.o
+ .comment       0x0000000000000000       0x12 /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+
+.debug_info     0x0000000000000000      0x68b
+ .debug_info    0x0000000000000000      0x3ad obj/i386/console.o
+ .debug_info    0x00000000000003ad      0x2de /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+
+.debug_abbrev   0x0000000000000000      0x29f
+ .debug_abbrev  0x0000000000000000      0x168 obj/i386/console.o
+ .debug_abbrev  0x0000000000000168      0x137 /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+
+.debug_aranges  0x0000000000000000       0x40
+ .debug_aranges
+                0x0000000000000000       0x20 obj/i386/console.o
+ .debug_aranges
+                0x0000000000000020       0x20 /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+
+.debug_line     0x0000000000000000      0x211
+ .debug_line    0x0000000000000000      0x159 obj/i386/console.o
+ .debug_line    0x0000000000000159       0xb8 /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+
+.debug_str      0x0000000000000000      0x3b3
+ .debug_str     0x0000000000000000      0x255 obj/i386/console.o
+                                        0x2c2 (size before relaxing)
+ .debug_str     0x0000000000000255      0x15e /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+                                        0x212 (size before relaxing)
+
+.debug_loc      0x0000000000000000      0x4dc
+ .debug_loc     0x0000000000000000      0x4dc /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
+
+.debug_ranges   0x0000000000000000       0x48
+ .debug_ranges  0x0000000000000000       0x48 /usr/local/lib/gcc/i686-elf/4.8.4/libgcc.a(_udivdi3.o)
