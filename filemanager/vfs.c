@@ -1520,7 +1520,6 @@ return;
 
 size_t updatehandle(size_t handle,FILERECORD *buf) {
 FILERECORD *next;
-size_t foundhandle=FALSE;
 
 lock_mutex(&vfs_mutex);
 
@@ -1532,32 +1531,20 @@ while(next != NULL) {
 	if((next->handle == handle) && (next->owner_process == getpid())) {		/* found handle */
 
 		memcpy(next,buf,sizeof(FILERECORD));		/* copy data */
-		foundhandle=TRUE;
-	}
 
-/* update other open file handles for the file */
+		unlock_mutex(&vfs_mutex);
 
-	if((strcmp(next->filename,buf->filename) == 0)) {	/* found filename */
-
-		next->timebuf.seconds=buf->timebuf.seconds;  	/* copy file time and date */
-		next->timebuf.minutes=buf->timebuf.minutes;
-		next->timebuf.hours=buf->timebuf.hours;  
-		next->timebuf.day=buf->timebuf.day;  
-		next->timebuf.month=buf->timebuf.month;
-		next->timebuf.year=buf->timebuf.year;  
-
-		next->filesize=buf->filesize;			/* copy file size */
-		foundhandle=TRUE;
+		setlasterror(NO_ERROR);
+		return(0);
 	}
 
 	next=next->next;
 }
 
-lock_mutex(&vfs_mutex);
+unlock_mutex(&vfs_mutex);
 
-if(foundhandle == FALSE) return(-1);		/* handle not found */
-
-return(0);
+setlasterror(INVALID_HANDLE);
+return(-1);
 }
 
 /*

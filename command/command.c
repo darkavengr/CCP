@@ -1014,8 +1014,8 @@ while(findresult != -1) {
 
 /*time date size filename */
 
-	   kprintf("%u:%u:%u %u/%u/%u",direntry.timebuf.hours,direntry.timebuf.minutes,direntry.timebuf.seconds,\
-			        direntry.timebuf.day,direntry.timebuf.month,direntry.timebuf.year);
+	  kprintf("%u:%u:%u %u/%u/%u",direntry.last_written_time_date.hours,direntry.last_written_time_date.minutes,direntry.last_written_time_date.seconds,\
+			        direntry.last_written_time_date.day,direntry.last_written_time_date.month,direntry.last_written_time_date.year);
 
 	  if(direntry.flags & FILE_DIRECTORY) {
 	  	kprintf("     <DIR> ");

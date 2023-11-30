@@ -76,7 +76,9 @@ typedef struct {
 typedef struct {
 	uint8_t filename[MAX_PATH]; 		
 	size_t attribs;
-	TIMEBUF timebuf;
+	TIMEBUF create_time_date;
+	TIMEBUF last_written_time_date;
+	TIMEBUF last_accessed_time_date;
 	uint32_t filesize;
 	uint64_t startblock;
 	size_t drive;

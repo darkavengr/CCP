@@ -35,41 +35,43 @@ extern old;
 
 size_t b;
 
-size_t fat_findfirst(char *filename,FILERECORD *buf);				// TESTED
-size_t fat_findnext(char *filename,FILERECORD *buf);				// TESTED
-size_t fat_find(size_t find_type,char *filename,FILERECORD *buf);		// TESTED
-size_t fat_rename(char *filename,char *newname);				// TESTED
+size_t fat_findfirst(char *filename,FILERECORD *buf);							// TESTED
+size_t fat_findnext(char *filename,FILERECORD *buf);							// TESTED
+size_t fat_find(size_t find_type,char *filename,FILERECORD *buf);					// TESTED
+size_t fat_rename(char *filename,char *newname);
 size_t fat_rmdir(char *dirname);
-size_t fat_mkdir(char *dirname);						// TESTED
-size_t fat_create(char *filename);						// TESTED
-size_t fat_delete(char *filename);						// TESTED
-size_t fat_read(size_t handle,void *addr,size_t size);			// TESTED
-size_t fat_write(size_t handle,void *addr,size_t size);			// TESTED
+size_t fat_mkdir(char *dirname);									// TESTED
+size_t fat_create(char *filename);						
+size_t fat_delete(char *filename);									// TESTED
+size_t fat_read(size_t handle,void *addr,size_t size);							// TESTED
+size_t fat_write(size_t handle,void *addr,size_t size);							// TESTED
 size_t fat_chmod(char *filename,size_t attribs);
-size_t fat_setfiletimedate(char *filename,TIMEBUF *createtime,TIMEBUF *lastmodtime);
+size_t fat_set_file_time_date(char *filename,TIMEBUF *create_time_date,TIMEBUF *last_modified_time_date,TIMEBUF *last_accessed_time_date);
 size_t fat_findfreeblock(size_t drive);
-size_t fat_getstartblock(char *name);
-size_t fat_getnextblock(size_t drive,uint64_t block);
+size_t fat_getstartblock(char *name);									// TESTED
+size_t fat_getnextblock(size_t drive,uint64_t block);							// TESTED
 size_t updatefat(size_t drive,uint64_t block,uint16_t block_high_word,uint16_t block_low_word);
-size_t fat_detectchange(size_t drive);
-size_t fat_convertfilename(char *filename,char *outname);
-size_t fat_readlfn(size_t drive,uint64_t block,size_t entryno,FILERECORD *n);
-size_t fat_writelfn(size_t drive,uint64_t block,size_t entryno,char *n,char *newname);
-size_t fat_create_short_name(char *filename,char *out);
-uint8_t createlfnchecksum(char *filename);
-size_t deletelfn(char *filename,uint64_t block,size_t entry);
-size_t createlfn(FILERECORD *newname,uint64_t block,size_t entry);
-size_t fat_seek(size_t handle,size_t pos,size_t whence);
-void fatentrytofilename(char *filename,char *out);
-size_t fat_init(char *i);							// TESTED
-size_t fat_create_int(size_t entrytype,char *filename);
+size_t fat_detectchange(size_t drive);									// TESTED
+size_t fat_convertfilename(char *filename,char *outname);						// TESTED
+size_t fat_read_long_filename(size_t drive,uint64_t block,size_t entryno,FILERECORD *n);		// TESTED
+size_t fat_update_long_filename(size_t drive,uint64_t block,size_t entryno,FILERECORD *new);
+size_t fat_create_short_name(char *filename,char *out);							// TESTED
+uint8_t fat_create_long_filename_checksum(char *filename);						// TESTED
+size_t fat_delete_long_filename(char *filename,uint64_t block,size_t entry);				// TESTED
+size_t fat_create_long_filename(FILERECORD *newname,uint64_t block,size_t entry);			// TESTED
+size_t fat_seek(size_t handle,size_t pos,size_t whence);						// TESTED
+void fatentrytofilename(char *filename,char *out);							// TESTED
+size_t fat_init(char *i);										// TESTED
+size_t fat_create_int(size_t entrytype,char *filename);							// TESTED
 size_t fat_create_entry(size_t type,size_t drive,uint64_t rb,size_t entryno,size_t datastart,char *filename,char *blockbuf);
+size_t fat_is_long_filename(char *filename);								// TESTED
+
 /*
  * Initialize FAT filesystem module
  *
  * In:  initstr	Initialisation string
  *
- * Returns: nothing
+ * Returns: 0 on success or -1 on failure
  *
  */
 size_t fat_init(char *initstr) {
@@ -89,11 +91,11 @@ fatfilesystem.mkdir=&fat_mkdir;
 fatfilesystem.rmdir=&fat_rmdir;
 fatfilesystem.create=&fat_create;
 fatfilesystem.chmod=&fat_chmod;
-fatfilesystem.setfiletd=&fat_setfiletimedate;
+fatfilesystem.setfiletd=&fat_set_file_time_date;
 fatfilesystem.getstartblock=&fat_getstartblock;
 fatfilesystem.seek=&fat_seek;
 
-register_filesystem(&fatfilesystem);
+return(register_filesystem(&fatfilesystem));
 }
 
 /*
@@ -248,32 +250,23 @@ while(1) {
 		fatentrytofilename(dirent.filename,file);			/* convert filename */
 
 		if(dirent.attribs == 0x0f) {			/* long filename */
-			lfncount=fat_readlfn(splitbuf->drive,buf->findlastblock,buf->findentry-1,lfnbuf);
+			lfncount=fat_read_long_filename(splitbuf->drive,buf->findlastblock,buf->findentry-1,lfnbuf);
 
 			blockptr += (lfncount*FAT_ENTRY_SIZE);	
 
 			if(wildcard(splitbuf->filename,lfnbuf->filename) == 0) { 	/* if file found */      	
-				/* copy file information from long filename data returned */
 
-				strcpy(buf->filename,lfnbuf->filename);
+				memcpy(buf,lfnbuf,sizeof(FILERECORD)); 		/* copy file information from long filename data returned */
+				
+				/* extra information */
 
-				buf->attribs=lfnbuf->attribs;
-
-				buf->filesize=lfnbuf->filesize;
 				buf->startblock=lfnbuf->startblock;
 				buf->drive=splitbuf->drive;
 				buf->findentry += (lfncount-1);
 				buf->dirent=buf->findentry;
 				buf->access=0;
 				buf->currentpos=0;
-
-				buf->timebuf.hours=lfnbuf->timebuf.hours;
-				buf->timebuf.minutes=lfnbuf->timebuf.minutes;
-				buf->timebuf.seconds=lfnbuf->timebuf.seconds;
-				buf->timebuf.year=lfnbuf->timebuf.year;
-				buf->timebuf.month=lfnbuf->timebuf.month;
-				buf->timebuf.day=lfnbuf->timebuf.day;
-
+				
 				if(buf->attribs & FAT_ATTRIB_DIRECTORY) {
 					buf->flags=FILE_DIRECTORY;
 				}
@@ -308,13 +301,28 @@ while(1) {
 				buf->dirent=buf->findentry-1;
 				buf->access=0;
 				buf->currentpos=0;
-				buf->timebuf.hours=(dirent.last_modified_time & 0xf800) >> 11;
-				buf->timebuf.minutes=(dirent.last_modified_time  & 0x7e0) >> 6;
-				buf->timebuf.seconds=(dirent.last_modified_time & 0x1f);
-				buf->timebuf.year=((dirent.last_modified_date & 0xfe00) >> 9)+1980;
-				buf->timebuf.month=(dirent.last_modified_date & 0x1e0) >> 5;
-				buf->timebuf.day=(dirent.last_modified_date & 0x1f);
+				
+				buf->create_time_date.hours=(dirent.createtime & 0xf800) >> 11;
+				buf->create_time_date.minutes=(dirent.createtime  & 0x7e0) >> 6;
+				buf->create_time_date.seconds=(dirent.createtime & 0x1f);
+				buf->create_time_date.year=((dirent.createdate & 0xfe00) >> 9)+1980;
+				buf->create_time_date.month=(dirent.createdate & 0x1e0) >> 5;
+				buf->create_time_date.day=(dirent.createdate & 0x1f);
 	
+				buf->last_written_time_date.hours=(dirent.last_modified_time & 0xf800) >> 11;
+				buf->last_written_time_date.minutes=(dirent.last_modified_time  & 0x7e0) >> 6;
+				buf->last_written_time_date.seconds=(dirent.last_modified_time & 0x1f);
+				buf->last_written_time_date.year=((dirent.last_modified_date & 0xfe00) >> 9)+1980;
+				buf->last_written_time_date.month=(dirent.last_modified_date & 0x1e0) >> 5;
+				buf->last_written_time_date.day=(dirent.last_modified_date & 0x1f);
+	
+				buf->last_accessed_time_date.hours=(dirent.last_modified_time & 0xf800) >> 11;
+				buf->last_accessed_time_date.minutes=(dirent.last_modified_time  & 0x7e0) >> 6;
+				buf->last_accessed_time_date.seconds=(dirent.last_modified_time & 0x1f);
+				buf->last_accessed_time_date.year=((dirent.last_modified_date & 0xfe00) >> 9)+1980;
+				buf->last_accessed_time_date.month=(dirent.last_modified_date & 0x1e0) >> 5;
+				buf->last_accessed_time_date.day=(dirent.last_modified_date & 0x1f);
+
 				buf->drive=splitbuf->drive;		/* additional information */
 
 				if(buf->attribs & FAT_ATTRIB_DIRECTORY) {	/* get file type */
@@ -395,8 +403,8 @@ if(findfirst(newname,&newbuf) == 0) {		/* if new filename exists */
 	return(-1);
 }
 
-if(strlen(splitbuf_old.filename) > 12) {	/* long filename */
-	return(fat_writelfn(splitbuf_old.drive,(uint64_t) buf.findblock,buf.dirent,splitbuf_old.filename,splitbuf_new.filename));
+if(fat_is_long_filename(splitbuf_old.filename)) {	/* long filename */
+	return(fat_update_long_filename(splitbuf_old.drive,(uint64_t) buf.findblock,buf.dirent,&newbuf));
 }
 
 blockbuf=kernelalloc(MAX_BLOCK_SIZE);			/* allocate block buffers */
@@ -642,18 +650,20 @@ DEBUG_PRINT_STRING(fullpath);
 
 gettime(&timebuf);				/* get time and date */
 
-time=(timebuf.hours << 11)+(timebuf.minutes << 5)+timebuf.seconds;
+time=(timebuf.hours << 11)+(timebuf.minutes << 5)+timebuf.seconds;		/* convert time and date to FAT format */
 date=(timebuf.year << 9)+(timebuf.month << 5)+timebuf.day;
 
 if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 
-	if(strlen(filename) > 12) {		/* create long filename */
+	if(fat_is_long_filename(filename) == TRUE) {		/* create long filename */
 		kprintf_direct("Creating long filename\n");
 
 		memset(&lfn_filerecord,0,sizeof(FILERECORD));
 
 		strcpy(lfn_filerecord.filename,splitbuf.filename);
-		memcpy(&lfn_filerecord.timebuf,&timebuf,sizeof(TIMEBUF));
+		memcpy(&lfn_filerecord.create_time_date,timebuf,sizeof(TIMEBUF));
+		memcpy(&lfn_filerecord.last_written_time_date,timebuf,sizeof(TIMEBUF));
+		memcpy(&lfn_filerecord.last_accessed_time_date,timebuf,sizeof(TIMEBUF));
 
 		lfn_filerecord.startblock=-1;
 
@@ -662,7 +672,7 @@ if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 		DEBUG_PRINT_HEX(entryno);
 		DEBUG_PRINT_HEX(rb);
 
-		return(createlfn(&lfn_filerecord,(uint64_t) rb,entryno));
+		return(fat_create_long_filename(&lfn_filerecord,(uint64_t) rb,entryno));
 
 	}
 
@@ -742,6 +752,8 @@ if(type == _DIR) {
 		dirent.createdate=date;
 		dirent.last_modified_time=dirent.createtime;
 		dirent.last_modified_date=dirent.createdate;
+		dirent.last_accessed_date=dirent.createdate;
+
 		dirent.filesize=0;
 
 		if(fattype == 32) { 
@@ -817,10 +829,10 @@ if(findfirst(filename,&buf) == -1) {		/* get file entry */
 
 DEBUG_PRINT_STRING(splitbuf.filename);
 
-if(strlen(splitbuf.filename) > 12) {	/* long filename */
+if(fat_is_long_filename(splitbuf.filename)) {	/* long filename */
 	kernelfree(blockbuf);
 	
-	return(deletelfn(filename,buf.findlastblock,buf.dirent));
+	return(fat_delete_long_filename(filename,buf.findlastblock,buf.dirent));
 }
 			
 if(blockio(_READ,splitbuf.drive,(uint64_t) buf.findlastblock,blockbuf) == -1) return(-1); /* read block */
@@ -855,7 +867,6 @@ char *iobuf;
 size_t bytesdone;
 size_t fattype;
 BLOCKDEVICE blockdevice;
-TIMEBUF timebuf;
 FILERECORD onext;
 size_t count;
 uint64_t blockoffset;
@@ -1158,8 +1169,11 @@ if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.cur
 	}
 
 	/* update start block and file size in directory entry */
-	if(strlen(onext.filename) > 12) {	/* long filename */
-		createlfn(&onext,(uint64_t) onext.findlastblock,onext.dirent);
+
+	if(fat_is_long_filename(onext.filename)) {	/* long filename */
+		if(fat_update_long_filename(onext.drive,(uint64_t) onext.findlastblock,onext.dirent,&onext) == -1) {
+			return(-1);
+		}
 	}
 	else
 	{
@@ -1281,7 +1295,6 @@ if(size < (bpb->sectorsperblock*bpb->sectorsize) || size % (bpb->sectorsperblock
 	count=size-(bpb->sectorsperblock*bpb->sectorsize);			/* remainder */
 	bytesdone=bytesdone+count;
 	memcpy(addr+count,addr,count);	/* copy to buffer */
-
 	if(blockio(_WRITE,onext.drive,onext.currentblock,ioaddr) == -1) {			/* readblock */
 		kernelfree(ioaddr);
 		return(-1);
@@ -1302,8 +1315,8 @@ return(bytesdone);				/* return number of bytes */
 /*
  * Set file attributes
  *
- * In:  name	File to change attributes
-					   attribs Attributes. See fat.h for attributes
+ * In:  name		File to change attributes.
+	attribs		Attributes. See fat.h for attributes.
  *
  * Returns: -1 on error, 0 on success
  *
@@ -1314,81 +1327,62 @@ SPLITBUF splitbuf;
 DIRENT dirent;
 FILERECORD buf;
 char *blockbuf;
-FILERECORD *lfnbuf;
-char *b;
-
-lfnbuf=kernelalloc(sizeof(FILERECORD));	/* allocate split buffer */
-if(lfnbuf == NULL) return(-1);
 
 if((attribs & FAT_ATTRIB_DIRECTORY)) {		/* can't set directory bit */
-	kernelfree(lfnbuf); 
-
 	setlasterror(ACCESS_DENIED);  
 	return(-1);
 }
 
 if((attribs & FAT_ATTRIB_VOLUME_LABEL)) {	/* can't set volume label bit */
-	kernelfree(lfnbuf); 
-
 	setlasterror(ACCESS_DENIED);  
-	return(-1);
-}
-
-
-blockbuf=kernelalloc(MAX_BLOCK_SIZE);			/* allocate block buffers */
-if(blockbuf == NULL) {
-	kernelfree(lfnbuf); 
-
-	setlasterror(NO_MEM);
 	return(-1);
 }
 
 splitname(filename,&splitbuf);				/* split name */
 
-if(findfirst(filename,&buf) == -1) {		/* get file entry */
-	kernelfree(lfnbuf); 
-	kernelfree(blockbuf);
+if(findfirst(filename,&buf) == -1) return(-1);		/* get file entry */
 
-	setlasterror(FILE_NOT_FOUND);
-	return(-1);
-}
-
-if(strlen(splitbuf.filename) > 12) {	/* long filename */
-	kernelfree(lfnbuf); 
-	kernelfree(blockbuf);
-	
+if(fat_is_long_filename(splitbuf.filename)) {			/* long filename */
 	buf.attribs=attribs;
+	
+	kprintf_direct("Is long filename chmod\n");
+	asm("xchg %bx,%bx");
 
-	return(createlfn(&buf,(uint64_t) buf.findlastblock,buf.dirent));
+	return(fat_update_long_filename(splitbuf.drive,(uint64_t) buf.findlastblock,buf.dirent,&buf));
 }
-			
 
-if(blockio(_READ,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* read block */
+blockbuf=kernelalloc(MAX_BLOCK_SIZE);			/* allocate block buffers */
+if(blockbuf == NULL) return(-1);
 
-memcpy(&dirent,blockbuf+(buf.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);
+if(blockio(_READ,splitbuf.drive,(uint64_t) buf.findlastblock,blockbuf) == -1) return(-1); /* read block */
 
-dirent.attribs=(uint8_t) attribs;
+memcpy(&dirent,blockbuf+(buf.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);		/* get FAT entry */
 
-memcpy(blockbuf+(buf.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);
+dirent.attribs=(uint8_t) attribs;			/* set attributes */
+
+memcpy(blockbuf+(buf.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);		/* update FAT entry */
 
 if(blockio(_WRITE,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* write block */
 
-setlasterror(NO_ERROR);  
+kernelfree(blockbuf);
 
+setlasterror(NO_ERROR);  
 return(NO_ERROR);				/* no error */
 }
 
 /*
  * Set file time and date
  *
- * In:  filename	File to set file and date of
-	createtime	struct with create time and date information
-					   lastmodtime	struct with last modified time and date information
+ * In:  filename		File to set file and date of
+	create_time_date	Struct with create time and date information
+	last_modified_time_date	Struct with last modified time and date information
+	last_accessed_time_date	Struct with last accessed time and date information
+
  *
  * Returns: -1 on error, 0 on success
  *
  */
-size_t fat_setfiletimedate(char *filename,TIMEBUF *createtime,TIMEBUF *last_modified_time) {
+size_t fat_set_file_time_date(char *filename,TIMEBUF *create_time_date,TIMEBUF *last_modified_time_date,TIMEBUF *last_accessed_time_date) {
 SPLITBUF splitbuf;
 DIRENT dirent;
 FILERECORD buf;
@@ -1396,44 +1390,40 @@ char *blockbuf;
 FILERECORD *lfnbuf;
 char *b;
 
-lfnbuf=kernelalloc(sizeof(FILERECORD));	/* allocate split buffer */
-if(lfnbuf == NULL) return(-1);
-
-blockbuf=kernelalloc(MAX_BLOCK_SIZE);			/* allocate block buffers */
-if(blockbuf == NULL) {
-	kernelfree(lfnbuf); 
-
-	setlasterror(NO_MEM);
-	return(-1);
-}
-
 splitname(splitbuf.filename,&splitbuf);				/* split name */
 
-if(findfirst(filename,&buf) == -1) {		/* get file entry */
-	kernelfree(lfnbuf); 
-	kernelfree(blockbuf);
-
+if(findfirst(filename,&buf) == -1) {				/* get file entry */
 	setlasterror(FILE_NOT_FOUND);
 	return(-1);
 }
 
-if(strlen(filename) > 12) {	/* long filename */
-	kernelfree(lfnbuf); 
-	kernelfree(blockbuf);
-	
-	memcpy(&buf.timebuf,createtime,sizeof(TIMEBUF));
-	memcpy(&buf.timebuf,last_modified_time,sizeof(TIMEBUF));
+if(fat_is_long_filename(filename)) {				/* long filename */
+	memcpy(&buf.create_time_date,create_time_date,sizeof(TIMEBUF));
+	memcpy(&buf.last_written_time_date,last_modified_time_date,sizeof(TIMEBUF));
+	memcpy(&buf.last_accessed_time_date,last_accessed_time_date,sizeof(TIMEBUF));
+
+	/* update long filename */
+
+	return(fat_update_long_filename(splitbuf.drive,buf.findblock,buf.findentry,&buf));
+}
+
+blockbuf=kernelalloc(MAX_BLOCK_SIZE);			/* allocate block buffers */
+if(blockbuf == NULL) {
+	setlasterror(NO_MEM);
+	return(-1);
 }
 			
 if(blockio(_READ,splitbuf.drive,buf.findlastblock,blockbuf) == -1) return(-1); /* read block */
 
 memcpy(&dirent,blockbuf+(buf.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);
 
-dirent.createtime=(createtime->hours << 16)+(createtime->minutes << 11)+createtime->seconds;
-dirent.createdate=((createtime->year << 16)-1980)+(createtime->month << 9)+createtime->day;
+dirent.createtime=(create_time_date->hours << 16)+(create_time_date->minutes << 11)+create_time_date->seconds;
+dirent.createdate=((create_time_date->year << 16)-1980)+(create_time_date->month << 9)+create_time_date->day;
 
-dirent.last_modified_time=(last_modified_time->hours << 16)+(last_modified_time->minutes << 11)+last_modified_time->seconds;
-dirent.last_modified_date=((last_modified_time->year << 16)-1980)+(last_modified_time->month << 9)+last_modified_time->day;
+dirent.last_modified_time=(last_modified_time_date->hours << 16)+(last_modified_time_date->minutes << 11)+last_modified_time_date->seconds;
+dirent.last_modified_date=((last_modified_time_date->year << 16)-1980)+(last_modified_time_date->month << 9)+last_modified_time_date->day;
+
+dirent.last_accessed_date=((last_accessed_time_date->year << 16)-1980)+(last_accessed_time_date->month << 9)+last_accessed_time_date->day;
 
 memcpy(blockbuf+(buf.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);
 
@@ -2039,7 +2029,7 @@ return(fattype);
 }
 
 /*
- * Convert filenamw (only filename) to FAT entry name
+ * Convert filename (only filename) to FAT entry name
  *
  * In:  name	Filename
 		outname Buffer to hold converted name
@@ -2087,7 +2077,7 @@ return;
 
 
 /*
- * read long filename entry into of buffer starting from block, internal use only
+ * Read long filename entry into of buffer starting from block, internal use only
  *
  * In:  drive	Drive
 	block	Block number of long filename
@@ -2098,7 +2088,7 @@ return;
  *
  */
 
-size_t fat_readlfn(size_t drive,uint64_t block,size_t entryno,FILERECORD *n) {
+size_t fat_read_long_filename(size_t drive,uint64_t block,size_t entryno,FILERECORD *n) {
 char *s;
 size_t entrycount=0;
 size_t ec;
@@ -2176,6 +2166,8 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 		entrycount=lfn->sequence;				/* get number of entries */
 		if(entrycount >= 0x40) entrycount=entrycount-0x40;
 		
+		/* Copy filename from long filename entry in reverse order */
+
 		if(strlen_unicode(lfn->lasttwo_chars,2) > 0) {  
 			d=d-strlen_unicode(lfn->lasttwo_chars,2);
 
@@ -2184,8 +2176,9 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 
 				for(ec=0;ec<strlen_unicode(lfn->lasttwo_chars,2);ec++) {
 
-					//    if(*s == 0xFF) break;				/* at end */
-					*b++=*s;					/* copy */
+					 if(*s == 0xFF) break;		/* at end of filename section */
+					
+					*b++=*s;
 					s=s+2;
 				}   
 		}
@@ -2197,9 +2190,9 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 			b=d;
 
 			for(ec=0;ec<strlen_unicode(lfn->nextsix_chars,6);ec++) {
-				//    if(*s == 0xFF) break;				/* at end */
+				if(*s == 0xFF) break;			/* at end of filename section */
 
-				*b++=*s;						/* copy */
+				*b++=*s;
 				s=s+2;
 			}  
 
@@ -2213,9 +2206,9 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 			b=d;
 
 			for(ec=0;ec<strlen_unicode(lfn->firstfive_chars,5);ec++) {
-				//   if(*s == 0xFF) break;				/* at end */
-
-				*b++=*s;						/* copy */
+				if(*s == 0xFF) break;			/* at end of filename section */
+		
+				*b++=*s;
 				s=s+2;	
 			} 
 		}
@@ -2223,20 +2216,36 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 		if(lfn->sequence == 1 || lfn->sequence == 0x41) {		/* at end of filename copy filename */
 			strcpy(n->filename,d);			/* copy filename */
 
-/* at end, so will point to short entry */
+			/* at end, so will point to short entry */
 
-			memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);
+			memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);			/* get directory entry */
 
+			/* fill FILERECORD structure with file information */
 			n->attribs=dirent.attribs;
 
-			n->timebuf.hours=(dirent.createtime & 0xf800) >> 11;
-			n->timebuf.minutes=(dirent.createtime  & 0x7e0) >> 6;
-			n->timebuf.seconds=(dirent.createtime & 0x1f);
-			n->timebuf.year=((dirent.createdate & 0xfe00) >> 9)+1980;
-			n->timebuf.month=(dirent.createdate & 0x1e0) >> 5;
-			n->timebuf.day=(dirent.createdate & 0x1f);
+			n->create_time_date.hours=(dirent.createtime & 0xf800) >> 11;
+			n->create_time_date.minutes=(dirent.createtime  & 0x7e0) >> 6;
+			n->create_time_date.seconds=(dirent.createtime & 0x1f);
+			n->create_time_date.year=((dirent.createdate & 0xfe00) >> 9)+1980;
+			n->create_time_date.month=(dirent.createdate & 0x1e0) >> 5;
+			n->create_time_date.day=(dirent.createdate & 0x1f);
+
+			n->last_written_time_date.hours=(dirent.last_modified_time & 0xf800) >> 11;
+			n->last_written_time_date.minutes=(dirent.last_modified_time  & 0x7e0) >> 6;
+			n->last_written_time_date.seconds=(dirent.last_modified_time & 0x1f);
+			n->last_written_time_date.year=((dirent.last_modified_date & 0xfe00) >> 9)+1980;
+			n->last_written_time_date.month=(dirent.last_modified_date & 0x1e0) >> 5;
+			n->last_written_time_date.day=(dirent.last_modified_date & 0x1f);
+
+			n->last_accessed_time_date.year=((dirent.last_accessed_date & 0xfe00) >> 9)+1980;
+			n->last_accessed_time_date.month=(dirent.last_accessed_date & 0x1e0) >> 5;
+			n->last_accessed_time_date.day=(dirent.last_accessed_date & 0x1f);
+
 			n->filesize=dirent.filesize;
 			n->startblock=(dirent.block_high_word << 16)+dirent.block_low_word;
+
+			n->findentry=entryno;
+			n->findblock=block;
 
 			kernelfree(blockbuf);
 			kernelfree(lfn);
@@ -2268,7 +2277,7 @@ return(lfncount);
  *
  */
 
-size_t fat_writelfn(size_t drive,uint64_t block,size_t entryno,char *n,char *newname) {
+size_t fat_update_long_filename(size_t drive,uint64_t block,size_t entryno,FILERECORD *new) {
 BLOCKDEVICE blockdevice;
 char *buf[MAX_PATH];
 size_t countx;
@@ -2276,7 +2285,7 @@ uint32_t fattype;
 void *blockbuf;
 size_t count;
 char *fatname[11];
-FILERECORD *lfn;
+FILERECORD lfn;
 char *fat_create_short_name[FAT_ENTRY_SIZE];
 char *blockptr;
 SPLITBUF splitbuf;
@@ -2301,53 +2310,58 @@ if(getblockdevice(drive,&blockdevice) == -1) {
 	return(NULL);
 }
 
-bpb=blockdevice.superblock;		/* get bpb */
-
-
 blockbuf=kernelalloc((bpb->sectorsperblock*bpb->sectorsize));		/* allocate block buffer */
 if(blockbuf == NULL) return(-1);
 
-lfn=kernelalloc((bpb->sectorsperblock*bpb->sectorsize));		/* allocate block buffer */
-if(lfn == NULL) return(-1);
+flen=strlen(new->filename)/13;				/* get number of 13 byte sections */
+if(strlen(new->filename) % 13 > 0) flen++;
+
+bpb=blockdevice.superblock;		/* get bpb */
+
+if(fat_read_long_filename(drive,block,entryno,&lfn) == -1) {		/* read long filename */
+	kernelfree(blockbuf);
+	return(-1);
+}
 
 /*
  * new long filename is shorter or same length as old long filename
  *
  */
 
-if(strlen(newname) <= strlen(n)) {
+if(strlen(lfn.filename) <= strlen(new->filename)) {
+	kprintf_direct("Update 1\n");
+	asm("xchg %bx,%bx");
 
-	if(fat_readlfn(drive,block,entryno,lfn) == -1) {		/* read long filename */
+	if(fat_delete_long_filename(lfn.filename,(uint64_t) block,entryno) == -1) {			/* delete filename and recreate it */
 		kernelfree(blockbuf);
 		return(-1);
 	}
 
-	strcpy(lfn->filename,newname);
+	kprintf_direct("Update 2\n");
+	asm("xchg %bx,%bx");
 
-	deletelfn(n,block,entryno);			/* delete filename and recreate it */
+	if(fat_create_long_filename(&lfn,(uint64_t) block,entryno) == -1) {
+		kernelfree(blockbuf);
+		return(-1);
+	}
 
-	createlfn(lfn,(uint64_t) block,entryno);
+	kprintf_direct("Update \n");
+	asm("xchg %bx,%bx");
 
 	kernelfree(blockbuf);
-	return;
+	return(0);
 }
 	
-/* otherwise new long filename is longer than old long filename
- *
- */
+/* Otherwise new long filename is longer than old long filename */
 
 /* attempt to create free entries in free directory entries, if none could be found, create entries at end of directory */
 
-getfullpath(n,fullpath);			/* get full path */
+getfullpath(new->filename,fullpath);			/* get full path */
 splitname(fullpath,&splitbuf);
 
 block=fat_getstartblock(splitbuf.dirname);
 firstblock=block;					/* save block number */
 
-flen=strlen(newname)/13;				/* get number of 13 byte sections */
-if(strlen(newname) % 13 > 0) flen++;
-
-firstblock=block;					/* save block number */
 entry=0;
 blockptr=blockbuf;
 
@@ -2373,13 +2387,14 @@ while((fattype == 12 && firstblock != 0xfff) || (fattype == 16 && firstblock !=0
 
 
 		if(countx > flen) {			/* found free entries */
-			deletelfn(n,block,entryno);			/* delete filename and recreate it */
+			fat_delete_long_filename(new->filename,block,entryno);			/* delete filename and recreate it */
 
-			strcpy(lfn->filename,newname);
-			lfn->findlastblock=block;
-			lfn->dirent=lastentry;
+			memcpy(&lfn,new,sizeof(FILERECORD));					/* copy file information */
 
-			createlfn(lfn,(uint64_t) block,lastentry);
+			lfn.findlastblock=block;
+			lfn.dirent=lastentry;
+			
+			fat_create_long_filename(&lfn,(uint64_t) block,lastentry);
 
 			kernelfree(blockbuf);
 			return(NO_ERROR);
@@ -2452,8 +2467,11 @@ for(count=0;count<blockcount;count++) {
 }
 
 
-deletelfn(n,block,entryno);			/* delete filename and recreate it */
-createlfn(lfn,block,entryno);
+fat_delete_long_filename(lfn.filename,block,entryno);			/* delete filename and recreate it */
+
+memcpy(&lfn,new,sizeof(FILERECORD));					/* copy file information */
+
+fat_create_long_filename(&lfn,block,entryno);
 			
 kernelfree(blockbuf);
 
@@ -2533,7 +2551,7 @@ for(longfilecount=1;longfilecount<9999;longfilecount++) {
 	return(-1);
 }
 
-uint8_t createlfnchecksum(char *filename) {
+uint8_t fat_create_long_filename_checksum(char *filename) {
 uint8_t sum=0;
 uint32_t count;
 
@@ -2556,7 +2574,7 @@ return(sum);
  *
  */
 
-size_t deletelfn(char *filename,uint64_t block,size_t entry) {
+size_t fat_delete_long_filename(char *filename,uint64_t block,size_t entry) {
 size_t count;
 char *blockptr;
 char *blockbuf;
@@ -2617,7 +2635,7 @@ for(count=0;count<blockcount;count++) {
 blockptr=blockbuf;
 blockptr += (entry*FAT_ENTRY_SIZE);			/* point to entries */
 
-for(count=0;count<flen;count++) {
+for(count=0;count<flen;count++) {			/* delete entries */
 	*blockptr=0xE5;
 	blockptr=blockptr+FAT_ENTRY_SIZE;
 }
@@ -2644,13 +2662,13 @@ return(NO_ERROR);
  *
  * In:  newname		FILERECORD of new filename
 	block		Block number of long filename
-	entry			FAT entry number of long filename
+	entry		FAT entry number of long filename
  *
  * Returns: -1 on error, 0 on success
  *
  */
 
-size_t createlfn(FILERECORD *newname,uint64_t block,size_t entry) {
+size_t fat_create_long_filename(FILERECORD *newname,uint64_t block,size_t entry) {
 size_t count;
 char *fptr;
 char *copyptr;
@@ -2695,8 +2713,6 @@ memset(lfn,0,sizeof(LFN_ENTRY)*255);		/* clear struct */
 
 fat_create_short_name(splitbuf.filename,file);		/* get short filename */
 
-DEBUG_PRINT_STRING(file);
-
 /* create long filename in reverse order */
 
 
@@ -2716,8 +2732,8 @@ dirent.reserved=0;
 dirent.reserved=NULL;
 dirent.create_time_fine_resolution=0;
 
-dirent.createtime=(newname->timebuf.hours << 16)+(newname->timebuf.minutes << 11)+newname->timebuf.seconds;
-dirent.createdate=((newname->timebuf.year << 16)-1980)+(newname->timebuf.month << 9)+newname->timebuf.day;
+dirent.createtime=(newname->create_time_date.hours << 16)+(newname->create_time_date.minutes << 11)+newname->create_time_date.seconds;
+dirent.createdate=((newname->create_time_date.year << 16)-1980)+(newname->create_time_date.month << 9)+newname->create_time_date.day;
 dirent.last_modified_time=dirent.createtime;
 dirent.last_modified_date=dirent.createdate;
 dirent.filesize=newname->filesize;
@@ -2731,7 +2747,7 @@ while(1) {
 
 	lfn[count].attributes=0x0f;					/* attributes must be 0x0f */
 	lfn[count].sc_alwayszero=0;					/* must be zero */
-	lfn[count].checksum=createlfnchecksum(dirent.filename);		/* create checksum */
+	lfn[count].checksum=fat_create_long_filename_checksum(dirent.filename);		/* create checksum */
 	lfn[count].typeindicator=0;
 
 	lfn[count].sequence=seq;
@@ -2740,7 +2756,13 @@ while(1) {
 	s=lfn[count].firstfive_chars;
 
 	for(ec=0;ec<5;ec++) {
-		if(*fptr == 0) goto lfn_over;
+		if(*fptr == 0) {
+				lfn_pad_bytes(ec,5,fptr);		/* pad out filename with 0xFF bytes */
+				lfn_pad_bytes(6,6,&lfn[count].nextsix_chars);
+				lfn_pad_bytes(2,2,&lfn[count].lasttwo_chars);
+				goto lfn_over;
+		}
+
 		*s=*fptr++;
 		s=s+2;
 	}
@@ -2748,7 +2770,11 @@ while(1) {
 	s=lfn[count].nextsix_chars;
 
 	for(ec=0;ec<6;ec++) {
-		if(*fptr == 0) goto lfn_over;
+		if(*fptr == 0) {
+				lfn_pad_bytes(ec,6,fptr);		/* pad out filename with 0xFF bytes */
+				lfn_pad_bytes(2,2,&lfn[count].lasttwo_chars);
+				goto lfn_over;
+		}
 
 		*s=*fptr++;
 		s=s+2;
@@ -2757,7 +2783,10 @@ while(1) {
 	s=lfn[count].lasttwo_chars;
 
 	for(ec=0;ec<2;ec++) {
-		if(*fptr == 0) goto lfn_over;
+		if(*fptr == 0) {
+			lfn_pad_bytes(ec,2,&lfn[count].lasttwo_chars);	/* pad out filename with 0xFF bytes */
+			goto lfn_over;
+		}
 
 		*s=*fptr++;
 		s=s+2;
@@ -2818,6 +2847,38 @@ for(block_count_loop=block;block_count_loop<(uint64_t)  block+blockcount;block_c
 kernelfree(blockbuf);
 
 return(NO_ERROR);
+}
+
+/*
+ * Pad long filename with 0xFF bytes
+ *
+ * In:  numberofbytes	Number of bytes to pad.
+	totalbytes	Total number of bytes in entry
+	ptr		Pointer to entry
+ *
+ * Returns: Nothing
+ *
+ */
+
+void lfn_pad_bytes(size_t numberofbytes,size_t totalbytes,char *ptr) {
+size_t padcount;
+
+if(numberofbytes == totalbytes) {
+	padcount=totalbytes;
+}
+else
+{
+	if((totalbytes-numberofbytes) < 0) return;
+
+	padcount=totalbytes-numberofbytes;		/* number of bytes to pad with */
+}
+
+while(padcount > 0) {
+	*ptr++=0xFF;
+	padcount--;
+}
+
+return;
 }
 
 /*
@@ -2947,4 +3008,44 @@ if(*b != ' ') {			/* get extension */
 return;
 }
 
+/*
+ * Check if filename is a long or short filename
+ *
+ * Note: Filenames are considered long even if they are within the limits for 8.3 names
+ * if they contain lowercase letters, restricted characters or . characters before the extension.
+ *
+ * In: Filename	Filename to check
+ *
+ * Returns TRUE or FALSE
+ *
+ */ 
 
+size_t fat_is_long_filename(char *filename) {
+char *ptr=filename;
+char *long_chars="+,;=[] \t";
+char *lp;
+size_t char_count;
+
+while(*ptr != 0) {
+	if((*ptr >= 'a') && (*ptr <= 'z')) return(TRUE);	/* Is lowercase letter */
+	
+	lp=long_chars;
+
+	while(*lp != 0) {					/* check for characters that are only allowed in long filenames */
+		if(*ptr == *lp) return(TRUE);
+		lp++;
+	}
+
+	if(*lp == '.') {					/* . characters are allowed in any place in long filenames */
+		if(char_count < (strlen(filename)-3)) return(TRUE);
+	}
+
+
+	ptr++;
+	char_count++;
+}
+
+if(strlen(filename) > 12) return(TRUE);			/* is long filename */
+
+return(FALSE);
+}

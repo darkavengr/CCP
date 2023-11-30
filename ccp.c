@@ -28,6 +28,7 @@
 #include "filemanager/vfs.h"
 #include "processmanager/process.h"
 #include "header/debug.h"
+#include "modules/filesystems/fat/fat.h"
 
 /*
  * High-level kernel initalization
@@ -37,8 +38,9 @@
  * Returns nothing
  */
 
+
 void kernel(void) {
-create("A:\\BLAH.TXT");
+chmod("A:\\A long filename.txt",FAT_ATTRIB_READONLY);
 
 if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run command interpreter */
 	kprintf_direct("Missing or corrupt command interpreter, system halted (%d)",getlasterror());

@@ -15,7 +15,7 @@ typedef struct {
 	uint8_t create_time_fine_resolution;	// 13
 	uint16_t createtime;			// 14
 	uint16_t createdate;			// 16
-	uint16_t lastaccessdate;		// 18
+	uint16_t last_accessed_date;		// 18
 	uint16_t block_high_word;		// 20
 	uint16_t last_modified_time;		// 22
 	uint16_t last_modified_date;		// 24
