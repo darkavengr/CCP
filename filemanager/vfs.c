@@ -46,7 +46,7 @@ size_t detect_filesystem(size_t drive,FILESYSTEM *buf);
 size_t getfullpath(char *filename,char *buf);
 size_t seek(size_t handle,size_t pos,size_t whence);
 size_t tell(size_t handle);
-size_t setfiletimedate(char *filename,TIMEBUF *createtime,TIMEBUF *lastmodtime);
+size_t setfiletimedate(char *filename,TIMEBUF *create_time_date,TIMEBUF *last_modified_time_date,TIMEBUF *last_accessed_time_date);
 uint64_t getstartblock(char *name);
 size_t gethandle(size_t handle,FILERECORD *buf);
 size_t getfilesize(size_t handle);
@@ -471,7 +471,7 @@ return(fs.mkdir(name));
  * Set file attributes
  *
  * In:  name	File to change attributes
-		  attribs Attributes. The specific attributes depend on the filesystem
+	attribs Attributes. The specific attributes depend on the filesystem
  *
  * Returns: -1 on error, 0 on success
  *
@@ -1347,7 +1347,7 @@ if(next == NULL) {
  *
  */
 
-size_t setfiletimedate(char *filename,TIMEBUF *createtime,TIMEBUF *lastmodtime) {
+size_t setfiletimedate(char *filename,TIMEBUF *create_time_date,TIMEBUF *last_modified_time_date,TIMEBUF *last_accessed_time_date) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
 SPLITBUF splitbuf;
@@ -1360,7 +1360,7 @@ if(detect_filesystem(splitbuf.drive,&fs) == -1) {
 }
 
 
-return(fs.setfiletd(filename,createtime,lastmodtime));
+return(fs.setfiletd(filename,create_time_date,last_modified_time_date,last_accessed_time_date));
 }
 
 /*

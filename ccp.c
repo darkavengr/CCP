@@ -40,7 +40,22 @@
 
 
 void kernel(void) {
-chmod("A:\\A long filename.txt",FAT_ATTRIB_READONLY);
+TIMEBUF create;
+TIMEBUF modified;
+TIMEBUF accessed;
+
+create.year=1990;
+create.month=7;
+create.day=1;
+create.hours=12;
+create.minutes=30;
+create.seconds=15;
+
+modified=create;
+accessed=create;
+
+setfiletimedate("A:\\A long filename.txt",&create,&modified,&accessed);
+
 
 if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run command interpreter */
 	kprintf_direct("Missing or corrupt command interpreter, system halted (%d)",getlasterror());

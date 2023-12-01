@@ -50,7 +50,7 @@ typedef struct {
 	size_t (*create)(char *);
 	size_t (*chmod)(char *,size_t);
 	size_t (*getfiletd)(char *);
-	size_t (*setfiletd)(char *,size_t,size_t);
+	size_t (*setfiletd)(char *,size_t,size_t,size_t);
 	size_t (*getstartblock)(char *);
 	size_t (*seek)(size_t,size_t,size_t);
 	struct FILESYSTEM *next;
