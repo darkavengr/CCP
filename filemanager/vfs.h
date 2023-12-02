@@ -83,7 +83,6 @@ typedef struct {
 	uint64_t startblock;
 	size_t drive;
 	uint64_t currentblock;
-	uint64_t findblock; 	/* block containing the directory entry for this file */
 	size_t dirent; 		/* directory entry number */
 	size_t access; 		/* access */
 	size_t currentpos;
@@ -93,7 +92,7 @@ typedef struct {
 	size_t (*charioread)(size_t,void *);			/* function pointer */
 	size_t (*chariowrite)(size_t,void *);			/* function pointer */
 	size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
-	uint32_t findlastblock; /* last block read by find() */
+	uint64_t findlastblock; /* last block read by find() */
 	size_t findentry;
 	size_t owner_process;
 	uint8_t searchfilename[MAX_PATH]; 		

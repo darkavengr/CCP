@@ -91,7 +91,7 @@ if(op == 0) {
 }
 else
 {
-	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findblock*TAR_BLOCK_SIZE);		/* first */
+	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findlastblock*TAR_BLOCK_SIZE);		/* first */
 }
 
 touppercase(split.filename);
@@ -114,7 +114,7 @@ while(*tarptr->name != 0) {
 		buf->filesize=atoi(tarptr->size,8);
 		buf->drive=25;
 
-		buf->startblock=buf->findblock+1;
+		buf->startblock=buf->findlastblock+1;
 
 		filefound=TRUE;
 	}
@@ -122,9 +122,9 @@ while(*tarptr->name != 0) {
 	newfindblock=(atoi(tarptr->size,8) / TAR_BLOCK_SIZE)+1;		/* get number of blocks */
 	if(newfindblock % TAR_BLOCK_SIZE) newfindblock++;		/* round up */
 
-	buf->findblock += newfindblock;
+	buf->findlastblock += newfindblock;
 
-	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findblock*TAR_BLOCK_SIZE);
+	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findlastblock*TAR_BLOCK_SIZE);
 
 	if(filefound == TRUE) break;
 }

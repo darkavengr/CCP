@@ -198,7 +198,6 @@ if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
 
 	strcpy(next->filename,blockdevice.dname);
 
-	next->findblock=0;
 	next->currentblock=0;
 	next->currentpos=0;
 	next->owner_process=getpid();
