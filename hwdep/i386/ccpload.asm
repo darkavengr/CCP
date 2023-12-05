@@ -727,6 +727,14 @@ next_entry:
 ;
 ; compare name
 ;
+
+mov	al,[ebx]					; skip deleted files
+cmp	al,0E5h
+jne	not_deleted
+
+jmp	next
+
+not_deleted:
 cld
 mov	esi,ebx
 mov	edi,[find_name]					; point to name
@@ -734,6 +742,7 @@ mov	ecx,11						; size
 rep	cmpsb						; compare
 je	found_file					; load file
 
+next:
 add	ebx,_ENTRY_SIZE
 mov	eax,[blockcount]
 add	eax,_ENTRY_SIZE					; to next entry
