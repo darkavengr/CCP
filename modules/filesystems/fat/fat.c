@@ -50,7 +50,7 @@ size_t fat_set_file_time_date(char *filename,TIMEBUF *create_time_date,TIMEBUF *
 size_t fat_find_free_block(size_t drive);
 size_t fat_get_start_block(char *name);									// TESTED
 size_t fat_get_next_block(size_t drive,uint64_t block);							// TESTED
-size_t fat_update_fat(size_t drive,uint64_t block,uint16_t block_high_word,uint16_t block_low_word);
+size_t fat_update_fat(size_t drive,uint64_t block,uint16_t block_high_word,uint16_t block_low_word);	// TESTED - MORE
 size_t fat_detect_change(size_t drive);									// TESTED
 size_t fat_convert_filename(char *filename,char *outname);						// TESTED
 size_t fat_read_long_filename(size_t drive,uint64_t block,size_t entryno,FILERECORD *n);		// TESTED
@@ -63,7 +63,7 @@ size_t fat_seek(size_t handle,size_t pos,size_t whence);						// TESTED
 void fat_entry_to_filename(char *filename,char *out);							// TESTED
 size_t fat_init(char *i);										// TESTED
 size_t fat_create_int(size_t entrytype,char *filename);							// TESTED
-size_t fat_create_entry(size_t type,size_t drive,uint64_t rb,size_t entryno,size_t datastart,char *filename,char *blockbuf);
+size_t fat_create_entry(size_t type,size_t drive,uint64_t rb,size_t entryno,size_t datastart,char *filename,char *blockbuf); // TESTED
 size_t fat_is_long_filename(char *filename);								// TESTED
 size_t create_subdirectory_entries(char *dirname,size_t datastart,size_t startblock,TIMEBUF *time,TIMEBUF *date,size_t fattype,size_t drive); // TESTED
 
@@ -136,7 +136,6 @@ size_t fat_findnext(char *filename,FILERECORD *buf) {
  *
  */
 size_t fat_find(size_t find_type,char *filename,FILERECORD *buf) {
-size_t count;
 size_t lfncount;
 size_t fattype;
 size_t rootdir;
@@ -145,7 +144,6 @@ char *fp[MAX_PATH];
 char *file[11];
 BLOCKDEVICE blockdevice;
 DIRENT dirent;
-size_t b;
 char *blockbuf;
 char *blockptr;
 SPLITBUF *splitbuf;
@@ -258,8 +256,6 @@ while(1) {
 	}
 
 	while(buf->findentry < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)) {
-	//	DEBUG_PRINT_HEX(buf->findentry);
-
 		buf->findentry++;
 
 		memcpy(&dirent,blockptr,FAT_ENTRY_SIZE);				/* copy entry */
@@ -287,12 +283,8 @@ while(1) {
 	
 			blockptr += (lfncount*FAT_ENTRY_SIZE);	
 
-//			DEBUG_PRINT_HEX(blockptr);
-//			DEBUG_PRINT_HEX(lfncount);
-//			asm("xchg %bx,%bx");
-
 			if(wildcard(splitbuf->filename,lfnbuf->filename) == 0) { 	/* if file found */      	
-				getfullpath(buf->filename,lfnbuf->filename); 	/* copy file information from long filename data returned */
+				strcpy(buf->filename,lfnbuf->filename); 	/* copy file information from long filename data returned */
 				buf->attribs=lfnbuf->attribs;
 
 				buf->create_time_date.day=lfnbuf->create_time_date.day;
@@ -347,14 +339,12 @@ while(1) {
 
 		}
 		else
-		{	
-		//	DEBUG_PRINT_STRING(file);
-		
+		{		
 			if(wildcard(splitbuf->filename,file) == 0) { 				/* if file found */     
 				memset(buf->filename,0,MAX_PATH);
 
 				/* copy file information from the FAT entry */
-				getfullpath(file,buf->filename);			/* convert filename */
+				strcpy(buf->filename,file);			/* convert filename */
 
 				buf->attribs=dirent.attribs;
 				buf->filesize=dirent.filesize;
@@ -513,7 +503,9 @@ return(NO_ERROR);				/* no error */
  *
  * Returns: -1 on error, 0 on success
  *
- * Stub function to call fat_delete */
+ * Stub function to call fat_delete 
+ *
+ */
 
 size_t fat_rmdir(char *dirname) {
 return(fat_delete(dirname));
@@ -529,9 +521,6 @@ return(fat_delete(dirname));
  * Stub function that calls internal create function
  */
 size_t fat_mkdir(char *dirname) {
-kprintf_direct("MKDIR\n");
-asm("xchg %bx,%bx");
-
 return(fat_create_int(_DIR,dirname));
 }
 
@@ -581,8 +570,6 @@ if(findfirst(fullpath,&filecheck) == 0) {			/* file exists */
 	setlasterror(FILE_EXISTS);
 	return(-1);
 }
-
-asm("xchg %bx,%bx");
 
 splitname(fullpath,&splitbuf);
 
@@ -643,11 +630,6 @@ while(1) {
 	while(entry_count < ((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE)) {
 				
 		if(((unsigned char) *blockptr == 0xE5) || ((unsigned char) *blockptr == 0)) {		/* found free entry */	
-
-			kprintf_direct("Found free entry\n");		
-			DEBUG_PRINT_HEX(entry_count);
-
-
 			return(fat_create_entry(type,splitbuf.drive,(uint64_t) rb,entry_count,start_of_data_area,splitbuf.filename,blockbuf));			
 		}
 		
@@ -666,8 +648,6 @@ while(1) {
 		/* at end of directory */
 
 		if((fattype == 12 && rb >= 0xff8) || (fattype == 16 && rb >= 0xfff8) || (fattype == 32 && rb >= 0xfffffff8)) {
-			kprintf_direct("At end of directory\n");
-
 			/* The root directory is fixed in size for fat12 and fat16 */
 
 			if((strcmp(splitbuf.dirname,"\\") == 0) && (fattype == 12 || fattype == 16)) { 
@@ -687,8 +667,6 @@ while(1) {
 	}
     
 }
-
-kprintf_direct("End of directory\n");
 
 kernelfree(blockbuf);
 
@@ -724,12 +702,8 @@ size_t startblock;
 size_t fattype;
 size_t writeblock;
 
-DEBUG_PRINT_HEX(type);
-
 getfullpath(filename,fullpath);
 splitname(fullpath,&splitbuf);
-
-DEBUG_PRINT_STRING(fullpath);
 
 gettime(&timebuf);				/* get time and date */
 
@@ -739,8 +713,6 @@ date=((timebuf.year-1980) << 9) | (timebuf.month << 5) | timebuf.day;
 if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 
 	if(fat_is_long_filename(filename) == TRUE) {		/* create long filename */
-		kprintf_direct("Creating long filename\n");
-
 		memset(&lfn_filerecord,0,sizeof(FILERECORD));
 
 		strcpy(lfn_filerecord.filename,&splitbuf.filename);
@@ -750,20 +722,13 @@ if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 
 		lfn_filerecord.startblock=-1;
 
-		DEBUG_PRINT_HEX(entryno);
-		DEBUG_PRINT_HEX(rb);
-
 		return(fat_create_long_filename(type,&lfn_filerecord,(uint64_t) rb,entryno));
 
 	}
 
 	/* get fat entry */
 
-	kprintf_direct("Create FAT entry\n");
-
 	fat_convert_filename(splitbuf.filename,dirent.filename);		/* filename */
-
-	DEBUG_PRINT_STRING(dirent.filename);
 
 	if(type == _FILE) {
 		dirent.attribs=0;		/* file attributes */
@@ -816,11 +781,7 @@ if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 
 /* fall through */
  
-if(type == _DIR) {
-	kprintf_direct("Creating directory\n");
-
-	return(create_subdirectory_entries(splitbuf.dirname,datastart,startblock,time,date,fattype,splitbuf.drive));	/* create subdirectory entries (. and ..) */
-}
+if(type == _DIR) return(create_subdirectory_entries(splitbuf.dirname,datastart,startblock,time,date,fattype,splitbuf.drive));	/* create subdirectory entries (. and ..) */
 
 return(0);
 }
@@ -1008,48 +969,42 @@ return(NO_ERROR);				/* no error */
 
 
 size_t fat_read(size_t handle,void *addr,size_t size) {
-size_t  block;
+size_t block;
 char *ioaddr;
 char *iobuf;
 size_t bytesdone;
 size_t fattype;
 BLOCKDEVICE blockdevice;
-FILERECORD onext;
+FILERECORD read_file_record;
 size_t count;
 uint64_t blockoffset;
 uint64_t blockno;
 size_t datastart;
 size_t rootdirsize;
 size_t fatsize;
-size_t  blockcount;
+size_t blockcount;
 BPB *bpb;
-size_t cr;
+	
 
-/*
- * find handle in struct
- */			
-
-if(gethandle(handle,&onext) == -1) {	/* bad handle */
+if(gethandle(handle,&read_file_record) == -1) {
 	setlasterror(INVALID_HANDLE);
 	return(-1);
 }
 
-/* get drive struct for the file */
-
-fattype=fat_detect_change(onext.drive);
+fattype=fat_detect_change(read_file_record.drive);
 if(fattype == -1) {
 	setlasterror(INVALID_DISK);
 	return(-1);
 } 
 
-if(getblockdevice(onext.drive,&blockdevice) == -1) {
+if(getblockdevice(read_file_record.drive,&blockdevice) == -1) {
 	setlasterror(INVALID_DISK);
 	return(NULL);
 }
 
 bpb=blockdevice.superblock;		/* point to data */
 
-if(onext.filesize == 0) {				/* read from 0 byte file */
+if(read_file_record.filesize == 0) {				/* read from 0 byte file */
 	setlasterror(END_OF_FILE);
 	return(-1);
 }
@@ -1066,23 +1021,23 @@ if(fattype == 12 || fattype == 16) {
 	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
 	rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
 	datastart=bpb->reservedsectors+fatsize+rootdirsize;
-	blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
 if(fattype == 32) {
 	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
 	datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
-	blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
 ioaddr=addr;					/* point to buffer */
 bytesdone=0;
 
 /* starting in a block */
-blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
+blockoffset=read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 
 if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
-	if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
+	if(blockio(_READ,read_file_record.drive,blockno,iobuf) == -1) return(-1);
 
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
 
@@ -1090,22 +1045,22 @@ if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
 
 	addr=addr+count;
 
-	if(onext.currentpos+size >= (bpb->sectorsperblock*bpb->sectorsize)) {
-		onext.currentblock=fat_get_next_block(onext.drive,onext.currentblock);		/* get next block */	
-		updatehandle(handle,&onext);
+	if(read_file_record.currentpos+size >= (bpb->sectorsperblock*bpb->sectorsize)) {
+		read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);		/* get next block */	
+		updatehandle(handle,&read_file_record);
 
-		if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
-			onext.currentpos += count;
+		if((fattype == 12 && read_file_record.currentblock >= 0xff8) || (fattype == 16 && read_file_record.currentblock >= 0xfff8) || (fattype == 32 && read_file_record.currentblock >= 0xfffffff8)) {
+			read_file_record.currentpos += count;
 
-			updatehandle(handle,&onext);
+			updatehandle(handle,&read_file_record);
 
 			setlasterror(END_OF_FILE);
 			return(-1);
 		}
 	}
 
-	onext.currentpos += count;
-	updatehandle(handle,&onext);
+	read_file_record.currentpos += count;
+	updatehandle(handle,&read_file_record);
 	return(size);
 }
 
@@ -1114,37 +1069,37 @@ if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
  */
 		
 for(blockcount=0;blockcount< (size / (bpb->sectorsperblock*bpb->sectorsize));blockcount++) {    
-	blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
+	blockoffset=read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
 
-	if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
+	if(blockio(_READ,read_file_record.drive,blockno,iobuf) == -1) return(-1);
 
 	memcpy(addr,iobuf,count);
 
-	onext.currentblock=fat_get_next_block(onext.drive,onext.currentblock);		/* get blockdevice block */	
-	updatehandle(handle,&onext);
+	read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);		/* get blockdevice block */	
+	updatehandle(handle,&read_file_record);
 
 	if(fattype == 12 || fattype == 16) {
 		fatsize=(bpb->sectorsperfat*bpb->numberoffats);
 		rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
 		datastart=bpb->reservedsectors+fatsize+rootdirsize;
-		blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+		blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 	}
 
 	if(fattype == 32) {
 		fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
 		datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
-		blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+		blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 	}
 
 	addr=addr+(bpb->sectorsperblock*bpb->sectorsize);      /* point to blockdevice address */
 
-	onext.currentpos += count;
-	updatehandle(handle,&onext);
+	read_file_record.currentpos += count;
+	updatehandle(handle,&read_file_record);
 
 	bytesdone=bytesdone+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
 
-	if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
+	if((fattype == 12 && read_file_record.currentblock >= 0xff8) || (fattype == 16 && read_file_record.currentblock >= 0xfff8) || (fattype == 32 && read_file_record.currentblock >= 0xfffffff8)) {
 		setlasterror(END_OF_FILE);
 		return(-1);
 	}
@@ -1154,12 +1109,12 @@ for(blockcount=0;blockcount< (size / (bpb->sectorsperblock*bpb->sectorsize));blo
 /* end block with less than a block of data */
 
 if(size % (bpb->sectorsperblock*bpb->sectorsize)) {
-	if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
+	if(blockio(_READ,read_file_record.drive,blockno,iobuf) == -1) return(-1);
 
 	count=(size % (bpb->sectorsperblock*bpb->sectorsize));			/* remainder */
 
-	onext.currentpos=onext.currentpos+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
-	updatehandle(handle,&onext);
+	read_file_record.currentpos=read_file_record.currentpos+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
+	updatehandle(handle,&read_file_record);
 
 	bytesdone=bytesdone+count;
 
@@ -1171,24 +1126,23 @@ if(size % (bpb->sectorsperblock*bpb->sectorsize)) {
 	return(size);
 }
 
-onext.currentblock=fat_get_next_block(onext.drive,onext.currentblock);
+read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);
 
 setlasterror(NO_ERROR);
 
-onext.findlastblock=block;		/* save block  */
+read_file_record.findlastblock=block;		/* save block  */
 
 return(bytesdone);				/* return number of bytes */
-
 }
 
 /*
  * Write to file
  *
  * In:  handle	File handle
-	addr	Buffer to read to
-	size	Number of bytes to read
+	addr	Buffer to write from
+	size	Number of bytes to write
  *
- * Returns: -1 on error, number of bytes written on success
+ * Returns: -1 on error or number of bytes written on success
  *
  */
 
@@ -1200,10 +1154,10 @@ size_t bytesdone;
 size_t fattype;
 BLOCKDEVICE blockdevice;
 TIMEBUF timebuf;
-FILERECORD onext;
+FILERECORD write_file_record;
 size_t count;
 uint64_t blockno;
-uint64_t blockoffset;
+size_t blockoffset;
 size_t datastart;
 size_t fatsize;
 size_t rootdirsize;
@@ -1213,27 +1167,32 @@ size_t newblock;
 BPB *bpb;
 char *blockbuf;
 DIRENT dirent;
-uint32_t lastblock;
-uint32_t sblock;
+uint64_t lastblock;
+uint64_t sblock;
+size_t write_size;
+size_t is_first_written_block=FALSE;
+SPLITBUF split;
 
-if(gethandle(handle,&onext) == -1) {	/* bad handle */
+gettime(&timebuf);				/* get time and date */
+
+if(gethandle(handle,&write_file_record) == -1) {	/* bad handle */
 	setlasterror(INVALID_HANDLE);
 	return(-1);
 }
 
-fattype=fat_detect_change(onext.drive);
+fattype=fat_detect_change(write_file_record.drive);
 if(fattype == -1) {
 	setlasterror(INVALID_DISK);
 	return(-1);
 } 
 
-if(getblockdevice(onext.drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
+if(getblockdevice(write_file_record.drive,&blockdevice) == -1) {
+	setlasterror(INVALID_HANDLE);
 	return(NULL);
 }
 
 
-bpb=blockdevice.superblock;		/* point to data */
+bpb=blockdevice.superblock;		/* point to superblock */
 
 /* find block to read from */
 
@@ -1243,13 +1202,13 @@ if(fattype == 12 || fattype == 16) {
 	rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
 	datastart=bpb->reservedsectors+fatsize+rootdirsize;
 
-	blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	blockno=((write_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
 if(fattype == 32) {
 	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
 	datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
-	blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+	blockno=((write_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
 
@@ -1260,201 +1219,178 @@ if(iobuf == NULL) {
 	return(-1);
 }
 
-/* check if enough space before write */ 
-
-if(count > (bpb->sectorsperblock*bpb->sectorsize)) {
-	count=size / (bpb->sectorsperblock*bpb->sectorsize);
-}
-else
-{
-	count=1;
-}
-
-while(count-- > 0) {
-	newblock=fat_find_free_block(onext.drive);
-	if(newblock == -1) break;		/* not enough free space */
-}
-
-if(count == 0) {
-	setlasterror(DISK_FULL);
-	return(-1);
-}	
-
 /* writing past end of file, add new blocks to FAT chain only needs to be done once per write past end */ 
 
-if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
-	/* empty file */
+if((write_file_record.currentblock == 0) || \
+   (fattype == 12 && write_file_record.currentblock >= 0xff8) ||
+   (fattype == 16 && write_file_record.currentblock >= 0xfff8) ||
+   (fattype == 32 && write_file_record.currentblock >= 0xfffffff8)) {
 
-	onext.filesize += size;
-	
+	kprintf_direct("writing past end of file\n");
+//	asm("xchg %bx,%bx");
+
+	/* update FAT */
 
 	for(count=0;count< (size / (bpb->sectorsperblock*bpb->sectorsize))+1;count++) {
-		newblock=fat_find_free_block(onext.drive);
+		newblock=fat_find_free_block(write_file_record.drive);
 
 		if(count == 0) {
 			lastblock=newblock;			/* first block in chain */ 	
 			sblock=newblock;
 
-			onext.startblock=newblock;
-			onext.currentblock=newblock;			
+			write_file_record.startblock=newblock;
+			write_file_record.currentblock=newblock;			
 		}	
 
-		fat_update_fat(onext.drive,lastblock,(newblock >> 16),(newblock & 0xffff));	/* update fat */
-
-		lastblock=newblock;
+		if(fat_update_fat(write_file_record.drive,lastblock,(newblock >> 16),(newblock & 0xffff)) == -1) return(-1);
 	}
 
 	/* end of fat chain */
 	if(fattype == 12) {
-		fat_update_fat(onext.drive,lastblock,0,0xff8);
+		fat_update_fat(write_file_record.drive,lastblock,0,0xff8);
 	}
 	else if(fattype == 16) {
-		fat_update_fat(onext.drive,lastblock,0,0xfff8);
+		fat_update_fat(write_file_record.drive,lastblock,0,0xfff8);
 	}
 	else if(fattype == 32) {
-		fat_update_fat(onext.drive,lastblock,0xffff,0xfff8);
+		fat_update_fat(write_file_record.drive,lastblock,0xffff,0xfff8);
 	}
 
-	/* update start block and file size in directory entry */
+	is_first_written_block=TRUE;			/* is first block to empty file */
+}
 
-	if(fat_is_long_filename(onext.filename)) {	/* long filename */
-		if(fat_update_long_filename(_FILE,onext.drive,(uint64_t) onext.findlastblock,onext.dirent,&onext) == -1) return(-1);
+/* until all data written */
+
+write_size=size;
+
+kprintf_direct("Writing data\n");
+DEBUG_PRINT_HEX(size);
+//asm("xchg %bx,%bx");
+
+if(fattype == 12 || fattype == 16) {
+	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
+	rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
+	datastart=bpb->reservedsectors+fatsize+rootdirsize;
+	blockno=((write_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
+}
+
+if(fattype == 32) {
+	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
+	datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
+	blockno=((write_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
+}
+
+while(write_size > 0) {
+	DEBUG_PRINT_HEX(write_file_record.currentpos);	
+	DEBUG_PRINT_HEX(blockoffset);
+
+	kprintf_direct("Writing data\n");
+	//asm("xchg %bx,%bx");
+
+	blockoffset=write_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
+	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
+
+	DEBUG_PRINT_HEX(count);
+	DEBUG_PRINT_HEX(iobuf);
+		
+	kprintf_direct("Reading block\n");
+	asm("xchg %bx,%bx");
+
+	if(blockio(_READ,write_file_record.drive,blockno,iobuf) == -1) return(-1);		/* read block */
+
+	kprintf_direct("Copying data\n");
+	DEBUG_PRINT_HEX(blockoffset);
+	DEBUG_PRINT_HEX(write_file_record.currentpos);
+	DEBUG_PRINT_HEX(iobuf+blockoffset);
+	asm("xchg %bx,%bx");
+
+	/* adjust copy size */
+
+	if((blockoffset+size) > (bpb->sectorsperblock*bpb->sectorsize)) {	/* write crosses data */
+		count=(bpb->sectorsperblock*bpb->sectorsize)-size;	/* adjust size */
+		/* the remainder of the data will be written on the next cycle */
 	}
 	else
 	{
-		blockbuf=kernelalloc(MAX_BLOCK_SIZE);
-		if(blockbuf == NULL) return(-1);
-
-		if(blockio(_READ,onext.drive,onext.findlastblock,blockbuf) == -1) return(-1); /* read block */
-
-		memcpy(&dirent,blockbuf+(onext.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);	
-		
-		if(dirent.filesize == 0) {			/* first block */
-			dirent.block_high_word=(sblock & 0xffff0000) >> 16;
-			dirent.block_low_word=(sblock & 0xffff);
-		}
-
-		dirent.filesize += size;
-
-		memcpy(blockbuf+(onext.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);
-
-		if(blockio(_WRITE,onext.drive,onext.findlastblock,blockbuf) == -1) return(-1); /* write block */
-
-		kernelfree(blockbuf);
-
-		/* update blockno */
-		if(fattype == 12 || fattype == 16) blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
-		if(fattype == 32) blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+		count=size;
 	}
-	
+
+	memcpy(iobuf+blockoffset,addr,count);			/* copy data to buffer */
+
+	kprintf_direct("Writing block\n");
+	//asm("xchg %bx,%bx");
+
+	if(blockio(_WRITE,write_file_record.drive,blockno,iobuf) == -1) return(-1);		/* write block */
+
+	addr += count;      /* point to next address */
+
+	/* increment write size */
+	write_size -= count; 
+	write_file_record.currentpos += count;
+	write_file_record.filesize += count;
+
+	/* if writing data that crosses a block boundary, find next block to write remainder of data */
+
+	if((blockoffset+size) > (bpb->sectorsperblock*bpb->sectorsize)) {
+	 	write_file_record.currentblock=fat_get_next_block(write_file_record.drive,write_file_record.currentblock);
+	}
+
 }
 
-ioaddr=addr;					/* point to buffer */
+/* update file size, time and date */
 
-/* starting in a block */
+updatehandle(handle,&write_file_record);			/* update file handle data */
 
-blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
+splitname(write_file_record.filename,&split);
 
-if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
+/* update file's directory entry if it's a long filename */
+if(fat_is_long_filename(split.filename)) {			/* long filename */
+	memcpy(&write_file_record.create_time_date,&timebuf,sizeof(TIMEBUF));
+	memcpy(&write_file_record.last_written_time_date,&timebuf,sizeof(TIMEBUF));
+	memcpy(&write_file_record.last_accessed_time_date,&timebuf,sizeof(TIMEBUF));
 
-	if(blockio(_READ,onext.drive,blockno,iobuf) == -1) return(-1);
-	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
+	write_file_record.filesize += size;
 
-	memcpy(iobuf+blockoffset,addr,size);	/* copy to buffer */
+	if(is_first_written_block == TRUE) write_file_record.startblock=sblock; /* is first block in empty file */
 
-	if(blockio(_WRITE,onext.drive,blockno,iobuf) == -1) return(-1);
-
-	if(onext.currentpos+size >= (bpb->sectorsperblock*bpb->sectorsize)) {
-		onext.currentblock=fat_get_next_block(onext.drive,onext.currentblock);		/* get next block */	
-		updatehandle(handle,&onext);
-
-		if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
-			onext.currentpos += count;
-			setlasterror(END_OF_FILE);
-
-			return(-1);
-		}
-	}
-
-	onext.currentpos += count;
-	updatehandle(handle,&onext);
-
-	return(size);
+	return(fat_update_long_filename(_FILE,write_file_record.drive,(uint64_t) write_file_record.findlastblock,write_file_record.dirent,&write_file_record));
 }
 
+/* update file's directory entry if it's a 8.3 filename */
 
-for(count=0;count< (size / (bpb->sectorsperblock*bpb->sectorsize))+1;count++) {
+blockbuf=kernelalloc(MAX_BLOCK_SIZE);			/* allocate block buffers */
+if(blockbuf == NULL) return(-1);
 
-	blockoffset=onext.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
-	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
+if(blockio(_READ,write_file_record.drive,(uint64_t) write_file_record.findlastblock,blockbuf) == -1) return(-1); /* read block */
 
-	memcpy(iobuf+blockoffset,addr,count);
-		
-	if(blockio(_WRITE,onext.drive,blockno,iobuf+blockoffset) == -1) {
-		kernelfree(iobuf);
+memcpy(&dirent,blockbuf+(write_file_record.dirent*FAT_ENTRY_SIZE),FAT_ENTRY_SIZE);		/* get FAT entry */
 
-		return(-1);
-	}
+/* Update last modified time and date and last accessed date */
+dirent.last_modified_time=(timebuf.hours << 11) | (timebuf.minutes << 5) | timebuf.seconds;
+dirent.last_modified_date=((timebuf.year-1980) << 9) | (timebuf.month << 5) | timebuf.day;
+dirent.last_accessed_date=((timebuf.year-1980) << 9) | (timebuf.month << 5) | timebuf.day;
 
-	if(fattype == 12 || fattype == 16) {
-		fatsize=(bpb->sectorsperfat*bpb->numberoffats);
-		rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsperblock;
-		datastart=bpb->reservedsectors+fatsize+rootdirsize;
-		blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
-	}
+dirent.filesize += size;
+
+/* set start block if it's the first block to be written */
+
+if(is_first_written_block == TRUE) {
+	if(fattype == 12 || fattype == 16) dirent.block_low_word=(sblock & 0xffff);
 
 	if(fattype == 32) {
-		fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
-		datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
-		blockno=((onext.currentblock-2)*bpb->sectorsperblock)+datastart;
+		dirent.block_high_word=(sblock << 16);
+		dirent.block_low_word=(sblock & 0xffff);
 	}
-
-
-	onext.currentblock=fat_get_next_block(onext.drive,onext.currentblock);		/* get next block */	
-
-	ioaddr=ioaddr+bpb->sectorsperblock*bpb->sectorsize;      /* point to next address */
-	onext.currentpos=onext.currentpos+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */
-	bytesdone=bytesdone+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
 }
 
-/* file is smaller than a block or is an end block with less than a block of data */
+memcpy(blockbuf+(write_file_record.dirent*FAT_ENTRY_SIZE),&dirent,FAT_ENTRY_SIZE);		/* update FAT entry */
 
-if(size < (bpb->sectorsperblock*bpb->sectorsize) || size % (bpb->sectorsperblock*bpb->sectorsize)) {
-	ioaddr=kernelalloc((size % bpb->sectorsperblock*bpb->sectorsize));				/* allocate buffer */
-	if(ioaddr == NULL) return(-1);
+if(blockio(_WRITE,write_file_record.drive,write_file_record.findlastblock,blockbuf) == -1) return(-1); /* write block */
 
-	onext.currentblock=fat_get_next_block(onext.drive,onext.currentblock);		/* get next block */
-	updatehandle(handle,&onext);
-
-	if((fattype == 12 && onext.currentblock >= 0xff8) || (fattype == 16 && onext.currentblock >= 0xfff8) || (fattype == 32 && onext.currentblock >= 0xfffffff8)) {
-		last=onext.currentblock;
-		onext.currentblock=fat_find_free_block(onext.drive);
-		fat_update_fat(onext.drive,last,(onext.currentblock & 0xffff0000) >> 16,(onext.currentblock >> 8));
-	}
-
-	if(blockio(_READ,onext.drive,onext.currentblock,ioaddr) == -1) {			/* readblock */
-		kernelfree(ioaddr);
-		return(-1);
-	}
-
-	count=size-(bpb->sectorsperblock*bpb->sectorsize);			/* remainder */
-	bytesdone=bytesdone+count;
-	memcpy(addr+count,addr,count);	/* copy to buffer */
-	if(blockio(_WRITE,onext.drive,onext.currentblock,ioaddr) == -1) {			/* readblock */
-		kernelfree(ioaddr);
-		return(-1);
-	}
-
-	kernelfree(ioaddr);
-	return;
-}
-
-onext.currentblock=fat_get_next_block(onext.drive,onext.currentblock-(bpb->sectorsperfat*bpb->numberoffats)-((bpb->rootdirentries*FAT_ENTRY_SIZE)/bpb->sectorsperblock)-bpb->reservedsectors+2);
-updatehandle(handle,&onext);
+kernelfree(blockbuf);
 
 setlasterror(NO_ERROR);
-
-return(bytesdone);				/* return number of bytes */
+return(bytesdone);						/* return number of bytes */
 }
 
 /*
@@ -2129,9 +2065,9 @@ if(fattype == 32) {					/* fat32 */
 /* write fats */
 
 for(count=0;count<bpb->numberoffats;count++) {
-	if(blockio(_WRITE,drive,blockno,buf) == -1)  return(-1);
+	if(blockio(_WRITE,drive,blockno,buf) == -1) return(-1);
 
-	blockno=blockno+(bpb->sectorsperfat*bpb->sectorsperblock));
+	blockno=blockno+(bpb->sectorsperfat*bpb->sectorsperblock);
 }
 
 setlasterror(NO_ERROR);
@@ -3082,6 +3018,7 @@ while(padcount > 0) {
 return;
 }
 
+
 /*
  * Set file position
  *
@@ -3124,9 +3061,9 @@ bpb=blockdevice.superblock;		/* point to data */
 /* round down if not a multiple of sector size */ 
 
 if(pos >= (bpb->sectorsperblock*bpb->sectorsize)) {
-if(pos % (bpb->sectorsperblock*bpb->sectorsize) > 0) posp -= (pos % (bpb->sectorsperblock*bpb->sectorsize));
+	if(pos % (bpb->sectorsperblock*bpb->sectorsize) > 0) posp -= (pos % (bpb->sectorsperblock*bpb->sectorsize));
 
-sb=fat_get_start_block(onext.filename);			/* get first block */
+	sb=fat_get_start_block(onext.filename);			/* get first block */
 
 	if(posp < (bpb->sectorsperblock*bpb->sectorsize)) {
 		posp=1;
@@ -3142,23 +3079,23 @@ sb=fat_get_start_block(onext.filename);			/* get first block */
 		sb=fat_get_next_block(onext.drive,sb);			/* get next block */
 	}
 
-onext.currentblock=sb;
+	onext.currentblock=sb;
 }
 
-	switch(whence) {
+switch(whence) {
 
-		case SEEK_SET:				/*set current position */
-			onext.currentpos=pos;
-			break;
+	case SEEK_SET:				/*set current position */
+		onext.currentpos=pos;
+		break;
 
-		case SEEK_END:
-			onext.currentpos=onext.filesize+pos;	/* end+pos */
-			break;
+	case SEEK_END:
+		onext.currentpos=onext.filesize+pos;	/* end+pos */
+		break;
 
-		case SEEK_CUR:				/* current location+pos */
-			onext.currentpos=onext.currentpos+pos;
-			break;
-		}
+	case SEEK_CUR:				/* current location+pos */
+		onext.currentpos=onext.currentpos+pos;
+		break;
+}
 
 setlasterror(NO_ERROR);
 
@@ -3166,8 +3103,6 @@ updatehandle(handle,&onext);		/* update */
 
 return(onext.currentpos);
 }
-
-
 /*
  * Convert FAT entry to filename
  *

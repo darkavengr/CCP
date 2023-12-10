@@ -154,8 +154,8 @@ FILERECORD dirent;
 lock_mutex(&vfs_mutex);
 
 /* check if:
-	 file exists and is owned by the caller and return handle if it is,
-	 file exists and is not owned by the called and is not opened for exclusive access. Return error if it is.
+	 handle exists and is owned by the caller and return handle if it is,
+	 handle exists and is not owned by the called and is not opened for exclusive access. Return error if it is.
 */
 
 next=openfiles;
@@ -369,7 +369,7 @@ return(fs.rename(oldname,newname));
  *
  * In:  name	File to create
  *
- * Returns: -1 on error, 0 on success
+ * Returns: -1 on error, file handle on success
  *
  */
 size_t create(char *name) {

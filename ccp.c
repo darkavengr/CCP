@@ -40,9 +40,22 @@
 
 
 void kernel(void) {
+int handle;
+char *buf = { "Test data 12345467890\n" };
+//char *morebuf = { "MORE TEST DATA\n" };
+
+handle=open("A:\\BOOT.DUP",_O_RDWR);
 asm("xchg %bx,%bx");
 
-rmdir("A:\\TESTDIR");
+seek(handle,0,SEEK_END);
+asm("xchg %bx,%bx");
+
+write(handle,buf,strlen(buf));
+asm("xchg %bx,%bx");
+
+//write(handle,morebuf,strlen(morebuf));
+
+close(handle);
 
 if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) { /* can't run command interpreter */
 	kprintf_direct("Missing or corrupt command interpreter, system halted (%d)",getlasterror());
