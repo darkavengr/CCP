@@ -967,9 +967,7 @@ return(NO_ERROR);				/* no error */
  *
  */
 
-
 size_t fat_read(size_t handle,void *addr,size_t size) {
-size_t block;
 char *ioaddr;
 char *iobuf;
 size_t bytesdone;
@@ -977,16 +975,19 @@ size_t fattype;
 BLOCKDEVICE blockdevice;
 FILERECORD read_file_record;
 size_t count;
-uint64_t blockoffset;
 uint64_t blockno;
+size_t blockoffset;
 size_t datastart;
-size_t rootdirsize;
 size_t fatsize;
-size_t blockcount;
+size_t rootdirsize;
+size_t nextblock;
 BPB *bpb;
-	
+char *blockbuf;
+size_t read_size;
+size_t pos_rounded_down;
+size_t pos_rounded_up;
 
-if(gethandle(handle,&read_file_record) == -1) {
+if(gethandle(handle,&read_file_record) == -1) {		/* bad handle */
 	setlasterror(INVALID_HANDLE);
 	return(-1);
 }
@@ -998,24 +999,35 @@ if(fattype == -1) {
 } 
 
 if(getblockdevice(read_file_record.drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
+	setlasterror(INVALID_HANDLE);
 	return(NULL);
 }
 
-bpb=blockdevice.superblock;		/* point to data */
 
-if(read_file_record.filesize == 0) {				/* read from 0 byte file */
-	setlasterror(END_OF_FILE);
-	return(-1);
-}
+bpb=blockdevice.superblock;		/* point to superblock */
 
 iobuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);
+
 if(iobuf == NULL) {
 	kernelfree(iobuf);
 	return(-1);
 }
 
-/* find block to read from */
+/* reading past end of file */ 
+
+if((read_file_record.currentpos >= read_file_record.filesize) || \
+   (read_file_record.currentblock == 0) || \
+   (fattype == 12 && read_file_record.currentblock >= 0xff8) || \
+   (fattype == 16 && read_file_record.currentblock >= 0xfff8) || \
+   (fattype == 32 && read_file_record.currentblock >= 0xfffffff8)) {
+
+	setlasterror(INPUT_PAST_END);
+	return(-1);
+}
+	
+/* until all data read */
+
+read_size=size;
 
 if(fattype == 12 || fattype == 16) {
 	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
@@ -1030,110 +1042,55 @@ if(fattype == 32) {
 	blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
-ioaddr=addr;					/* point to buffer */
-bytesdone=0;
-
-/* starting in a block */
-blockoffset=read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
-
-if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
-	if(blockio(_READ,read_file_record.drive,blockno,iobuf) == -1) return(-1);
-
-	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
-
-	memcpy(addr,iobuf+blockoffset,count);	/* copy from buffer */
-
-	addr=addr+count;
-
-	if(read_file_record.currentpos+size >= (bpb->sectorsperblock*bpb->sectorsize)) {
-		read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);		/* get next block */	
-		updatehandle(handle,&read_file_record);
-
-		if((fattype == 12 && read_file_record.currentblock >= 0xff8) || (fattype == 16 && read_file_record.currentblock >= 0xfff8) || (fattype == 32 && read_file_record.currentblock >= 0xfffffff8)) {
-			read_file_record.currentpos += count;
-
-			updatehandle(handle,&read_file_record);
-
-			setlasterror(END_OF_FILE);
-			return(-1);
-		}
-	}
-
-	read_file_record.currentpos += count;
-	updatehandle(handle,&read_file_record);
-	return(size);
-}
-
-/*
- * read rest of blocks
- */
-		
-for(blockcount=0;blockcount< (size / (bpb->sectorsperblock*bpb->sectorsize));blockcount++) {    
+while(read_size > 0) {
+	blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 	blockoffset=read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
+	
+	if(blockio(_READ,read_file_record.drive,blockno,iobuf) == -1) return(-1);		/* read block */
+	
+	/* adjust copy size */
 
-	if(blockio(_READ,read_file_record.drive,blockno,iobuf) == -1) return(-1);
-
-	memcpy(addr,iobuf,count);
-
-	read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);		/* get blockdevice block */	
-	updatehandle(handle,&read_file_record);
-
-	if(fattype == 12 || fattype == 16) {
-		fatsize=(bpb->sectorsperfat*bpb->numberoffats);
-		rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
-		datastart=bpb->reservedsectors+fatsize+rootdirsize;
-		blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
+	if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
+		count=size;
+	}
+	else
+	{
+		count=(bpb->sectorsperblock*bpb->sectorsize);
 	}
 
-	if(fattype == 32) {
-		fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
-		datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
-		blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
+	if((blockoffset+count) > (bpb->sectorsperblock*bpb->sectorsize)) count=(bpb->sectorsperblock*bpb->sectorsize)-(blockoffset+count);
+
+	bytesdone += count;
+
+	memcpy(addr,iobuf+blockoffset,count);			/* copy data to buffer */
+	addr += count;      /* point to next address */
+
+	/* if reading data that crosses a block boundary, find next block to read remainder of data */
+
+	pos_rounded_down=read_file_record.currentpos - (read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize));
+	pos_rounded_up=read_file_record.currentpos + (read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize));
+
+	if((pos_rounded_down+count) > pos_rounded_up) {
+	 	read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);
+
+		if((fattype == 12 && read_file_record.currentblock >= 0xff8) || 
+		   (fattype == 16 && read_file_record.currentblock >= 0xfff8) || \
+		   (fattype == 32 && read_file_record.currentblock >= 0xfffffff8)) break;
 	}
 
-	addr=addr+(bpb->sectorsperblock*bpb->sectorsize);      /* point to blockdevice address */
-
+	/* increment read size */
+	read_size -= count; 
 	read_file_record.currentpos += count;
-	updatehandle(handle,&read_file_record);
-
-	bytesdone=bytesdone+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
-
-	if((fattype == 12 && read_file_record.currentblock >= 0xff8) || (fattype == 16 && read_file_record.currentblock >= 0xfff8) || (fattype == 32 && read_file_record.currentblock >= 0xfffffff8)) {
-		setlasterror(END_OF_FILE);
-		return(-1);
-	}
+	read_file_record.filesize += count;
 }
 
-
-/* end block with less than a block of data */
-
-if(size % (bpb->sectorsperblock*bpb->sectorsize)) {
-	if(blockio(_READ,read_file_record.drive,blockno,iobuf) == -1) return(-1);
-
-	count=(size % (bpb->sectorsperblock*bpb->sectorsize));			/* remainder */
-
-	read_file_record.currentpos=read_file_record.currentpos+(bpb->sectorsperblock*bpb->sectorsize); /* increment number of bytes read */ 
-	updatehandle(handle,&read_file_record);
-
-	bytesdone=bytesdone+count;
-
-	memcpy(addr,iobuf,count);	/* copy from buffer */
-	addr=addr+count;
-
-	kernelfree(iobuf);
-
-	return(size);
-}
-
-read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);
+kernelfree(iobuf);
 
 setlasterror(NO_ERROR);
-
-read_file_record.findlastblock=block;		/* save block  */
-
-return(bytesdone);				/* return number of bytes */
+return(bytesdone);						/* return number of bytes */
 }
+
 
 /*
  * Write to file
@@ -1221,9 +1178,10 @@ if(iobuf == NULL) {
 
 /* writing past end of file, add new blocks to FAT chain only needs to be done once per write past end */ 
 
-if((write_file_record.currentblock == 0) || \
-   (fattype == 12 && write_file_record.currentblock >= 0xff8) ||
-   (fattype == 16 && write_file_record.currentblock >= 0xfff8) ||
+if((write_file_record.currentpos >= write_file_record.filesize) || \
+   (write_file_record.currentblock == 0) || \
+   (fattype == 12 && write_file_record.currentblock >= 0xff8) || \
+   (fattype == 16 && write_file_record.currentblock >= 0xfff8) || \
    (fattype == 32 && write_file_record.currentblock >= 0xfffffff8)) {
 
 	kprintf_direct("writing past end of file\n");
@@ -1231,34 +1189,53 @@ if((write_file_record.currentblock == 0) || \
 
 	/* update FAT */
 
-	for(count=0;count< (size / (bpb->sectorsperblock*bpb->sectorsize))+1;count++) {
-		newblock=fat_find_free_block(write_file_record.drive);
+	count=(size / (bpb->sectorsperblock*bpb->sectorsize));		/* number of blocks in FAT chain */
+	if(size % (bpb->sectorsperblock*bpb->sectorsize)) count++;	/* round up */
 
-		if(count == 0) {
-			lastblock=newblock;			/* first block in chain */ 	
-			sblock=newblock;
+	newblock=fat_find_free_block(write_file_record.drive);
+	
+	if(write_file_record.startblock == 0) {				/* first block in chain */
+		sblock=newblock;
 
-			write_file_record.startblock=newblock;
-			write_file_record.currentblock=newblock;			
-		}	
+		write_file_record.startblock=newblock;	
+		is_first_written_block=TRUE;				/* is first block written to empty file */
+	}	
 
-		if(fat_update_fat(write_file_record.drive,lastblock,(newblock >> 16),(newblock & 0xffff)) == -1) return(-1);
+	/* need to add another block to FAT chain */
+
+	if((write_file_record.startblock == 0) || (write_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize) == 0)) {
+		lastblock=write_file_record.currentblock;			/* save last block in FAT chain */
+		write_file_record.currentblock=newblock;			/* new current block */
+	
+		DEBUG_PRINT_HEX(lastblock);
+		DEBUG_PRINT_HEX(nextblock);
+		asm("xchg %bx,%bx");
+
+		do {
+			if(fat_update_fat(write_file_record.drive,lastblock,(newblock >> 16),(newblock & 0xffff)) == -1) return(-1);
+	
+			lastblock=newblock;
+
+			newblock=fat_find_free_block(write_file_record.drive);
+
+			count--;
+			} while(count != 0);
+
+			/* end of fat chain */
+
+			if(fattype == 12) {
+				fat_update_fat(write_file_record.drive,newblock,0,0xff8);
+			}
+			else if(fattype == 16) {
+				fat_update_fat(write_file_record.drive,newblock,0,0xfff8);
+			}
+			else if(fattype == 32) {
+				fat_update_fat(write_file_record.drive,newblock,0xffff,0xfff8);
+			}
+	
+		}
 	}
-
-	/* end of fat chain */
-	if(fattype == 12) {
-		fat_update_fat(write_file_record.drive,lastblock,0,0xff8);
-	}
-	else if(fattype == 16) {
-		fat_update_fat(write_file_record.drive,lastblock,0,0xfff8);
-	}
-	else if(fattype == 32) {
-		fat_update_fat(write_file_record.drive,lastblock,0xffff,0xfff8);
-	}
-
-	is_first_written_block=TRUE;			/* is first block to empty file */
-}
-
+	
 /* until all data written */
 
 write_size=size;
@@ -1289,11 +1266,11 @@ while(write_size > 0) {
 
 	blockoffset=write_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
-
-	DEBUG_PRINT_HEX(count);
-	DEBUG_PRINT_HEX(iobuf);
 		
 	kprintf_direct("Reading block\n");
+	DEBUG_PRINT_HEX(count);
+	DEBUG_PRINT_HEX(iobuf);
+	DEBUG_PRINT_HEX(blockno);
 	asm("xchg %bx,%bx");
 
 	if(blockio(_READ,write_file_record.drive,blockno,iobuf) == -1) return(-1);		/* read block */
@@ -1396,7 +1373,7 @@ return(bytesdone);						/* return number of bytes */
 /*
  * Set file attributes
  *
- * In:  name		File to change attributes.
+ * In:  filename	Filename
 	attribs		Attributes. See fat.h for attributes.
  *
  * Returns: -1 on error, 0 on success
@@ -1572,7 +1549,7 @@ blockcount=0;
 /* until free block found */ 
 
 entrycount=0;
-whichentry=0;
+whichentry=2;
 
 if(fattype == 12) {				/* fat 12 */
 	fatsize=bpb->sectorsperfat;
@@ -2968,7 +2945,6 @@ memcpy(blockptr,&lfn[1],(flen*FAT_ENTRY_SIZE));			/* copy long filename entries 
 memcpy(blockptr+(((flen)*FAT_ENTRY_SIZE)),&dirent,FAT_ENTRY_SIZE);	/* copy short filename entry */
 
 /* write out blocks */
-
 blockptr=blockbuf;
 
 for(block_count_loop=block;block_count_loop<(uint64_t)  block+blockcount;block_count_loop++) {
@@ -3103,6 +3079,7 @@ updatehandle(handle,&onext);		/* update */
 
 return(onext.currentpos);
 }
+
 /*
  * Convert FAT entry to filename
  *
