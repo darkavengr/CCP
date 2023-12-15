@@ -47,7 +47,6 @@ size_t getfullpath(char *filename,char *buf);
 size_t seek(size_t handle,size_t pos,size_t whence);
 size_t tell(size_t handle);
 size_t setfiletimedate(char *filename,TIMEBUF *create_time_date,TIMEBUF *last_modified_time_date,TIMEBUF *last_accessed_time_date);
-uint64_t getstartblock(char *name);
 size_t gethandle(size_t handle,FILERECORD *buf);
 size_t getfilesize(size_t handle);
 size_t splitname(char *name,SPLITBUF *splitbuf);
@@ -58,6 +57,7 @@ size_t change_file_owner_pid(size_t handle,size_t pid);
 size_t init_console_device(size_t type,size_t handle,void *cptr);
 size_t openfiles_init(size_t a,size_t b);
 void shut(void);
+size_t seek(size_t handle,size_t pos,size_t whence);
 
 FILERECORD *openfiles=NULL;
 FILESYSTEM *filesystems=NULL;
@@ -233,8 +233,9 @@ if(findcharacterdevice(filename,&chardevice) == 0) {
 	next->ioctl=chardevice.ioctl;
 	next->flags=FILE_CHAR_DEVICE;
 	next->currentpos=0;
-	next->access=access;				/* access */
+	next->access=access;
 	next->handle=handle;
+	next->currentblock=0;
 	next->next=NULL;
 
 	unlock_mutex(&vfs_mutex);
@@ -279,11 +280,11 @@ memcpy(next,&dirent,sizeof(FILERECORD));  /* copy data */
 strcpy(next->filename,fullname);	/* copy full filename */
 
 next->currentpos=0;			/* set position to start of file */
-next->currentblock=getstartblock(fullname);		/* get start block */
 next->access=access;			/* access mode */
 next->flags=FILE_REGULAR;		/* file information flags */
 next->handle=handle;			/* file handle */
 next->owner_process=getpid();		/* owner process */
+next->currentblock=next->startblock;
 next->next=NULL;
 	
 setlasterror(NO_ERROR);
@@ -1249,53 +1250,6 @@ initialize_mutex(&vfs_mutex);		/* intialize mutex */
 return(-1);
 }
 
-
-/*
- * Set file position
- *
- * In:  handle	File handle
-	pos	Byte to seek to
-	whence	Where to seek from(0=start,1=current position,2=end)
- *
- * Returns: -1 on error, new file position on success
- *
- */
-
-size_t seek(size_t handle,size_t pos,size_t whence) {
-FILESYSTEM fs;
-BLOCKDEVICE blockdevice;
-FILERECORD *next;
-SPLITBUF splitbuf;
-
-lock_mutex(&vfs_mutex);
-
-next=openfiles;
-while(next != NULL) {
-	if(next->handle == handle) break;
-	next=next->next;
-}
-
-if(next == NULL) {
-	unlock_mutex(&vfs_mutex);
-
-	setlasterror(INVALID_HANDLE);
-	return(-1);
-}
-
-splitname(next->filename,&splitbuf);				/* split name */
-
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	unlock_mutex(&vfs_mutex);
-
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
-
-unlock_mutex(&vfs_mutex);
-
-return(fs.seek(handle,pos,whence));
-}
-
 /*
  * Get file position
  *
@@ -1360,35 +1314,6 @@ if(detect_filesystem(splitbuf.drive,&fs) == -1) {
 
 
 return(fs.setfiletd(filename,create_time_date,last_modified_time_date,last_accessed_time_date));
-}
-
-/*
- * Get start block of file
- *
- * In:  name	Filename
- *
- * Returns: -1 on error, start block on success
- *
- */
-
-uint64_t getstartblock(char *name) {
-FILESYSTEM fs;
-BLOCKDEVICE blockdevice;
-SPLITBUF splitbuf;
-
-splitname(name,&splitbuf);				/* split name */
-
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
-
-if(fs.getstartblock == NULL) {			/* not implemented */
-	setlasterror(NOT_IMPLEMENTED);
-	return(-1);
-}
-
-return(fs.getstartblock(name));
 }
 
 /*
@@ -1585,7 +1510,7 @@ return(-1);
 
 
 /*
- * Get number of parts in filename seperated by \\
+ * Get number of parts in filename seperated by \
  *
  * In:  handle	File handle
 	addr	Buffer to read to
@@ -1636,3 +1561,42 @@ unlock_mutex(&vfs_mutex);
 return(-1);
 }
 
+/*
+ * Set file position
+ *
+ * In:  handle	File handle
+	pos	Byte to seek to
+	whence	Where to seek from(0=start,1=current position,2=end)
+ *
+ * Returns: -1 on error, new file position on success
+ *
+ */
+size_t seek(size_t handle,size_t pos,size_t whence) {
+FILERECORD seek_file_record;
+
+if(gethandle(handle,&seek_file_record) == -1) {			/* bad handle */
+	setlasterror(INVALID_HANDLE);
+	return(-1);
+}
+	
+switch(whence) {
+	case SEEK_SET:				/*set current position */
+		seek_file_record.currentpos=pos;
+		break;
+
+	case SEEK_END:
+		seek_file_record.currentpos=seek_file_record.filesize+pos;	/* end+pos */
+		break;
+
+	case SEEK_CUR:				/* current location+pos */
+		seek_file_record.currentpos=seek_file_record.currentpos+pos;
+		break;
+}
+
+seek_file_record.flags &= FILE_POS_MOVED_BY_SEEK;
+
+updatehandle(handle,&seek_file_record);		/* update */
+
+setlasterror(NO_ERROR);
+return(seek_file_record.currentpos);
+}

@@ -59,7 +59,6 @@ size_t fat_create_short_name(char *filename,char *out);							// TESTED
 uint8_t fat_create_long_filename_checksum(char *filename);						// TESTED
 size_t fat_delete_long_filename(char *filename,uint64_t block,size_t entry);				// TESTED
 size_t fat_create_long_filename(size_t type,FILERECORD *newname,uint64_t block,size_t entry);		// TESTED
-size_t fat_seek(size_t handle,size_t pos,size_t whence);						// TESTED
 void fat_entry_to_filename(char *filename,char *out);							// TESTED
 size_t fat_init(char *i);										// TESTED
 size_t fat_create_int(size_t entrytype,char *filename);							// TESTED
@@ -93,8 +92,6 @@ fatfilesystem.rmdir=&fat_rmdir;
 fatfilesystem.create=&fat_create;
 fatfilesystem.chmod=&fat_chmod;
 fatfilesystem.setfiletd=&fat_set_file_time_date;
-fatfilesystem.getstartblock=&fat_get_start_block;
-fatfilesystem.seek=&fat_seek;
 
 return(register_filesystem(&fatfilesystem));
 }
@@ -810,7 +807,7 @@ BLOCKDEVICE blockdevice;
 size_t rootdir;
 size_t start_of_data_area;
 
-parentdir_startblock=getstartblock(dirname);		/* get start block of parent directory */
+parentdir_startblock=fat_get_start_block(dirname);		/* get start block of parent directory */
 		
 dirblockbuf=kernelalloc(MAX_BLOCK_SIZE);	/* allocate buffer for subdirectory block */
 if(dirblockbuf == NULL) return(-1);
@@ -1003,6 +1000,14 @@ if(getblockdevice(read_file_record.drive,&blockdevice) == -1) {
 	return(NULL);
 }
 
+/* If current position has changed using seek(), find block number from FAT */
+
+if((read_file_record.flags & FILE_POS_MOVED_BY_SEEK)) {
+	for(count=0;count<(read_file_record.currentpos/(bpb->sectorsperblock*bpb->sectorsize));count++) {
+
+		read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);
+	}
+}
 
 bpb=blockdevice.superblock;		/* point to superblock */
 
@@ -1083,6 +1088,7 @@ while(read_size > 0) {
 	read_size -= count; 
 	read_file_record.currentpos += count;
 	read_file_record.filesize += count;
+	read_file_record.flags |= FILE_POS_MOVED_BY_SEEK;
 }
 
 kernelfree(iobuf);
@@ -2992,92 +2998,6 @@ while(padcount > 0) {
 }
 
 return;
-}
-
-
-/*
- * Set file position
- *
- * In:  handle	File handle
-	pos	Byte to seek to
-	whence	Where to seek from(0=start,1=current position,2=end)
- *
- * Returns: -1 on error, new file position on success
- *
- */
-size_t fat_seek(size_t handle,size_t pos,size_t whence) {
-size_t count=0;
-size_t sb;
-size_t posp;
-FILERECORD onext;
-SPLITBUF splitbuf;
-BLOCKDEVICE blockdevice;
-int fattype;
-BPB *bpb;
-
-if(gethandle(handle,&onext) == -1) {	/* bad handle */
-	setlasterror(INVALID_HANDLE);
-	return(-1);
-}
-
-fattype=fat_detect_change(onext.drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
-
-/* update current block */
-if(getblockdevice(onext.drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-}
-
-bpb=blockdevice.superblock;		/* point to data */
-
-/* round down if not a multiple of sector size */ 
-
-if(pos >= (bpb->sectorsperblock*bpb->sectorsize)) {
-	if(pos % (bpb->sectorsperblock*bpb->sectorsize) > 0) posp -= (pos % (bpb->sectorsperblock*bpb->sectorsize));
-
-	sb=fat_get_start_block(onext.filename);			/* get first block */
-
-	if(posp < (bpb->sectorsperblock*bpb->sectorsize)) {
-		posp=1;
-	}
-	else
-	{
-		posp=(pos/(bpb->sectorsperblock*bpb->sectorsize));
-	}
-	
-/* find block number from fat */
-
-	for(count=0;count<posp;count++) {
-		sb=fat_get_next_block(onext.drive,sb);			/* get next block */
-	}
-
-	onext.currentblock=sb;
-}
-
-switch(whence) {
-
-	case SEEK_SET:				/*set current position */
-		onext.currentpos=pos;
-		break;
-
-	case SEEK_END:
-		onext.currentpos=onext.filesize+pos;	/* end+pos */
-		break;
-
-	case SEEK_CUR:				/* current location+pos */
-		onext.currentpos=onext.currentpos+pos;
-		break;
-}
-
-setlasterror(NO_ERROR);
-
-updatehandle(handle,&onext);		/* update */
-
-return(onext.currentpos);
 }
 
 /*

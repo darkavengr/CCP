@@ -181,46 +181,6 @@ if(updatehandle(handle,&onext) == -1) {				/* update file information */
 return(size);
 }
 
-size_t initrd_seek(size_t handle,size_t pos,size_t whence) {
-size_t count=0;
-size_t sb;
-size_t posp;
-FILERECORD onext;
-SPLITBUF splitbuf;
-
-if(gethandle(handle,&onext) == -1) {	/* bad handle */
-	setlasterror(INVALID_HANDLE);
-	return(-1);
-}
-
-switch(whence) {
-
-	case SEEK_SET:				/*set current position */
-		onext.currentpos=pos;
-		break;
-
-	case SEEK_END:
-		onext.currentpos=onext.filesize+pos;	/* end+pos */
-		break;
-
-	case SEEK_CUR:				/* current location+pos */
-		onext.currentpos=onext.currentpos+pos;
-		break;
-}
-
-setlasterror(NO_ERROR);
-updatehandle(handle,&onext);		/* update */
-return(onext.currentpos);
-}
-
-uint64_t initrd_getstartblock(char *filename) {
-FILERECORD find;
-
-findfirst(filename,&find);
-
-return(find.startblock);
-}
-
 /*
  * Initialize INITRD
  *
@@ -268,9 +228,6 @@ fs.create=NULL;
 fs.chmod=NULL;
 fs.setfiletd=NULL;
 fs.write=NULL;
-fs.getstartblock=&initrd_getstartblock;
-fs.seek=&initrd_seek;
-
 register_filesystem(&fs);
 }
 

@@ -8,6 +8,7 @@
 #define FILE_CHAR_DEVICE	1
 #define FILE_BLOCK_DEVICE	2
 #define FILE_DIRECTORY		4
+#define FILE_POS_MOVED_BY_SEEK	8
 
 #define _FILE			0
 #define _DIR 			1
@@ -49,10 +50,8 @@ typedef struct {
 	size_t (*rmdir)(char *);
 	size_t (*create)(char *);
 	size_t (*chmod)(char *,size_t);
-	size_t (*getfiletd)(char *);
 	size_t (*setfiletd)(char *,size_t,size_t,size_t);
 	size_t (*getstartblock)(char *);
-	size_t (*seek)(size_t,size_t,size_t);
 	struct FILESYSTEM *next;
 } FILESYSTEM;
 
