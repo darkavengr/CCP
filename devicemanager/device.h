@@ -20,7 +20,7 @@
 #define _WRITE 1
 
 typedef struct {
-	char *dname[MAX_PATH];
+	char *name[MAX_PATH];
 	size_t (*charioread)(void *,size_t);			/* function pointer */
 	size_t (*chariowrite)(void *,size_t);			/* function pointer */
 	size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
@@ -30,7 +30,7 @@ typedef struct {
 } CHARACTERDEVICE;
 
 typedef struct {
-	uint8_t dname[MAX_PATH];
+	uint8_t name[MAX_PATH];
 	void *dbuf;
 	size_t (*blockio)(size_t,size_t,uint64_t,void *);			/* function pointers */
 	size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);

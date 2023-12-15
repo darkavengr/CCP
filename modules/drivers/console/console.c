@@ -59,7 +59,7 @@ size_t ppos;
 void console_init(char *init) {
 CHARACTERDEVICE device;
 
-strcpy(&device.dname,"CONOUT");
+strcpy(&device.name,"CONOUT");
 device.charioread=NULL;
 device.chariowrite=&outputconsole;
 device.ioctl=NULL;

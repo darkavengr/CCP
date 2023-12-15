@@ -1000,6 +1000,8 @@ if(getblockdevice(read_file_record.drive,&blockdevice) == -1) {
 	return(NULL);
 }
 
+bpb=blockdevice.superblock;		/* point to superblock */
+
 /* If current position has changed using seek(), find block number from FAT */
 
 if((read_file_record.flags & FILE_POS_MOVED_BY_SEEK)) {
@@ -1009,14 +1011,8 @@ if((read_file_record.flags & FILE_POS_MOVED_BY_SEEK)) {
 	}
 }
 
-bpb=blockdevice.superblock;		/* point to superblock */
-
 iobuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);
-
-if(iobuf == NULL) {
-	kernelfree(iobuf);
-	return(-1);
-}
+if(iobuf == NULL) return(-1);
 
 /* reading past end of file */ 
 
@@ -1157,6 +1153,15 @@ if(getblockdevice(write_file_record.drive,&blockdevice) == -1) {
 
 bpb=blockdevice.superblock;		/* point to superblock */
 
+/* If current position has changed using seek(), find block number from FAT */
+
+if((write_file_record.flags & FILE_POS_MOVED_BY_SEEK)) {
+	for(count=0;count<(write_file_record.currentpos/(bpb->sectorsperblock*bpb->sectorsize));count++) {
+
+		write_file_record.currentblock=fat_get_next_block(write_file_record.drive,write_file_record.currentblock);
+	}
+}
+
 /* find block to read from */
 
 if(fattype == 12 || fattype == 16) {
@@ -1189,10 +1194,6 @@ if((write_file_record.currentpos >= write_file_record.filesize) || \
    (fattype == 12 && write_file_record.currentblock >= 0xff8) || \
    (fattype == 16 && write_file_record.currentblock >= 0xfff8) || \
    (fattype == 32 && write_file_record.currentblock >= 0xfffffff8)) {
-
-	kprintf_direct("writing past end of file\n");
-//	asm("xchg %bx,%bx");
-
 	/* update FAT */
 
 	count=(size / (bpb->sectorsperblock*bpb->sectorsize));		/* number of blocks in FAT chain */
@@ -1213,10 +1214,6 @@ if((write_file_record.currentpos >= write_file_record.filesize) || \
 		lastblock=write_file_record.currentblock;			/* save last block in FAT chain */
 		write_file_record.currentblock=newblock;			/* new current block */
 	
-		DEBUG_PRINT_HEX(lastblock);
-		DEBUG_PRINT_HEX(nextblock);
-		asm("xchg %bx,%bx");
-
 		do {
 			if(fat_update_fat(write_file_record.drive,lastblock,(newblock >> 16),(newblock & 0xffff)) == -1) return(-1);
 	
@@ -1246,10 +1243,6 @@ if((write_file_record.currentpos >= write_file_record.filesize) || \
 
 write_size=size;
 
-kprintf_direct("Writing data\n");
-DEBUG_PRINT_HEX(size);
-//asm("xchg %bx,%bx");
-
 if(fattype == 12 || fattype == 16) {
 	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
 	rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
@@ -1267,25 +1260,10 @@ while(write_size > 0) {
 	DEBUG_PRINT_HEX(write_file_record.currentpos);	
 	DEBUG_PRINT_HEX(blockoffset);
 
-	kprintf_direct("Writing data\n");
-	//asm("xchg %bx,%bx");
-
 	blockoffset=write_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
-		
-	kprintf_direct("Reading block\n");
-	DEBUG_PRINT_HEX(count);
-	DEBUG_PRINT_HEX(iobuf);
-	DEBUG_PRINT_HEX(blockno);
-	asm("xchg %bx,%bx");
-
+	
 	if(blockio(_READ,write_file_record.drive,blockno,iobuf) == -1) return(-1);		/* read block */
-
-	kprintf_direct("Copying data\n");
-	DEBUG_PRINT_HEX(blockoffset);
-	DEBUG_PRINT_HEX(write_file_record.currentpos);
-	DEBUG_PRINT_HEX(iobuf+blockoffset);
-	asm("xchg %bx,%bx");
 
 	/* adjust copy size */
 
@@ -1299,9 +1277,6 @@ while(write_size > 0) {
 	}
 
 	memcpy(iobuf+blockoffset,addr,count);			/* copy data to buffer */
-
-	kprintf_direct("Writing block\n");
-	//asm("xchg %bx,%bx");
 
 	if(blockio(_WRITE,write_file_record.drive,blockno,iobuf) == -1) return(-1);		/* write block */
 

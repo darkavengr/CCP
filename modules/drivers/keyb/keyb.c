@@ -67,7 +67,7 @@ CHARACTERDEVICE device;
 keyboardflags=0;
 
 /* create con devide */
-strcpy(&device.dname,"CON");
+strcpy(&device.name,"CON");
 device.charioread=&readconsole;
 device.chariowrite=NULL;
 device.ioctl=NULL;

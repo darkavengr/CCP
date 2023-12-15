@@ -38,7 +38,7 @@ void nul(size_t op,void *buf,size_t size);
 void null_init(char *init) {
 CHARACTERDEVICE device;
 
-strcpy(&device.dname,"NUL");
+strcpy(&device.name,"NUL");
 device.charioread=&nul;
 device.chariowrite=NULL;
 device.ioctl=NULL;

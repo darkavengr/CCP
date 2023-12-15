@@ -158,7 +158,7 @@ for(count=0;count<4;count++) {
 
 	ports[count].bufptr= ports[count].buffer;
 
-	strcpy(&device.dname,ports[count].name);		/* add device */
+	strcpy(&device.name,ports[count].name);		/* add device */
 	device.charioread=ports[count].readhandler;
 	device.chariowrite=ports[count].writehandler;
 

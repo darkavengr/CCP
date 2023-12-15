@@ -474,7 +474,7 @@ size_t *bufptr;
 CHARACTERDEVICE chardevice;
 size_t count;
 
-ksprintf(chardevice.dname,"PCI-%d-%d-%d",bus,device,function);
+ksprintf(chardevice.name,"PCI-%d-%d-%d",bus,device,function);
 chardevice.flags=DEVICE_USE_DATA;
 chardevice.ioctl=NULL;
 

@@ -31,7 +31,7 @@ size_t findfirst(char *name,FILERECORD *buf);
 size_t findnext(char *name,FILERECORD *buf);
 size_t open(char *filename,size_t access);
 size_t delete(char *name);
-size_t rename(char *oldname,char *newname);
+size_t rename(char *olname,char *newname);
 size_t create(char *name);
 size_t rmdir(char *name);
 size_t mkdir(char *name);
@@ -196,7 +196,7 @@ if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
 		next=last->next;
 	}
 
-	strcpy(next->filename,blockdevice.dname);
+	strcpy(next->filename,blockdevice.name);
 
 	next->currentblock=0;
 	next->currentpos=0;
@@ -226,7 +226,7 @@ if(findcharacterdevice(filename,&chardevice) == 0) {
 		next=last->next;
 	}
 
-	strcpy(next->filename,chardevice.dname);
+	strcpy(next->filename,chardevice.name);
 
 	next->charioread=chardevice.charioread;
 	next->chariowrite=chardevice.chariowrite;
@@ -332,21 +332,21 @@ return(fs.delete(name));
 /*
  * Rename file
  *
- * In:  oldname	File to rename
+ * In:  olname	File to rename
 	newname	New filename
  *
  * Returns: -1 on error, 0 on success
  *
  */
-size_t rename(char *oldname,char *newname) {
+size_t rename(char *olname,char *newname) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
 SPLITBUF splitbuf;
 char *fullname[MAX_PATH];
 
-getfullpath(oldname,fullname);
+getfullpath(olname,fullname);
 
-splitname(oldname,&splitbuf);				/* split name */
+splitname(olname,&splitbuf);				/* split name */
 
 if(detect_filesystem(splitbuf.drive,&fs) == -1) {
 	setlasterror(GENERAL_FAILURE);
@@ -362,7 +362,7 @@ if(fs.rename == NULL) {			/* not implemented */
 	return(-1);
 }
 
-return(fs.rename(oldname,newname));
+return(fs.rename(olname,newname));
 }
 
 /*
@@ -1579,6 +1579,13 @@ if(gethandle(handle,&seek_file_record) == -1) {			/* bad handle */
 	return(-1);
 }
 	
+if((whence == SEEK_SET) || (whence == SEEK_CUR)) {		/* check new file position */
+	if((seek_file_record.currentpos+pos) > seek_file_record.filesize) {	/* invalid position */
+		setlasterror(SEEK_PAST_END);
+		return(-1);
+	}
+}
+
 switch(whence) {
 	case SEEK_SET:				/*set current position */
 		seek_file_record.currentpos=pos;
@@ -1593,7 +1600,7 @@ switch(whence) {
 		break;
 }
 
-seek_file_record.flags &= FILE_POS_MOVED_BY_SEEK;
+seek_file_record.flags |= FILE_POS_MOVED_BY_SEEK;
 
 updatehandle(handle,&seek_file_record);		/* update */
 

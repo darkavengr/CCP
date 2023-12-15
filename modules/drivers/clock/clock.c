@@ -45,7 +45,7 @@ void clock_init(char *init);
 void clock_init(char *init) {
 CHARACTERDEVICE device;
 
-strcpy(&device.dname,"CLOCK$");
+strcpy(&device.name,"CLOCK$");
 device.charioread=&clockio;
 device.ioctl=NULL;
 device.flags=0;

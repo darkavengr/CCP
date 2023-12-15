@@ -198,7 +198,7 @@ BLOCKDEVICE bd;
 uint8_t magic[] = { 'u','s','t','a','r',' ',' ' };
 
 /* create block device */
-strcpy(bd.dname,"INITRD");
+strcpy(bd.name,"INITRD");
 bd.blockio=&initrd_io;		/*setup struct */
 bd.ioctl=NULL;
 bd.physicaldrive=0;

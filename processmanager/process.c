@@ -369,8 +369,6 @@ size_t exit(size_t val) {
 */
 
 void shutdown(size_t shutdown_status) { 
-	size_t newtick;
-
 	kprintf_direct("Shutting down:\n");
 	kprintf_direct("Sending SIGTERM signal to all processes...\n");
 
@@ -620,78 +618,78 @@ switch(highbyte) {		/* function */
 	 	case 0x4b00:			/* exec */
 	  		return(exec(argfour,argtwo,FALSE));
 	 
-	 case 0x4b02:
+	 	case 0x4b02:
 	 		return(exec(argfour,argtwo,TRUE));
 
-	 case 0x4b03:				/* load driver */
+		case 0x4b03:				/* load driver */
 	 		return(load_kernel_module(argfour));
 
-	 case 0x7000:				/* allocate dma buffer */
+	 	case 0x7000:				/* allocate dma buffer */
 	 		return(dma_alloc(argtwo));
 	    	
-	 case 0x7002:			/* restart */
+	 	case 0x7002:			/* restart */
 	 		shutdown(_RESET);
 	 		break;
 
-	 case 0x7003:			/* shutdown */
+	 	case 0x7003:			/* shutdown */
 	 		shutdown(_SHUTDOWN);
 	 		break;
 
-	 case 0x7004:			/* tell */
+	 	case 0x7004:			/* tell */
 	 		return(tell(argtwo));
 	   
-	 case 0x7009:			/* find process */
+	 	case 0x7009:			/* find process */
 	 		return(findfirstprocess((void *) argfour));
 
-	 case 0x700A:			/* find process */
+		case 0x700A:			/* find process */
 	 		return(findnextprocess((void *) argfour));
 
-	 case 0x700B:			/* add block device */
+		case 0x700B:			/* add block device */
 	 		return(add_block_device(argfour));
 
-	 case 0x700C:			/* add char device */
+		case 0x700C:			/* add char device */
 	 		return(add_char_device(argfour));
 
-	 case 0x700D:			/* remove block device */
+		case 0x700D:			/* remove block device */
 	 		return(remove_block_device(argfour));
 
-	 case 0x700E:			/* remove char device */
+		case 0x700E:			/* remove char device */
 	 		return(remove_char_device(argfour));
 
-	 case 0x7018:				/* get file size */
+		case 0x7018:				/* get file size */
 	 		return(getfilesize(argtwo));
 
-	 case 0x7019:			/* terminate process */
+		case 0x7019:			/* terminate process */
 	 		return(kill((size_t)  argtwo));
 
-	 case 0x7028:				/* get next free drive letter */
+		case 0x7028:				/* get next free drive letter */
 	 		return(allocatedrive());
 
-	 case 0x7029:				/* get character device */
+		case 0x7029:				/* get character device */
 	 		return(findcharacterdevice(argtwo,argfour));
 
-	 case 0x702a:				/* get block device from drive number */
+		case 0x702a:				/* get block device from drive number */
 	 		return(getblockdevice(argtwo,argfour));
 
-	 case 0x702b:				/* get block device from name */
+		case 0x702b:				/* get block device from name */
 	 		return(getdevicebyname(argtwo,argfour));
 
-	 case 0x702d:				/* register filesystem */
+		case 0x702d:				/* register filesystem */
 	 		return(register_filesystem(argfour));
 
-	 case 0x702e:				/* lock mutex */
+		case 0x702e:				/* lock mutex */
 	 		return(lock_mutex(argfour));
 
-	 case 0x702f:				/* unlock mutex */
+		case 0x702f:				/* unlock mutex */
 	 		return(unlock_mutex(argfour));
 
-	 case 0x7030:				/* get enviroment address */
+		case 0x7030:				/* get enviroment address */
 	 		return(getenv());
 
-	 default:
+		default:
 	 		setlasterror(INVALID_FUNCTION);
 	 		return(-1);
-	 }
+	 	}
 }
 
 /*
@@ -711,9 +709,10 @@ BLOCKDEVICE blockdevice;
 BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
 /*
-* usually the directory is got from the current process struct
-* but if there are no processes running,the current directry
-* must be built up on the fly */
+ * usually the directory is got from the current process struct
+ * but if there are no processes running,the current directory
+ * must be built up on the fly
+ */
 
 if(currentprocess == NULL) {			/* no processes so get from boot drive */
 	 c=boot_info->drive;						/* get boot drive */
@@ -749,7 +748,7 @@ return(NO_ERROR);
 size_t chdir(char *dirname) {
 char *fullpath[MAX_PATH];
 char *savecwd[MAX_PATH];
-FILERECORD buf;
+FILERECORD chdir_file_record;
 
 getfullpath(dirname,fullpath);
 
@@ -764,11 +763,16 @@ getfullpath(dirname,fullpath);
 strcpy(savecwd,currentprocess->currentdir);		/* save current directory */
 memcpy(currentprocess->currentdir,fullpath,3);		/* get new path */
 
-//asm("xchg %bx,%bx");
+/* check if directory exists */
 
-if(findfirst(fullpath,&buf) == -1) {			/* path doesn't exist */
+if(findfirst(fullpath,&chdir_file_record) == -1) {		/* path doesn't exist */
 	strcpy(currentprocess->currentdir,savecwd);		/* restore old current directory */
 	return(-1);		
+}
+
+if((chdir_file_record.flag & FILE_DIRECTORY) == 0) {		/* not directory */
+	setlasterror(NOT_DIRECTORY);
+	return(-1);
 }
 
 strcpy(currentprocess->currentdir,fullpath);	/* set directory */

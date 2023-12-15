@@ -129,7 +129,7 @@ for(count=0;count<floppycount;count++) {
 	fdstruct.numberofsectors=fdparams[ftype].numberofsectors;
 	
 	 if(count == 0) {
-	 	strcpy(fdstruct.dname,"FD0");
+	 	strcpy(fdstruct.name,"FD0");
 	 	fdstruct.blockio=&fd_io;		/*setup struct */
 	 	fdstruct.ioctl=NULL;
 	 	fdstruct.physicaldrive=0;
@@ -140,7 +140,7 @@ for(count=0;count<floppycount;count++) {
 	 }
 	 else
 	 {
-	 	strcpy(fdstruct.dname,"FD1");
+	 	strcpy(fdstruct.name,"FD1");
 	 	fdstruct.blockio=&fd_io;		/*setup struct */
 	 	fdstruct.ioctl=NULL;
 	 	fdstruct.physicaldrive=1;
