@@ -511,6 +511,7 @@ noinitrd:
 xor	edx,edx
 
 mov	[BOOT_INFO_INITRD_START],edx
+mov	[BOOT_INFO_INITRD_SIZE],edx
 
 continue:
 mov	ah,3h					; get cursor

@@ -201,6 +201,8 @@ if(getpid() != 0) {
 	dup_internal(stderr,getppid());
 }
 
+processes_end=next;						/* save last process address */
+
 enable_interrupts();
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
@@ -219,22 +221,6 @@ if(entrypoint == -1) {
 ksprintf(psp->commandline,"%s %s",next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
-
-stackinit=next->kernelstacktop-(12*sizeof(size_t));
-
-*++stackinit=0xFFFFFFFF;
-*++stackinit=0xEEEEEEEE;
-*++stackinit=0xDDDDDDDD;
-*++stackinit=0xCCCCCCCC;
-*++stackinit=next->kernelstacktop;
-*++stackinit=next->kernelstacktop-PROCESS_STACK_SIZE;
-*++stackinit=0xBBBBBBBB;
-*++stackinit=0xAAAAAAAA;
-*++stackinit=entrypoint;
-*++stackinit=0x8;
-*++stackinit=0x200;
-
-kprintf_direct("next->kernelstacktop=%X\n",next->kernelstacktop);
 
 if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 	currentprocess=oldprocess;			/* restore previous process */
@@ -770,7 +756,7 @@ if(findfirst(fullpath,&chdir_file_record) == -1) {		/* path doesn't exist */
 	return(-1);		
 }
 
-if((chdir_file_record.flag & FILE_DIRECTORY) == 0) {		/* not directory */
+if((chdir_file_record.flags & FILE_DIRECTORY) == 0) {		/* not directory */
 	setlasterror(NOT_DIRECTORY);
 	return(-1);
 }

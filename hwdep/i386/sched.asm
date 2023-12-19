@@ -62,6 +62,7 @@ mov	[save_esp],esp
 call	increment_tick_count
 
 call	is_multitasking_enabled			
+
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled
 
@@ -86,14 +87,14 @@ add	esp,4
 
 call	reset_process_ticks			; reset number of ticks for current process
 
-call	getpid
+;call	getpid
 
-cmp	eax,1
-jne	not_debug
+;cmp	eax,1
+;jne	not_debug
 
-xchg	bx,bx
+;xchg	bx,bx
 
-not_debug:
+;not_debug:
 ;
 ; Switch to next process
 ;
@@ -112,7 +113,8 @@ push	eax
 call	loadpagetable					; load page tables
 add	esp,4
 
-; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
+; Patch ESP0 for this process in the TSS. The scheduler will use the correct kernel stack on the next task switch
+; if switching from user-mode to kernel-mode.
 
 call	get_kernel_stack_top
 

@@ -82,7 +82,6 @@ mov	gs,ax
 pusha						; save general registers
 
 call	switch_task				; switch to next task
-add	esp,4
 
 popa						; restore new registers
 
