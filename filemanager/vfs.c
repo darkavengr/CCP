@@ -539,12 +539,16 @@ unlock_mutex(&vfs_mutex);
 
 if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */		
 
+	set_in_module_flag();					/* set in module flag */
+
 	if(next->charioread(addr,size) == -1) {
 		unlock_mutex(&vfs_mutex);
 		return(-1);
 	}
 
 	unlock_mutex(&vfs_mutex);
+
+	clear_in_module_flag();					/* set in module flag */
 
 	setlasterror(NO_ERROR);
 	return(NO_ERROR);
@@ -604,6 +608,7 @@ if(next == NULL) {
 }
 
 if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */		
+	set_in_module_flag();					/* set in module flag */
 
 	if(next->chariowrite(addr,size) == -1) {
 		unlock_mutex(&vfs_mutex);
@@ -612,6 +617,8 @@ if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */
 	}
 
 	unlock_mutex(&vfs_mutex);
+
+	clear_in_module_flag();					/* set in module flag */
 
 	setlasterror(NO_ERROR);
 	return(NO_ERROR);

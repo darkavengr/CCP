@@ -126,8 +126,8 @@ processes_end=next;
 }
 
 void kernel(void) {
-size_t (*init_task)(void);
-PROCESS *next;
+//size_t (*init_task)(void);
+//PROCESS *next;
 
 //disablemultitasking(); 
 //disable_interrupts();
