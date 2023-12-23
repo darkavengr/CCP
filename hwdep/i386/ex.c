@@ -109,29 +109,25 @@ shiftcount=12;
 do {
 	if(flagsname[count] == "$") break;
 
-	if(flagsname[count] != "") {
-		kprintf_direct("%s=%d ",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
-	}
-
+	if(flagsname[count] != "") kprintf_direct("%s=%d ",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
+	
 	flagsmask=flagsmask >> 1;
 	shiftcount=shiftcount-1;
 	count++;
+
 } while(flagsname[count] != "$");
 
-if(regs[0] >= KERNEL_HIGH) {
-	asm("xchg %bx,%bx");
+if(get_current_process_pointer() == NULL) {
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);
 }
 else
 {
-	kprintf_direct("\n");
-
 	asm("xchg %bx,%bx");
 	enable_interrupts();
 
 	kill(getpid());
-	kprintf_direct("Process terminated\n");
+	kprintf_direct("\nProcess terminated\n");
 }
 
 }
