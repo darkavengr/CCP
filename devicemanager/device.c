@@ -192,18 +192,15 @@ if(next == NULL) {					/* bad drive */
 	 return(-1);
 }
 
+unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 b=buf;
 
 if(next->sectorsperblock == 0) next->sectorsperblock=1;
 
-set_in_module_flag();					/* set in module flag */
 
 for(count=0;count<next->sectorsperblock;count++) {
 
 	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {
-
-		clear_in_module_flag();					/* clear in module flag */
-
 		lasterr=getlasterror();
 
 		if(lasterr == WRITE_PROTECT_ERROR || lasterr == DRIVE_NOT_READY || lasterr == INVALID_CRC \
@@ -217,8 +214,6 @@ for(count=0;count<next->sectorsperblock;count++) {
 	  		}
 
 	  		if(error == CRITICAL_ERROR_RETRY) {		/* RETRY */
-				set_in_module_flag();					/* set in module flag */
-
 	   			count--;
 	   			continue;
 	  		}

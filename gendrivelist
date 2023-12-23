@@ -3,8 +3,6 @@
 # generate driver init function
 #
 echo // Auto-generated file- do not edit!>drive.c
-echo extern void set_current_module_name\(\)\;>>drive.c
-
 echo \#define NULL 0 >>drive.c
 echo>>drive.c
 
@@ -19,12 +17,8 @@ for f in $*; do
 done
 
 echo void driver_init\(void\) {>>drive.c
-echo set_in_module_flag\(\)\;>>drive.c
 
 for f in $*; do
- modulename=`echo modules/drivers/ata | rev | cut -d/ -f-1 | tr [:lower:] [:upper:]`
- echo set_current_module_name\(\"$modulename\"\)\;>>drive.c
-
  m=`echo $f | cut -d/ -f 1`
  name=`echo $f | cut -d/ -f 2`
  a=`echo $f | cut -d/ -f 3`
@@ -36,6 +30,5 @@ for f in $*; do
 
 done
 
-echo clear_in_module_flag\(\)\;>>drive.c
 echo }>>drive.c
 

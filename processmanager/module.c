@@ -40,9 +40,6 @@ size_t get_external_module_symbol(char *name);
 SYMBOL_TABLE_ENTRY *externalmodulesymbols=NULL;
 SYMBOL_TABLE_ENTRY *externalmodulesymbols_end=NULL;
 
-size_t in_module_flag=FALSE;
-char *currentmodulename[MAX_PATH];
-
 /*
  * Load and execute kernel module
  *
@@ -318,16 +315,9 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 entry=codestart;
 
-strcpy(currentmodulename,fullname);	/* get current module name */
-
-set_in_module_flag();		/* set in module flag */
-
 enablemultitasking();
 
-count=entry(argsx);		/* call entry point */
-
-clear_in_module_flag();		/* clear in module flag */
-return(count);
+return(entry(argsx));
 }
 
 /*
@@ -458,65 +448,5 @@ while(next != NULL) {
 }
 
 return(-1);
-}
-
-/* 
- * Set in module flag
- *
- * In: Nothing
- *
- * Returns nothing
- * 
- */
-void set_in_module_flag(void) {
-	in_module_flag=TRUE;
-}
-
-/* 
- * Clear in module flag
- *
- * In: Nothing
- *
- * Returns nothing
- * 
- */
-void clear_in_module_flag(void) {
-	in_module_flag=FALSE;
-}
-
-/* 
- * Get in module flag
- *
- * In: Nothing
- *
- * Returns In-module flag
- * 
- */
-size_t get_in_module_flag(void) {
-	return(in_module_flag);
-}
-
-/*
- * Get current module name
- *
- * In: name	Buffer to hold name
- *
- * Returns nothing
- * 
- */
-void get_current_module_name(char *name) {
-	strcpy(name,currentmodulename);
-}
-
-/* 
- * Set current module name
- *
- * In: name	Name to set
- *
- * Returns nothing
- * 
- */
-void set_current_module_name(char *name) {
-	strcpy(currentmodulename,name);
 }
 

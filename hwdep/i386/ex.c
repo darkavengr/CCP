@@ -80,22 +80,14 @@ char *b;
 char *processname[MAX_PATH];
 uint32_t shiftcount;
 
-if(regs[0] >= KERNEL_HIGH) {					/* kernel or module error */
-	if(get_in_module_flag() == TRUE) {			/* module error */
-		get_current_module_name(processname);
-
-		kprintf_direct("%s at address %X in kernel module %s\n",exp[e],regs[0],processname);  /* exception */
-	}
-	else
-	{
-		kprintf_direct("Kernel panic [%s] at address %X\n",exp[e],regs[0]);
-	}
+if(regs[0] >= KERNEL_HIGH) {
+	kprintf_direct("Kernel panic [%s] at address %X\n",exp[e],regs[0]);
 }
 else
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %X in application %s\n",exp[e],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %X in %s\n",exp[e],regs[0],processname);  /* exception */
 }
 
 count=0;
@@ -127,10 +119,6 @@ do {
 } while(flagsname[count] != "$");
 
 if(regs[0] >= KERNEL_HIGH) {
-	if(get_in_module_flag() == TRUE) {			/* module error */
-		return(-1);
-	}
-
 	asm("xchg %bx,%bx");
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);

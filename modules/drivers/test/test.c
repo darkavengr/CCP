@@ -32,5 +32,6 @@
 
 size_t test_init(char *initstr) {
 kprintf_direct("Test driver\n");
+
 return;
 }

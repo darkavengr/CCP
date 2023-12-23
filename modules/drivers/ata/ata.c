@@ -26,7 +26,7 @@
 #include "../pci/pci.h"
 #include "../../../header/debug.h"
 
-#define ATA_DEBUG 1
+//#define ATA_DEBUG 1
 
 #define MODULE_INIT ata_init
 
@@ -429,17 +429,12 @@ if(barfour == -1) {
 	return(-1);
 }
 
-DEBUG_PRINT_HEX(block);
-
 highblock=((uint64_t) block >> 32);			/* get high block */
 lowblock=((uint64_t) block & 0x000000000ffffffff);	/* get low block */
 
-DEBUG_PRINT_HEX(highblock);
-DEBUG_PRINT_HEX(lowblock);
-
 barfour &= 0xFFFFFFFC;			/* clear bottom two bits */
 
-DEBUG_PRINT_HEX(barfour);
+kprintf_direct("bar4=%X\n",barfour);
 
 /* create prdt */
 
@@ -503,7 +498,7 @@ switch(physdrive) {					/* which controller */
 islba=0;
 
 if(result.lba28_size != 0) islba=28;	/* is 28bit lba */
-if(result.commands_and_feature_sets_supported2 & 1024) islba=48; 		/* is 48bit lba */
+if(result.commands_and_feature_sets_supported2 & 1024) islba=48; /* is 48bit lba */
 
 if((physdrive == 0x80) || (physdrive == 0x81)) {
 	ata_irq14done=FALSE;
@@ -513,7 +508,7 @@ else
 	ata_irq15done=FALSE;
 }
 
-DEBUG_PRINT_HEX(islba);
+kprintf_direct("is_lba=%d\n",islba);
 
 if(islba == 28) {						/* use lba28 */
 	switch(blockdevice.physicaldrive) {					/* master or slave */
@@ -619,9 +614,8 @@ if((inb(ATA_ERROR_PORT) & 1) == 1) {	/* error occurred */
 	
 prdtptr += KERNEL_HIGH;
 
-DEBUG_PRINT_HEX(prdtptr->address+KERNEL_HIGH);
-DEBUG_PRINT_HEX(buf);
-DEBUG_PRINT_HEX(prdtptr->size);
+kprintf_direct("dma buf=%X\n",prdtptr->address+KERNEL_HIGH);	
+kprintf_direct("buf=%X\n",buf);
 
 memcpy(buf,prdtptr->address+KERNEL_HIGH,prdtptr->size);
 asm("xchg %bx,%bx");

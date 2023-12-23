@@ -488,6 +488,7 @@ call	exception
 add	esp,12
 
 exit_exception:
+xchg	bx,bx
 iret
 
 end_process:

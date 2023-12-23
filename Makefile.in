@@ -85,7 +85,7 @@ $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))):
 # Recipe to make intial RAM disk
 #
 initrd:
-	./gen_initrd obj/@arch@ bin/@arch@/INITRD.SYS @initrd_driver_list@
+	./gen_initrd  obj/@arch@ bin/@arch@/INITRD.SYS @initrd_driver_list@
 
 clean:
 	rm bin/@arch@/*
