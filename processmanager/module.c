@@ -230,6 +230,8 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				
 				/* Get the value to place at the location ref into symval */
 
+				//DEBUG_PRINT_HEX(whichsym);
+
 				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
 
 				/* get symbol value */
@@ -237,6 +239,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,\
 					       (buf+elf_header->e_shoff)+(symptr->st_shndx*sizeof(Elf32_Shdr)),whichsym,name);	/* get name of symbol */				
+
 
 				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */							
 
@@ -252,20 +255,18 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				}
 				else
 				{								
-					if(strcmp(name,"rodata") == 0) {
-						symval=rodata+symptr->st_value;
+				
+					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC)) {				/* code symbol */						
+						symval=codestart+symptr->st_value;								
 					}
-					else
-					{
-	
-						if(symtype == STT_FUNC) {				/* code symbol */
-							symval=codestart+symptr->st_value;								
+					else if((symtype == STT_OBJECT) || (symtype == STT_COMMON)) {		/* data symbol */
+						if(strcmp(name,"rodata") == 0) {							
+							symval=rodata+symptr->st_value;
 						}
-						else if(symtype == STT_OBJECT || symtype == STT_COMMON) {		/* data symbol */
+						else
+						{							
 							symval=data+symptr->st_value;		
 						}
-
-
 
 					}	
 

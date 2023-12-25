@@ -57,7 +57,6 @@ mov	dword [irqnumber],7
 jmp	irq
 
 irq8:
-xchg	bx,bx
 mov	dword [irqnumber],8
 jmp	irq
 
@@ -66,7 +65,6 @@ mov	dword [irqnumber],9
 jmp	irq
 
 irq10:
-xchg	bx,bx
 mov	dword [irqnumber],10
 jmp	irq
 

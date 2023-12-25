@@ -115,7 +115,6 @@ getfullpath(filename,fullpath);
 	/* create struct */
 strcpy(next->filename,fullpath);
 strcpy(next->args,argsx);
-
 strcpy(tempfilename,fullpath);
 strcpy(tempargs,argsx);
 
@@ -204,6 +203,7 @@ if(getpid() != 0) {
 processes_end=next;						/* save last process address */
 
 enable_interrupts();
+
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
@@ -688,11 +688,11 @@ switch(highbyte) {		/* function */
 */
 
 size_t getcwd(char *dir) {
-char *buf[255];
-char c;
+char *buf[MAX_PATH];
 char *b;
 BLOCKDEVICE blockdevice;
 BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
+size_t boot_drive;
 
 /*
  * usually the directory is got from the current process struct
@@ -701,10 +701,10 @@ BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
  */
 
 if(currentprocess == NULL) {			/* no processes so get from boot drive */
-	 c=boot_info->drive;						/* get boot drive */
-	 if(c >= 0x80) c=c-0x80;
+	 boot_drive=boot_info->drive;						/* get boot drive */
+	 if(boot_drive >= 0x80) boot_drive -= 0x80;	/* get drive from physical drive */
 	
-	 if(getblockdevice(c,&blockdevice) == -1) return(-1);
+	 if(getblockdevice(boot_drive,&blockdevice) == -1) return(-1);
 
 	 b=dir;						/* set current directory for system */
 	 *b++=(uint8_t) blockdevice.drive+'A';

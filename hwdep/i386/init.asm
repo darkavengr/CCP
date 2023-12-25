@@ -331,7 +331,7 @@ call	set_tss_esp0
 
 call	initialize_tss					; initialize tss
 
-;call	load_modules_from_initrd
+call	load_modules_from_initrd
 
 sti
 

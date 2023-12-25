@@ -81,7 +81,7 @@ SPLITBUF splitbuf;
 char *fullname[MAX_PATH];
 
 getfullpath(name,fullname);
-	
+
 splitname(fullname,&splitbuf);				/* split name */
 
 if(detect_filesystem(splitbuf.drive,&fs) == -1) {		/* detect file system */
@@ -1060,66 +1060,31 @@ getcwd(cwd);
 
 memset(buf,0,MAX_PATH);
 
-	b=filename;
+b=filename;
 
-	c=*b++;
-	d=*b++;
-	e=*b++;
+c=*b++;
+d=*b++;
+e=*b++;
 
-	if(c == '\\') {
-		if(getpid() == -1) {
-			c=boot_info->drive+'A';
-
-			b=buf;
-			*b++=c;
-			*b++=':';
-
-			strcat(b,filename);
-			return(NO_ERROR);
-		} 
-
-		b=buf;
-
-		c=*cwd;
-		*b++=c;
-		*b++=':';
-
-		strcat(b,filename);
-
-		goto over;
-	} 
-
-/* is already full path, just exit */
-
-if(d == ':' && e == '\\') {               /* full path */
+if((d == ':') && (e == '\\')) {               /* full path */
 	strcpy(buf,filename);                     /* copy path */
 }
+else if((d == ':') && (e != '\\')) {		/* drive and filename only */
+	memcpy(buf,filename,2); 		/* get drive */
+	strcat(buf,filename+3);                 /* get filename */
+}
+else if(d != ':' && e != '\\') {               /* filename only */
+	c=(char) *cwd;
 
+	b=buf;
 
-if(d == ':' && e != '\\') {               /* full path */
-/* drive and filename only */
-	memcpy(buf,filename,2); 				/* get drive */
-	strcat(buf,filename+3);                       /* get filename */
+	*b++=c;
+	*b++=':';
+	*b++='\\';
+
+	strcat(b,filename);	
 }
 
-/* filename only */
-if(d != ':' && e != '\\') {               /* full path */
-	b=cwd;
-	b=b+(strlen(cwd))-1;
-
-	c=*b;
-
-	if(c == '\\') {
-		ksprintf(buf,"%s%s",cwd,filename);
-	}
-	else
-	{
-		ksprintf(buf,"%s\\%s",cwd,filename);
-	}
-
-}
-
-over:
 tc=tokenize_line(cwd,token,"\\");		/* tokenize line */
 dottc=tokenize_line(filename,dottoken,"\\");		/* tokenize line */
 

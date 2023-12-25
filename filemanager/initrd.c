@@ -196,6 +196,12 @@ FILERECORD filerecord;
 size_t retval;
 BLOCKDEVICE bd;
 uint8_t magic[] = { 'u','s','t','a','r',' ',' ' };
+BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
+
+if(boot_info->initrd_size == 0) {	/* no initrd */
+	kprintf_direct("kernel: No initrd found\n");
+	return(-1);
+}
 
 /* create block device */
 strcpy(bd.name,"INITRD");
@@ -264,6 +270,12 @@ size_t load_modules_from_initrd(void) {
 FILERECORD findmodule;
 char *filename[MAX_PATH];
 SPLITBUF split;
+BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
+
+if(boot_info->initrd_size == 0) {			/* out of range */
+	kprintf_direct("kernel: No initrd to load modules from\n");
+	return(-1);
+}
 
 /* loop through modules in initrd and load them */
 
@@ -271,7 +283,7 @@ if(findfirst("Z:\\*.o",&findmodule) == -1) return(FILE_NOT_FOUND);
 
 
 do {
-	//kprintf_direct("Loading module Z:\\%s\n",findmodule.filename);
+	kprintf_direct("Loading module Z:\\%s\n",findmodule.filename);
 
 	ksprintf(filename,"Z:\\%s",findmodule.filename);
 
@@ -281,9 +293,10 @@ do {
 
 } while(findnext("Z:\\*.o",&findmodule) != -1);
 
-setlasterror(NO_ERROR);
 
 kprintf_direct("End of initrd load\n");
+
+setlasterror(NO_ERROR);
 return(0);
 }
 

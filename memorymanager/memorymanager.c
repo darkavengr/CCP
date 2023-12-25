@@ -31,6 +31,7 @@
 #include "../header/bootinfo.h"
 #include "../memorymanager/memorymanager.h"
 #include "../processmanager/mutex.h"
+#include "../header/debug.h"
 
 extern kernel_begin(void);
 extern PAGE_SIZE;
@@ -55,7 +56,7 @@ MUTEX memmanager_mutex;
 * In: flags		Allocation flags(ALLOC_NORMAL,ALLOC_KERNEL or ALLOC_GLOBAL)
       process		Process ID of process to allocate memory to
       size		Number of bytes to allocate
-      overrideaddress	Address to force allocation to. If -1, use first avaliable address
+      overrideaddress	Address to force allocation to. If -1, use first available address
 *
 * Returns start address of allocated memory on success,NULL otherwise
 * 
@@ -72,6 +73,7 @@ size_t firstpage;
 size_t *m;
 size_t countx;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
+size_t oldsize=size;
 
 if(size >= bootinfo->memorysize) {							/* sanity check */
 	setlasterror(NO_MEM);
@@ -94,45 +96,43 @@ startpage=0;
 
 /* check if enough free memory */
 
-for(count=0;count<(bootinfo->memorysize/PAGE_SIZE)+1;count++) {
+for(count=0;count<(bootinfo->memorysize/PAGE_SIZE);count++) {
 	if(*mb == 0) {
-	 if(startpage == 0) startpage=count;
+		if(startpage == 0) startpage=count;
 
-	 if(pcount == (size / PAGE_SIZE)) break;			/* found enough */
+		if(pcount == (size / PAGE_SIZE)) break;			/* found enough */
 
-	 pcount++;
+		pcount++;
 	}
 
 	 mb++;
 }
 
-	if(pcount < (size/PAGE_SIZE)) {					/* out of memory */
-	 unlock_mutex(&memmanager_mutex);
+if((pcount < (size/PAGE_SIZE)) || (count == (bootinfo->memorysize/PAGE_SIZE)-1)) {					/* out of memory */
+	unlock_mutex(&memmanager_mutex);
 
 	 setlasterror(NO_MEM);
 	 return(NULL);
-	}
+}
 
 /* first start virtual address */
 
-	if(flags != ALLOC_NOPAGING) {						/* find first page */
+if(flags != ALLOC_NOPAGING) {						/* find first page */
 
-	 if(overrideaddress == -1) { 
-	  firstpage=findfreevirtualpage(size,flags,process); 
-	  if(firstpage == -1) {
-
-	   unlock_mutex(&memmanager_mutex);
-	   setlasterror(NO_MEM);
-	   return(NULL);
-	  }
+	if(overrideaddress == -1) { 
+		firstpage=findfreevirtualpage(size,flags,process); 
+		if(firstpage == -1) {
+			unlock_mutex(&memmanager_mutex);
+	   		setlasterror(NO_MEM);
+	   		return(NULL);
+	  	}
 	 
-	  startpage=firstpage;
-	 }
-	 else
-	 {
-
-	  startpage=overrideaddress;
-	  firstpage=overrideaddress;
+	  	startpage=firstpage;
+	}
+	else
+	{
+		startpage=overrideaddress;
+		firstpage=overrideaddress;
 	 }
 
 }
@@ -141,64 +141,66 @@ else
 	firstpage=(startpage*PAGE_SIZE);
 }
 
+if(oldsize == 1234) kprintf_direct("ALLOC 4\n");
+
 /* create new chain in buffer */
 
-	physpage=0;
-	mb=(size_t *) MEMBUF_START;
-	pcount=0;
+physpage=0;
+mb=(size_t *) MEMBUF_START;
+pcount=0;
 	
-	for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
+for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 
-	 if(*mb == 0) {
-	     pcount++;
+	if(*mb == 0) {
+		pcount++;
 
 	/* find next in memory map */
 
-	     next=mb;
-	     next++;
+		next=mb;
+		next++;
 
-	     for(countx=count+1;countx<(bootinfo->memorysize/PAGE_SIZE)+1;countx++) {
-	  	if(*next == 0) break;
-	  	next++;
-	     }
+		for(countx=count+1;countx<(bootinfo->memorysize/PAGE_SIZE)+1;countx++) {
+	  		if(*next == 0) break;
+	  		next++;
+	     	}
 	  
-	     *mb=(size_t *) next;
+	     	*mb=(size_t *) next;
 	  
 /* link physical addresses to virtual addresses */
 	 
-	     if(flags != ALLOC_NOPAGING) {	
+	     	if(flags != ALLOC_NOPAGING) {	
 
-	     	switch(flags) {
-	     		case ALLOC_NORMAL:				/* add normal page */
-	 			addpage_user(startpage,process,physpage);
-	        		if(process == getpid()) loadpagetable(process);
+	     		switch(flags) {
+	     			case ALLOC_NORMAL:				/* add normal page */
+	 				addpage_user(startpage,process,physpage);
+	        			if(process == getpid()) loadpagetable(process);
 	 			
-				break;
+					break;
 
-			case ALLOC_KERNEL:	
-	 			addpage_system(startpage,process,physpage); /* add kernel page */
+				case ALLOC_KERNEL:	
+	 				addpage_system(startpage,process,physpage); /* add kernel page */
 
-	        		if(process == getpid()) loadpagetable(process);
-	        		break;
+	        			if(process == getpid()) loadpagetable(process);
+	        			break;
 
-			case ALLOC_GLOBAL:
-	 			addpage_user(startpage,process,physpage); /* add global page */
+				case ALLOC_GLOBAL:
+	 				addpage_user(startpage,process,physpage); /* add global page */
 
-	        		if(process == getpid()) loadpagetable(process);
-	       			break;	    
-	       		}
+	        			if(process == getpid()) loadpagetable(process);
+	       				break;	    
+	       			}
 
-			startpage=startpage+PAGE_SIZE;  
-	     	}
+				startpage=startpage+PAGE_SIZE;  
+	     		}
 
 		if(pcount == (size/PAGE_SIZE)+1) break;			/* found enough */
-	   }
-
-	  mb++;
-	  physpage=physpage+PAGE_SIZE;
-
 	}
-	
+
+	if(size == 1234) DEBUG_PRINT_HEX(mb);
+
+	mb++;
+	physpage=physpage+PAGE_SIZE;
+}
 
 *mb=(size_t *) -1;							/* mark end of chain */
 
@@ -215,8 +217,8 @@ return((void *) firstpage);
 * Internal free memory function
 *
 * In: 	process		Process to free memory from
-		b		Start address of memory area
-*      flags		Flags (1=free physical address)
+*	b		Start address of memory area
+*	flags		Flags (1=free physical address)
 *
 * Returns 0 on success, -1 otherwise
 * 

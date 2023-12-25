@@ -1,3 +1,0 @@
-init.asm:104: warning: label alone on a line without a colon might be in error [-w+orphan-labels]
-memorymap.asm:143: warning: label alone on a line without a colon might be in error [-w+orphan-labels]
-cpustate.asm:27: warning: label alone on a line without a colon might be in error [-w+orphan-labels]
