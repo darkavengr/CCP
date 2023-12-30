@@ -277,7 +277,7 @@ if(argcount >= 2) {
 	}
 }
 
-set_critical_error_handler(critical_error_handler);		/* set critical error handler */
+set_critical_error_handler(&critical_error_handler);		/* set critical error handler */
 set_signal_handler(signalhandler);			/* set signal handler */
 
 set_batch_mode(FALSE);			/* set batch mode */
@@ -1140,11 +1140,11 @@ char *b;
 
 if((flags & 0x80000000) == 0) {			/* from disk */
 	 flags &= 0x80000000;
-	 kprintf("%s %s Drive %c\n",errs[error],errty[flags],drive+'A');
+	 kprintf("\n%s %s Drive %c\n",errs[error],errty[flags],drive+'A');
 }
 else
 {
-	 kprintf("%s %s %s\n",errs[error],errty[flags],name);
+	 kprintf("\n%s %s %s\n",errs[error],errty[flags],name);
 }
 
 while(1) {

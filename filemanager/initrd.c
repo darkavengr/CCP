@@ -252,7 +252,7 @@ BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 char *tptr;
 
 if((block*TAR_BLOCK_SIZE) > boot_info->initrd_size) {			/* out of range */
-	setlasterror(INVALID_BLOCK);
+	setlasterror(INVALID_BLOCK_NUMBER);
 	return(-1);
 }
 

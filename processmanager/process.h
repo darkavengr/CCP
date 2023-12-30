@@ -80,7 +80,7 @@ size_t getreturncode(void);
 void ksleep(size_t wait);
 void signal(void *handler);
 size_t sendsignal(size_t process,size_t signal);
-void set_critical_error_handler(void *addr);
+size_t set_critical_error_handler(void *addr);
 size_t call_critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
 void processmanager_init(void);
 size_t blockprocess(size_t pid);

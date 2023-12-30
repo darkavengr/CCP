@@ -35,7 +35,7 @@ char *errs[] = { "No error",\
 "Access error",\
 "Invalid file",\
 "Reserved 4",\
-"Invalid drive",\
+"Invalid drive specification",\
 "Directory not empty",\
 "Can't rename across drives",\
 "End of directory",\
@@ -54,8 +54,8 @@ char *errs[] = { "No error",\
 "Invalid process",\
 "Invalid device",\
 "Device is in use",\
-"Invalid driver",\
-"Driver already loaded",\
+"Invalid kernel module",\
+"Kernel module already loaded",\
 "No processes",\
 "End of file",\
 "No drives",\

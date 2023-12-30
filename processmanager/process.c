@@ -34,7 +34,7 @@
 extern initializestack(void *ptr,size_t size);
 extern get_stack_top(void);
 extern get_stack_pointer(void);
-extern end_switch;
+extern irq_exit;
 
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
@@ -50,6 +50,7 @@ size_t tickcount;
 size_t entrypoint;
 char *tempfilename[MAX_PATH];
 char *tempargs[MAX_PATH];
+size_t *stackinit;
 
 /*
 * Execute program
@@ -145,7 +146,7 @@ if(next->kernelstacktop == NULL) {
 }
 
 next->kernelstacktop += PROCESS_STACK_SIZE;
-
+next->kernelstackpointer = next->kernelstacktop-(12*sizeof(size_t));
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -233,8 +234,7 @@ if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 }
 else
 { 
-	initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);
-
+	initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);
 	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize user mode stack */
 
 	enablemultitasking();
@@ -672,6 +672,9 @@ switch(highbyte) {		/* function */
 		case 0x7030:				/* get enviroment address */
 	 		return(getenv());
 
+		case 0x2524:				/* set critical error handler */
+			return(set_critical_error_handler(argtwo));
+
 		default:
 	 		setlasterror(INVALID_FUNCTION);
 	 		return(-1);
@@ -980,16 +983,15 @@ return(0);
 *
 */
 
-void set_critical_error_handler(void *addr) {
+size_t set_critical_error_handler(void *addr) {
 currentprocess->errorhandler=addr;
-
 return;
 }
 
 /*
 * Call critical error handler
 *
-* In: name	Error message to display
+* In: name    Error message to display
 	      drive	Drive number if invoked on error from block device
 	      flags	Flags
 	      error	Error number

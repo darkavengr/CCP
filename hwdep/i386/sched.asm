@@ -57,8 +57,6 @@ use32
 ;
 switch_task:
 ;xchg	bx,bx
-mov	[save_esp],esp
-
 call	increment_tick_count
 
 call	is_multitasking_enabled			
@@ -79,22 +77,16 @@ jnz	task_time_slice_finished
 jmp	end_switch
 
 task_time_slice_finished:
-mov	eax,[save_esp]
+call	reset_process_ticks			; reset number of ticks for current process]
 
-push	eax					; save stack pointer for current process
-call	save_kernel_stack_pointer
-add	esp,4
+call	getpid
 
-call	reset_process_ticks			; reset number of ticks for current process
+cmp	eax,1
+jne	not_debug
 
-;call	getpid
+xchg	bx,bx
 
-;cmp	eax,1
-;jne	not_debug
-
-;xchg	bx,bx
-
-;not_debug:
+not_debug:
 ;
 ; Switch to next process
 ;
@@ -122,7 +114,9 @@ push	eax
 call	set_tss_esp0
 add	esp,4
 
-call	get_kernel_stack_pointer			; switch stack
+call	get_kernel_stack_top
+
+sub	eax,4*12					; point to bottom of stack frame
 mov	esp,eax
 
 end_switch:

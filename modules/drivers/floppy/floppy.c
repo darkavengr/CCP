@@ -141,7 +141,7 @@ for(count=0;count<floppycount;count++) {
 	 else
 	 {
 	 	strcpy(fdstruct.name,"FD1");
-	 	fdstruct.blockio=&fd_io;		/*setup struct */
+	 	fdstruct.blockio=&fd_io;
 	 	fdstruct.ioctl=NULL;
 	 	fdstruct.physicaldrive=1;
 	 	fdstruct.drive=1;
@@ -357,15 +357,15 @@ initialize_floppy(drive);
 
 motor_on(drive);					/* enable motor */ 
 
-// dir=inb(DIGITAL_INPUT_REGISTER);		/* check if disk in drive */
+dir=inb(DIGITAL_INPUT_REGISTER);		/* check if disk in drive */
 
-// if((dir & 0x80)) {
-//  dir &= 0x80;
+if((dir & 0x80)) {
+	dir &= 0x80;
 	 
-//  outb(DIGITAL_INPUT_REGISTER,dir);
-//  setlasterror(DRIVE_NOT_READY);
-//  return(-1);
-// }
+	outb(DIGITAL_INPUT_REGISTER,dir);
+	setlasterror(DRIVE_NOT_READY);
+	return(-1);
+}
 
 #ifdef FLOPPY_DEBUG
 kprintf_direct("fd debug: sector io: seek\n");
@@ -441,7 +441,6 @@ for(retrycount=0;retrycount < RETRY_COUNT;retrycount++) {
 #ifdef FLOPPY_DEBUG
 	kprintf_direct("fd debug: sector io: wait for io irq6\n"); 
 #endif
-
 	irq6done=FALSE;
 	waitforirq6();	/* until ready */
 
@@ -449,6 +448,7 @@ for(retrycount=0;retrycount < RETRY_COUNT;retrycount++) {
 	kprintf_direct("fd debug: sector io: read io status\n"); 
 #endif
 
+	if(checkstatus() == -1) return(-1);
 	break;
 }
 
@@ -493,9 +493,6 @@ uint8_t floppytype;
 void *bootbuf;
 b=buf;
 size_t rv;
-
-/* if this is the first time the floppy drive has been used, there will
-	be no bios paramter block read in, so it must be read into the drive struct */
 
 bootbuf=kernelalloc(1024);			/* allocate temporary buffer */
 if(bootbuf == NULL) return(-1);
@@ -633,7 +630,7 @@ return;	/* wait for interrupt */
 }
 
 /*
- * Reset floppy controller
+ * Check status
  *
  * In:  nothing
  *
@@ -642,37 +639,79 @@ return;	/* wait for interrupt */
  */
 
 size_t checkstatus(void) {
-uint8_t st[8];
+uint8_t st[2];
 
-st[0]=inb(MAIN_STATUS_REG);		/* get result  */
-st[1]=inb(MAIN_STATUS_REG);		/* get result  */
-st[2]=inb(MAIN_STATUS_REG);		/* get result  */
+st[0]=inb(DATA_REGISTER);		/* get results  */
+st[1]=inb(DATA_REGISTER);
+st[2]=inb(DATA_REGISTER);
 
-if((st[0] & 0x80) || (st[0] & 0xc0) || (st[0] & 0x40)) {
-	if((st[0] & 8)) {
-		setlasterror(DRIVE_NOT_READY);
-		return(-1);
+#ifdef FLOPPY_DEBUG
+	kprintf_direct("status=%X %X %X\n",st[0],st[1],st[2]);
+#endif
+
+if((st[0] & 8)) {
+	#ifdef FLOPPY_DEBUG
+		kprintf_direct("Drive not ready\n");
+	#endif
+
+	setlasterror(DRIVE_NOT_READY);
+	return(-1);
+}
+
+if((st[1] & 0x80) || (st[1] & 0x20) || (st[1] & 0x10) || (st[1] & 0x10) || (st[1] & 0x4) || (st[1] & 0x1)) {
+#ifdef FLOPPY_DEBUG
+	if(st[1] & 0x80) {
+		kprintf_direct("End of cylinder\n");
 	}
-
-	if((st[1] & 0x80) || (st[1] & 0x40) || (st[1] & 0x10) || (st[1] & 0x8) || (st[1] & 0x4) || (st[1] & 0x2) || (st[1] & 0x1)) {
-		setlasterror(GENERAL_FAILURE);
-		return(-1);
+	else if(st[1] & 0x20) {
+		kprintf_direct("CRC error\n");
 	}
-
-	if((st[2] & 0x40) || (st[2] & 0x20) || (st[2] & 0x10) || (st[2] & 0x8) || (st[2] & 0x4) || (st[2] & 0x2) || (st[2] & 0x1)) {
-		setlasterror(GENERAL_FAILURE);
-		return(-1);
+	else if(st[1] & 0x10) {
+		kprintf_direct("Controller timeout\n");
 	}
-
-	if((st[3] & 0x40)) {
-		setlasterror(WRITE_PROTECT_ERROR);
-		return(-1);
+	else if(st[1] & 0x4) {
+		kprintf_direct("No data found\n");
 	}
-
-	if((st[3] & 0x20) || (st[1] & 0x10) || (st[1] & 0x8) || (st[1] & 0x4) || (st[1] & 0x2) || (st[1] & 0x1)) {
-		setlasterror(GENERAL_FAILURE);
-		return(-1);
+	else if(st[1] & 0x1) {
+		kprintf_direct("No address mark found\n");
 	}
+#endif
+
+	setlasterror(GENERAL_FAILURE);
+	return(-1);
+}
+
+if((st[2] & 0x40) || (st[2] & 0x20) || (st[2] & 0x10) || (st[2] & 0x4) || (st[2] & 0x1)) {
+#ifdef FLOPPY_DEBUG
+	if(st[2] & 0x1) {
+		kprintf_direct("No address mark found\n");
+	}
+	else if(st[2] & 0x40) {
+		kprintf_direct("Deleted address mark\n");
+	}
+	else if(st[2] & 0x20) {
+		kprintf_direct("CRC error in data\n");
+	}
+	else if(st[2] & 0x10) {
+		kprintf_direct("Incorrect cylinder\n");
+	}
+	else if(st[2] & 0x4) {
+		kprintf_direct("uPD765 sector not found\n");
+	}
+	else if(st[2] & 0x2) {
+		kprintf_direct("Bad cylinder\n");
+	}
+#endif
+
+	setlasterror(GENERAL_FAILURE);
+	return(-1);
+}
+
+if((st[2] & 0x2)) {
+//	kprintf_direct("Write protect error\n");
+
+	setlasterror(WRITE_PROTECT_ERROR);
+	return(-1);
 }
 
 return(0);

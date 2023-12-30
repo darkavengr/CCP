@@ -28,6 +28,8 @@ global get_stack_pointer
 
 extern set_tss_esp0
 extern irq_exit
+extern get_kernel_stack_top
+extern get_process_stack_size
 
 section .text
 [BITS 32]
@@ -65,11 +67,35 @@ jmp	[tempeip]					; return without using stack
 ; Returns: Nothing
 ;
 initializekernelstack:
-mov	eax,[esp+4]					; get stack address
+mov	esi,[esp+4]				; kernel stack top
+mov	edx,[esp+8]				; entry point
+mov	ecx,[esp+12]				; kernel stack bottom
 
-push	eax
+mov	ebx,esi
+sub	ebx,12*4				; space for initial stack frame
+
+; Create intial stack frame
+
+mov	eax,irq_exit
+mov	[ebx],eax
+mov	dword [ebx+4],0xFFFFFFFF		; eax
+mov	dword [ebx+8],0xEEEEEEEE		; ecx
+mov	dword [ebx+12],0xDDDDDDDD		; edx
+mov	dword [ebx+16],0xCCCCCCCC		; ebx
+mov	dword [ebx+20],esi			; esp
+mov	dword [ebx+24],ecx			; ebp
+mov	dword [ebx+28],0xBBBBBBBB		; esi
+mov	dword [ebx+32],0xAAAAAAAA		; edi
+mov	dword [ebx+36],edx			; eip
+mov	dword [ebx+40],KERNEL_CODE_SELECTOR	; cs
+mov	dword [ebx+44],0x200			; eflags
+
+; Set tss esp0 to ensure that the kernel stack is switched to next time the cpu switches to ring 0.
+
+push	esi
 call	set_tss_esp0
 add	esp,4
+
 ret
 
 ;

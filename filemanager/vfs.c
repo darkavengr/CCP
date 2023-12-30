@@ -84,10 +84,7 @@ getfullpath(name,fullname);
 
 splitname(fullname,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {		/* detect file system */
-	setlasterror(UNKNOWN_FILESYSTEM);
-	return(-1);
-}
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
 if(fs.findfirst == NULL) {			/* not implemented */
 	setlasterror(NOT_IMPLEMENTED);
@@ -116,10 +113,7 @@ getfullpath(name,fullname);
 
 splitname(fullname,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
 if(fs.findnext == NULL) {			/* not implemented */
 	setlasterror(NOT_IMPLEMENTED);
@@ -312,10 +306,7 @@ getfullpath(name,fullname);
 
 splitname(name,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
 getblockdevice(splitbuf.drive,&blockdevice);
 
@@ -348,10 +339,7 @@ getfullpath(olname,fullname);
 
 splitname(olname,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
 getblockdevice(splitbuf.drive,&blockdevice);
 
@@ -383,10 +371,7 @@ getfullpath(name,fullname);
 
 splitname(name,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
 getblockdevice(splitbuf.drive,&blockdevice);
 if(update_block_device(splitbuf.drive,&blockdevice) == -1) return(-1);		/* get block device */
@@ -420,10 +405,7 @@ getfullpath(name,fullname);
 
 splitname(name,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
 getblockdevice(splitbuf.drive,&blockdevice);
 if(update_block_device(splitbuf.drive,&blockdevice) == -1) return(-1);		/* get block device */
@@ -454,10 +436,7 @@ getfullpath(name,fullname);
 
 splitname(name,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
 if(fs.mkdir == NULL) {			/* not implemented */
 	setlasterror(NOT_IMPLEMENTED);
@@ -486,10 +465,7 @@ getfullpath(name,fullname);
 
 splitname(name,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
 if(fs.chmod == NULL) {			/* not implemented */
 	setlasterror(NOT_IMPLEMENTED);
@@ -552,12 +528,9 @@ if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */
 
 splitname(next->filename,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	unlock_mutex(&vfs_mutex);
+unlock_mutex(&vfs_mutex);
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
 
 if(fs.read == NULL) {			/* not implemented */
 	unlock_mutex(&vfs_mutex);
@@ -619,12 +592,8 @@ if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */
 
 splitname(next->filename,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) {
-	unlock_mutex(&vfs_mutex);
-
-	setlasterror(GENERAL_FAILURE);
-	return(-1);
-}
+unlock_mutex(&vfs_mutex);
+if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
 if(fs.write == NULL) {			/* not implemented */
 	unlock_mutex(&vfs_mutex);
@@ -1080,7 +1049,7 @@ else if(d != ':' && e != '\\') {               /* filename only */
 
 	*b++=c;
 	*b++=':';
-	*b++='\\';
+	if(*filename != '\\') 	*b++='\\';
 
 	strcat(b,filename);	
 }

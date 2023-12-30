@@ -149,6 +149,11 @@ if(result.lba28_size != 0) islba=28;	/* is 28bit lba */
 if(result.commands_and_feature_sets_supported2 & 1024) islba=48; /* is 48bit lba */
 
 if(islba == 28) {						/* use lba28 */
+	if(block > result.lba28_size) {			/* invalid block number */
+		setlasterror(INVALID_BLOCK_NUMBER);
+		return(-1);
+	}
+
 	switch(physdrive) {					/* master or slave */
 		case 0x80:							/* master */
 			outb(controller+ATA_DRIVE_HEAD_PORT, 0xe0 | (0 << 4) | ((uint64_t)  lowblock >> 24)  & 0xf);
@@ -179,6 +184,11 @@ if(islba == 28) {						/* use lba28 */
 }
 
 if(islba == 48) {				/* use lba48 */
+	if(block > result.lba48_size) {			/* invalid block number */
+		setlasterror(INVALID_BLOCK_NUMBER);
+		return(-1);
+	}
+
 	switch(physdrive) {						/* master or slave */
 	
 		case 0x80:							/* master */
@@ -373,7 +383,11 @@ outb(controller+ATA_CYLINDER_LOW_PORT,0);
 outb(controller+ATA_CYLINDER_HIGH_PORT,0);
 
 outb(controller+ATA_COMMAND_PORT,IDENTIFY);				/* send identify command */
-if(inb(controller+ATA_COMMAND_PORT) == 0) return(-1);		/* drive doesn't exist */
+
+if(inb(controller+ATA_COMMAND_PORT) == 0) {		/* drive doesn't exist */
+	setlasterror(INVALID_DRIVE);
+	return(-1);
+}
 
 while((inb(controller+ATA_COMMAND_PORT) & 0x80) != 0) {		/* wait until ready */
 

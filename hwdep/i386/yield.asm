@@ -70,9 +70,7 @@ pushf
 push	cs
 push	dword [saveeip]
 
-; save 
-push	ds
-
+mov	[oldds],ds
 mov	ax,0x10
 mov	ds,ax
 mov	es,ax
@@ -90,4 +88,5 @@ iret						; jump to cs:EIP
 
 section .data
 saveeip dd 0
+oldds dd 0
 
