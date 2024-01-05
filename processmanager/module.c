@@ -99,9 +99,12 @@ if(buf == NULL) {
 	return(-1);
 }
 
+kprintf("module addresses=%X %X\n",buf,(buf+getfilesize(handle)));
 
 if(read(handle,buf,getfilesize(handle)) == -1) {			/* read module into buffer */
 	close(handle);
+
+	kernelfree(buf);
 
 	enablemultitasking();	
 	return(-1); /* read error */
@@ -187,6 +190,8 @@ if(strtab == NULL) {
 
 shptr=buf+elf_header->e_shoff;
 
+//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(shptr);
+
 /* Relocate elf references
 
 	The relocation is done by:
@@ -204,9 +209,14 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 		if(shptr->sh_type == SHT_REL) {
 			relptr=buf+shptr->sh_offset;
+
+			//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptr);
 		}
+
 		else if(shptr->sh_type == SHT_RELA) {
 			relptra=buf+shptr->sh_offset;
+
+			//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptra);
 		}
 
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
@@ -216,21 +226,31 @@ for(count=0;count<elf_header->e_shnum;count++) {
 			  		whichsym=relptr->r_info >> 8;			/* which symbol */
 					symtype=relptr->r_info & 0xff;		/* symbol type */
 
-					ref=(buf+rel_shptr->sh_offset)+relptr->r_offset;		  
+					ref=(buf+rel_shptr->sh_offset)+relptr->r_offset;
 
+					//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptr->r_offset);
 				}
+
 				else if(shptr->sh_type == SHT_RELA) { 
 
 			  		whichsym=relptra->r_info >> 8;			/* which symbol */
 					symtype=relptra->r_info & 0xff;		/* symbol type */
 
-		  			ref=(buf+rel_shptr->sh_offset)+relptra->r_offset;		  
+		  			ref=(buf+rel_shptr->sh_offset)+relptra->r_offset;
+
+					//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptra->r_offset);		  
 		  
 				}
 				
 				/* Get the value to place at the location ref into symval */
 
-				//DEBUG_PRINT_HEX(whichsym);
+				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(whichsym);
+				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(symtype);
+				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(ref);
+				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(*ref);
+				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(codestart);
+				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(rodata);
+				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(data);
 
 				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
 
@@ -245,8 +265,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 					symval=getkernelsymbol(name);
 
-					if(symval == -1) {
-						/* if it's not a kernel symbol, check if it is a external module symbol */
+					if(symval == -1) {	/* if it's not a kernel symbol, check if it is a external module symbol */
 				 		symval=get_external_module_symbol(name);
 						if(symval == -1) symval=symptr->st_value;
 					}
@@ -256,23 +275,35 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				else
 				{								
 				
-					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC)) {				/* code symbol */						
+					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC)) {	/* code symbol */						
 						symval=codestart+symptr->st_value;								
 					}
-					else if((symtype == STT_OBJECT) || (symtype == STT_COMMON)) {		/* data symbol */
-						if(strcmp(name,"rodata") == 0) {							
+					else if((symtype == STT_OBJECT) || (symtype == STT_COMMON) || ((symptr->st_info  & 0xf) == STT_FUNC)) {		/* data symbol */
+						if(strcmp(name,"rodata") == 0) {								
 							symval=rodata+symptr->st_value;
+
+							//if(strcmp(filename,"Z:\\KEYB.O") == 0) {
+							//	kprintf_direct("%s %X\n",name,symval);
+
+//								asm("xchg %bx,%bx");
+							//}
 						}
 						else
 						{							
 							symval=data+symptr->st_value;		
+
+							//if(strcmp(name,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(symval);
 						}
 
 					}	
 
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
-				}	
-				
+				}				
+
+				//if(strcmp(filename,"Z:\\KEYB.O") == 0) {
+				//		if(relptr->r_offset == 0x25d) asm("xchg %bx,%bx");
+				//}
+	
 				/* update reference in section */
 
 				if(symtype == R_386_NONE) {
@@ -307,6 +338,8 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				else if(shptr->sh_type == SHT_RELA) {
 					relptra++;
 				}
+
+//				if(strcmp(filename,"Z:\\KEYB.O") == 0) asm("xchg %bx,%bx");
 
 		}		
  	}

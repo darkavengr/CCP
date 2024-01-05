@@ -4,6 +4,7 @@
 #define BOOT_INFO_ADDRESS		0xAC
 
 typedef struct {
+	uint8_t physicaldrive;
 	uint8_t drive;
 	uint8_t cursor_row;
 	uint8_t cursor_col;

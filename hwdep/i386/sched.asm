@@ -16,6 +16,14 @@
 ;  You should have received a copy of the GNU General Public License
 ;  along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
+;
+; Switch task
+;
+; This function is called by a function which is expected to save the registers onto the stack and call switch_task.
+; After returning from switch_task, the calling function will then restore the registers and return, transferring control to the new process.
+;
+; You are not expected to understand this
+;
 global switch_task
 global end_switch
 
@@ -35,49 +43,33 @@ extern increment_process_ticks
 extern get_next_process_pointer
 extern get_current_process_pointer
 extern get_processes_pointer
-extern increment_tick_count
 
 %define offset
 
-section .text
-[BITS 32]
-use32
-
-;
-; Switch task
-;
-; In: Address of stack frame
-;
-; Returns: Never returns
-;
-; This function is called by a function which is expected to save the registers onto the stack and call switch_task.
-; After returning from switch_task, the calling function will then restore the registers and return, transferring control to the new process.
-;
-; You are not expected to understand this
-;
 switch_task:
-;xchg	bx,bx
-call	increment_tick_count
+mov	[save_esp],esp
 
 call	is_multitasking_enabled			
-
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled
 
 jmp	end_switch
 
 multitasking_enabled:
+push	esp
+call	save_kernel_stack_pointer
+add	esp,4
+
 call	increment_process_ticks
 
 call	is_process_ready_to_switch
-
-test	eax,eax					; if process not ready to switch, return
 jnz	task_time_slice_finished
+test	eax,eax					; if process not ready to switch, return
 
 jmp	end_switch
 
 task_time_slice_finished:
-call	reset_process_ticks			; reset number of ticks for current process]
+call	reset_process_ticks
 
 call	getpid
 
@@ -97,31 +89,23 @@ push	eax						; update current process pointer
 call	update_current_process_pointer
 add	esp,4
 
-; switch address space
-
 call	getpid
 
 push	eax
-call	loadpagetable					; load page tables
+call	loadpagetable						; load page tables
 add	esp,4
 
-; Patch ESP0 for this process in the TSS. The scheduler will use the correct kernel stack on the next task switch
-; if switching from user-mode to kernel-mode.
-
+; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
 call	get_kernel_stack_top
 
 push	eax
 call	set_tss_esp0
 add	esp,4
 
-call	get_kernel_stack_top
-
-sub	eax,4*12					; point to bottom of stack frame
+call	get_kernel_stack_pointer
 mov	esp,eax
 
 end_switch:
 ret
 
-section .data
 save_esp dd 0
-

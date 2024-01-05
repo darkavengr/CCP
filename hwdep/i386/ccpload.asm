@@ -4,6 +4,8 @@
 ; CCP intermediate loader
 ; 
 ;
+%include "bootinfo.inc"
+
 NULL equ 0
 LOAD_ADDRESS		equ 0x100000				; load address for CCP.SYS
 ROOTDIRADDR		equ end_prog+1024			; buffer for root directory
@@ -114,25 +116,13 @@ SHT_STRTAB	equ 3
 STT_NOTYPE	equ 0
 STT_SECTION	equ 3
 
-BOOT_INFO_DRIVE		equ	0xAC
-BOOT_INFO_CURSOR_ROW	equ	0xAD
-BOOT_INFO_CURSOR_COL	equ	0xAE
-BOOT_INFO_KERNEL_START	equ	0xAF
-BOOT_INFO_KERNEL_SIZE	equ	0xB3
-BOOT_INFO_INITRD_START	equ	0xB7
-BOOT_INFO_INITRD_SIZE	equ	0xBB
-BOOT_INFO_SYMBOL_START	equ	0xBF
-BOOT_INFO_SYMBOL_SIZE	equ	0xC3
-BOOT_INFO_NUM_SYMBOLS	equ	0xC7
-BOOT_INFO_MEMORY_SIZE	equ	0xCB
-
 INT15_E820_BASE_ADDR_LOW	equ 0
 INT15_E820_BASE_ADDR_HIGH	equ 4
 INT15_E820_LENGTH_LOW		equ 8
 INT15_E820_LENGTH_HIGH		equ 12
 INT15_E820_BLOCK_TYPE		equ 16
 
-INT15_BUFFER		equ	0x9000
+INT15_BUFFER			equ	0x9000
 
 org	BASE_OF_SECTION
 cli							; disable interrupts
@@ -199,16 +189,16 @@ a20done:
 ;
 
 cli	
-xor ax,ax
-mov es,ax
-mov ss,ax
-mov ds,ax
+xor	ax,ax
+mov	es,ax
+mov	ss,ax
+mov	ds,ax
 
 push	ds
 push	es
 push	ss
 
-mov edi,offset gdtinfo
+mov	edi,offset gdtinfo
 
 db 	66h
 lgdt 	[ds:di]					; load gdt
@@ -229,6 +219,17 @@ mov  	cr0,eax
 pop	ss
 pop	es
 pop	ds
+
+mov	al,[BOOT_INFO_PHYSICAL_DRIVE]			; get physical drive
+
+test	al,80h						; is hard drive
+jz	not_boot_hd
+
+sub	al,80h						; get logical drive from physical drive
+add	al,2						; logical drives start from drive 2
+
+not_boot_hd:
+mov	[BOOT_INFO_DRIVE],al
 
 mov	ax,[7c00h+_FATNAME+3]				; get fat type
 xchg	ah,al						; swap bytes
@@ -624,7 +625,7 @@ push	ebx				; save address
 mov	eax,[fat_blockno]			; read fat sector and fat sector + 1 to buffer
 
 next_fatblock:
-mov	edx,[BOOT_INFO_DRIVE]
+mov	edx,[BOOT_INFO_PHYSICAL_DRIVE]
 call	readblock
 
 mov	eax,[fat_blockno]			; read fat sector and fat sector + 1 to buffer
@@ -717,7 +718,7 @@ read_next_block:
 xor	eax,eax
 mov	[blockcount],eax
 
-mov	edx,[BOOT_INFO_DRIVE]
+mov	edx,[BOOT_INFO_PHYSICAL_DRIVE]
 mov	eax,[find_blockno]
 mov	ebx,ROOTDIRADDR					; read root directory
 call	readblock					; read block
@@ -864,7 +865,7 @@ add	ebx,eax
 sub	ebx,2	
 mov	eax,ebx						; block number
 
-mov	dl,[BOOT_INFO_DRIVE]
+mov	dl,[BOOT_INFO_PHYSICAL_DRIVE]
 mov	ebx,[loadptr]					; buffer
 call	readblock					; read block
 
@@ -960,7 +961,7 @@ mov	dword [retry_counter],eax
 
 next_retry_ext:
 mov	ah,42h					; extended read
-mov	dl,[BOOT_INFO_DRIVE]
+mov	dl,[BOOT_INFO_PHYSICAL_DRIVE]
 int	13h
 
 inc	dword [retry_counter]
@@ -1019,7 +1020,7 @@ mov	bx,TEMP_ADDRESS
 mov	ch,[cyl]
 mov	cl,[sector]
 mov	dh,[head]
-mov	dl,[BOOT_INFO_DRIVE]
+mov	dl,[BOOT_INFO_PHYSICAL_DRIVE]
 int	13h
 
 jnc	copy_data

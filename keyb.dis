@@ -1,0 +1,228 @@
+
+obj/i386/keyb.o:     file format elf32-i386
+obj/i386/keyb.o
+
+
+Disassembly of section .text:
+
+00000000 <keyb_init>:
+   0:	55                   	push   ebp
+   1:	89 e5                	mov    ebp,esp
+   3:	81 ec 38 04 00 00    	sub    esp,0x438
+   9:	c6 05 00 00 00 00 00 	mov    BYTE PTR ds:0x0,0x0
+  10:	c7 44 24 04 c3 00 00 	mov    DWORD PTR [esp+0x4],0xc3
+  17:	00 
+  18:	8d 85 e4 fb ff ff    	lea    eax,[ebp-0x41c]
+  1e:	89 04 24             	mov    DWORD PTR [esp],eax
+  21:	e8 fc ff ff ff       	call   22 <keyb_init+0x22>
+  26:	c7 45 e0 00 00 00 00 	mov    DWORD PTR [ebp-0x20],0x0
+  2d:	c7 45 e4 00 00 00 00 	mov    DWORD PTR [ebp-0x1c],0x0
+  34:	c7 45 e8 00 00 00 00 	mov    DWORD PTR [ebp-0x18],0x0
+  3b:	c7 45 ec 00 00 00 00 	mov    DWORD PTR [ebp-0x14],0x0
+  42:	c7 45 f0 00 00 00 00 	mov    DWORD PTR [ebp-0x10],0x0
+  49:	c7 45 f4 00 00 00 00 	mov    DWORD PTR [ebp-0xc],0x0
+  50:	8d 85 e4 fb ff ff    	lea    eax,[ebp-0x41c]
+  56:	89 04 24             	mov    DWORD PTR [esp],eax
+  59:	e8 fc ff ff ff       	call   5a <keyb_init+0x5a>
+  5e:	c7 44 24 04 00 00 00 	mov    DWORD PTR [esp+0x4],0x0
+  65:	00 
+  66:	c7 04 24 01 00 00 00 	mov    DWORD PTR [esp],0x1
+  6d:	e8 fc ff ff ff       	call   6e <keyb_init+0x6e>
+  72:	c7 44 24 08 00 00 00 	mov    DWORD PTR [esp+0x8],0x0
+  79:	00 
+  7a:	c7 44 24 04 00 00 00 	mov    DWORD PTR [esp+0x4],0x0
+  81:	00 
+  82:	c7 04 24 00 00 00 00 	mov    DWORD PTR [esp],0x0
+  89:	e8 fc ff ff ff       	call   8a <keyb_init+0x8a>
+  8e:	90                   	nop
+  8f:	c9                   	leave  
+  90:	c3                   	ret    
+
+00000091 <readconsole>:
+  91:	55                   	push   ebp
+  92:	89 e5                	mov    ebp,esp
+  94:	83 ec 28             	sub    esp,0x28
+  97:	c7 05 00 00 00 00 00 	mov    DWORD PTR ds:0x0,0x0
+  9e:	00 00 00 
+  a1:	c7 05 00 00 00 00 00 	mov    DWORD PTR ds:0x0,0x0
+  a8:	00 00 00 
+  ab:	c7 45 f4 ac 00 00 80 	mov    DWORD PTR [ebp-0xc],0x800000ac
+  b2:	e9 b8 00 00 00       	jmp    16f <readconsole+0xde>
+  b7:	a1 00 00 00 00       	mov    eax,ds:0x0
+  bc:	0f b6 00             	movzx  eax,BYTE PTR [eax]
+  bf:	3c 08                	cmp    al,0x8
+  c1:	0f 85 a8 00 00 00    	jne    16f <readconsole+0xde>
+  c7:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+  ca:	0f b6 40 02          	movzx  eax,BYTE PTR [eax+0x2]
+  ce:	84 c0                	test   al,al
+  d0:	0f 84 97 00 00 00    	je     16d <readconsole+0xdc>
+  d6:	a1 00 00 00 00       	mov    eax,ds:0x0
+  db:	3d 00 00 00 00       	cmp    eax,0x0
+  e0:	76 15                	jbe    f7 <readconsole+0x66>
+  e2:	a1 00 00 00 00       	mov    eax,ds:0x0
+  e7:	83 e8 01             	sub    eax,0x1
+  ea:	a3 00 00 00 00       	mov    ds:0x0,eax
+  ef:	a1 00 00 00 00       	mov    eax,ds:0x0
+  f4:	c6 00 00             	mov    BYTE PTR [eax],0x0
+  f7:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+  fa:	0f b6 40 02          	movzx  eax,BYTE PTR [eax+0x2]
+  fe:	8d 50 ff             	lea    edx,[eax-0x1]
+ 101:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+ 104:	88 50 02             	mov    BYTE PTR [eax+0x2],dl
+ 107:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+ 10a:	0f b6 40 02          	movzx  eax,BYTE PTR [eax+0x2]
+ 10e:	0f b6 d0             	movzx  edx,al
+ 111:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+ 114:	0f b6 40 01          	movzx  eax,BYTE PTR [eax+0x1]
+ 118:	0f b6 c0             	movzx  eax,al
+ 11b:	89 54 24 04          	mov    DWORD PTR [esp+0x4],edx
+ 11f:	89 04 24             	mov    DWORD PTR [esp],eax
+ 122:	e8 fc ff ff ff       	call   123 <readconsole+0x92>
+ 127:	c7 44 24 04 01 00 00 	mov    DWORD PTR [esp+0x4],0x1
+ 12e:	00 
+ 12f:	c7 04 24 1a 00 00 00 	mov    DWORD PTR [esp],0x1a
+ 136:	e8 fc ff ff ff       	call   137 <readconsole+0xa6>
+ 13b:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+ 13e:	0f b6 40 02          	movzx  eax,BYTE PTR [eax+0x2]
+ 142:	8d 50 ff             	lea    edx,[eax-0x1]
+ 145:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+ 148:	88 50 02             	mov    BYTE PTR [eax+0x2],dl
+ 14b:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+ 14e:	0f b6 40 02          	movzx  eax,BYTE PTR [eax+0x2]
+ 152:	0f b6 d0             	movzx  edx,al
+ 155:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+ 158:	0f b6 40 01          	movzx  eax,BYTE PTR [eax+0x1]
+ 15c:	0f b6 c0             	movzx  eax,al
+ 15f:	89 54 24 04          	mov    DWORD PTR [esp+0x4],edx
+ 163:	89 04 24             	mov    DWORD PTR [esp],eax
+ 166:	e8 fc ff ff ff       	call   167 <readconsole+0xd6>
+ 16b:	eb 35                	jmp    1a2 <readconsole+0x111>
+ 16d:	eb 33                	jmp    1a2 <readconsole+0x111>
+ 16f:	a1 00 00 00 00       	mov    eax,ds:0x0
+ 174:	3b 45 0c             	cmp    eax,DWORD PTR [ebp+0xc]
+ 177:	0f 82 3a ff ff ff    	jb     b7 <readconsole+0x26>
+ 17d:	8b 45 0c             	mov    eax,DWORD PTR [ebp+0xc]
+ 180:	89 44 24 08          	mov    DWORD PTR [esp+0x8],eax
+ 184:	c7 44 24 04 00 00 00 	mov    DWORD PTR [esp+0x4],0x0
+ 18b:	00 
+ 18c:	8b 45 08             	mov    eax,DWORD PTR [ebp+0x8]
+ 18f:	89 04 24             	mov    DWORD PTR [esp],eax
+ 192:	e8 fc ff ff ff       	call   193 <readconsole+0x102>
+ 197:	c7 05 00 00 00 00 00 	mov    DWORD PTR ds:0x0,0x0
+ 19e:	00 00 00 
+ 1a1:	90                   	nop
+ 1a2:	c9                   	leave  
+ 1a3:	c3                   	ret    
+
+000001a4 <readkey>:
+ 1a4:	55                   	push   ebp
+ 1a5:	89 e5                	mov    ebp,esp
+ 1a7:	83 ec 28             	sub    esp,0x28
+ 1aa:	c7 45 f4 ac 00 00 80 	mov    DWORD PTR [ebp-0xc],0x800000ac
+ 1b1:	c7 04 24 64 00 00 00 	mov    DWORD PTR [esp],0x64
+ 1b8:	e8 fc ff ff ff       	call   1b9 <readkey+0x15>
+ 1bd:	83 e0 01             	and    eax,0x1
+ 1c0:	85 c0                	test   eax,eax
+ 1c2:	75 05                	jne    1c9 <readkey+0x25>
+ 1c4:	e9 a2 01 00 00       	jmp    36b <readkey+0x1c7>
+ 1c9:	c7 04 24 60 00 00 00 	mov    DWORD PTR [esp],0x60
+ 1d0:	e8 fc ff ff ff       	call   1d1 <readkey+0x2d>
+ 1d5:	88 45 f3             	mov    BYTE PTR [ebp-0xd],al
+ 1d8:	0f b6 45 f3          	movzx  eax,BYTE PTR [ebp-0xd]
+ 1dc:	84 c0                	test   al,al
+ 1de:	79 4d                	jns    22d <readkey+0x89>
+ 1e0:	80 7d f3 aa          	cmp    BYTE PTR [ebp-0xd],0xaa
+ 1e4:	74 06                	je     1ec <readkey+0x48>
+ 1e6:	80 7d f3 b7          	cmp    BYTE PTR [ebp-0xd],0xb7
+ 1ea:	75 0c                	jne    1f8 <readkey+0x54>
+ 1ec:	c6 05 00 00 00 00 00 	mov    BYTE PTR ds:0x0,0x0
+ 1f3:	e9 73 01 00 00       	jmp    36b <readkey+0x1c7>
+ 1f8:	80 7d f3 b8          	cmp    BYTE PTR [ebp-0xd],0xb8
+ 1fc:	74 06                	je     204 <readkey+0x60>
+ 1fe:	80 7d f3 38          	cmp    BYTE PTR [ebp-0xd],0x38
+ 202:	75 0c                	jne    210 <readkey+0x6c>
+ 204:	c6 05 00 00 00 00 00 	mov    BYTE PTR ds:0x0,0x0
+ 20b:	e9 5b 01 00 00       	jmp    36b <readkey+0x1c7>
+ 210:	80 7d f3 9d          	cmp    BYTE PTR [ebp-0xd],0x9d
+ 214:	74 06                	je     21c <readkey+0x78>
+ 216:	80 7d f3 9d          	cmp    BYTE PTR [ebp-0xd],0x9d
+ 21a:	75 0c                	jne    228 <readkey+0x84>
+ 21c:	c6 05 00 00 00 00 00 	mov    BYTE PTR ds:0x0,0x0
+ 223:	e9 43 01 00 00       	jmp    36b <readkey+0x1c7>
+ 228:	e9 3e 01 00 00       	jmp    36b <readkey+0x1c7>
+ 22d:	a1 00 00 00 00       	mov    eax,ds:0x0
+ 232:	8d 50 01             	lea    edx,[eax+0x1]
+ 235:	89 15 00 00 00 00    	mov    DWORD PTR ds:0x0,edx
+ 23b:	3d 00 01 00 00       	cmp    eax,0x100
+ 240:	75 05                	jne    247 <readkey+0xa3>
+ 242:	e9 24 01 00 00       	jmp    36b <readkey+0x1c7>
+ 247:	66 87 db             	xchg   bx,bx
+ 24a:	0f b6 45 f3          	movzx  eax,BYTE PTR [ebp-0xd]
+ 24e:	83 e8 0e             	sub    eax,0xe
+ 251:	83 f8 41             	cmp    eax,0x41
+ 254:	0f 87 10 01 00 00    	ja     36a <readkey+0x1c6>
+ 25a:	8b 04 85 d0 00 00 00 	mov    eax,DWORD PTR [eax*4+0xd0]
+ 261:	ff e0                	jmp    eax
+ 263:	c7 04 24 c7 00 00 00 	mov    DWORD PTR [esp],0xc7
+ 26a:	e8 fc ff ff ff       	call   26b <readkey+0xc7>
+ 26f:	e9 f7 00 00 00       	jmp    36b <readkey+0x1c7>
+ 274:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+ 277:	c6 40 01 00          	mov    BYTE PTR [eax+0x1],0x0
+ 27b:	e9 eb 00 00 00       	jmp    36b <readkey+0x1c7>
+ 280:	c7 04 24 00 00 00 00 	mov    DWORD PTR [esp],0x0
+ 287:	e8 fc ff ff ff       	call   288 <readkey+0xe4>
+ 28c:	89 45 ec             	mov    DWORD PTR [ebp-0x14],eax
+ 28f:	8b 45 f4             	mov    eax,DWORD PTR [ebp-0xc]
+ 292:	c6 40 01 19          	mov    BYTE PTR [eax+0x1],0x19
+ 296:	e9 d0 00 00 00       	jmp    36b <readkey+0x1c7>
+ 29b:	0f b6 05 00 00 00 00 	movzx  eax,BYTE PTR ds:0x0
+ 2a2:	83 c8 01             	or     eax,0x1
+ 2a5:	a2 00 00 00 00       	mov    ds:0x0,al
+ 2aa:	a1 00 00 00 00       	mov    eax,ds:0x0
+ 2af:	83 e8 01             	sub    eax,0x1
+ 2b2:	a3 00 00 00 00       	mov    ds:0x0,eax
+ 2b7:	e9 af 00 00 00       	jmp    36b <readkey+0x1c7>
+ 2bc:	0f b6 05 00 00 00 00 	movzx  eax,BYTE PTR ds:0x0
+ 2c3:	83 c8 01             	or     eax,0x1
+ 2c6:	a2 00 00 00 00       	mov    ds:0x0,al
+ 2cb:	a1 00 00 00 00       	mov    eax,ds:0x0
+ 2d0:	83 e8 01             	sub    eax,0x1
+ 2d3:	a3 00 00 00 00       	mov    ds:0x0,eax
+ 2d8:	e9 8e 00 00 00       	jmp    36b <readkey+0x1c7>
+ 2dd:	0f b6 05 00 00 00 00 	movzx  eax,BYTE PTR ds:0x0
+ 2e4:	83 c8 02             	or     eax,0x2
+ 2e7:	a2 00 00 00 00       	mov    ds:0x0,al
+ 2ec:	a1 00 00 00 00       	mov    eax,ds:0x0
+ 2f1:	83 e8 01             	sub    eax,0x1
+ 2f4:	a3 00 00 00 00       	mov    ds:0x0,eax
+ 2f9:	eb 70                	jmp    36b <readkey+0x1c7>
+ 2fb:	a1 00 00 00 00       	mov    eax,ds:0x0
+ 300:	c6 00 08             	mov    BYTE PTR [eax],0x8
+ 303:	eb 66                	jmp    36b <readkey+0x1c7>
+ 305:	0f b6 05 00 00 00 00 	movzx  eax,BYTE PTR ds:0x0
+ 30c:	0f b6 c0             	movzx  eax,al
+ 30f:	83 e0 08             	and    eax,0x8
+ 312:	85 c0                	test   eax,eax
+ 314:	74 09                	je     31f <readkey+0x17b>
+ 316:	c6 05 00 00 00 00 00 	mov    BYTE PTR ds:0x0,0x0
+ 31d:	eb 0f                	jmp    32e <readkey+0x18a>
+ 31f:	0f b6 05 00 00 00 00 	movzx  eax,BYTE PTR ds:0x0
+ 326:	83 c8 08             	or     eax,0x8
+ 329:	a2 00 00 00 00       	mov    ds:0x0,al
+ 32e:	a1 00 00 00 00       	mov    eax,ds:0x0
+ 333:	83 e8 01             	sub    eax,0x1
+ 336:	a3 00 00 00 00       	mov    ds:0x0,eax
+ 33b:	eb 2e                	jmp    36b <readkey+0x1c7>
+ 33d:	c7 04 24 60 00 00 00 	mov    DWORD PTR [esp],0x60
+ 344:	e8 fc ff ff ff       	call   345 <readkey+0x1a1>
+ 349:	88 45 f3             	mov    BYTE PTR [ebp-0xd],al
+ 34c:	0f b6 05 00 00 00 00 	movzx  eax,BYTE PTR ds:0x0
+ 353:	83 c8 04             	or     eax,0x4
+ 356:	a2 00 00 00 00       	mov    ds:0x0,al
+ 35b:	a1 00 00 00 00       	mov    eax,ds:0x0
+ 360:	83 e8 01             	sub    eax,0x1
+ 363:	a3 00 00 00 00       	mov    ds:0x0,eax
+ 368:	eb 01                	jmp    36b <readkey+0x1c7>
+ 36a:	90                   	nop
+ 36b:	c9                   	leave  
+ 36c:	c3                   	ret    

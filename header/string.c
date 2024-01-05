@@ -763,7 +763,6 @@ while(*b != 0) {
 
 }
 
-if(strcmp(format,"ALLOC 1\n") == 0) asm("xchg %bx,%bx");
 va_end(args);
 }
 

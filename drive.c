@@ -14,6 +14,7 @@ pic_init(NULL);
 pit_init(NULL);
 pic_init(NULL);
 serialio_init(NULL);
+test_init(NULL);
 fat_init(NULL);
 elf32_init(NULL);
 }

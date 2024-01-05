@@ -695,7 +695,6 @@ char *buf[MAX_PATH];
 char *b;
 BLOCKDEVICE blockdevice;
 BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
-size_t boot_drive;
 
 /*
  * usually the directory is got from the current process struct
@@ -703,13 +702,10 @@ size_t boot_drive;
  * must be built up on the fly
  */
 
-if(currentprocess == NULL) {			/* no processes so get from boot drive */
-	 boot_drive=boot_info->drive;						/* get boot drive */
-	 if(boot_drive >= 0x80) boot_drive -= 0x80;	/* get drive from physical drive */
-	
-	 if(getblockdevice(boot_drive,&blockdevice) == -1) return(-1);
+if(currentprocess == NULL) {			/* no processes, so get from boot drive */
+	 if(getblockdevice(boot_info->drive,&blockdevice) == -1) return(-1);
 
-	 b=dir;						/* set current directory for system */
+	 b=dir;						/* create directory name */
 	 *b++=(uint8_t) blockdevice.drive+'A';
 	 *b++=':';
 	 *b++='\\';

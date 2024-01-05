@@ -1019,6 +1019,8 @@ while(findresult != -1) {
 
 	  if(direntry.flags & FILE_DIRECTORY) {
 	  	kprintf("     <DIR> ");
+
+		dircount++;
 	  }
 	  else
 	  {

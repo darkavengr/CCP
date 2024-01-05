@@ -19,7 +19,5 @@ for f in $*; do
 	drivers_list="$drivers_list $directory/`basename $f`.o" 
 done
 
-echo $drivers_list
-
 tar -cf $outfile $drivers_list --transform=s,.*/,,
 
