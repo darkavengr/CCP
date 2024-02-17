@@ -256,9 +256,7 @@ if((block*TAR_BLOCK_SIZE) > boot_info->initrd_size) {			/* out of range */
 	return(-1);
 }
 
-tptr=boot_info->initrd_start;
-tptr += (block*TAR_BLOCK_SIZE);
-tptr += KERNEL_HIGH;
+tptr=boot_info->initrd_start+(block*TAR_BLOCK_SIZE)+KERNEL_HIGH;
 
 memcpy(buf,tptr,TAR_BLOCK_SIZE);		/* copy data */
 	
@@ -288,7 +286,7 @@ do {
 	ksprintf(filename,"Z:\\%s",findmodule.filename);
 
 	if(load_kernel_module(filename,NULL) == -1) {	/* load module */
-		kprintf_direct("kernel: Error loading kernel module %s from initrd\n",filename);	
+		kprintf_direct("kernel: Error loading kernel module %s from initrd\n",filename);			
 	}
 
 } while(findnext("Z:\\*.o",&findmodule) != -1);

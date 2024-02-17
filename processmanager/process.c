@@ -113,7 +113,7 @@ next=processes_end->next;
 
 getfullpath(filename,fullpath);
 
-	/* create struct */
+/* create struct */
 strcpy(next->filename,fullpath);
 strcpy(next->args,argsx);
 strcpy(tempfilename,fullpath);
@@ -146,7 +146,7 @@ if(next->kernelstacktop == NULL) {
 }
 
 next->kernelstacktop += PROCESS_STACK_SIZE;
-next->kernelstackpointer = next->kernelstacktop-(12*sizeof(size_t));
+next->kernelstackpointer = next->kernelstacktop;
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -164,9 +164,16 @@ if(currentprocess != NULL) {
 page_init(highest_pid_used);				/* intialize page directory */	
 loadpagetable(highest_pid_used);				/* load page table */
 
-oldprocess=currentprocess;				/* save current process pointer */
-currentprocess=next;					/* point to new process */
-
+if(currentprocess == NULL) {
+	currentprocess=next;
+	oldprocess=currentprocess;
+}
+else
+{
+	oldprocess=currentprocess;				/* save current process pointer */
+	currentprocess=next;					/* point to new process */
+}
+	
 highest_pid_used++;
 
 /* Part two of enviroment variables duplication
@@ -217,6 +224,19 @@ if(entrypoint == -1) {
 	enablemultitasking();
 	return(-1);
 }
+
+stackinit=oldprocess->kernelstackpointer-(12*sizeof(size_t));
+*stackinit--=0xABCD1234;
+*stackinit--=0xEEEEEEEE;
+*stackinit--=0xDDDDDDDD;
+*stackinit--=0xCCCCCCCC;
+*stackinit--=oldprocess->kernelstackpointer;
+*stackinit--=oldprocess->kernelstackpointer-PROCESS_STACK_SIZE;
+*stackinit--=0xBBBBBBBB;
+*stackinit--=0xAAAAAAAA;
+*stackinit--=entrypoint;
+*stackinit--=0x8;
+*stackinit--=0x200;
 
 /* create psp */ 
 ksprintf(psp->commandline,"%s %s",next->filename,next->args);

@@ -1,5 +1,5 @@
 name=FAT filesystem
-description=FAT filesystem. Use this driver to acess FAT-formatted media.
+description=FAT filesystem. Use this driver to access FAT-formatted media.
 compile_opt=m
 compile_external_module=y
 

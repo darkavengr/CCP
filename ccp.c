@@ -28,7 +28,6 @@
 #include "filemanager/vfs.h"
 #include "processmanager/process.h"
 #include "header/debug.h"
-#include "modules/filesystems/fat/fat.h"
 
 /*
  * High-level kernel initalization
@@ -39,8 +38,19 @@
  */
 
 void kernel(void) {
-if(exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE) ==  -1) {
-	kprintf_direct("Missing or corrupt command interpreter, system halted (%d)",getlasterror());
+FILERECORD commandrun;
+size_t returnvalue;
+
+if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
+	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);
+}
+else
+{
+	returnvalue=exec("\\COMMAND.RUN","",FALSE);
+}
+
+if(returnvalue ==  -1) {
+	kprintf_direct("Missing or corrupt command interpreter, system halted (error %d)",getlasterror());
 
 	asm("xchg %bx,%bx");
 	halt();

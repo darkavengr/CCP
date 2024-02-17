@@ -7,7 +7,7 @@ OBJFILES=addvar.o command.o copyfile.o err.o getfullpath.o kprintf.o readline.o 
 OUTFILE=../bin/@arch@/COMMAND.RUN 
 
 all: 	$(OBJFILES)
-	$(CC) -o $(OUTFILE) `find -iname \*.o` $(LDFLAGS)
+	$(CC) -o $(OUTFILE) *.o $(LDFLAGS)
 
 addvar.o:
 	$(CC) $(CCFLAGS) addvar.c

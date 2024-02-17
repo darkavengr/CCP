@@ -38,7 +38,6 @@ size_t add_external_module_symbol(char *name,size_t val);
 size_t get_external_module_symbol(char *name);
 
 SYMBOL_TABLE_ENTRY *externalmodulesymbols=NULL;
-SYMBOL_TABLE_ENTRY *externalmodulesymbols_end=NULL;
 
 /*
  * Load and execute kernel module
@@ -80,6 +79,8 @@ char *sectionheader_strptr;
 size_t reloc_count;
 char *rodata;
 char *data;
+char *next_free_address_data;
+char *next_free_address_rodata;
 
 disablemultitasking();
 
@@ -99,15 +100,13 @@ if(buf == NULL) {
 	return(-1);
 }
 
-kprintf("module addresses=%X %X\n",buf,(buf+getfilesize(handle)));
-
 if(read(handle,buf,getfilesize(handle)) == -1) {			/* read module into buffer */
 	close(handle);
 
 	kernelfree(buf);
 
 	enablemultitasking();	
-	return(-1); /* read error */
+	return(-1);
 }
 
 close(handle);
@@ -166,6 +165,7 @@ for(count=0;count < elf_header->e_shnum;count++) {
 	shptr++;
 }
 
+
 /* check if symbol and string table present */
 
 if(symtab == NULL) {
@@ -188,9 +188,12 @@ if(strtab == NULL) {
 	return(-1); 
 }
 
+next_free_address_data=data;			/* get next free pointers */
+next_free_address_rodata=rodata;
+
 shptr=buf+elf_header->e_shoff;
 
-//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(shptr);
+if(strcmp(filename,"Z:\\\\KEYB.O") == 0) DEBUG_PRINT_HEX(shptr);
 
 /* Relocate elf references
 
@@ -210,16 +213,18 @@ for(count=0;count<elf_header->e_shnum;count++) {
 		if(shptr->sh_type == SHT_REL) {
 			relptr=buf+shptr->sh_offset;
 
-			//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptr);
+			if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptr);
 		}
 
 		else if(shptr->sh_type == SHT_RELA) {
 			relptra=buf+shptr->sh_offset;
 
-			//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptra);
+			if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptra);
 		}
 
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
+				kprintf_direct("***********************************\n");
+
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
 				
 				if(shptr->sh_type == SHT_REL) {			
@@ -228,31 +233,32 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 					ref=(buf+rel_shptr->sh_offset)+relptr->r_offset;
 
-					//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptr->r_offset);
+					if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptr->r_offset);
 				}
-
 				else if(shptr->sh_type == SHT_RELA) { 
 
 			  		whichsym=relptra->r_info >> 8;			/* which symbol */
 					symtype=relptra->r_info & 0xff;		/* symbol type */
 
 		  			ref=(buf+rel_shptr->sh_offset)+relptra->r_offset;
-
-					//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptra->r_offset);		  
 		  
 				}
 				
+//				if(*ref == 0) {		/* if it does not have a value, assign one */
+					
 				/* Get the value to place at the location ref into symval */
 
-				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(whichsym);
-				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(symtype);
-				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(ref);
-				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(*ref);
-				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(codestart);
-				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(rodata);
-				//if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(data);
+				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(whichsym);
+				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(symtype);
+				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(ref);
+				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(*ref);
+				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(codestart);
+				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(rodata);
+				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(data);
 
 				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
+
+				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(symptr->st_value);
 
 				/* get symbol value */
 
@@ -275,35 +281,57 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				else
 				{								
 				
-					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC)) {	/* code symbol */						
+					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC)) {	/* code symbol */	
+						kprintf_direct("is code symbol\n");
+					
 						symval=codestart+symptr->st_value;								
 					}
 					else if((symtype == STT_OBJECT) || (symtype == STT_COMMON) || ((symptr->st_info  & 0xf) == STT_FUNC)) {		/* data symbol */
-						if(strcmp(name,"rodata") == 0) {								
-							symval=rodata+symptr->st_value;
+						if(strcmp(name,"rodata") == 0) {
+							kprintf_direct("is rodata symbol\n");
+								
+							//if(symptr->st_value == 0) {
+							//	next_free_address_rodata += symptr->st_size;
+							//	symval=next_free_address_rodata;
 
-							//if(strcmp(filename,"Z:\\KEYB.O") == 0) {
-							//	kprintf_direct("%s %X\n",name,symval);
-
-//								asm("xchg %bx,%bx");
+							//	if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
 							//}
+							//else
+							//{
+								symval=rodata+symptr->st_value;			
+							//}
+						
+
 						}
 						else
-						{							
-							symval=data+symptr->st_value;		
+						{	
+							kprintf_direct("is data symbol\n");
+	
+							//if(symptr->st_value == 0) {
+							//	next_free_address_data += symptr->st_size;
+							//	symval=next_free_address_data;
 
-							//if(strcmp(name,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(symval);
+							//	if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
+							//}
+							//else
+							//{
+								symval=data+symptr->st_value;			
+							//}
 						}
 
 					}	
 
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
 				}				
-
-				//if(strcmp(filename,"Z:\\KEYB.O") == 0) {
-				//		if(relptr->r_offset == 0x25d) asm("xchg %bx,%bx");
-				//}
 	
+
+				if(strcmp(filename,"Z:\\KEYB.O") == 0) {
+					kprintf_direct("%s %X\n",name,symval);
+					
+					if(relptr->r_offset == 0x25d) asm("xchg %bx,%bx");
+				}
+
+
 				/* update reference in section */
 
 				if(symtype == R_386_NONE) {
@@ -318,7 +346,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 						*ref=DO_386_PC32(symval,*ref,(size_t) ref);
 					}
 					else if(shptr->sh_type == SHT_RELA) {
-	  					*ref = DO_386_PC32(symval,*ref,symval);
+	  					*ref=DO_386_PC32(symval,*ref,symval);
 					}
 				}
 				else
@@ -339,9 +367,9 @@ for(count=0;count<elf_header->e_shnum;count++) {
 					relptra++;
 				}
 
-//				if(strcmp(filename,"Z:\\KEYB.O") == 0) asm("xchg %bx,%bx");
-
 		}		
+
+		kprintf_direct("***********************************\n");
  	}
 		
 	shptr++;
@@ -350,6 +378,8 @@ for(count=0;count<elf_header->e_shnum;count++) {
 entry=codestart;
 
 enablemultitasking();
+
+if(strcmp(filename,"Z:\\\\KEYB.O") == 0) asm("xchg %bx,%bx");
 
 return(entry(argsx));
 }
@@ -436,28 +466,41 @@ return(-1);
  */
 size_t add_external_module_symbol(char *name,size_t val) {
 SYMBOL_TABLE_ENTRY *next;
+SYMBOL_TABLE_ENTRY *last;
 
 if(externalmodulesymbols == NULL) {		/* first in list */
 	externalmodulesymbols=kernelalloc(sizeof(SYMBOL_TABLE_ENTRY));
 	if(externalmodulesymbols == NULL) return(-1);
 
-	externalmodulesymbols_end=externalmodulesymbols;
+	next=externalmodulesymbols;
 }
 else
 {
-	externalmodulesymbols->next=kernelalloc(sizeof(SYMBOL_TABLE_ENTRY));
- 	if(externalmodulesymbols->next == NULL) return(-1);
+	next=externalmodulesymbols;
 
-	externalmodulesymbols_end=externalmodulesymbols->next;
+	while(next != NULL) {
+		last=next;
+
+		if(strcmp(next->name,name) == 0) return(-1);		/* symbol exists */
+		next=next->next;
+	}
+
+	last->next=kernelalloc(sizeof(SYMBOL_TABLE_ENTRY));
+ 	if(last->next == NULL) return(-1);
+
+	next=last->next;
 }
 
 /* add details to end */
 
-strcpy(externalmodulesymbols_end->name,name);
-externalmodulesymbols_end->address=val;
+strcpy(next->name,name);
+next->address=val;
+next->next=NULL;
+
+//kprintf_direct("added symbol %s\n",name);
 
 setlasterror(NO_ERROR);
-return(-1);
+return(0);
 }
 
 /*
@@ -474,8 +517,6 @@ SYMBOL_TABLE_ENTRY *next;
 next=externalmodulesymbols;
 
 while(next != NULL) {
-//	//kprintf_direct("%s\n",next->name);
-
 	if(strcmp(next->name,name) == 0) return(next->address);
 
 	next=next->next;

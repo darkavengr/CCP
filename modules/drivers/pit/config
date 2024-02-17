@@ -1,6 +1,7 @@
 name=pit
 description=Programable interval timer, use this or something similar to provide a timer for multitasking.
-compile_opt=m
+compile_opt=y
 requires=pic
-compile_external_module=y
+compile_external_module=n
+
 

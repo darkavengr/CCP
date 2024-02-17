@@ -58,7 +58,7 @@ global getenv
 
 exit:
 mov 	eax,0x4c
-int 	21h 
+int	0x21
 ret
 
 seek:
@@ -66,28 +66,28 @@ mov	eax,[esp+12]
 mov	ebx,[esp+4]
 mov	edx,[esp+8]
 add 	ax,0x4200
-int 	21h
+int	0x21
 ret
 
 getfileattributes:
 mov	edx,[esp+4]
 
 mov	eax,0x4300
-int	21h
+int	0x21
 ret
 
 setfileattributes:
 mov	edx,[esp+4]
 
 mov	eax,0x4301
-int	21h
+int	0x21
 ret
 
 getfiletimedate:
 mov	ebx,[esp+4]
 
 mov	eax,0x5700
-int	21h
+int	0x21
 ret
  
 
@@ -97,36 +97,36 @@ mov	ecx,[esp+8]
 mov	edx,[esp+12]
 
 mov	eax,0x5701
-int 	21h
+int	0x21
 ret
 
 close:
 mov	ebx,[esp+4]
 
-mov 	eax,3e00h
-int 	21h
+mov 	eax,0x3e00
+int	0x21
 ret
 
 create:
 mov	edx,[esp+4]
 
-mov	eax,3c00h
-int 	21h
+mov	eax,0x3c00
+int	0x21
 ret
 
 open:
 mov	edx,[esp+4]
 mov	eax,[esp+8]
 
-add	ax,3d00h
-int 	21h
+add	ax,0x3d00
+int	0x21
 ret
 
 delete:
 mov	edx,[esp+4]
 
-mov	eax,4100h
-int 	21h
+mov	eax,0x4100
+int	0x21
 ret
 
 exec:
@@ -134,44 +134,44 @@ mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
 mov	eax,0x4b00
-int 	21h
+int	0x21
 ret
 
 findfirst:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
-mov	eax,4e00h
-int 	21h
+mov	eax,0x4e00
+int	0x21
 ret
 
 findnext:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
-mov	eax,4f00h
-int 	21h
+mov	eax,0x4f00
+int	0x21
 ret
 
 getcwd:
 mov	edx,[esp+4]
 
-mov	eax,4700h
-int 	21h
+mov	eax,0x4700
+int	0x21
 ret
 
 chdir:
 mov	edx,[esp+4]
-mov	eax,3b00h
-int 	21h
+mov	eax,0x3b00
+int	0x21
 ret
 
 rename:
 mov	esi,[esp+4]
 mov	edi,[esp+8]
 
-mov	eax,5600h
-int 	21h
+mov	eax,0x5600
+int	0x21
 ret
 
 write:
@@ -179,8 +179,8 @@ mov	ebx,[esp+4]
 mov	edx,[esp+8]
 mov	ecx,[esp+12]
 
-mov	ah,40h
-int 	21h
+mov	ah,0x40
+int	0x21
 ret
 
 read:
@@ -188,74 +188,74 @@ mov	ebx,[esp+4]
 mov	edx,[esp+8]
 mov	ecx,[esp+12]
 
-mov	eax,3f00h
-int 	21h
+mov	eax,0x3f00
+int	0x21
 ret
 
 mkdir:
 mov	edx,[esp+4]
 
-mov	eax,3900h
-int 	21h
+mov	eax,0x3900
+int	0x21
 ret
 
 rmdir:
 mov	edx,[esp+4]
 
-mov	eax,3a00h
-int 	21h
+mov	eax,0x3a00
+int	0x21
 ret
 
 getargs:
 mov	edx,[esp+4]
 
-mov	eax,6500h
-int 	21h
+mov	eax,0x6500
+int	0x21
 ret
 
 getversion:
-mov	eax,3000h
-int 	21h
+mov	eax,0x3000
+int	0x21
 ret
 
 alloc:
-mov	eax,4800h
+mov	eax,0x4800
 mov	ebx,[esp+4]
-int	 21h
+int	0x21
 ret
 
 free:
 mov	edx,[esp+4]
-mov	eax,4900h
-int	21h
+mov	eax,0x4900
+int	0x21
 ret
 
 
 shutdown:
 mov	eax,0x7003
-int 	21h
+int	0x21
 ret
 
 restart:
 mov	eax,0x7002
-int	 21h
+int	0x21
 ret
 
 getlasterror:
-mov	eax,4d00h
-int 	21h
+mov	eax,0x4d00
+int	0x21
 ret
 
 findfirstprocess:
 mov	edx,[esp+4]		; buffer
 mov	eax,0x7009
-int 	21h
+int	0x21
 ret
 
 findnextprocess:
 mov	edx,[esp+4]			; buffer
 mov	eax,0x700A
-int 	21h
+int	0x21
 ret
 
 addblockdevice:
@@ -265,7 +265,7 @@ mov	ebx,[esp+12]
 mov	edx,[esp+16]
 
 mov	eax,0x700B
-int 	21h
+int	0x21
 ret
 
 addcharacterdevice:
@@ -275,12 +275,12 @@ mov	ebx,[esp+12]
 mov	edx,[esp+16]
 
 mov	eax,0x700C
-int 	21h
+int	0x21
 ret
 
 switchtonextprocess:
 mov	 ax,0x7011
-int	 21h
+int	0x21
 ret
 
 mov	ebx,[esp+4]
@@ -289,210 +289,210 @@ mov	edx,[esp+8]
 pop	ebx			; buffer
 pop	edx			; filename
 mov	eax,0x7012
-int	 21h
+int	0x21
 ret
 
 getconsolereadhandle:
 mov	eax,0x7014
-int 	21h
+int 	0x21
 ret
 
 setconsolereadhandle:
 mov	ebx,[esp+4]
 mov	eax,0x7016
-int 	21h
+int 	0x21
 ret
 
 getconsolewritehandle:
 mov	eax,0x7017
-int 	21h
+int 	0x21
 ret
 
 setconsolewritehandle:
 mov	ebx,[esp+4]
 mov	eax,0x7018
-int 	21h
+int	0x21
 ret
 
 getcurrentprocess:
 mov	eax,0x701A
-int 	21h
+int	0x21
 ret
 
 writeconsole:
 mov	edx,[esp+4]
-mov	eax,9h
-int 	21h
+mov	eax,0x9
+int	0x21
 ret
 
 getfilesize:
 mov	ebx,[esp+4]
 
-mov	eax,7018h		; get filesize
-int	21h
+mov	eax,0x7018		; get filesize
+int	0x21
 ret
 
 kill:
 mov	ebx,[esp+4]
 
-mov	eax,7019h
-int	21h
+mov	eax,0x7019
+int	0x21
 ret
 
 setconsolecolour:
 mov	eax,0x7020
 mov	ebx,[esp+4]
-int	21h
+int	0x21
 ret
 
 load_kernel_module:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 mov	eax,0x4b03
-int 	21h
+int	0x21
 ret
 
 dup:
 mov	ebx,[esp+4]
-mov 	eax,45h
-int 	21h
+mov 	eax,0x45
+int	0x21
 ret
 
 dup2:
 mov	ebx,[esp+4]
 mov	ecx,[esp+8]
-mov 	eax,46h
-int 	21h
+mov 	eax,0x46
+int	0x21
 ret
 
 tell:
 mov	ebx,[esp+4]
 mov	eax,0x7003
-int 	21h
+int	0x21
 ret
 
 set_critical_error_handler:
-mov	eax,2524h
+mov	eax,0x2524
 mov	ebx,[esp+4]
-int	21h
+int	0x21
 ret
 
 set_signal_handler:
-mov	eax,8c00h
+mov	eax,0x8c00
 mov	edx,[esp+4]
-int	21h
+int	0x21
 ret
 
 signal:
-mov	eax,8d00h
+mov	eax,0x8d00
 mov	ebx,[esp+4]
 mov	edx,[esp+8]
-int	21h
+int	0x21
 ret
 
 waitpid:
-mov	eax,8a00h
+mov	eax,0x8a00
 mov	ebx,[esp+4]
-int	21h
+int	0x21
 ret
 
 getpid:
-mov	eax,5000h
-int	21h
+mov	eax,0x5000
+int	0x21
 ret
 
 getprocessinfomation:
-mov	eax,6500h
+mov	eax,0x6500
 mov	ebx,[esp+4]
-int	21h
+int	0x21
 ret
 
 blockread:
-mov	eax,9000h
+mov	eax,0x9000
 mov	ecx,[esp+4]
 mov	edx,[esp+8]
-int	21h
+int	0x21
 ret
 
 blockwrite:
-mov	eax,9100h
+mov	eax,0x9100
 mov	ecx,[esp+4]
 mov	edx,[esp+8]
-int	21h
+int	0x21
 ret
 
 ioctl:
-mov	eax,4401h
+mov	eax,0x4401
 mov	ebx,[esp+4]
 mov	ecx,[esp+8]
 mov	edx,[esp+12]
-int	21h
+int	0x21
 ret
 
 dma_alloc:
-mov	eax,7000h
+mov	eax,0x7000
 mov	ebx,[esp+4]
-int	21h
+int	0x21
 ret
 
 remove_block_device:
-mov	eax,700Dh
+mov	eax,0x700D
 mov	edx,[esp+4]
-int	21h
+int	0x21
 ret
 
 remove_char_device:
-mov	eax,700Eh
+mov	eax,0x700E
 mov	edx,[esp+4]
-int	21h
+int	0x21
 ret
 
 register_filesystem:
-mov	eax,700Dh
+mov	eax,0x700D
 mov	edx,[esp+4]
-int	21h
+int	0x21
 ret
 
 lock_mutex:
-mov	eax,702eh
+mov	eax,0x702e
 mov	edx,[esp+4]
-int	21h
+int	0x21
 ret
 
 unlock_mutex:
-mov	eax,702fh
+mov	eax,0x702f
 mov	edx,[esp+4]
-int	21h
+int	0x21
 ret
 
 allocatedriveletter:
-mov	eax,7028h
-int	21h
+mov	eax,0x7028
+int	0x21
 ret
 
 findcharacterdevice:
-mov	eax,7029h
+mov	eax,0x7029
 mov	ebx,[esp+4]
 mov	edx,[esp+8]
-int	21h
+int	0x21
 ret
 
 getblockdevice:
-mov	eax,702ah
+mov	eax,0x702a
 mov	ebx,[esp+4]
 mov	edx,[esp+8]
-int	21h
+int	0x21
 ret
 
 getdevicebyname:
-mov	eax,702bh
+mov	eax,0x702b
 mov	ebx,[esp+4]
 mov	edx,[esp+8]
-int	21h
+int	0x21
 ret
 
 getenv:
-mov	eax,7030h
-int	21h
+mov	eax,0x7030
+int	0x21
 ret
 

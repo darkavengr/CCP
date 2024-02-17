@@ -56,15 +56,15 @@ jnz	multitasking_enabled
 jmp	end_switch
 
 multitasking_enabled:
-push	esp
+push	dword [save_esp]
 call	save_kernel_stack_pointer
 add	esp,4
 
 call	increment_process_ticks
 
 call	is_process_ready_to_switch
-jnz	task_time_slice_finished
 test	eax,eax					; if process not ready to switch, return
+jnz	task_time_slice_finished
 
 jmp	end_switch
 
@@ -103,7 +103,7 @@ call	set_tss_esp0
 add	esp,4
 
 call	get_kernel_stack_pointer
-mov	esp,eax
+mov	esp,eax						; switch kernel stack
 
 end_switch:
 ret

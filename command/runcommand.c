@@ -95,7 +95,7 @@ while(*b != 0) {
 
 b++;
 }
-/* run .run then .scp */
+/* run .run then .bat */
 
 b=filename;
 b += strlen(filename);		/* point to next */
@@ -110,12 +110,12 @@ ext=b;
 if(exec(filename,args,backg) == -1) {
 	b=ext;
 
- *b='.';
- *++b='B';
- *++b='A';
- *++b='T';
+ 	*b='.';
+ 	*++b='B';
+ 	*++b='A';
+ 	*++b='T';
 
-if(dobatchfile(filename,args,backg) == -1) return(-1);
+	if(dobatchfile(filename,args,backg) == -1) return(-1);
 }
 
 }

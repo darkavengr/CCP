@@ -85,7 +85,6 @@ irq14:
 mov	dword [irqnumber],14
 jmp	irq
 
-
 irq15:
 mov	dword [irqnumber],15
 jmp	irq
@@ -98,29 +97,29 @@ mov	eax,4
 mul	edx
 
 add	eax,irq_handlers			; add start of irq handlers
-mov	eax,[eax]
+mov	eax,[eax]				; get irq handler address
 
-test	eax,eax
+test	eax,eax					; if no handler, return
 jz	irq_exit
 
 call	eax					; call irq handler
 
 irq_exit:
 nop
-mov	al,20h				         ; reset master
+mov	al,20h				        ; reset master
 out	020h,al
 
-mov	ebx,[irqnumber]			           ; get interrupt number
-cmp	ebx,7			     	          ; if slave irq
-jle	nslave				          ; continue
+mov	ebx,[irqnumber]			        ; get interrupt number
+cmp	ebx,7			     	        ; if slave irq
+jle	nslave				        ; continue
 
-mov	al,20h				          ; reset slave			     
+mov	al,20h				        ; reset slave			     
 out	0a0h,al
 
 nslave:
-popa					; restore registers
-iret			; return
+popa						; restore registers
+iret						; return
 
 
 irqnumber dd 0
-save_segment dd 0
+

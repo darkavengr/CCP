@@ -26,6 +26,7 @@
 #include "../../../devicemanager/device.h"
 #include "../../../processmanager/signal.h"
 #include "../../../header/bootinfo.h"
+#include "../../../header/debug.h"
 #include "keyb.h"
 
 #define MODULE_INIT keyb_init
@@ -65,6 +66,7 @@ void keyb_init(void) {
 CHARACTERDEVICE device;
 
 keyboardflags=0;
+readcount=0;
 
 /* create con devide */
 strcpy(&device.name,"CON");
@@ -94,17 +96,13 @@ return;
  */
 void readconsole(char *buf,size_t size) {
 keybuf=keybbuf; 						/* point to start of buffer */
-readcount=0;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
 while(readcount < size) {
-
 /* if backspace, delete character */
 	 
 	if(*keybuf == 0x8) {
 	  
-		/* overwrite character on screen */
-
 		if(bootinfo->cursor_col > 0) {
 			if(keybuf > keybbuf) *--keybuf=0;
 

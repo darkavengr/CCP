@@ -1,4 +1,4 @@
-#define DEBUG_PRINT_HEX(s) kprintf_direct(#s"=%X\n",s);
+#define DEBUG_PRINT_HEX(s) kprintf_direct(#s"=0x%X\n",s);
 #define DEBUG_PRINT_DEC(s) kprintf_direct(#s"=%d\n",s);
 #define DEBUG_PRINT_STRING(s) kprintf_direct(#s"=%s\n",s);
 

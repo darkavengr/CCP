@@ -69,7 +69,7 @@ char *exp[] = { "Division by zero exception","Debug exception","Non maskable int
 		 "General protection fault","Page fault","Unknown interrupt exception","Coprocessor fault", \
 		 "Alignment check exception","Machine check exception" };
 
-char *regnames[] = { "EIP=", "ESP=", "EAX=", "EBX=", "ECX=", "EDX=", "ESI=", "EDI=", "EBP=","" };
+char *regnames[] = { "EIP", "ESP", "EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP","" };
 
 char *flagsname[]= { "","Overflow", " Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
 
@@ -112,7 +112,7 @@ do {
 	if(flagsname[count] != "") kprintf_direct("%s=%d ",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
 	
 	flagsmask=flagsmask >> 1;
-	shiftcount=shiftcount-1;
+	shiftcount--;
 	count++;
 
 } while(flagsname[count] != "$");
