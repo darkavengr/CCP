@@ -227,12 +227,12 @@ fs.findnext=&initrd_findnext;
 fs.read=&initrd_read;
 fs.write=NULL;			/* not used */
 fs.rename=NULL;
-fs.delete=NULL;
+fs.unlink=NULL;
 fs.mkdir=NULL;
 fs.rmdir=NULL;
 fs.create=NULL;
 fs.chmod=NULL;
-fs.setfiletd=NULL;
+fs.touch=NULL;
 fs.write=NULL;
 register_filesystem(&fs);
 }

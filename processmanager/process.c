@@ -225,13 +225,13 @@ if(entrypoint == -1) {
 	return(-1);
 }
 
-stackinit=oldprocess->kernelstackpointer-(12*sizeof(size_t));
+stackinit=oldprocess->kernelstacktop-(12*sizeof(size_t));
 *stackinit--=0xABCD1234;
 *stackinit--=0xEEEEEEEE;
 *stackinit--=0xDDDDDDDD;
 *stackinit--=0xCCCCCCCC;
-*stackinit--=oldprocess->kernelstackpointer;
-*stackinit--=oldprocess->kernelstackpointer-PROCESS_STACK_SIZE;
+*stackinit--=oldprocess->kernelstacktop;
+*stackinit--=oldprocess->kernelstacktop-PROCESS_STACK_SIZE;
 *stackinit--=0xBBBBBBBB;
 *stackinit--=0xAAAAAAAA;
 *stackinit--=entrypoint;
@@ -524,7 +524,7 @@ switch(highbyte) {		/* function */
 		return(create((char *) argfour));
 	  
 	case 0x41:                     /* delete */
-		return(delete((char *) argfour));
+		return(unlink((char *) argfour));
 	 
 	case 0x4e:			/* findfirst */
 		return(findfirst(argfour,argtwo));	
@@ -615,8 +615,8 @@ switch(highbyte) {		/* function */
 	  		findfirst(argfour,&findbuf);
 	  		return;
 	 
-	 	case 0x5701:				/* set file time date */
-	  		return(setfiletimedate((size_t) argtwo,(size_t) argfour));
+	 	case 0x5701:				/* set file time and date */
+	  		return(touch((size_t) argtwo,(size_t) argfour));
 
 	 	case 0x4401:			/* ioctl */
 	  		return(ioctl((size_t) argtwo,(unsigned long) argthree,(void *) argsix));

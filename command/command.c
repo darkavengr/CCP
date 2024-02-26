@@ -890,15 +890,25 @@ return;
 
 int echo_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t count;
+size_t isnewline=TRUE;
+size_t starttoken=1;
 
 if(tc == 1) {			/* not enough args */
 	kprintf("\n");
 	return;
 }
 
-for(count=1;count<tc;count++) {
+if(strcmp(parsebuf[1],"-n") == 0) {		/* no newline */
+	isnewline=FALSE;
+	
+	starttoken++;
+}
+
+for(count=starttoken;count<tc;count++) {
 	 kprintf("%s ",parsebuf[count]);
 }
+
+if(isnewline == TRUE) kprintf("\n");
 
 return;
 }
@@ -1014,8 +1024,9 @@ while(findresult != -1) {
 
 /*time date size filename */
 
-	  kprintf("%u:%u:%u %u/%u/%u",direntry.last_written_time_date.hours,direntry.last_written_time_date.minutes,direntry.last_written_time_date.seconds,\
-			        direntry.last_written_time_date.day,direntry.last_written_time_date.month,direntry.last_written_time_date.year);
+	  kprintf("%u:%u:%u %u/%u/%u",direntry.last_written_time_date.hours,direntry.last_written_time_date.minutes,\
+				      direntry.last_written_time_date.seconds,direntry.last_written_time_date.day,\
+				      direntry.last_written_time_date.month,direntry.last_written_time_date.year);
 
 	  if(direntry.flags & FILE_DIRECTORY) {
 	  	kprintf("     <DIR> ");

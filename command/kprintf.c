@@ -77,7 +77,7 @@ while(*b != 0) {
 	   			num=va_arg(args,size_t);
 	   			itoa(num,z);
 
-	   			if((num > 0) && (num < 10)) write(stdout,"0",1);
+	   			if(num < 10) write(stdout,"0",1);
 
 	   			write(stdout,z,strlen(z));
 	   
