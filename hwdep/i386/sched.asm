@@ -56,7 +56,7 @@ jnz	multitasking_enabled
 jmp	end_switch
 
 multitasking_enabled:
-push	dword [save_esp]
+push	dword [save_esp]			; save current task's stack pointer
 call	save_kernel_stack_pointer
 add	esp,4
 
@@ -89,11 +89,16 @@ push	eax						; update current process pointer
 call	update_current_process_pointer
 add	esp,4
 
+; load page tables
+
 call	getpid
 
 push	eax
-call	loadpagetable						; load page tables
+call	loadpagetable
 add	esp,4
+
+call	get_kernel_stack_pointer
+mov	esp,eax						; switch kernel stack
 
 ; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
 call	get_kernel_stack_top
@@ -102,8 +107,6 @@ push	eax
 call	set_tss_esp0
 add	esp,4
 
-call	get_kernel_stack_pointer
-mov	esp,eax						; switch kernel stack
 
 end_switch:
 ret

@@ -49,6 +49,7 @@
 #define UNKNOWN_FILESYSTEM	0x30
 #define DIRECTORY_NOT_EMPTY	0x31
 #define DEVICE_EXISTS		0x32
+#define INVALID_ADDRESS		0x33
 
 #define TRUE	1
 #define FALSE 0

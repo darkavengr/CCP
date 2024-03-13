@@ -92,10 +92,19 @@ jmp	irq
 irq:
 pusha						; save registers
 
-mov	edx,[irqnumber]
-mov	eax,4
-mul	edx
+push	ds					; save segment registers
+push	es
+push	fs
+push	gs
 
+mov	ax,0x10					; kernel data selector
+mov	ds,ax
+mov	es,ax
+mov	fs,ax
+mov	gs,ax
+
+mov	eax,[irqnumber]
+shl	eax,2					; multiply by four
 add	eax,irq_handlers			; add start of irq handlers
 mov	eax,[eax]				; get irq handler address
 
@@ -117,6 +126,11 @@ mov	al,20h				        ; reset slave
 out	0a0h,al
 
 nslave:
+pop	gs					; restore segments
+pop	fs
+pop	es
+pop	ds
+
 popa						; restore registers
 iret						; return
 

@@ -225,19 +225,6 @@ if(entrypoint == -1) {
 	return(-1);
 }
 
-stackinit=oldprocess->kernelstacktop-(12*sizeof(size_t));
-*stackinit--=0xABCD1234;
-*stackinit--=0xEEEEEEEE;
-*stackinit--=0xDDDDDDDD;
-*stackinit--=0xCCCCCCCC;
-*stackinit--=oldprocess->kernelstacktop;
-*stackinit--=oldprocess->kernelstacktop-PROCESS_STACK_SIZE;
-*stackinit--=0xBBBBBBBB;
-*stackinit--=0xAAAAAAAA;
-*stackinit--=entrypoint;
-*stackinit--=0x8;
-*stackinit--=0x200;
-
 /* create psp */ 
 ksprintf(psp->commandline,"%s %s",next->filename,next->args);
 
@@ -253,7 +240,7 @@ if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 	return;
 }
 else
-{ 
+{
 	initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);
 	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize user mode stack */
 
@@ -508,6 +495,11 @@ switch(highbyte) {		/* function */
 		break;
 
 	case 9:			/* output string */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		kprintf_direct((char *) argfour);
 		return;
 
@@ -521,15 +513,35 @@ switch(highbyte) {		/* function */
 		return(close((size_t) argtwo));  
 
 	case 0x3c:			/* create */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(create((char *) argfour));
 	  
 	case 0x41:                     /* delete */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(unlink((char *) argfour));
 	 
 	case 0x4e:			/* findfirst */
+		if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(findfirst(argfour,argtwo));	
 	
 	case 0x4f:			/* findnext */
+		if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(findnext(argfour,argtwo));
 	  
 	case 0x45:			/* dup */
@@ -539,24 +551,59 @@ switch(highbyte) {		/* function */
 		return(dup2(argtwo,argthree));
 
 	case 0x47:			/* getcwd */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(getcwd((char *) argfour));
 	 
 	case 0x3f:			/* read */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(read((size_t)  argtwo,(char *) argfour,(size_t)  argthree));
 	 
 	case 0x40:			/* write */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(write((size_t)  argtwo,(char *) argfour,(size_t)  argthree));
 	  
 	case 0x3b:			/* chdir */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(chdir((char *) argfour)); 
 	
 	case 0x39:			/* mkdir */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(mkdir((char *) argfour));
 
 	case 0x3a:			/* rmdir */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(rmdir((char *) argfour));
 
 	case 0x56:			/* rename */
+		if((argfive >= KERNEL_HIGH) || (argsix >= KERNEL_HIGH)) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
 		return(rename((char *) argfive,(char *) argsix));
 
 	case 0x65:			/* get process information */
@@ -590,9 +637,19 @@ switch(highbyte) {		/* function */
 	switch(argone) {		/* function */
 	 
 		case 0x3d01:			/* open */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 			return(open((char *) argfour,_O_RDONLY));
 
 		case 0x3d02:
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 			return(open((char *) argfour,_O_RDWR));
 
 	 	case 0x4200:		/* seek */
@@ -605,29 +662,65 @@ switch(highbyte) {		/* function */
 	  		return(seek((size_t)  argtwo,argfour,SEEK_END));
 
 	 	case 0x4300:			/* get file attributes */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	  		findfirst(argfour,&findbuf);
+
 	  		return(findbuf.attribs);
 
 	 	case 0x4301:			/* set file attributes */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	  		return(chmod(argfour,(size_t)  argtwo));
 	 
 	 	case 0x5700:			/* get file time and date */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	  		findfirst(argfour,&findbuf);
 	  		return;
 	 
 	 	case 0x5701:				/* set file time and date */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	  		return(touch((size_t) argtwo,(size_t) argfour));
 
 	 	case 0x4401:			/* ioctl */
 	  		return(ioctl((size_t) argtwo,(unsigned long) argthree,(void *) argsix));
 
 	 	case 0x4b00:			/* exec */
+			if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	  		return(exec(argfour,argtwo,FALSE));
 	 
 	 	case 0x4b02:
+			if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(exec(argfour,argtwo,TRUE));
 
 		case 0x4b03:				/* load driver */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(load_kernel_module(argfour));
 
 	 	case 0x7000:				/* allocate dma buffer */
@@ -644,22 +737,52 @@ switch(highbyte) {		/* function */
 	 	case 0x7004:			/* tell */
 	 		return(tell(argtwo));
 	   
-	 	case 0x7009:			/* find process */
+	 	case 0x7009:			/* find first process */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(findfirstprocess((void *) argfour));
 
 		case 0x700A:			/* find process */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(findnextprocess((void *) argfour));
 
 		case 0x700B:			/* add block device */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(add_block_device(argfour));
 
 		case 0x700C:			/* add char device */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(add_char_device(argfour));
 
 		case 0x700D:			/* remove block device */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(remove_block_device(argfour));
 
 		case 0x700E:			/* remove char device */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(remove_char_device(argfour));
 
 		case 0x7018:				/* get file size */
@@ -672,27 +795,62 @@ switch(highbyte) {		/* function */
 	 		return(allocatedrive());
 
 		case 0x7029:				/* get character device */
+			if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(findcharacterdevice(argtwo,argfour));
 
 		case 0x702a:				/* get block device from drive number */
+			if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(getblockdevice(argtwo,argfour));
 
 		case 0x702b:				/* get block device from name */
+			if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(getdevicebyname(argtwo,argfour));
 
 		case 0x702d:				/* register filesystem */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(register_filesystem(argfour));
 
 		case 0x702e:				/* lock mutex */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(lock_mutex(argfour));
 
 		case 0x702f:				/* unlock mutex */
+			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 	 		return(unlock_mutex(argfour));
 
 		case 0x7030:				/* get enviroment address */
 	 		return(getenv());
 
 		case 0x2524:				/* set critical error handler */
+			if(argtwo >= KERNEL_HIGH) {		/* invalid argument */
+				setlasterror(INVALID_ADDRESS);
+				return(-1);
+			}
+
 			return(set_critical_error_handler(argtwo));
 
 		default:

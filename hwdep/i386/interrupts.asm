@@ -514,7 +514,7 @@ ret
 ; Returns: Nothing
 ;
 d_lowlevel:
-nop
+call	disablemultitasking
 
 push	eax
 push	ebx
@@ -529,7 +529,7 @@ mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
 
-;call	disablemultitasking
+;xchg	bx,bx
 sti
 call	dispatchhandler
 cli
@@ -556,7 +556,7 @@ mov	eax,[tempone]					; then return old eax
 
 iret_error:
 
-;call	enablemultitasking
+call	enablemultitasking
 iret  
 
 section .data
