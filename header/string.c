@@ -262,7 +262,7 @@ char *b;
 b=buf;					/* point to buffer */
 
 for(count=0;count<size;count++) { 
-	*b++=i;				/* put byte */
+	*b++=0;				/* put byte */
 }
 
 return;

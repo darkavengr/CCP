@@ -92,7 +92,7 @@ clean:
 	rm obj/@arch@/*
 	rm *.map
 	rm drive.c
-	rm command/obj/@arch@/*.o
+	rm command/*.o
 	rm ccp.sym
 
 distclean:

@@ -1,3 +1,5 @@
+%include "../../../hwdep/i386/kernelselectors.inc"
+
 extern irq_handlers
 
 global irq0
@@ -17,8 +19,6 @@ global irq13
 global irq14
 global irq15
 global irq_exit
-
-extern getpid
 
 ;
 ; IRQ handlers
@@ -92,12 +92,16 @@ jmp	irq
 irq:
 pusha						; save registers
 
+mov	dword [esp-4],0				; clear before pushing, pushing segment registers does not modify upper 16 bits of stack entry
 push	ds					; save segment registers
+mov	dword [esp-4],0
 push	es
+mov	dword [esp-4],0
 push	fs
+mov	dword [esp-4],0
 push	gs
 
-mov	ax,0x10					; kernel data selector
+mov	ax,KERNEL_DATA_SELECTOR			; kernel data selector
 mov	ds,ax
 mov	es,ax
 mov	fs,ax
@@ -133,7 +137,6 @@ pop	ds
 
 popa						; restore registers
 iret						; return
-
 
 irqnumber dd 0
 

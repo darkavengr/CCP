@@ -5,9 +5,9 @@
 #include "../../../header/errors.h"
 #include "../../../processmanager/mutex.h"
 #include "../../../filemanager/vfs.h"
+#include "../../../memorymanager/memorymanager.h"
 #include "../../../processmanager/process.h"
 #include "../../../devicemanager/device.h"
-#include "../../../memorymanager/memorymanager.h"
 #include "elf32.h"
 
 #define MODULE_INIT elf32_init

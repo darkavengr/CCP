@@ -24,7 +24,8 @@ typedef struct {
 	size_t pid;
 	size_t ticks;	
 	size_t maxticks;
-	struct PROCESS *next;		
+	struct PROCESS *next;
+	struct PROCESS *blockedprocess;		
 	uint8_t filename[MAX_PATH];		
 	uint8_t args[MAX_PATH];		
 	size_t parentprocess;
@@ -41,6 +42,9 @@ typedef struct {
 	size_t stackbase;
 	size_t lasterror;
 	char *envptr;	
+	HEAPENTRY *heapaddress;
+	size_t heapsize;
+	HEAPENTRY *heapend;
 	struct PROCESS *findptr;
 }  __attribute__((packed)) PROCESS;
 
@@ -98,4 +102,10 @@ size_t load_executable(char *filename);
 void reset_process_ticks(void);
 size_t get_tick_count(void);
 void increment_tick_count(void);
+HEAPENTRY *GetUserHeapAddress(void);
+size_t GetUserHeapSize(void);
+HEAPENTRY *GetUserHeapEnd(void);
+void SetUserHeapSize(size_t size);
+void SetUserHeapEnd(HEAPENTRY *end);
+void SetUserHeapAddress(HEAPENTRY *heap);
 

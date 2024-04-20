@@ -86,7 +86,7 @@ if(blockdevices == NULL) {				/* if empty allocate struct */
 }
 else
 {
-	last->next=kernelalloc(sizeof(blockdevices)); /* add to struct */
+	last->next=kernelalloc(sizeof(BLOCKDEVICE)); /* add to struct */
 	if(last->next == NULL) return(-1);
 
 	last=last->next;
@@ -95,6 +95,7 @@ else
 
 /* at end here */
 memcpy(last,device,sizeof(BLOCKDEVICE));
+
 last->next=NULL;
 last->superblock=NULL;
 
@@ -140,7 +141,7 @@ else
 	 	charnext=charnext->next;
 	} while(charnext != NULL);
 
-charlast->next=kernelalloc(sizeof(characterdevs)); /* add to struct */
+charlast->next=kernelalloc(sizeof(CHARACTERDEVICE)); /* add to struct */
 if(charlast->next == NULL) return(-1);
 
 charnext=charlast->next;
@@ -150,6 +151,7 @@ memset(charnext,0,sizeof(CHARACTERDEVICE));
 
 /* at end here */
 memcpy(charnext,device,sizeof(CHARACTERDEVICE));
+
 charnext->next=NULL;
 
 setlasterror(NO_ERROR);
@@ -196,6 +198,14 @@ unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 b=buf;
 
 if(next->sectorsperblock == 0) next->sectorsperblock=1;
+
+if(next->blockio == NULL) {				/* no handler defined */
+	kprintf_direct("debug: No blockio handler defined\n");
+	asm("xchg %bx,%bx");
+
+	setlasterror(NOT_IMPLEMENTED);
+	return(-1);
+}
 
 
 for(count=0;count<next->sectorsperblock;count++) {
@@ -289,6 +299,7 @@ lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
 next=blockdevices;
 while(next != NULL) {
+
 	if(next->drive == drive) {		/* found device */
 
 		memcpy(buf,next,sizeof(BLOCKDEVICE));

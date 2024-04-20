@@ -16,16 +16,10 @@
 ;  You should have received a copy of the GNU General Public License
 ;  along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
-;
-; Switch task
-;
-; This function is called by a function which is expected to save the registers onto the stack and call switch_task.
-; After returning from switch_task, the calling function will then restore the registers and return, transferring control to the new process.
-;
-; You are not expected to understand this
-;
 global switch_task
 global end_switch
+global yield
+global switch_task_process_descriptor
 
 extern is_multitasking_enabled			
 extern save_kernel_stack_pointer
@@ -46,7 +40,105 @@ extern get_processes_pointer
 
 %define offset
 
+;
+; The functions switch_task_process_descriptor and yield should not be called from 
+; an interrupt handler. Instead, switch_task must be called.
+;
+
+switch_task_process_descriptor:
+mov	[save_eax],eax
+
+mov	eax,[esp+4]				; get process descriptor
+mov	[save_descriptor],eax
+mov	eax,[save_eax]
+
+; fall through to yield
+
+;
+; Force switch to next process
+;
+; In: Nothing
+;
+; Returns: Nothing
+;
+yield:
+cli
+
+;
+; Stack format:
+;
+; EIP ( already on stack)
+; CS  
+; EFLAGS
+; ESP 
+; EAX	
+; ECX
+; EDX
+; EBX
+; Useless ESP
+; EBP
+; ESI
+; EDI
+; cs
+; ds
+; es
+; fs
+; gs
+
+; save eip, cs and eflags in the same way as an interrupt call
+
+push	eax
+mov	eax,[esp+4]				; get eip
+mov	[saveeip],eax				; save it
+pop	eax
+
+sub	esp,4
+
+pushf
+push	cs
+push	dword [saveeip]
+
+pusha						; save registers
+
+mov	dword [esp-4],0				; clear before pushing, pushing segment registers does not modify upper 16 bits of stack entry
+push	ds					; save segment registers
+mov	dword [esp-4],0
+push	es
+mov	dword [esp-4],0
+push	fs
+mov	dword [esp-4],0
+push	gs
+
+mov	ax,0x10					; kernel data selector
+mov	ds,ax
+mov	es,ax
+mov	fs,ax
+mov	gs,ax
+
+call	switch_task				; switch to next task
+
+pop	gs					; restore segments
+pop	fs
+pop	es
+pop	ds
+
+popa						; restore registers
+
+;sti
+iret						; jump to cs:EIP
+
+;
+; Switch task
+;
+; This function is called by a function which is expected to save the registers onto the stack and call switch_task.
+; After returning from switch_task, the calling function will then restore the registers and return, transferring control to the new process.
+;
+; You are not expected to understand this
+;
+
 switch_task:
+;xchg	bx,bx
+
 mov	[save_esp],esp
 
 call	is_multitasking_enabled			
@@ -61,6 +153,10 @@ call	save_kernel_stack_pointer
 add	esp,4
 
 call	increment_process_ticks
+
+mov	eax,[save_descriptor]			; get descriptor
+test	eax,eax					; if not switching to a specific process
+jnz	task_time_slice_finished		; don't check if process is ready to switch
 
 call	is_process_ready_to_switch
 test	eax,eax					; if process not ready to switch, return
@@ -83,8 +179,13 @@ not_debug:
 ; Switch to next process
 ;
 
+mov	eax,[save_descriptor]				; get descriptor
+test	eax,eax						; if not switching to a specific process
+jnz	have_descriptor					; update process now
+
 call	find_next_process_to_switch_to			; get pointer to next process to switch to
 
+have_descriptor:
 push	eax						; update current process pointer
 call	update_current_process_pointer
 add	esp,4
@@ -107,8 +208,14 @@ push	eax
 call	set_tss_esp0
 add	esp,4
 
-
 end_switch:
+xor	eax,eax
+mov	[save_descriptor],eax				; clear descriptor
+
 ret
 
 save_esp dd 0
+save_eax dd 0
+save_descriptor dd 0
+saveeip dd 0
+

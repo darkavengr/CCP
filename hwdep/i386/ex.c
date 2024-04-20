@@ -28,6 +28,7 @@
 #include "../../header/kernelhigh.h"
 #include "hwdefs.h"
 #include "../../filemanager/vfs.h"
+#include "../../memorymanager/memorymanager.h"
 #include "../../processmanager/process.h"
 
 #define DIVZERO 	0

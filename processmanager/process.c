@@ -23,10 +23,10 @@
 #include "../header/kernelhigh.h"
 #include "../header/errors.h"
 #include "mutex.h"
-#include "../devicemanager/device.h"
 #include "../filemanager/vfs.h"
 #include "../memorymanager/memorymanager.h"
 #include "process.h"
+#include "../devicemanager/device.h"
 #include "signal.h"
 #include "../header/bootinfo.h"
 #include "../header/debug.h"
@@ -40,12 +40,12 @@ size_t last_error_no_process=0;
 PROCESS *processes=NULL;
 PROCESS *processes_end=NULL;
 PROCESS *currentprocess=NULL;
+EXECUTABLEFORMAT *executableformats=NULL;
 size_t highest_pid_used=0;
 MUTEX process_mutex;
 size_t signalno;
 size_t thisprocess;
 char *saveenv=NULL;
-EXECUTABLEFORMAT *executableformats=NULL;
 size_t tickcount;
 size_t entrypoint;
 char *tempfilename[MAX_PATH];
@@ -145,8 +145,8 @@ if(next->kernelstacktop == NULL) {
 	return(-1);
 }
 
-next->kernelstacktop += PROCESS_STACK_SIZE;
-next->kernelstackpointer = next->kernelstacktop;
+next->kernelstacktop += PROCESS_STACK_SIZE;			/* top of kernel stack */
+next->kernelstackpointer=next->kernelstacktop;			/* intial kernel stack address */
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -164,15 +164,7 @@ if(currentprocess != NULL) {
 page_init(highest_pid_used);				/* intialize page directory */	
 loadpagetable(highest_pid_used);				/* load page table */
 
-if(currentprocess == NULL) {
-	currentprocess=next;
-	oldprocess=currentprocess;
-}
-else
-{
-	oldprocess=currentprocess;				/* save current process pointer */
-	currentprocess=next;					/* point to new process */
-}
+currentprocess=next;				/* use new process */
 	
 highest_pid_used++;
 
@@ -225,6 +217,21 @@ if(entrypoint == -1) {
 	return(-1);
 }
 
+/* create process heap */
+
+currentprocess->heapaddress=alloc_int(ALLOC_NORMAL,getpid(),INITIAL_HEAP_SIZE,-1);	/* allocate process heap */
+if(currentprocess->heapaddress == NULL) {
+	currentprocess=oldprocess;			/* restore previous process */
+
+	loadpagetable(getpid());
+	enablemultitasking();
+	return(-1);
+}
+
+currentprocess->heapsize=INITIAL_HEAP_SIZE;		/* set intial heap size */
+
+initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);
+
 /* create psp */ 
 ksprintf(psp->commandline,"%s %s",next->filename,next->args);
 
@@ -241,7 +248,6 @@ if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 }
 else
 {
-	initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);
 	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize user mode stack */
 
 	enablemultitasking();
@@ -598,6 +604,7 @@ switch(highbyte) {		/* function */
 
 		return(rmdir((char *) argfour));
 
+
 	case 0x56:			/* rename */
 		if((argfive >= KERNEL_HIGH) || (argsix >= KERNEL_HIGH)) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
@@ -613,12 +620,7 @@ switch(highbyte) {		/* function */
 	case 0x30:			/* get version */
 		return(CCPVER);
 	 
-	case 0x48:			/* allocate memory */
-		return(alloc((size_t)  argtwo));
 
-	case 0x49:			/* free */
-		free(argfour);
-		return;
 
 	case 0x4d:	
 		return(getlasterror());
@@ -679,6 +681,20 @@ switch(highbyte) {		/* function */
 
 	  		return(chmod(argfour,(size_t)  argtwo));
 	 
+		case 0x4800:			/* allocate memory from heap*/
+			return(alloc((size_t)  argtwo));
+
+		case 0x4801:			/* allocate memory from page frame allocator*/	
+			return(alloc_int(ALLOC_NORMAL,getpid(),(size_t) argtwo,-1));
+
+		case 0x4900:			/* free from heap */
+			free(argfour);
+			return;
+
+		case 0x4901:			/* free from slab allocation */
+			free_internal(getpid(),(size_t) argtwo,0);
+			return;
+
 	 	case 0x5700:			/* get file time and date */
 			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 				setlasterror(INVALID_ADDRESS);
@@ -1203,7 +1219,7 @@ initialize_mutex(&process_mutex);
 *
 * In: pid	PID of process to block
 *
-* Returns -1 on error or function return value on success
+* Returns -1 on error or 0 on success
 *
 */
 
@@ -1214,10 +1230,12 @@ next=processes;
 	
 while(next != NULL) {
 	if(next->pid == pid) {			/* found process */
-	  next->flags |= PROCESS_BLOCKED;			/* block process */
+		next->flags |= PROCESS_BLOCKED;			/* block process */
+	
+		next->blockedprocess=currentprocess;	/* save process descriptor */
 
-  	  if(pid == getpid()) yield();		/* switch to next process if blocking current process */
-	  return(0);
+		if(pid == getpid()) yield();		/* switch to next process if blocking current process */
+		return(0);
 	}
 	
 	next=next->next;
@@ -1232,18 +1250,29 @@ return(-1);
 *
 * In: pid		PID of process to unblock
 *
-* Returns -1 on error or function return value on success
+* Returns -1 on error or 0 on success
 *
 */
 
 size_t unblockprocess(size_t pid) {
 PROCESS *next;
+PROCESS *bp;
 
 next=processes;
 	
 while(next != NULL) {
 	if(next->pid == pid) {			/* found process */
-		next->flags &= PROCESS_BLOCKED;			/* block process */
+		next->flags &= ~PROCESS_BLOCKED;			/* unblock process */
+
+		if((pid != getpid()) && (next->blockedprocess != NULL)) {
+			bp=next->blockedprocess;
+			next->blockedprocess=NULL;
+
+			switch_task_process_descriptor(bp);		/* switch to blocked process */
+	
+			return;
+		}
+
 		return(0);
 	}
 	
@@ -1487,7 +1516,7 @@ size_t get_tick_count(void) {
 *
 */
 void increment_tick_count(void) {
- tickcount++;
+tickcount++;
 }
 
 /*
@@ -1499,10 +1528,88 @@ void increment_tick_count(void) {
 *
 */
 void kwait(size_t ticks) {
- size_t newticks;
+size_t newticks;
 
- newticks=get_tick_count()+ticks;
+newticks=get_tick_count()+ticks;
 
- while(get_tick_count() < newticks) ;;
+while(get_tick_count() < newticks) ;;
 }
 
+/*
+* Get heap address
+*
+* In: nothing
+*
+* Returns: Heap address
+*
+*/
+
+HEAPENTRY *GetUserHeapAddress(void) {
+return(currentprocess->heapaddress);
+}
+
+/*
+* Get user heap size
+*
+* In: nothing
+*
+* Returns: Heap size
+*
+*/
+
+size_t GetUserHeapSize(void) {
+return(currentprocess->heapsize);
+}
+
+/*
+* Get user heap end
+*
+* In: nothing
+*
+* Returns: Heap size
+*
+*/
+
+HEAPENTRY *GetUserHeapEnd(void) {
+return(currentprocess->heapend);
+}
+
+
+/*
+* Set user heap size
+*
+* In: User heap size
+*
+* Returns: Nothing
+*
+*/
+
+void SetUserHeapSize(size_t size) {
+currentprocess->heapsize=size;
+}
+
+/*
+* Set user heap end
+*
+* In: User heap end
+*
+* Returns: Nothing
+*
+*/
+
+void SetUserHeapEnd(HEAPENTRY *end) {
+currentprocess->heapend=end;
+}
+
+/*
+* Set user heap address
+*
+* In: User heap address
+*
+* Returns: Nothing
+*
+*/
+
+void SetUserHeapAddress(HEAPENTRY *heap) {
+currentprocess->heapaddress=heap;
+}

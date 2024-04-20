@@ -44,6 +44,7 @@
 #include "../processmanager/mutex.h"
 #include "../devicemanager/device.h"
 #include "../filemanager/vfs.h"
+#include "../memorymanager/memorymanager.h"
 #include "../processmanager/process.h"
 #include "../processmanager/signal.h"
 
@@ -245,36 +246,7 @@ kprintf(commandbanner,COMMAND_VERSION_MAJOR,COMMAND_VERSION_MINOR);
 
 argcount=tokenize_line(psp->commandline,commandlinearguments," \t");		/* tokenize command line arguments */
 
-if(argcount >= 2) {
-	for(count=1;count<argcount;count++) {
-		if(strcmpi(commandlinearguments[count],"/C") == 0) {		/* run command and exit */
-			doline(commandlinearguments[count+1]);
-			exit(0);
-		}
-
-		if(strcmpi(commandlinearguments[count],"/K") == 0) {		/* run command */
-			doline(commandlinearguments[count+1]);
-	
-		}
-	
-		if(strcmpi(commandlinearguments[count],"/P") == 0) {		/* Make command interpreter pemenant */
-			commandlineoptions |= COMMAND_PERMENANT;
-		}	
-		
-		if(strcmpi(commandlinearguments[count],"/?") == 0) {		/* Show help */
-			kprintf("Command interpreter\n");
-			kprintf("\n");
-			kprintf("COMMAND [/C command] [/K command] /P\n");
-			kprintf("\n");
-			kprintf("/C run command and exit\n");
-			kprintf("\n");
-			kprintf("/K run command and continue running command interpreter\n");
-			kprintf("\n");
-			kprintf("/P make command interpreter permanent (no exit)\n");
-		
-			count++;
-		}
-	}
+if(argcount > 2) {
 }
 
 set_critical_error_handler(&critical_error_handler);		/* set critical error handler */
@@ -295,23 +267,25 @@ for(count=0;count<26;count++) {		/* fill directory struct */
  *b++='\\';
  *b++=0;
 
-	c++;
+ c++;
 }
 
-	/* Loop  forever accepting commands */
+/* Loop  forever accepting commands */
 
-	while(1) {	/* forever */
-		getcwd(buffer); 
+while(1) {	/* forever */
+	getcwd(buffer); 
 
-		c=*buffer;
-		kprintf("%c>",c);
+	c=*buffer;
+	kprintf("%c>",c);
 
-		memset(buffer,0,MAX_PATH);
+	memset(buffer,0,MAX_PATH);
 
-		readline(commandconsolein,buffer,MAX_PATH);			/* get line */
+	readline(commandconsolein,buffer,MAX_PATH);			/* get line */
 
-		if(*buffer) doline(buffer);
-	}
+	if(*buffer) doline(buffer);
+}
+
+return(0);
 }
 
 

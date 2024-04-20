@@ -24,12 +24,13 @@
 %include "kernelselectors.inc"
 global initializestack
 global initializekernelstack
-global get_stack_pointer
+global create_initial_stack_entries
 
 extern set_tss_esp0
 extern irq_exit
 extern get_kernel_stack_top
 extern get_process_stack_size
+extern save_kernel_stack_pointer
 
 section .text
 [BITS 32]
@@ -71,43 +72,46 @@ mov	esi,[esp+4]				; kernel stack top
 mov	edx,[esp+8]				; entry point
 mov	ecx,[esp+12]				; kernel stack bottom
 
-mov	ebx,esi
-sub	ebx,12*4				; space for initial stack frame
-
-; Create intial stack frame
+mov	edi,esi
+sub	edi,17*4				; space for initial stack frame
 
 mov	eax,irq_exit
-mov	[ebx],eax
-mov	dword [ebx+4],0xFFFFFFFF		; eax
-mov	dword [ebx+8],0xEEEEEEEE		; ecx
-mov	dword [ebx+12],0xDDDDDDDD		; edx
-mov	dword [ebx+16],0xCCCCCCCC		; ebx
-mov	dword [ebx+20],esi			; esp
-mov	dword [ebx+24],ecx			; ebp
-mov	dword [ebx+28],0xBBBBBBBB		; esi
-mov	dword [ebx+32],0xAAAAAAAA		; edi
-mov	dword [ebx+36],edx			; eip
-mov	dword [ebx+40],KERNEL_CODE_SELECTOR	; cs
-mov	dword [ebx+44],0x200			; eflags
+mov	[edi],eax
+mov	dword [edi+4],KERNEL_DATA_SELECTOR	; ds
+mov	dword [edi+8],KERNEL_DATA_SELECTOR	; es
+mov	dword [edi+12],KERNEL_DATA_SELECTOR	; fs
+mov	dword [edi+16],KERNEL_DATA_SELECTOR	; gs
+mov	dword [edi+20],0xAAAAAAAA		; edi
+mov	dword [edi+24],0xBBBBBBBB		; esi
+mov	[edi+28],edx				; ebp
+mov	[edi+32],ebx				; esp
+mov	dword [edi+36],0xCCCCCCCC		; ebx
+mov	dword [edi+40],0xDDDDDDDD		; edx
+mov	dword [edi+44],0xEEEEEEEE		; ecx
+mov	dword [edi+48],0xFFFFFFFF		; eax
+mov	dword [edi+52],edx			; eip
+mov	dword [edi+56],KERNEL_CODE_SELECTOR	; cs
+mov	dword [edi+60],0x200			; eflags
+mov	dword [edi+64],ebx			; esp
+
+;
+; Adjust kernel stack pointer
+; so it points to intial values
+;
+call	get_kernel_stack_top
+sub	eax,17*4
+
+push	eax
+call	save_kernel_stack_pointer
+add	esp,4
 
 ; Set tss esp0 to ensure that the kernel stack is switched to next time the cpu switches to ring 0.
 
-push	esi
+push	edi
 call	set_tss_esp0
 add	esp,4
-
 ret
 
-;
-; Get stack pointer
-;
-; In:	Nothing
-;
-; Returns: Stack pointer
-;
-get_stack_pointer:
-mov	eax,esp
-ret
 
 section .data
 tempeip dd 0

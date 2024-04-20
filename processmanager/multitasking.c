@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../filemanager/vfs.h"
+#include "../memorymanager/memorymanager.h"
 #include "process.h"
 
 extern PROCESS *currentprocess;
@@ -37,7 +38,7 @@ extern *switch_task();
  *
  * In: nothing
  *
- * Returns nothing
+ * Returns: nothing
  * 
  */
 void disablemultitasking(void) {
@@ -50,7 +51,7 @@ return;
  *
  * In: nothing
  *
- * Returns nothing
+ * Returns: nothing
  * 
  */
 void enablemultitasking(void) {
@@ -63,7 +64,7 @@ return;
  *
  * In: nothing
  *
- * Returns nothing
+ * Returns: nothing
  * 
  */
 
@@ -91,15 +92,37 @@ size_t is_multitasking_enabled(void) {
  *
  * In: nothing
  *
- * Returns: pointer to next process
+ * Returns: pointer to next process or NULL on error
  * 
  */
 
 PROCESS *find_next_process_to_switch_to(void) { 
-if((currentprocess == NULL) || (currentprocess->next == NULL)) return(processes);	/* if at end, loop back to start */
+PROCESS *newprocess;
 
-return(currentprocess->next);
+newprocess=currentprocess;
+
+/* find next process */
+
+do {
+	newprocess=newprocess->next;
+
+	if((newprocess == NULL) || (newprocess->next == NULL)) newprocess=processes;		/* if at end, loop back to start */
+
+	if((newprocess->flags & PROCESS_BLOCKED) == 0) return(newprocess);		/* found process */
+
+} while(newprocess != NULL);
+
+return(NULL);
 }
+
+/*
+ * Get if process is ready to switch
+ *
+ * In: nothing
+ *
+ * Returns: true or false
+ * 
+ */
 
 size_t is_process_ready_to_switch(void) { 
  if(currentprocess == NULL) return(FALSE);

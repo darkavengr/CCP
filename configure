@@ -5,13 +5,11 @@
 
 
 function check_if_module_included {
-for mod in "$module_names"; do 
-	for required_mod in "$1"; do
-	if [ "$required_mod" == "$mod" ]; then
-		return 1
-	fi
-  	done
-done
+	for mod in $module_names; do 
+		if [ "$mod" == "$1" ]; then
+			return 1
+		fi
+	done
 
 return 0
 }  
@@ -199,7 +197,7 @@ for f in $SEARCH;do
 
 		rv=$?	# need to save it so it can be compared
 
-		if [ "$rv" == "0" ]; then
+		if [ $rv == 0 ]; then
 			echo $DESCRIPTION	# display description
 			echo
 

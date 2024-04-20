@@ -1,4 +1,4 @@
-/*  CCP Version 0.0.1
+/*         CCP Version 0.0.1
 	   (C) Matthew Boote 2020-2023
 
 	   This file is part of CCP.
@@ -19,11 +19,6 @@
 
 /* memory manager */
 	
-#define ALLOC_NORMAL	0
-#define ALLOC_KERNEL	1
-#define ALLOC_NOPAGING 	2
-#define ALLOC_GLOBAL	4
-
 #include <stdint.h>
 #include <stddef.h>
 #include "../header/kernelhigh.h"
@@ -38,27 +33,23 @@ extern PAGE_SIZE;
 
 extern MEMBUF_START;
 
-void *alloc_int(size_t flags,size_t process,size_t size,size_t overrideaddress);
-size_t free_internal(size_t process,void *b,size_t flags);
-void *alloc(size_t size);
-void *kernelalloc(size_t size);
-void *kernelalloc_nopaging(size_t size);
-void *dma_alloc(size_t size);
-
 void *dmabuf=NULL;
 void *dmaptr=NULL;
 size_t dmabufsize=0;
 MUTEX memmanager_mutex;
+HEAPENTRY *kernelheapend;
+size_t is_break=FALSE;
+HEAPENTRY *kernelheappointer;
 
 /*
-* Internal allocator function
+* Internal page frame allocator function
 *
 * In: flags		Allocation flags(ALLOC_NORMAL,ALLOC_KERNEL or ALLOC_GLOBAL)
       process		Process ID of process to allocate memory to
       size		Number of bytes to allocate
       overrideaddress	Address to force allocation to. If -1, use first available address
 *
-* Returns start address of allocated memory on success,NULL otherwise
+* Returns: start address of allocated memory on success,NULL otherwise
 * 
 */
 void *alloc_int(size_t flags,size_t process,size_t size,size_t overrideaddress) {
@@ -141,8 +132,6 @@ else
 	firstpage=(startpage*PAGE_SIZE);
 }
 
-if(oldsize == 1234) kprintf_direct("ALLOC 4\n");
-
 /* create new chain in buffer */
 
 physpage=0;
@@ -177,7 +166,9 @@ for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 	 			
 					break;
 
-				case ALLOC_KERNEL:	
+				case ALLOC_KERNEL:
+			//		kprintf_direct("addpage=%X %X\n",startpage,physpage);
+	
 	 				addpage_system(startpage,process,physpage); /* add kernel page */
 
 	        			if(process == getpid()) loadpagetable(process);
@@ -187,7 +178,11 @@ for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 	 				addpage_user(startpage,process,physpage); /* add global page */
 
 	        			if(process == getpid()) loadpagetable(process);
-	       				break;	    
+	       				break;	
+
+				 default:
+					setlasterror(INVALID_FUNCTION);
+					return(NULL);    
 	       			}
 
 				startpage=startpage+PAGE_SIZE;  
@@ -196,15 +191,13 @@ for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 		if(pcount == (size/PAGE_SIZE)+1) break;			/* found enough */
 	}
 
-	if(size == 1234) DEBUG_PRINT_HEX(mb);
-
 	mb++;
 	physpage=physpage+PAGE_SIZE;
 }
 
 *mb=(size_t *) -1;							/* mark end of chain */
 
-if(flags != ALLOC_NOPAGING) memset(firstpage,0,size-1);
+if(flags != ALLOC_NOPAGING) memset(firstpage,0,oldsize-1);
 
 unlock_mutex(&memmanager_mutex);
 
@@ -214,7 +207,7 @@ return((void *) firstpage);
 }
 
 /*
-* Internal free memory function
+* Internal free page frame function
 *
 * In: 	process		Process to free memory from
 *	b		Start address of memory area
@@ -231,6 +224,15 @@ size_t c;
 size_t *z;
 
 lock_mutex(&memmanager_mutex);
+
+/* check if address is valid */
+
+p=(size_t) b;
+
+if(p % PAGE_SIZE) {
+	kprintf_direct("kernel memory free: Invalid memory address %X (must be multiple of %d)",b,PAGE_SIZE);
+	setlasterror(INVALID_ADDRESS);
+}
 
 /* Get start of memory chain */
 
@@ -289,7 +291,7 @@ return(NO_ERROR);
 * 
 */
 void *alloc(size_t size) {
-	return(alloc_int(ALLOC_NORMAL,getpid(),size,-1));
+return(heapalloc_int(ALLOC_NORMAL,GetUserHeapAddress(),GetUserHeapEnd(),size));
 }
 
 /*
@@ -300,9 +302,8 @@ void *alloc(size_t size) {
 * Returns 0 on success, -1 otherwise
 * 
 */
-size_t free(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-	free_internal(getpid(),b,0);
-	return(NO_ERROR);
+size_t free(void *address) {
+return(heapfree(address));
 }
 
 /*
@@ -314,9 +315,9 @@ size_t free(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
 * Returns 0 on success, -1 otherwise
 * 
 */
-size_t free_physical(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-	free_internal(getpid(),b,FREE_PHYSICAL);
-	return(NO_ERROR);
+size_t free_physical(void *b) {
+free_internal(getpid(),b,FREE_PHYSICAL);
+return(NO_ERROR);
 }
 
 /*
@@ -327,8 +328,8 @@ size_t free_physical(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
 * Returns start address on success, NULL otherwise
 * 
 */
-void *kernelalloc(size_t size) {				/* allocate kernel memory (0 - 0x80000000) */
-	return(alloc_int(ALLOC_KERNEL,getpid(),size,-1));
+void *kernelalloc(size_t size) {
+return(heapalloc_int(ALLOC_KERNEL,kernelheappointer,kernelheapend,size));
 }
 
 /*
@@ -340,7 +341,7 @@ void *kernelalloc(size_t size) {				/* allocate kernel memory (0 - 0x80000000) *
 * 
 */
 size_t kernelfree(void *b) {
-	return(free_internal(getpid(),b,0));
+return(heapfree(b));
 }
 
 /*
@@ -352,7 +353,7 @@ size_t kernelfree(void *b) {
 * 
 */
 void *kernelalloc_nopaging(size_t size) {
-	return(alloc_int(ALLOC_NOPAGING,getpid(),size,-1));
+return(alloc_int(ALLOC_NOPAGING,getpid(),size,-1));
 }
 
 /*
@@ -416,9 +417,127 @@ for(count=0;count<dmasize/PAGE_SIZE;count++) {
 }
 
 dmabufsize=dmasize;
-	
+
 initialize_mutex(&memmanager_mutex);		/* intialize mutex */
 
 return;
 }
+
+/*
+* Allocate from heap
+*
+* In: heap	pointer to user or kernel heap
+*
+* Returns: start address on success, NULL otherwise
+* 
+*/
+void *heapalloc_int(size_t type,HEAPENTRY *heap,HEAPENTRY *heapend,size_t size) {
+void *heapptr;
+void *saveaddress;
+HEAPENTRY *heapheader;
+void *hend;
+
+//	asm("xchg %bx,%bx");
+
+
+/* increase size of heap */
+
+if(heap == NULL) {							/* if there is no heap allocate it */
+	heap=alloc_int(type,getpid(),INITIAL_HEAP_SIZE,-1);		/* kernel heap */
+	if(heap == NULL) return(NULL);
+
+	heapptr=heap;
+	heapend=(void *) heapptr+INITIAL_HEAP_SIZE;			/* end of heap */
+
+	if(type == ALLOC_NORMAL) {
+		SetUserHeapEnd(heapend);
+	}
+	else
+	{
+		kernelheapend=heapend;
+	}
+}
+else
+{
+	heapptr=heap;
+
+	if(heapptr+(size+(sizeof(HEAPENTRY)*2)) > heapend) {		/* if past end of heap */
+		heapptr=heapend;
+
+		if(alloc_int(type,getpid(),INITIAL_HEAP_SIZE,heapptr) == NULL) return(NULL);	/* extend heap */
+
+		heapptr += INITIAL_HEAP_SIZE;
+
+		/* update heap end */
+
+		if(type == ALLOC_NORMAL) {
+			SetUserHeapEnd(heapptr);
+		}
+		else
+		{
+			kernelheapend=heapptr;
+		}
+	}
+}
+
+
+/* overwrite last entry and create new last entry */
+
+heapptr=heap;
+heapheader=heap;
+
+saveaddress=(heapptr+sizeof(HEAPENTRY));
+
+heapheader->allocationtype='M';			/* new entry */
+heapheader->size=size;
+
+heapptr += (size+sizeof(HEAPENTRY));
+heapheader=heapptr;
+
+heapheader->allocationtype='Z';			/* new end */
+heapheader->size=0;
+
+heapheader++;
+
+if(type == ALLOC_NORMAL) {
+	SetUserHeapAddress(heap);
+}
+else
+{
+	kernelheappointer=heapheader;
+}
+
+return(saveaddress);
+}
+
+size_t heapfree(void *address) {
+HEAPENTRY *heapheader;
+HEAPENTRY *heapnext;
+
+heapheader=address-sizeof(HEAPENTRY);		/* point to header */
+
+if((heapheader->allocationtype != 'M') && (heapheader->allocationtype != 'Z')) {	/* invalid entry */
+//	kprintf_direct("kernel heap free: Heap corrupted, address=%X\n",heapheader);
+	return(-1);
+}
+
+heapnext=++heapheader;			/* point to next */
+
+if(heapnext->allocationtype == 'Z') {	/* if next is last entry */
+	heapheader->allocationtype='Z';	/* new last entry */
+	heapheader->size=0;
+
+	free_internal(getpid(),(void *) heapnext,0);		/* free end of heap */
+
+	return(0);
+}
+	
+heapheader->size += heapnext->allocationtype;	/* merge headers */
+
+heapnext->allocationtype=0;
+heapnext->size=0;
+
+return(0);
+}
+				
 

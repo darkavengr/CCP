@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include "command.h"
 #include "../header/errors.h"
+#include "../memorymanager/memorymanager.h"
 #include "../processmanager/process.h"
 #include "../processmanager/mutex.h"
 #include "../devicemanager/device.h"

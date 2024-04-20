@@ -248,17 +248,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 					
 				/* Get the value to place at the location ref into symval */
 
-				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(whichsym);
-				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(symtype);
-				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(ref);
-				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(*ref);
-				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(codestart);
-				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(rodata);
-				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(data);
-
 				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
-
-				if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(symptr->st_value);
 
 				/* get symbol value */
 
@@ -378,8 +368,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 entry=codestart;
 
 enablemultitasking();
-
-if(strcmp(filename,"Z:\\\\KEYB.O") == 0) asm("xchg %bx,%bx");
 
 return(entry(argsx));
 }

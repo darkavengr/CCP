@@ -224,12 +224,23 @@ mov	ebx,[esp+4]
 int	0x21
 ret
 
+localalloc:
+mov	eax,0x4801
+mov	ebx,[esp+4]
+int	0x21
+ret
+
 free:
 mov	edx,[esp+4]
 mov	eax,0x4900
 int	0x21
 ret
 
+localfree:
+mov	edx,[esp+4]
+mov	eax,0x4901
+int	0x21
+ret
 
 shutdown:
 mov	eax,0x7003

@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include "header/errors.h"
 #include "filemanager/vfs.h"
+#include "memorymanager/memorymanager.h"
 #include "processmanager/process.h"
 #include "header/debug.h"
 
