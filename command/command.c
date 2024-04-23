@@ -246,8 +246,6 @@ kprintf(commandbanner,COMMAND_VERSION_MAJOR,COMMAND_VERSION_MINOR);
 
 argcount=tokenize_line(psp->commandline,commandlinearguments," \t");		/* tokenize command line arguments */
 
-if(argcount > 2) {
-}
 
 set_critical_error_handler(&critical_error_handler);		/* set critical error handler */
 set_signal_handler(signalhandler);			/* set signal handler */
@@ -964,7 +962,7 @@ char *b;
 char *buffer[MAX_PATH];
 size_t dircount;
 size_t fcount;
-char *z[MAX_PATH];
+char *temp[MAX_PATH];
 
 if(!*parsebuf[1]) strcpy(parsebuf[1],"*");	/* find all by default */
 
@@ -1010,9 +1008,9 @@ while(findresult != -1) {
 	  else
 	  {
 	  	itoa(direntry.filesize,buffer);		/* pad out file size */		
-	  	memset(z,0,10);
-	  	memset(z,' ',10-strlen(buffer));
-	  	kprintf(z);
+	  	memset(temp,0,10);
+	  	memset(temp,' ',10-strlen(buffer));
+	  	kprintf(temp);
 
 	  	kprintf("%d ",direntry.filesize);
 	 }
@@ -1026,8 +1024,8 @@ while(findresult != -1) {
 	  if(findresult == -1) break;
 }
 
-ksprintf(z,"%d",getlasterror()); 
-setvar("ERRORLEVEL",z);
+ksprintf(temp,"%d",getlasterror()); 
+setvar("ERRORLEVEL",temp);
 
 if(getlasterror() != END_OF_DIR) {
 	writeerror();
@@ -1042,18 +1040,17 @@ return;
 int ps_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t findresult;
 PROCESS pbuf;
+PROCESS *handle;
 
-findresult=findfirstprocess(&pbuf);		/* get first process */
-if(findresult == -1) return;		/* no processes */
+handle=findfirstprocess(&pbuf);				/* find first process */
 
-kprintf(pidheader);
+do {
+	kprintf("%u\n",pbuf.pid);
 
-while(findresult != -1) {
-	kprintf("%u    %u          %s             %s\n",pbuf.pid,pbuf.parentprocess,pbuf.filename,pbuf.args);
+	
 
-	findresult=findnextprocess(&pbuf);		/* get first process */
-	if(findresult == -1) return;		/* no processes */
-}
+	handle=findnextprocess(handle,&pbuf);		/* get next process */
+} while(handle != NULL);
 
 return;
 }

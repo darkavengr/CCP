@@ -165,7 +165,7 @@ for(count=0;count<4;count++) {
 	device.flags=0;
 	device.data=NULL;
 	device.next=NULL;
-	add_char_device(&device);			
+	add_character_device(&device);			
 
 	outb(ports[count].port+1, 0x00);    			/* Disable all interrupts */
 	outb(ports[count].port+3, 0x80);    			/* Enable DLAB (set baud rate divisor) */
@@ -395,7 +395,10 @@ FILERECORD serialdevice;
 char *b;
 int count;
 
-gethandle(handle,&serialdevice);		/* get information about device */
+if(gethandle(handle,&serialdevice) == -1) {		/* get information about device */
+	setlasterror(INVALID_HANDLE);
+	return(-1);
+}
 
 /* find device name */
 

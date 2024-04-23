@@ -38,6 +38,7 @@ size_t add_external_module_symbol(char *name,size_t val);
 size_t get_external_module_symbol(char *name);
 
 SYMBOL_TABLE_ENTRY *externalmodulesymbols=NULL;
+KERNELMODULE *kernelmodules=NULL;
 
 /*
  * Load and execute kernel module
@@ -81,10 +82,29 @@ char *rodata;
 char *data;
 char *next_free_address_data;
 char *next_free_address_rodata;
+KERNELMODULE *kernelmodulenext;
+KERNELMODULE *kernelmodulelast;
 
 disablemultitasking();
 
 getfullpath(filename,fullname);
+
+/* check if module is loaded */
+
+kernelmodulenext=kernelmodules;
+
+while(kernelmodulenext != NULL) {
+	kernelmodulelast=kernelmodulenext;
+
+	if(strcmpi(kernelmodulenext->filename,fullname) == 0) {		/* found module name */
+		enablemultitasking();
+
+		setlasterror(MODULE_ALREADY_LOADED);
+		return(-1);
+	}
+
+	kernelmodulenext=kernelmodulenext->next;
+}
 
 handle=open(fullname,_O_RDONLY);		/* open file */
 if(handle == -1) {
@@ -193,8 +213,6 @@ next_free_address_rodata=rodata;
 
 shptr=buf+elf_header->e_shoff;
 
-if(strcmp(filename,"Z:\\\\KEYB.O") == 0) DEBUG_PRINT_HEX(shptr);
-
 /* Relocate elf references
 
 	The relocation is done by:
@@ -212,18 +230,12 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 		if(shptr->sh_type == SHT_REL) {
 			relptr=buf+shptr->sh_offset;
-
-			if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptr);
 		}
-
 		else if(shptr->sh_type == SHT_RELA) {
 			relptra=buf+shptr->sh_offset;
-
-			if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptra);
 		}
 
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
-				kprintf_direct("***********************************\n");
 
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
 				
@@ -232,8 +244,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 					symtype=relptr->r_info & 0xff;		/* symbol type */
 
 					ref=(buf+rel_shptr->sh_offset)+relptr->r_offset;
-
-					if(strcmp(filename,"Z:\\KEYB.O") == 0) DEBUG_PRINT_HEX(relptr->r_offset);
 				}
 				else if(shptr->sh_type == SHT_RELA) { 
 
@@ -272,41 +282,41 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				{								
 				
 					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC)) {	/* code symbol */	
-						kprintf_direct("is code symbol\n");
+					//	kprintf_direct("is code symbol\n");
 					
 						symval=codestart+symptr->st_value;								
 					}
 					else if((symtype == STT_OBJECT) || (symtype == STT_COMMON) || ((symptr->st_info  & 0xf) == STT_FUNC)) {		/* data symbol */
 						if(strcmp(name,"rodata") == 0) {
-							kprintf_direct("is rodata symbol\n");
+						//	kprintf_direct("is rodata symbol\n");
 								
-							//if(symptr->st_value == 0) {
-							//	next_free_address_rodata += symptr->st_size;
-							//	symval=next_free_address_rodata;
+							if(symptr->st_value == 0) {
+								next_free_address_rodata += symptr->st_size;
+								symval=next_free_address_rodata;
 
-							//	if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
-							//}
-							//else
-							//{
+								if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
+							}
+							else
+							{
 								symval=rodata+symptr->st_value;			
-							//}
+							}
 						
 
 						}
 						else
 						{	
-							kprintf_direct("is data symbol\n");
+							//kprintf_direct("is data symbol\n");
 	
-							//if(symptr->st_value == 0) {
-							//	next_free_address_data += symptr->st_size;
-							//	symval=next_free_address_data;
+							if(symptr->st_value == 0) {
+								next_free_address_data += symptr->st_size;
+								symval=next_free_address_data;
 
-							//	if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
-							//}
-							//else
-							//{
+								if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
+							}
+							else
+							{
 								symval=data+symptr->st_value;			
-							//}
+							}
 						}
 
 					}	
@@ -314,14 +324,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
 				}				
 	
-
-				if(strcmp(filename,"Z:\\KEYB.O") == 0) {
-					kprintf_direct("%s %X\n",name,symval);
-					
-					if(relptr->r_offset == 0x25d) asm("xchg %bx,%bx");
-				}
-
-
 				/* update reference in section */
 
 				if(symtype == R_386_NONE) {
@@ -358,17 +360,33 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				}
 
 		}		
-
-		kprintf_direct("***********************************\n");
  	}
 		
 	shptr++;
 }
 
+/* add new module */
+
+kernelmodulelast->next=kernelalloc(sizeof(KERNELMODULE));
+if(kernelmodulelast->next == NULL) {
+	close(handle);
+
+	kernelfree(buf);
+
+	enablemultitasking();	
+	return(-1);
+}
+
+kernelmodulelast=kernelmodulelast->next;
+
+strcpy(kernelmodulelast->filename,fullname);
+
+kernelmodulelast->next=NULL;
+
+/* call module entry point */
+
 entry=codestart;
-
 enablemultitasking();
-
 return(entry(argsx));
 }
 
@@ -513,3 +531,44 @@ while(next != NULL) {
 return(-1);
 }
 
+/*
+ * Unload kernel module
+ *
+ * In: filename	Filename
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
+size_t unload_kernel_module(char *filename) {
+KERNELMODULE *kernelmodulenext;
+KERNELMODULE *kernelmodulelast;
+char *fullname[MAX_PATH];
+
+disablemultitasking();
+
+getfullpath(filename,fullname);
+
+kernelmodulenext=kernelmodules;
+
+while(kernelmodulenext != NULL) {
+	kernelmodulelast=kernelmodulenext;
+
+	if(strcmpi(kernelmodulenext->filename,fullname) == 0) {		/* found module name */
+		kernelmodulelast->next=kernelmodulenext->next;		/* remove from list */
+
+		kernelfree(kernelmodulenext);
+
+		enablemultitasking();
+
+		setlasterror(NO_ERROR);
+		return(0);
+	}
+
+	kernelmodulenext=kernelmodulenext->next;
+}
+
+enablemultitasking();
+
+setlasterror(INVALID_MODULE);
+return(-1);
+}

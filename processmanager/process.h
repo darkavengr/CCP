@@ -24,7 +24,6 @@ typedef struct {
 	size_t pid;
 	size_t ticks;	
 	size_t maxticks;
-	struct PROCESS *next;
 	struct PROCESS *blockedprocess;		
 	uint8_t filename[MAX_PATH];		
 	uint8_t args[MAX_PATH];		
@@ -34,8 +33,6 @@ typedef struct {
 	uint8_t currentdir[MAX_PATH];		
 	size_t rc;			
 	size_t flags;
-	size_t writeconsolehandle;	
-	size_t readconsolehandle;	
 	size_t kernelstackpointer;
 	size_t kernelstacktop;
 	size_t stackpointer;
@@ -43,9 +40,8 @@ typedef struct {
 	size_t lasterror;
 	char *envptr;	
 	HEAPENTRY *heapaddress;
-	size_t heapsize;
 	HEAPENTRY *heapend;
-	struct PROCESS *findptr;
+	struct PROCESS *next;
 }  __attribute__((packed)) PROCESS;
 
 typedef struct {
@@ -66,8 +62,8 @@ size_t exec(char *filename,char *argsx,size_t flags);
 size_t kill(size_t process);
 size_t exit(size_t val);
 void shutdown(size_t shutdown_status); 
-size_t findfirstprocess(PROCESS *buf); 
-size_t findnextprocess(PROCESS *buf); 
+PROCESS *findfirstprocess(PROCESS *processbuf);
+PROCESS *findnextprocess(PROCESS *previousprocess,PROCESS *processbuf);
 size_t wait(size_t pid);
 size_t dispatchhandler(void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone);
 size_t getcwd(char *dir);
@@ -103,9 +99,7 @@ void reset_process_ticks(void);
 size_t get_tick_count(void);
 void increment_tick_count(void);
 HEAPENTRY *GetUserHeapAddress(void);
-size_t GetUserHeapSize(void);
 HEAPENTRY *GetUserHeapEnd(void);
-void SetUserHeapSize(size_t size);
 void SetUserHeapEnd(HEAPENTRY *end);
 void SetUserHeapAddress(HEAPENTRY *heap);
 

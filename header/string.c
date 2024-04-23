@@ -554,6 +554,7 @@ while(count > 0) {
 return(num);
 }
 
+
 /*
  * Print formatted string
  *
@@ -565,57 +566,64 @@ return(num);
  */
 void kprintf(char *format, ...) {
 va_list args;
-char *b;
+char *formatptr;
 char c;
 char *s;
-char *p;
+char *ptr;
 int num;
 double d;
-char *z[MAX_SIZE];
+char *tempbuffer[MAX_SIZE];
 
 va_start(args,format);			/* get start of variable args */
 
-b=format;
+formatptr=format;
 
-while(*b != 0) {
- 	c=*b;
+while(*formatptr != 0) {
+ 	c=*formatptr;
 
-	if(c == '%') {
-		c=*++b;
+	if(c == '%') {					/* format specifier */
+		c=*++formatptr;
 
 		switch(c) {
 
 			case's':				/* string */
-				s=va_arg(args,const char*);
+				s=va_arg(args,const char*);	/* get variable argument */
 
-				write(stdout,s,strlen(s));
-				b++;
+				write(stdout,s,strlen(s));	/* write string to console */
+				
+				formatptr++;			/* point to next format character */
 				break;
 
-			case 'd':				/* signed decimal */
-				 num=va_arg(args,int);
-  
-				 itoa(num,z);
-				 write(stdout,z,strlen(z));
-				 b++;
-				 break;
+			case 'd':				/* decimal */
+				num=va_arg(args,int);		/* get variable integer argument */
+
+				if(num & ( 1 << ((sizeof(size_t) * 8)-1))) write(stdout,"-",1);	/* write minus sign if negative */			 
+
+				itoa(num,tempbuffer);		/* convert it to string */
+
+				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
+
+				formatptr++;			/* point to next format character */
+				break;
 
 			case 'u':				/* unsigned decimal */
-				 num=va_arg(args,size_t);
+				num=va_arg(args,int);		/* get variable integer argument */
+  
+				itoa(num,tempbuffer);		/* convert it to string */
 
-				 itoa(num,z);
-				 write(stdout,z,strlen(z));
-	
-	 			b++;
+				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
+
+				formatptr++;			/* point to next format character */
 				break;
 
 			case 'o':		/* octal */
 				num=va_arg(args,size_t);
 
-			 	itoa(num,z);
-				write(stdout,z,strlen(z));
+			 	itoa(num,tempbuffer);
+
+				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
 	
-				b++;
+				formatptr++;
 			 	break;
 
 			case 'p':				/* same as x */
@@ -623,35 +631,39 @@ while(*b != 0) {
 			case 'X':
 				num=va_arg(args,size_t);
 
-	 			tohex(num,z);
-				write(stdout,z,strlen(z));
+	 			tohex(num,tempbuffer);
+
+				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
 	
-				b++;
+				formatptr++;
 				break;
    
 			case 'c':				/* character */
-	  			c=(unsigned char) va_arg(args, int);
+	  			num=(unsigned char) va_arg(args, int);
 
-	  			p=z;
-	  			*p=c;
+				ptr=tempbuffer;
+				*ptr++=(char)num;
+				*ptr++=0;
 
-	  			write(stdout,p,1);
-	  			b++;
+				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
+
+	  			formatptr++;
 	  			break;
 
 	 		case '%':
-	  			write(stdout,"%",1);
-  
-	  			b++;
 
+				write(stdout,"%",1);	/* write string to console */
+
+	  			formatptr++;
 	  			break;
    			}
 
   }
- else
+ else								/* output character */
  {
-			write(stdout,&c,1);
-			b++;
+			write(stdout,&c,1);	/* write string to console */
+
+			formatptr++;
  }
 
 }
@@ -669,96 +681,105 @@ va_end(args);
  * 
  * This function is used early in intializtion and by exception()
  */
-
 void kprintf_direct(char *format, ...) {
 va_list args;
-char *b;
+char *formatptr;
 char c;
 char *s;
-char *p;
+char *ptr;
 int num;
 double d;
-char *z[MAX_SIZE];
+char *tempbuffer[MAX_SIZE];
 
 va_start(args,format);			/* get start of variable args */
 
-b=format;
+formatptr=format;
 
-while(*b != 0) {
-	c=*b;
+while(*formatptr != 0) {
+ 	c=*formatptr;
 
-	if(c == '%') {
-		c=*++b;
+	if(c == '%') {					/* format specifier */
+		c=*++formatptr;
 
 		switch(c) {
 
 			case's':				/* string */
-				s=va_arg(args,const char*);
+				s=va_arg(args,const char*);	/* get variable argument */
 
 				outputconsole(s,strlen(s));
-				b++;
+
+				formatptr++;			/* point to next format character */
 				break;
 
-			case 'd':				/* signed decimal */
-	 				num=va_arg(args,int);
-  					itoa(num,z);
+			case 'd':				/* decimal */
+				num=va_arg(args,int);		/* get variable integer argument */
 
-				outputconsole(z,strlen(z));
+				if(num & ( 1 << ((sizeof(size_t) * 8)-1))) write(stdout,"-",1);	/* write minus sign if negative */			 
 
-				b++;
+				itoa(num,tempbuffer);		/* convert it to string */
+
+				outputconsole(tempbuffer,strlen(tempbuffer));
+
+				formatptr++;			/* point to next format character */
 				break;
 
-   			case 'u':				/* unsigned decimal */
+			case 'u':				/* unsigned decimal */
+				num=va_arg(args,int);		/* get variable integer argument */
+  
+				itoa(num,tempbuffer);		/* convert it to string */
+
+				outputconsole(tempbuffer,strlen(tempbuffer));
+
+				formatptr++;			/* point to next format character */
+				break;
+
+			case 'o':		/* octal */
 				num=va_arg(args,size_t);
 
-				itoa(num,z);
-				outputconsole(z,strlen(z));
+			 	itoa(num,tempbuffer);
+
+				outputconsole(tempbuffer,strlen(tempbuffer));
 	
-				b++;
-				break;
+				formatptr++;
+			 	break;
 
-			case 'o':			/* octal */
+			case 'p':				/* same as x */
+			case 'x':				/*  lowercase x */
+			case 'X':
 				num=va_arg(args,size_t);
 
-				itoa(num,z);
-				outputconsole(z,strlen(z));  
-				b++;
-				break;
+	 			tohex(num,tempbuffer);
 
-				case 'p':				/* same as x */
-				case 'x':				/* same as x */
-				case 'X':
-				num=va_arg(args,size_t);
-
-				tohex(num,z);
-				outputconsole(z,strlen(z));
+				outputconsole(tempbuffer,strlen(tempbuffer));
 	
-				b++;
+				formatptr++;
 				break;
    
 			case 'c':				/* character */
-				c=(unsigned char) va_arg(args, int);
+	  			num=(unsigned char) va_arg(args, int);
 
-				p=z;
-				*p=c;
+				ptr=tempbuffer;
+				*ptr++=(char)num;
+				*ptr++=0;
 
-				outputconsole(z,strlen(z));
-				b++;
+				outputconsole(tempbuffer,strlen(tempbuffer));
 
-				break;
+	  			formatptr++;
+	  			break;
 
-			case '%':
-				outputconsole("%",1);  
-				b++;
+	 		case '%':
+				outputconsole("%",1);
 
-				break;
-			}
+	  			formatptr++;
+	  			break;
+   			}
 
   }
- else
+ else								/* output character */
  {
 			outputconsole(&c,1);
-			b++;
+
+			formatptr++;
  }
 
 }

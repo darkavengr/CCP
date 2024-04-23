@@ -52,7 +52,7 @@ bd.flags=0;
 bd.data=NULL;
 bd.next=NULL;
 
-add_char_device(&bd); 
+add_character_device(&bd); 
 return;
 }
 

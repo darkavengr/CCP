@@ -33,38 +33,32 @@
 
 extern kernel							; high-level kernel
 extern kernel_begin						; start of kernel in memory
-extern openfiles_init						; intialize structs
-extern end							; end of kernel in memory
-extern load_idt
-extern kprintf
-extern init_multitasking					; initalize multitasking
-extern driver_init						; initialize drivers
+extern filemanager_init						; intialize file manager
 extern memorymanager_init					; intialize memory manager
-extern processmanager_init					; intialize processes
-extern devicemanager_init					; intialize devices
-extern switch_task
-extern initrd_init
-extern paging_type
-extern initrd_init
+extern processmanager_init					; intialize process manager
+extern devicemanager_init					; intialize device
+extern init_multitasking					; initalize multitasking
+extern driver_init						; initialize built-in drivers
 extern initialize_interrupts					; initialize interrupts
 extern initialize_memory_map					; initialize memory map
 extern initializepaging						; initialize paging
+extern initrd_init						; initialize initial RAM disk
+extern end							; end of kernel in memory
+extern load_idt							; load IDT
 extern unmap_lower_half						; unmap lower half
 extern initialize_tss						; initialize tss
-extern set_tss_esp0
-extern load_modules_from_initrd
+extern set_tss_esp0						; set kernel mode stack address in TSS
+extern load_modules_from_initrd					; load modules from initial RAM disk
 
 ; globals
 ;
-global tss_esp0
 global _asm_init
 global MEMBUF_START
 global gdt
 global gdt_end
 
 KERNEL_STACK_SIZE equ  65536*2				; size of initial kernel stack
-
-INITIAL_KERNEL_STACK_ADDRESS equ 0x60000
+INITIAL_KERNEL_STACK_ADDRESS equ 0x60000		; intial kernel stack address
 
 DMA_BUFFER_SIZE equ 32768	
 
@@ -171,9 +165,9 @@ mov	ss,ax
 mov 	edi,offset gdtinfo
 add	edi,KERNEL_HIGH
 db	66h
-lgdt 	[ds:edi]					; load gdt
+lgdt 	[ds:edi]			; load gdt
 
-mov 	eax,cr0   				; switch to pmode
+mov 	eax,cr0   			; switch to protected mode
 or	al,1
 mov  	cr0,eax
 
@@ -260,12 +254,9 @@ push	edx				; memory map start address
 call	initialize_memory_map		; initialize memory map
 
 push	dword DMA_BUFFER_SIZE
-call	memorymanager_init			; initalize memory manager
+call	memorymanager_init		; initalize memory manager
 
-push	1
-push	2
-call	openfiles_init				; initialize device manager
-add	esp,12
+call	filemanager_init		; initialize file manager
 
 
 ; This block of code is a copy of the
@@ -320,8 +311,7 @@ mov	dx,0A1h
 out	dx,al
 
 call	init_multitasking
-
-call	driver_init				; initialize drivers and filesystems
+call	driver_init				; initialize built-in drivers and filesystems
 
 call	initrd_init
 

@@ -492,6 +492,6 @@ for(count=0;count<(256/4);count++) {
 }
 
 chardevice.next=NULL;
-add_char_device(&chardevice);
+add_character_device(&chardevice);
 }
 

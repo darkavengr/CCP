@@ -47,7 +47,7 @@ size_t fat_read(size_t handle,void *addr,size_t size);							// TESTED
 size_t fat_write(size_t handle,void *addr,size_t size);							// TESTED
 size_t fat_chmod(char *filename,size_t attribs);							// TESTED
 size_t fat_set_file_time_date(char *filename,TIME *create_time_date,TIME *last_modified_time_date,TIME *last_accessed_time_date); // TESTED
-size_t fat_find_free_block(size_t drive);
+size_t fat_find_free_block(size_t drive);								// TESTED
 size_t fat_get_start_block(char *name);									// TESTED
 size_t fat_get_next_block(size_t drive,uint64_t block);							// TESTED
 size_t fat_update_fat(size_t drive,uint64_t block,uint16_t block_high_word,uint16_t block_low_word);	// TESTED - MORE
@@ -593,10 +593,7 @@ else
 }
 
 blockbuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);			/* allocate block buffer */ 
-if(blockbuf == NULL) {
-	kernelfree(splitbuf);
-	return(-1);
-}
+if(blockbuf == NULL) return(-1);
 
 rb=fat_get_start_block(splitbuf.dirname);		/* get start of directory where new file will be created */
 if(rb == -1) return(-1);

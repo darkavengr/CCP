@@ -4,7 +4,7 @@ LD=@arch@-elf-gcc
 FLAGS = -c -w -ffreestanding -nostdlib -lgcc 
 ASMFLAGS = -felf32
 
-all: ../../obj/@arch@/ex.o ../../obj/@arch@/partition.o ../../obj/@arch@/port.o ../../obj/@arch@/sched.o ../../obj/@arch@/mutex.o ../../obj/@arch@/interrupts.o ../../obj/@arch@/stack.o  ../../obj/@arch@/aainit.o ../../obj/@arch@/aamemorymap.o ../../obj/@arch@/usermode.o  ../../obj/@arch@/cpustate.o ../../obj/@arch@/initializepaging.o ../../obj/@arch@/tss.o ../../obj/@arch@/gdt.o ../../obj/@arch@/yield.o  ../../obj/@arch@/CCPLOAD.SYS ../../obj/@arch@/boot
+all: ../../obj/@arch@/ex.o ../../obj/@arch@/partition.o ../../obj/@arch@/port.o ../../obj/@arch@/sched.o ../../obj/@arch@/mutex.o ../../obj/@arch@/interrupts.o ../../obj/@arch@/stack.o  ../../obj/@arch@/aainit.o ../../obj/@arch@/aamemorymap.o ../../obj/@arch@/usermode.o  ../../obj/@arch@/cpustate.o ../../obj/@arch@/initializepaging.o ../../obj/@arch@/tss.o ../../obj/@arch@/gdt.o ../../obj/@arch@/CCPLOAD.SYS ../../obj/@arch@/boot
 ../../obj/@arch@/ex.o:
 		$(CC) $(FLAGS) ex.c -o ../../obj/@arch@/ex.o
 
@@ -46,9 +46,6 @@ all: ../../obj/@arch@/ex.o ../../obj/@arch@/partition.o ../../obj/@arch@/port.o 
 
 ../../obj/@arch@/initializepaging.o:
 		$(ASM) $(ASMFLAGS) initializepaging.asm -o ../../obj/@arch@/initializepaging.o
-
-../../obj/@arch@/yield.o:
-		$(ASM) $(ASMFLAGS) yield.asm -o ../../obj/@arch@/yield.o
 
 ../../obj/@arch@/CCPLOAD.SYS:
 		$(ASM) ccpload.asm -o ../../bin/@arch@/CCPLOAD.SYS

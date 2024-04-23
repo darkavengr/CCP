@@ -5,7 +5,7 @@
 #define ALLOC_NOPAGING 	2
 #define ALLOC_GLOBAL	4
 
-#define INITIAL_HEAP_SIZE 1024*1024
+#define INITIAL_HEAP_SIZE	1024*1024
 
 typedef struct {
 	uint8_t allocationtype;		/* M=allocated, Z=last */
@@ -18,10 +18,10 @@ void *alloc(size_t size);
 void *kernelalloc(size_t size);
 void *kernelalloc_nopaging(size_t size);
 void *dma_alloc(size_t size);
-size_t heapfree(void *address);
+size_t heapfree(size_t type,void *address);
 HEAPENTRY *getheapaddress(void);
 HEAPENTRY *getheapend(void);
 size_t getheapsize(void);
 void *heapalloc_int(size_t type,HEAPENTRY *heap,HEAPENTRY *heapend,size_t size);
-
+size_t kernelfree(void *address);
 

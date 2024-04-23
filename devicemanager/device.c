@@ -112,7 +112,7 @@ return(NO_ERROR);
  * Returns 0 on success, -1 otherwise
  * 
  */
-size_t add_char_device(CHARACTERDEVICE *device) {
+size_t add_character_device(CHARACTERDEVICE *device) {
 CHARACTERDEVICE *charnext;
 CHARACTERDEVICE *charlast;
 
@@ -373,7 +373,7 @@ return(-1);
 
 size_t update_block_device(size_t drive,BLOCKDEVICE *driver) {
 BLOCKDEVICE *next;
-BLOCKDEVICE *last;
+BLOCKDEVICE *save_next;
 
 /* find device */
 lock_mutex(&blockdevice_mutex);			/* lock mutex */
@@ -382,11 +382,11 @@ next=blockdevices;
 
 while(next != NULL) {
 	if(next->drive == drive) {		 		/* already loaded */
-		last=next->next;
+		save_next=next->next;
 
 		memcpy(next,driver,sizeof(BLOCKDEVICE));		/* update struct */
 
-		next->next=last;
+		next->next=save_next;
 
 		unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
@@ -404,7 +404,7 @@ return(-1);
 /*
  * Remove block device
  *
- * In: char *name		Name of device
+ * In: name	Name of device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -422,6 +422,11 @@ last=blockdevices;
 
 while(next != NULL) {
 	 if(strcmpi(next->name,name) == 0) {		 		/* already loaded */
+
+		if(gethandle(name) == 0) {		/* file is open */
+			setlasterror(FILE_IN_USE);
+			return(-1);
+		}
 
 	 	if(last == blockdevices) {			/* start */
 	 		blockdevices=next->next;
@@ -460,7 +465,7 @@ return(-1);
  * 
  */
 
-size_t remove_char_device(char *name) {
+size_t remove_character_device(char *name) {
 CHARACTERDEVICE *next;
 CHARACTERDEVICE *last;
 
@@ -472,7 +477,13 @@ next=characterdevs;
 last=next;
 
 while(next != NULL) {
-	 if(strcmpi(next->name,name) == 0) {		 		/* already loaded */
+	 if(strcmpi(next->name,name) == 0) {		/* device found */
+
+		if(gethandle(name) == 0) {		/* device is in use */
+			setlasterror(FILE_IN_USE);
+			return(-1);
+		}
+
 	 	if(last == characterdevs) {			/* start */
 	 		characterdevs=next->next;
 	 	}
@@ -482,9 +493,9 @@ while(next != NULL) {
 	  	else						/* middle */
 	  	{
 	   		last->next=next->next;	
-	  	}
+		  	kernelfree(next);
 
-	  	kernelfree(next);
+	  	}
 
 		unlock_mutex(&characterdevice_mutex);	/* unlock mutex */
 

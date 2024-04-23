@@ -44,7 +44,7 @@ size_t ppos;
 3 	Cyan 			11 	Light Cyan
 4 	Red 			12 	Light Red
 5 	Purple 			13 	Light Purple
-6 	Bbootinfo->cursor_rown/Orange 		14 	Yellow (Light Orange)
+6 	Brown/Orange 		14 	Yellow (Light Orange)
 7 	Light Grey (White) 	15 	White (Light White) */
 
 /*
@@ -67,7 +67,7 @@ device.flags=0;
 device.data=NULL;
 device.next=NULL;
 
-add_char_device(&device);			/* con */
+add_character_device(&device);			/* con */
 
 init_console_device(_WRITE,1,&outputconsole);
 init_console_device(_WRITE,2,&outputconsole);

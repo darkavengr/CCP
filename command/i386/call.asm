@@ -258,13 +258,16 @@ int	0x21
 ret
 
 findfirstprocess:
-mov	edx,[esp+4]		; buffer
+mov	ebx,[esp+4]		; buffer
+
 mov	eax,0x7009
 int	0x21
 ret
 
 findnextprocess:
 mov	edx,[esp+4]			; buffer
+mov	edx,[esp+8]		; handle
+
 mov	eax,0x700A
 int	0x21
 ret

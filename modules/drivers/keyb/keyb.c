@@ -77,7 +77,7 @@ device.flags=0;
 device.data=NULL;
 device.next=NULL;
 
-add_char_device(&device);
+add_character_device(&device);
 
 setirqhandler(1,&readkey);		/* set irq handler */
 	

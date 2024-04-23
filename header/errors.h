@@ -50,6 +50,7 @@
 #define DIRECTORY_NOT_EMPTY	0x31
 #define DEVICE_EXISTS		0x32
 #define INVALID_ADDRESS		0x33
+#define MODULE_ALREADY_LOADED	0x34
 
 #define TRUE	1
 #define FALSE 0

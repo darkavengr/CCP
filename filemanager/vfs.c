@@ -96,8 +96,8 @@ return(fs.findnext(name,buf));		/* Call via function pointer */
 /*
  * Open file
  *
- * In: name	File to open
-		 access	File mode(O_RD_RW, O_RDONLY)
+ * In:  name	File to open
+	flags	File mode(O_RD_RW, O_RDONLY)
  *
  * Returns: -1 on error, 0 on success
  *
@@ -718,14 +718,15 @@ return(-1);
 /*
  * Duplicate handle for process
  *
- * In:  handle	File handle
- *	pid	Process ID
+ * In:  handle		File handle
+ *	sourcepid	Process ID to create new file handle from
+ *	destpid		Process ID to assign to new handle
  *
  * Returns: -1 on error, 0 on success
  *
  */
 
-size_t dup_internal(size_t handle,size_t pid) {
+size_t dup_internal(size_t handle,size_t sourcepid,size_t destpid) {
 FILERECORD *source;
 FILERECORD *dest;
 FILERECORD *last;
@@ -736,7 +737,7 @@ lock_mutex(&vfs_mutex);
 source=openfiles;
 	
 while(source != NULL) {					/* find handle in struct */
-	if((source->handle == handle) && (source->owner_process == pid)) break;
+	if((source->handle == handle) && (source->owner_process == sourcepid)) break;
 
 	source=source->next;
 	count++;
@@ -769,7 +770,7 @@ last=last->next;		/* point to struct */
 
 memcpy(last,source,sizeof(FILERECORD));  /* copy data */
 	
-last->owner_process=getpid();
+last->owner_process=destpid;
 last->next=NULL;
 
 dest=openfiles;
@@ -794,7 +795,7 @@ return(count);
  */
 
 size_t dup(size_t handle) {
-dup_internal(handle,getpid());
+dup_internal(handle,getpid(),getpid());
 }
 
 /*
@@ -1070,13 +1071,15 @@ return(NO_ERROR);
  */
 
 
-size_t openfiles_init(size_t a,size_t b) {
+size_t filemanager_init(void) {
 FILERECORD *next;
 
-filesystems=NULL;
+filesystems=NULL;						/* no filesystem drivers for now */
+
+/* Create initial stdin, stdout and stderr handles */
 
 openfiles=kernelalloc(sizeof(FILERECORD));			/* stdin */
-if(openfiles == NULL) {	/*can't allocate */
+if(openfiles == NULL) {						/*can't allocate */
 	kprintf_direct("kernel: can't allocate memory for stdin\n");
 	return(-1);
 }

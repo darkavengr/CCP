@@ -7,3 +7,9 @@ typedef struct {
 	struct SYMBOL_TABLE_ENTRY *next;
 } SYMBOL_TABLE_ENTRY;
 
+
+typedef struct {
+	uint8_t filename[MAX_PATH];
+	struct KERNELMODULE *next;
+} KERNELMODULE;
+

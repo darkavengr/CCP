@@ -303,7 +303,7 @@ return(heapalloc_int(ALLOC_NORMAL,GetUserHeapAddress(),GetUserHeapEnd(),size));
 * 
 */
 size_t free(void *address) {
-return(heapfree(address));
+return(heapfree(ALLOC_NORMAL,address));
 }
 
 /*
@@ -340,8 +340,8 @@ return(heapalloc_int(ALLOC_KERNEL,kernelheappointer,kernelheapend,size));
 * Returns 0 on success, -1 otherwise
 * 
 */
-size_t kernelfree(void *b) {
-return(heapfree(b));
+size_t kernelfree(void *address) {
+return(heapfree(ALLOC_KERNEL,address));
 }
 
 /*
@@ -431,6 +431,16 @@ return;
 * Returns: start address on success, NULL otherwise
 * 
 */
+
+
+/*
+* Allocate from heap
+*
+* In: heap	pointer to user or kernel heap
+*
+* Returns: start address on success, NULL otherwise
+* 
+*/
 void *heapalloc_int(size_t type,HEAPENTRY *heap,HEAPENTRY *heapend,size_t size) {
 void *heapptr;
 void *saveaddress;
@@ -497,10 +507,11 @@ heapheader=heapptr;
 heapheader->allocationtype='Z';			/* new end */
 heapheader->size=0;
 
-heapheader++;
+//DEBUG_PRINT_HEX(heapheader);
+//asm("xchg %bx,%bx");
 
 if(type == ALLOC_NORMAL) {
-	SetUserHeapAddress(heap);
+	SetUserHeapAddress(heapheader);
 }
 else
 {
@@ -510,34 +521,68 @@ else
 return(saveaddress);
 }
 
-size_t heapfree(void *address) {
+size_t heapfree(size_t type,void *address) {
 HEAPENTRY *heapheader;
 HEAPENTRY *heapnext;
+size_t addr;
+size_t oldsize;
+char *heapend;
 
 heapheader=address-sizeof(HEAPENTRY);		/* point to header */
 
 if((heapheader->allocationtype != 'M') && (heapheader->allocationtype != 'Z')) {	/* invalid entry */
 //	kprintf_direct("kernel heap free: Heap corrupted, address=%X\n",heapheader);
+
+//	asm("xchg %bx,%bx");
+
 	return(-1);
 }
 
-heapnext=++heapheader;			/* point to next */
+return(0);
+
+heapnext=(address+heapheader->size);		/* get next header */
+oldsize=heapnext->size;			/* save size */
 
 if(heapnext->allocationtype == 'Z') {	/* if next is last entry */
 	heapheader->allocationtype='Z';	/* new last entry */
 	heapheader->size=0;
 
-	free_internal(getpid(),(void *) heapnext,0);		/* free end of heap */
-
-	return(0);
+	heapnext->allocationtype=0;
+	heapnext->size=0;
 }
-	
-heapheader->size += heapnext->allocationtype;	/* merge headers */
+else
+{
+	heapheader->size += heapnext->allocationtype;	/* merge headers */
 
-heapnext->allocationtype=0;
-heapnext->size=0;
+	heapnext->allocationtype=0;		/* remove header */
+	heapnext->size=0;
+}
+
+/* get heap end */
+
+if(type == ALLOC_NORMAL) {
+	heapend=GetUserHeapEnd();
+}
+else
+{
+	heapend=kernelheapend;
+}
+
+/* shrink heap if necessary */
+
+//kprintf_direct("heap free=%X %X\n",heapnext,heapend);
+//asm("xchg %bx,%bx");
+
+if(heapnext+(oldsize+(sizeof(HEAPENTRY)*2)) >= heapend) {		/* if past end of heap */
+	addr=heapnext;
+	addr &= ((size_t) 0-1)-(PAGE_SIZE-1);			/* round down to page boundary */
+
+//	DEBUG_PRINT_HEX(addr);
+//	asm("xchg %bx,%bx");
+
+//	free_internal(getpid(),(void *) addr,0);		/* free end of heap */
+}
 
 return(0);
 }
 				
-

@@ -134,6 +134,7 @@ next->ticks=0;
 next->maxticks=DEFAULT_QUANTUM_COUNT;
 next->next=NULL;
 
+
 next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);
 if(next->kernelstacktop == NULL) {
 	currentprocess=oldprocess;
@@ -195,9 +196,9 @@ next->stackpointer=stackp+PROCESS_STACK_SIZE;
 /* duplicate stdin, stdout and stderr */
 
 if(getpid() != 0) {
-	dup_internal(stdin,getppid());
-	dup_internal(stdout,getppid());
-	dup_internal(stderr,getppid());
+	dup_internal(stdin,getppid(),getpid());
+	dup_internal(stdout,getppid(),getpid());
+	dup_internal(stderr,getppid(),getpid());
 }
 
 processes_end=next;						/* save last process address */
@@ -228,9 +229,7 @@ if(currentprocess->heapaddress == NULL) {
 	return(-1);
 }
 
-currentprocess->heapsize=INITIAL_HEAP_SIZE;		/* set intial heap size */
-
-initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);
+initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);	/* initial kernel stack */
 
 /* create psp */ 
 ksprintf(psp->commandline,"%s %s",next->filename,next->args);
@@ -390,46 +389,7 @@ void shutdown(size_t shutdown_status) {
 	}
 	
 }
-	 
-/*
-* Find first process
-*
-* In:	buf	Object to store information about process
-*
-* Returns -1 on error or 0 on success
-*
-*/
-
-size_t findfirstprocess(PROCESS *buf) { 
-	memcpy(buf,processes,(size_t) sizeof(PROCESS));
-
-	currentprocess->findptr=processes;
-	return(NO_ERROR);
-}
-
-/*
-* Find next process
-*
-* In: buf	Object to store information about process
-*
-* Returns -1 on error or 0 on success
-*
-*/
-
-size_t findnextprocess(PROCESS *buf) { 
-	PROCESS *findptr=currentprocess->findptr;
-
-	findptr=findptr->next;
-	currentprocess->findptr=findptr;
-
-	if(findptr == NULL) return(-1);
-
-	memcpy(buf,findptr,(size_t)  sizeof(PROCESS));
-	findptr=findptr->next;
-	return(NO_ERROR);
-}
-	 
-
+	
 /*
 * Wait for process to change state
 *
@@ -534,7 +494,7 @@ switch(highbyte) {		/* function */
 
 		return(unlink((char *) argfour));
 	 
-	case 0x4e:			/* findfirst */
+	case 0x4e:			/* find first file */
 		if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -542,7 +502,7 @@ switch(highbyte) {		/* function */
 
 		return(findfirst(argfour,argtwo));	
 	
-	case 0x4f:			/* findnext */
+	case 0x4f:			/* find next file*/
 		if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -550,13 +510,13 @@ switch(highbyte) {		/* function */
 
 		return(findnext(argfour,argtwo));
 	  
-	case 0x45:			/* dup */
+	case 0x45:			/* duplicate file handle */
 		return(dup(argtwo));
 
-	case 0x46:			/* dup2 */
+	case 0x46:			/* duplicate file handle and replace existing handle */
 		return(dup2(argtwo,argthree));
 
-	case 0x47:			/* getcwd */
+	case 0x47:			/* get current directory */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -564,7 +524,7 @@ switch(highbyte) {		/* function */
 
 		return(getcwd((char *) argfour));
 	 
-	case 0x3f:			/* read */
+	case 0x3f:			/* read from file or device */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -572,7 +532,7 @@ switch(highbyte) {		/* function */
 
 		return(read((size_t)  argtwo,(char *) argfour,(size_t)  argthree));
 	 
-	case 0x40:			/* write */
+	case 0x40:			/* write to file or device */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -580,7 +540,7 @@ switch(highbyte) {		/* function */
 
 		return(write((size_t)  argtwo,(char *) argfour,(size_t)  argthree));
 	  
-	case 0x3b:			/* chdir */
+	case 0x3b:			/* change directory */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -588,7 +548,7 @@ switch(highbyte) {		/* function */
 
 		return(chdir((char *) argfour)); 
 	
-	case 0x39:			/* mkdir */
+	case 0x39:			/* create directory */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -596,7 +556,7 @@ switch(highbyte) {		/* function */
 
 		return(mkdir((char *) argfour));
 
-	case 0x3a:			/* rmdir */
+	case 0x3a:			/* remove directory */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -605,7 +565,7 @@ switch(highbyte) {		/* function */
 		return(rmdir((char *) argfour));
 
 
-	case 0x56:			/* rename */
+	case 0x56:			/* rename file or directory */
 		if((argfive >= KERNEL_HIGH) || (argsix >= KERNEL_HIGH)) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -620,25 +580,23 @@ switch(highbyte) {		/* function */
 	case 0x30:			/* get version */
 		return(CCPVER);
 	 
-
-
-	case 0x4d:	
+	case 0x4d:			/* get last error */
 		return(getlasterror());
 
-	case 0x8c:				/* set signal handler */
+	case 0x8c:			/* set signal handler */
 		signal(argfour);
 
-	case 0x8d:				/* send signal */
+	case 0x8d:			/* send signal */
 		return(sendsignal((size_t) argtwo,argfour));
 
-	case 0x8a:				/* wait for process to change state */
+	case 0x8a:			/* wait for process to change state */
 		return(wait((size_t)  argtwo));
 
 }
 
-	switch(argone) {		/* function */
+	switch(argone) {
 	 
-		case 0x3d01:			/* open */
+		case 0x3d01:		/* open file or device */
 			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 				setlasterror(INVALID_ADDRESS);
 				return(-1);
@@ -654,7 +612,7 @@ switch(highbyte) {		/* function */
 
 			return(open((char *) argfour,_O_RDWR));
 
-	 	case 0x4200:		/* seek */
+	 	case 0x4200:		/* set file position */
 	  		return(seek((size_t)  argtwo,argfour,SEEK_SET));
 
 	 	case 0x4201:		/* seek */
@@ -710,12 +668,12 @@ switch(highbyte) {		/* function */
 				return(-1);
 			}
 
-	  		return(touch((size_t) argtwo,(size_t) argfour));
+	  		return(touch((size_t) argtwo,(size_t) argfour,(size_t) argfive,(size_t) argsix));
 
-	 	case 0x4401:			/* ioctl */
+	 	case 0x4401:			/* send commands to device */
 	  		return(ioctl((size_t) argtwo,(unsigned long) argthree,(void *) argsix));
 
-	 	case 0x4b00:			/* exec */
+	 	case 0x4b00:			/* create process and load executable */
 			if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
 				setlasterror(INVALID_ADDRESS);
 				return(-1);
@@ -731,7 +689,7 @@ switch(highbyte) {		/* function */
 
 	 		return(exec(argfour,argtwo,TRUE));
 
-		case 0x4b03:				/* load driver */
+		case 0x4b03:				/* load module */
 			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 				setlasterror(INVALID_ADDRESS);
 				return(-1);
@@ -739,7 +697,7 @@ switch(highbyte) {		/* function */
 
 	 		return(load_kernel_module(argfour));
 
-	 	case 0x7000:				/* allocate dma buffer */
+	 	case 0x7000:				/* allocate DMA buffer */
 	 		return(dma_alloc(argtwo));
 	    	
 	 	case 0x7002:			/* restart */
@@ -750,7 +708,7 @@ switch(highbyte) {		/* function */
 	 		shutdown(_SHUTDOWN);
 	 		break;
 
-	 	case 0x7004:			/* tell */
+	 	case 0x7004:			/* get file position */
 	 		return(tell(argtwo));
 	   
 	 	case 0x7009:			/* find first process */
@@ -759,15 +717,15 @@ switch(highbyte) {		/* function */
 				return(-1);
 			}
 
-	 		return(findfirstprocess((void *) argfour));
+	 		return(findfirstprocess((PROCESS *) argtwo));
 
-		case 0x700A:			/* find process */
+		case 0x700A:			/* find next process */
 			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 				setlasterror(INVALID_ADDRESS);
 				return(-1);
 			}
 
-	 		return(findnextprocess((void *) argfour));
+	 		return(findnextprocess((PROCESS *) argfour,(PROCESS *) argtwo));
 
 		case 0x700B:			/* add block device */
 			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
@@ -783,7 +741,7 @@ switch(highbyte) {		/* function */
 				return(-1);
 			}
 
-	 		return(add_char_device(argfour));
+	 		return(add_character_device(argfour));
 
 		case 0x700D:			/* remove block device */
 			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
@@ -793,13 +751,13 @@ switch(highbyte) {		/* function */
 
 	 		return(remove_block_device(argfour));
 
-		case 0x700E:			/* remove char device */
+		case 0x700E:			/* remove character device */
 			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 				setlasterror(INVALID_ADDRESS);
 				return(-1);
 			}
 
-	 		return(remove_char_device(argfour));
+	 		return(remove_character_device(argfour));
 
 		case 0x7018:				/* get file size */
 	 		return(getfilesize(argtwo));
@@ -860,6 +818,9 @@ switch(highbyte) {		/* function */
 
 		case 0x7030:				/* get enviroment address */
 	 		return(getenv());
+
+		case 0x7031:				/* unload module */
+	 		return(unload_kernel_module(argfour));
 
 		case 0x2524:				/* set critical error handler */
 			if(argtwo >= KERNEL_HIGH) {		/* invalid argument */
@@ -1024,36 +985,6 @@ if(currentprocess == NULL) {
 }
 
 strcpy(buf,currentprocess->filename);
-}
-
-/*
-* Get console write handle
-*
-* In: nothing
-*
-* Returns console write handle
-*
-*/
-
-size_t getwriteconsolehandle(void) {
-if(currentprocess == NULL) return(stdout);
-
-return(currentprocess->writeconsolehandle);
-}
-
-/*
-* Get console read handle
-*
-* In: nothing   
-*
-* Returns console read handle
-*
-*/
-
-size_t getreadconsolehandle(void) {
-if(currentprocess == NULL) return(stdin);
-
-return(currentprocess->readconsolehandle);
 }
 
 /*
@@ -1352,6 +1283,39 @@ return(processes);
 }
 
 /*
+* Find first process
+*
+* In: processbuf	Pointer to buffer to hold process information
+*
+* Returns -1 on error or 0 on success
+*
+*/
+
+PROCESS *findfirstprocess(PROCESS *processbuf) {
+memcpy(processbuf,processes,sizeof(PROCESS));		/* get first process */
+
+return(processes->next);
+}
+
+/*
+* Find next process
+*
+* In: previousprocess	Pointer to previous process returned from call to get_processes_pointer() or findnextprocess()
+*     processbuf	Pointer to buffer to hold process information
+*
+* Returns -1 on error or 0 on success
+*
+*/
+
+PROCESS *findnextprocess(PROCESS *previousprocess,PROCESS *processbuf) { 
+if(previousprocess->next == NULL) return(NULL);		/* end of processes */
+
+memcpy(processbuf,previousprocess->next,sizeof(PROCESS));		/* get next process */
+
+return(previousprocess->next);
+}
+
+/*
 * Update current process pointer
 *
 * In:  Pointer to process
@@ -1377,7 +1341,7 @@ return(currentprocess);
 }
 
 /*
-* Get next process pointer
+* next process pointer
 *
 * In:  Nothing
 *
@@ -1548,18 +1512,6 @@ HEAPENTRY *GetUserHeapAddress(void) {
 return(currentprocess->heapaddress);
 }
 
-/*
-* Get user heap size
-*
-* In: nothing
-*
-* Returns: Heap size
-*
-*/
-
-size_t GetUserHeapSize(void) {
-return(currentprocess->heapsize);
-}
 
 /*
 * Get user heap end
@@ -1572,20 +1524,6 @@ return(currentprocess->heapsize);
 
 HEAPENTRY *GetUserHeapEnd(void) {
 return(currentprocess->heapend);
-}
-
-
-/*
-* Set user heap size
-*
-* In: User heap size
-*
-* Returns: Nothing
-*
-*/
-
-void SetUserHeapSize(size_t size) {
-currentprocess->heapsize=size;
 }
 
 /*

@@ -689,7 +689,11 @@ char *b;
 size_t drive;
 BLOCKDEVICE bd;
 
-gethandle(handle,&atadevice);		/* get information about device */
+if(gethandle(handle,&serialdevice) == -1) {		/* get information about device */
+	setlasterror(INVALID_HANDLE);
+	return(-1);
+}
+
 drive=(uint8_t) (*atadevice.filename-'A');	/* get drive number */
 
 getblockdevice(drive,&bd);		/* get device information */
