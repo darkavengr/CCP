@@ -413,6 +413,7 @@ return(-1);
 size_t remove_block_device(char *name) {
 BLOCKDEVICE *next;
 BLOCKDEVICE *last;
+FILERECORD buf;
 
 /* find device */
 lock_mutex(&blockdevice_mutex);			/* lock mutex */
@@ -423,7 +424,7 @@ last=blockdevices;
 while(next != NULL) {
 	 if(strcmpi(next->name,name) == 0) {		 		/* already loaded */
 
-		if(gethandle(name) == 0) {		/* file is open */
+		if(gethandle(name,&buf) == 0) {		/* file is open */
 			setlasterror(FILE_IN_USE);
 			return(-1);
 		}
@@ -468,6 +469,7 @@ return(-1);
 size_t remove_character_device(char *name) {
 CHARACTERDEVICE *next;
 CHARACTERDEVICE *last;
+FILERECORD buf;
 
 /* find device */
 
@@ -479,7 +481,7 @@ last=next;
 while(next != NULL) {
 	 if(strcmpi(next->name,name) == 0) {		/* device found */
 
-		if(gethandle(name) == 0) {		/* device is in use */
+		if(gethandle(name,&buf) == 0) {		/* device is in use */
 			setlasterror(FILE_IN_USE);
 			return(-1);
 		}

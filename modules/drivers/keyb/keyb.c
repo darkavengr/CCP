@@ -175,7 +175,7 @@ if(readcount++ == KEYB_BUFFERSIZE) return;				/* buffer full - must reset count 
 switch(keycode) {								/* control characters */
 
 	case KEY_TAB:
-		kprintf("        ");
+		kprintf_direct("        ");
 	 	return;
 
 	case KEY_HOME_7:							/* move cursor to start of line */  
@@ -236,132 +236,132 @@ if((keyboardflags & CTRL_PRESSED)) { 							/* control characters */
 switch(keycode) {
 	case KEY_SINGQUOTE_AT:
 		*keybuf++=CTRL_AT;
-		kprintf("^@");
+		kprintf_direct("^@");
 
 		return;
 
 	case KEY_A:
 		*keybuf++=CTRL_A;
-		kprintf("^A");
+		kprintf_direct("^A");
 
 		return;
 	  
 	case KEY_B:
 		*keybuf++=CTRL_B;
-		kprintf("^B");
+		kprintf_direct("^B");
 
 	return;
 
 	case KEY_C:
-		kprintf("^C");
+		kprintf_direct("^C");
 
 		sendsignal(getpid(),SIGTERM);		/* send signal to terminate signal */
 		return;
 
 	case KEY_D:
 		*keybuf++=CTRL_D;
-		kprintf("^D");
+		kprintf_direct("^D");
 	 	return;
 
 	case KEY_E:
 		*keybuf++=CTRL_E;
-		kprintf("^E");
+		kprintf_direct("^E");
 		return;
 
 	case KEY_F:
 		*keybuf++=CTRL_F;
-		kprintf("^F");
+		kprintf_direct("^F");
 
 		return;
 
 	case KEY_G:
 		*keybuf++=CTRL_G;
-		kprintf("^G");
+		kprintf_direct("^G");
 
 		return;
 
 
 	case KEY_I:								/* tab */
 	 	*keybuf++="\t";
-		kprintf("\t");
+		kprintf_direct("\t");
 	  	return;
 
 	case KEY_J:
 		*keybuf++=CTRL_J;
-		kprintf("^J");
+		kprintf_direct("^J");
 
 	 	return;
 
 	case KEY_K:
 		*keybuf++=CTRL_K;
-		kprintf("^K");
+		kprintf_direct("^K");
 
 	 	return;
 
 	case KEY_L:
 		*keybuf++=CTRL_L;
-	  	kprintf("^L");
+	  	kprintf_direct("^L");
 
 	  	return;
 
 	case KEY_M:
 		*keybuf++=CTRL_M;
-		kprintf("^M");
+		kprintf_direct("^M");
 		return;
 
 	case KEY_N:
 		*keybuf++=CTRL_N;
-		kprintf("^N");
+		kprintf_direct("^N");
 		return;
 
 	case KEY_O:
 		*keybuf++=CTRL_O;
-		kprintf("^O");
+		kprintf_direct("^O");
 		return;
 
 	case KEY_P:
 		*keybuf++=CTRL_P;
-		kprintf("^P");
+		kprintf_direct("^P");
 		return;
 
 	case KEY_Q:
 		*keybuf++=CTRL_Q;
-		kprintf("^Q");
+		kprintf_direct("^Q");
 		return;
 
 	case KEY_R:
 		*keybuf++=CTRL_R;
-		kprintf("^R");
+		kprintf_direct("^R");
 		return;
 
 	case KEY_S:
 		*keybuf++=CTRL_S;
-		kprintf("^S");
+		kprintf_direct("^S");
 		return;
 
 	case KEY_T:
 		*keybuf++=CTRL_T;
-		kprintf("^T");
+		kprintf_direct("^T");
 		return;
 
 	case KEY_V:
 		*keybuf++=CTRL_V;
-		kprintf("^V");
+		kprintf_direct("^V");
 		return;
 
 	case KEY_W:
 		*keybuf++=CTRL_W;
-		kprintf("^W");
+		kprintf_direct("^W");
 		return;
 
 	case KEY_X:
 		*keybuf++=CTRL_X;
-	  	kprintf("^X");
+	  	kprintf_direct("^X");
 	  	return;
 
 	case KEY_Y:
 		*keybuf++=CTRL_Y;
-		kprintf("^Y");
+		kprintf_direct("^Y");
 		return;
 
 	case KEY_Z:
@@ -372,7 +372,7 @@ switch(keycode) {
 }
 
 if((keyboardflags & CTRL_PRESSED) && (keyboardflags & ALT_PRESSED) && keycode == KEY_DEL) {	/* press ctrl-alt-del */
-	kprintf("CTRL-ALT-DEL\n\n");
+	kprintf_direct("CTRL-ALT-DEL\n\n");
 	shutdown(1);
 }
 
@@ -384,13 +384,13 @@ if((keyboardflags & CAPSLOCK_PRESSED)) {
  	if((c >= 'A' && c <= 'Z') && ((keyboardflags & SHIFT_PRESSED) == 0)) {
 		c=c+32;				/* to lowercase */
 		*keybuf++=c;
-		kprintf(scancodes_shifted[keycode]);
+		kprintf_direct(scancodes_shifted[keycode]);
 		return;
 	}
 
 	if((c >= 'A' && c <= 'Z') && (keyboardflags & SHIFT_PRESSED)) {
 		*keybuf++=c;
-		kprintf(scancodes_unshifted[keycode]);
+		kprintf_direct(scancodes_unshifted[keycode]);
 		return;
 	}
 
@@ -399,12 +399,12 @@ if((keyboardflags & CAPSLOCK_PRESSED)) {
 /* If capslock is not on, use uppercase letters if shift pressed. Use lowercase letters otherwise */
 
 if((keyboardflags & SHIFT_PRESSED)) {
-	kprintf(scancodes_shifted[keycode]);
+	kprintf_direct(scancodes_shifted[keycode]);
 	*keybuf++=*scancodes_shifted[keycode];
 }
 else
 {
-	kprintf(scancodes_unshifted[keycode]);
+	kprintf_direct(scancodes_unshifted[keycode]);
 	*keybuf++=*scancodes_unshifted[keycode];	
 }
 

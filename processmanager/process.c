@@ -229,6 +229,8 @@ if(currentprocess->heapaddress == NULL) {
 	return(-1);
 }
 
+currentprocess->heapend=currentprocess->heapaddress+INITIAL_HEAP_SIZE;		/* end of heap */
+
 initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);	/* initial kernel stack */
 
 /* create psp */ 
@@ -1242,7 +1244,7 @@ currentprocess->kernelstackpointer=new_stack_pointer;
 }
 
 /*
-* Save kernel stack pointer for current process
+* Get kernel stack pointer for current process
 *
 * In:  Nothing
 *

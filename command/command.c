@@ -246,6 +246,37 @@ kprintf(commandbanner,COMMAND_VERSION_MAJOR,COMMAND_VERSION_MINOR);
 
 argcount=tokenize_line(psp->commandline,commandlinearguments," \t");		/* tokenize command line arguments */
 
+if(argcount >= 2) {
+	for(count=1;count<argcount;count++) {
+		if(strcmpi(commandlinearguments[count],"/C") == 0) {		/* run command and exit */
+			doline(commandlinearguments[count+1]);
+			exit(0);
+		}
+
+		if(strcmpi(commandlinearguments[count],"/K") == 0) {		/* run command */
+			doline(commandlinearguments[count+1]);
+	
+		}
+	
+		if(strcmpi(commandlinearguments[count],"/P") == 0) {		/* Make command interpreter pemenant */
+			commandlineoptions |= COMMAND_PERMENANT;
+		}	
+		
+		if(strcmpi(commandlinearguments[count],"/?") == 0) {		/* Show help */
+			kprintf("Command interpreter\n");
+			kprintf("\n");
+			kprintf("COMMAND [/C command] [/K command] /P\n");
+			kprintf("\n");
+			kprintf("/C run command and exit\n");
+			kprintf("\n");
+			kprintf("/K run command and continue running command interpreter\n");
+			kprintf("\n");
+			kprintf("/P make command interpreter permanent (no exit)\n");
+		
+			count++;
+		}
+	}
+}
 
 set_critical_error_handler(&critical_error_handler);		/* set critical error handler */
 set_signal_handler(signalhandler);			/* set signal handler */
@@ -276,7 +307,7 @@ while(1) {	/* forever */
 	c=*buffer;
 	kprintf("%c>",c);
 
-	memset(buffer,0,MAX_PATH);
+	//memset(buffer,0,MAX_PATH);
 
 	readline(commandconsolein,buffer,MAX_PATH);			/* get line */
 
@@ -313,7 +344,7 @@ if(strcmp(command,"\n") == 0) return;	/* blank line */
 b=command+strlen(command)-1;
 if(*b == '\n') *b=0;		/* remove newline */
 
-memset(parsebuf,0,COMMAND_TOKEN_COUNT*MAX_PATH);
+//memset(parsebuf,0,COMMAND_TOKEN_COUNT*MAX_PATH);
 
 tc=tokenize_line(command,parsebuf," \t");	
 
@@ -364,7 +395,7 @@ for(count=0;count<tc;count++) {
 	 		return;
 	   	}
 
-	  	dup2(stdin,handle); /* redirect output */
+	  	dup2(handle,stdin); 		/* redirect input */
 
 	   	xdir=count;
 
@@ -387,7 +418,7 @@ for(count=0;count<tc;count++) {
 	 
 	   	if(strcmp(parsebuf[count],">>") == 0) seek(handle,getfilesize(handle),SEEK_SET);	/* seek to end */
 	  
-		dup2(stdout,handle); /* redirect output */
+		dup2(handle,stdout); 		/* redirect output */
 	   	xdir=count;
 
 	   	while(xdir < tc) {						/* overwrite redir */
@@ -448,7 +479,7 @@ else
 /* don't put anything here, drop through to below */
 
 if(tc > 1) {						/* copy args if any */
-	memset(temp,0,MAX_PATH);
+	//memset(temp,0,MAX_PATH);
 
 	for(count=1;count<tc;count++) {				/* get args */
 		strcat(temp,parsebuf[count]);
@@ -460,6 +491,7 @@ if(tc > 1) {						/* copy args if any */
 }
 
 /* run program or script in current directory */
+
 if(runcommand(parsebuf[0],temp,backg) != -1) return;	/* run ok */
 
 /* prepend each directory in PATH to filename in turn and execute */
@@ -957,7 +989,6 @@ return;
  */
 
 int dir_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-size_t findresult;
 char *b;
 char *buffer[MAX_PATH];
 size_t dircount;
@@ -979,12 +1010,10 @@ b=b+2;
 
 kprintf(directoryof,buffer);
 	
-memset(&direntry.filename,0,MAX_PATH);
+//memset(&direntry.filename,0,MAX_PATH);
 
-findresult=findfirst(parsebuf[1],&direntry);
-
-if(findresult == -1) {
-	if(getlasterror() != END_OF_DIR) writeerror();
+if(findfirst(parsebuf[1],&direntry) == -1) {
+	if(getlasterror() != END_OF_DIRECTORY) writeerror();
 	return;
 }
 
@@ -992,7 +1021,7 @@ if(findresult == -1) {
 dircount=0;
 fcount=0;
 
-while(findresult != -1) {
+do {
 
 /*time date size filename */
 
@@ -1008,8 +1037,8 @@ while(findresult != -1) {
 	  else
 	  {
 	  	itoa(direntry.filesize,buffer);		/* pad out file size */		
-	  	memset(temp,0,10);
-	  	memset(temp,' ',10-strlen(buffer));
+	  	//memset(temp,0,10);
+	  	//memset(temp,' ',10-strlen(buffer));
 	  	kprintf(temp);
 
 	  	kprintf("%d ",direntry.filesize);
@@ -1018,16 +1047,15 @@ while(findresult != -1) {
 	  kprintf("%s\n",direntry.filename);
 	  fcount++;
 
-	  memset(&direntry,sizeof(FILERECORD));
+	  //memset(&direntry,sizeof(FILERECORD));
 
-	  findresult=findnext(parsebuf[1],&direntry);
-	  if(findresult == -1) break;
-}
+//	  asm("xchg %bx,%bx");
+} while(findnext(parsebuf[1],&direntry) != -1);
 
 ksprintf(temp,"%d",getlasterror()); 
 setvar("ERRORLEVEL",temp);
 
-if(getlasterror() != END_OF_DIR) {
+if(getlasterror() != END_OF_DIRECTORY) {
 	writeerror();
 	return;
 }

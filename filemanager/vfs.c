@@ -218,7 +218,7 @@ if(findfirst(fullname,&dirent) == -1) {			/* check if file exists */
 
 /* check if file can be opened */
 
-if((dirent.attribs & _DIR) == _DIR) {
+if((dirent.flags & FILE_DIRECTORY) == FILE_DIRECTORY) {
 	unlock_mutex(&vfs_mutex);
 
 	setlasterror(ACCESS_DENIED);			/* can't open directory */
@@ -369,6 +369,7 @@ FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
 SPLITBUF splitbuf;
 char *fullname[MAX_PATH];
+FILERECORD dirent;
 
 getfullpath(name,fullname);
 
@@ -609,6 +610,11 @@ if(next == NULL) {
 	return(-1);
 }
 
+if(((next->flags & FILE_CHAR_DEVICE) == 0) || ((next->flags & FILE_BLOCK_DEVICE) == 0)) {	/* not device */
+	setlasterror(NOT_DEVICE);
+	return(-1);
+}
+
 if(next->ioctl != NULL) {
 	if(next->ioctl(handle,request,buffer) == -1) {
 		lock_mutex(&vfs_mutex);
@@ -811,41 +817,26 @@ dup_internal(handle,getpid(),getpid());
 size_t dup2(size_t oldhandle,size_t newhandle) {
 FILERECORD *oldnext;
 FILERECORD *newnext;
-FILERECORD *last;
+FILERECORD *next;
 size_t savenext;
 
 lock_mutex(&vfs_mutex);
 
-oldnext=openfiles;
+next=openfiles;
 	
-while(oldnext != NULL) {					/* find handle in struct */
-	if(oldnext->handle == oldhandle) break;
-	oldnext=oldnext->next;
+while(next != NULL) {					/* find handles */
+	if(next->handle == oldhandle) oldnext=next;
+	if(next->handle == newhandle) newnext=next;
+
+	next=next->next;
 }
 
-if(oldnext == NULL) {
+if((oldnext == NULL) || (oldnext == NULL)) {
 	unlock_mutex(&vfs_mutex);
 
 	setlasterror(INVALID_HANDLE);
 	return(-1);
 }
-
-newnext=openfiles;
-	
-while(newnext != NULL) {					/* find handle in struct */
-	if(newnext->handle == newhandle) break;
-
-	newnext=newnext->next;
-}
-
-if(newnext == NULL) {
-	unlock_mutex(&vfs_mutex);
-
-	setlasterror(INVALID_HANDLE);
-	return(-1);
-}	
-
-savenext=oldnext->next;		/* save next pointer */
 
 memcpy(newnext,oldnext,sizeof(FILERECORD));  /* copy data */
 
@@ -858,8 +849,6 @@ setlasterror(NO_ERROR);
 
 return(newnext->handle);
 }
-
-size_t timescalled=0;
 
 /*
  * Register filesystem
@@ -1513,3 +1502,4 @@ updatehandle(handle,&seek_file_record);		/* update */
 setlasterror(NO_ERROR);
 return(seek_file_record.currentpos);
 }
+

@@ -689,7 +689,7 @@ char *b;
 size_t drive;
 BLOCKDEVICE bd;
 
-if(gethandle(handle,&serialdevice) == -1) {		/* get information about device */
+if(gethandle(handle,&atadevice) == -1) {		/* get information about device */
 	setlasterror(INVALID_HANDLE);
 	return(-1);
 }

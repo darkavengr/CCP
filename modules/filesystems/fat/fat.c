@@ -262,7 +262,7 @@ while(1) {
 			kernelfree(lfnbuf);
 			kernelfree(splitbuf);
 		
-			setlasterror(END_OF_DIR);
+			setlasterror(END_OF_DIRECTORY);
 			return(-1);
 		}
 
@@ -401,7 +401,7 @@ while(1) {
 			kernelfree(blockbuf);
 			kernelfree(splitbuf);
 
-			setlasterror(END_OF_DIR);
+			setlasterror(END_OF_DIRECTORY);
 			return(-1);
 		}
 	}
@@ -412,7 +412,7 @@ kernelfree(blockbuf);
 kernelfree(splitbuf);
 kernelfree(lfnbuf);
 
-setlasterror(END_OF_DIR);
+setlasterror(END_OF_DIRECTORY);
 return(-1);
 }
 
@@ -664,7 +664,7 @@ while(1) {
 
 kernelfree(blockbuf);
 
-setlasterror(END_OF_DIR);
+setlasterror(END_OF_DIRECTORY);
 return(-1);
 }
 
@@ -1630,7 +1630,7 @@ if(fattype == 32) {
 }
 
 kernelfree(buf);	
-setlasterror(END_OF_DIR);
+setlasterror(END_OF_DIRECTORY);
 
 return(-1);
 }

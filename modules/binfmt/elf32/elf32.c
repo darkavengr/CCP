@@ -57,19 +57,19 @@ if(read(handle,&elf_header,sizeof(Elf32_Ehdr)) == -1) {
 if(elf_header.e_ident[0] != 0x7F && elf_header.e_ident[1] != 0x45 && elf_header.e_ident[2] != 0x4C && elf_header.e_ident[3] != 0x46) {	/*  elf */
 	close(handle);
 
-	setlasterror(INVALID_EXEC);
+	setlasterror(INVALID_EXECUTABLE);
 	return(-1);
 }
 
 if(elf_header.e_type != ET_EXEC) {		/* not executable */
 	close(handle);
-	setlasterror(INVALID_EXEC);
+	setlasterror(INVALID_EXECUTABLE);
 	return(-1);
 }
 
 if(elf_header.e_phnum == 0) {			/* no program headers */
 	close(handle);
-	setlasterror(INVALID_EXEC);
+	setlasterror(INVALID_EXECUTABLE);
 	return(-1);
 }
 
@@ -102,7 +102,7 @@ for(count=0;count<elf_header.e_phnum;count++) {
 	if(phbuf->p_type == PT_LOAD) {			/* if segment is loadable */
 
 		if(phbuf->p_vaddr >= KERNEL_HIGH) {		/* invalid address */
-			setlasterror(INVALID_EXEC);
+			setlasterror(INVALID_EXECUTABLE);
 
 			kernelfree(phbuf);
 			close(handle);

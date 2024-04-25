@@ -533,8 +533,7 @@ heapheader=address-sizeof(HEAPENTRY);		/* point to header */
 if((heapheader->allocationtype != 'M') && (heapheader->allocationtype != 'Z')) {	/* invalid entry */
 //	kprintf_direct("kernel heap free: Heap corrupted, address=%X\n",heapheader);
 
-//	asm("xchg %bx,%bx");
-
+	setlasterror(HEAP_HEADER_CORRUPT);	
 	return(-1);
 }
 
@@ -580,7 +579,7 @@ if(heapnext+(oldsize+(sizeof(HEAPENTRY)*2)) >= heapend) {		/* if past end of hea
 //	DEBUG_PRINT_HEX(addr);
 //	asm("xchg %bx,%bx");
 
-//	free_internal(getpid(),(void *) addr,0);		/* free end of heap */
+	free_internal(getpid(),(void *) addr,0);		/* free end of heap */
 }
 
 return(0);

@@ -41,8 +41,8 @@
 typedef struct {
 	uint8_t name[MAX_PATH];
 	uint8_t magicnumber[MAX_PATH];
-	size_t size;
-	size_t location;
+	uint64_t size;
+	uint64_t location;
 	size_t (*findfirst)(char *name,void *);	/* handlers */
 	size_t (*findnext)(char *name,void *);
 	size_t (*read)(size_t,void *,size_t);
@@ -71,7 +71,7 @@ typedef struct {
 	TIME create_time_date;
 	TIME last_written_time_date;
 	TIME last_accessed_time_date;
-	uint32_t filesize;
+	uint64_t filesize;
 	uint64_t startblock;
 	size_t drive;
 	uint64_t currentblock;
@@ -87,7 +87,7 @@ typedef struct {
 	uint64_t findlastblock; /* last block read by find() */
 	size_t findentry;
 	size_t owner_process;
-	uint8_t searchfilename[MAX_PATH]; 		
+	uint8_t searchfilename[MAX_PATH];
 	struct FILERECORD *next;
 } __attribute__((packed)) FILERECORD;
 

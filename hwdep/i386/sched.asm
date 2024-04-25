@@ -40,6 +40,8 @@ extern get_processes_pointer
 
 %define offset
 
+%include "kernelselectors.inc"
+
 ;
 ; The functions switch_task_process_descriptor and yield should not be called from 
 ; an interrupt handler. Instead, switch_task must be called.
@@ -100,16 +102,12 @@ push	dword [saveeip]
 
 pusha						; save registers
 
-mov	dword [esp-4],0				; clear before pushing, pushing segment registers does not modify upper 16 bits of stack entry
 push	ds					; save segment registers
-mov	dword [esp-4],0
 push	es
-mov	dword [esp-4],0
 push	fs
-mov	dword [esp-4],0
 push	gs
 
-mov	ax,0x10					; kernel data selector
+mov	ax,KERNEL_DATA_SELECTOR			; kernel data selector
 mov	ds,ax
 mov	es,ax
 mov	fs,ax
@@ -211,7 +209,6 @@ add	esp,4
 end_switch:
 xor	eax,eax
 mov	[save_descriptor],eax				; clear descriptor
-
 ret
 
 save_esp dd 0

@@ -554,123 +554,6 @@ while(count > 0) {
 return(num);
 }
 
-
-/*
- * Print formatted string
- *
- * In: char *format	Formatted string to print, uses same format placeholders as printf
-	   ...		Variable number of arguments to print
- *
- * Returns nothing
- *
- */
-void kprintf(char *format, ...) {
-va_list args;
-char *formatptr;
-char c;
-char *s;
-char *ptr;
-int num;
-double d;
-char *tempbuffer[MAX_SIZE];
-
-va_start(args,format);			/* get start of variable args */
-
-formatptr=format;
-
-while(*formatptr != 0) {
- 	c=*formatptr;
-
-	if(c == '%') {					/* format specifier */
-		c=*++formatptr;
-
-		switch(c) {
-
-			case's':				/* string */
-				s=va_arg(args,const char*);	/* get variable argument */
-
-				write(stdout,s,strlen(s));	/* write string to console */
-				
-				formatptr++;			/* point to next format character */
-				break;
-
-			case 'd':				/* decimal */
-				num=va_arg(args,int);		/* get variable integer argument */
-
-				if(num & ( 1 << ((sizeof(size_t) * 8)-1))) write(stdout,"-",1);	/* write minus sign if negative */			 
-
-				itoa(num,tempbuffer);		/* convert it to string */
-
-				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
-
-				formatptr++;			/* point to next format character */
-				break;
-
-			case 'u':				/* unsigned decimal */
-				num=va_arg(args,int);		/* get variable integer argument */
-  
-				itoa(num,tempbuffer);		/* convert it to string */
-
-				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
-
-				formatptr++;			/* point to next format character */
-				break;
-
-			case 'o':		/* octal */
-				num=va_arg(args,size_t);
-
-			 	itoa(num,tempbuffer);
-
-				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
-	
-				formatptr++;
-			 	break;
-
-			case 'p':				/* same as x */
-			case 'x':				/*  lowercase x */
-			case 'X':
-				num=va_arg(args,size_t);
-
-	 			tohex(num,tempbuffer);
-
-				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
-	
-				formatptr++;
-				break;
-   
-			case 'c':				/* character */
-	  			num=(unsigned char) va_arg(args, int);
-
-				ptr=tempbuffer;
-				*ptr++=(char)num;
-				*ptr++=0;
-
-				write(stdout,tempbuffer,strlen(tempbuffer));	/* write string to console */
-
-	  			formatptr++;
-	  			break;
-
-	 		case '%':
-
-				write(stdout,"%",1);	/* write string to console */
-
-	  			formatptr++;
-	  			break;
-   			}
-
-  }
- else								/* output character */
- {
-			write(stdout,&c,1);	/* write string to console */
-
-			formatptr++;
- }
-
-}
-
-va_end(args);
-}
-
 /*
  * Print formatted string to a fixed console
  *
@@ -714,7 +597,7 @@ while(*formatptr != 0) {
 			case 'd':				/* decimal */
 				num=va_arg(args,int);		/* get variable integer argument */
 
-				if(num & ( 1 << ((sizeof(size_t) * 8)-1))) write(stdout,"-",1);	/* write minus sign if negative */			 
+				if(num & ( 1 << ((sizeof(size_t) * 8)-1))) outputconsole("-",1);	/* write minus sign if negative */			 
 
 				itoa(num,tempbuffer);		/* convert it to string */
 

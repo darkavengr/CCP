@@ -100,7 +100,7 @@ touppercase(split.filename);
 
 while(*tarptr->name != 0) {
 	if(*tarptr->name == 0) {		/* end of directory */
-		setlasterror(END_OF_DIR);
+		setlasterror(END_OF_DIRECTORY);
 		return(-1);
 	}
 
@@ -159,10 +159,10 @@ if(gethandle(handle,&onext) == -1) {	/* bad handle */
 	return(-1);
 }
 
-//if((onext.currentpos+size) > (boot_info->initrd_start+boot_info->initrd_size)) {	/* reading past end of file */
-// setlasterror(INPUT_PAST_END);
-// return(-1);
-//}
+if((onext.currentpos+size) > (boot_info->initrd_start+boot_info->initrd_size)) {	/* reading past end of file */
+	setlasterror(INPUT_PAST_END);
+	return(-1);
+}
 
 
 dataptr=boot_info->initrd_start+KERNEL_HIGH;		/* point to start */
@@ -270,10 +270,7 @@ char *filename[MAX_PATH];
 SPLITBUF split;
 BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
-if(boot_info->initrd_size == 0) {			/* out of range */
-	kprintf_direct("kernel: No initrd to load modules from\n");
-	return(-1);
-}
+if(boot_info->initrd_size == 0) return(-1);			/* no initrd */
 
 /* loop through modules in initrd and load them */
 
