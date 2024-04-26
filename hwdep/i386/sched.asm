@@ -41,7 +41,6 @@ extern get_processes_pointer
 %define offset
 
 %include "kernelselectors.inc"
-
 ;
 ; The functions switch_task_process_descriptor and yield should not be called from 
 ; an interrupt handler. Instead, switch_task must be called.
@@ -107,7 +106,7 @@ push	es
 push	fs
 push	gs
 
-mov	ax,KERNEL_DATA_SELECTOR			; kernel data selector
+mov	ax,0x10					; kernel data selector
 mov	ds,ax
 mov	es,ax
 mov	fs,ax
@@ -139,6 +138,8 @@ switch_task:
 
 mov	[save_esp],esp
 
+inc	byte [0x800b8000]
+
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled
@@ -169,8 +170,6 @@ call	getpid
 
 cmp	eax,1
 jne	not_debug
-
-xchg	bx,bx
 
 not_debug:
 ;

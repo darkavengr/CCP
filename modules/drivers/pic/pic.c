@@ -53,7 +53,6 @@ extern irq15;
 void pic_init(void) {
 disable_interrupts();
 
-
 set_interrupt(0x8e,8,&irq0,0xf0);		/* set interrupts */
 set_interrupt(0x8e,8,&irq1,0xf1);
 set_interrupt(0x8e,8,&irq2,0xf2);
@@ -75,19 +74,19 @@ set_interrupt(0x8e,8,&irq15,0xff);
  the default irq interrupts for the master pic conflict with interrupt 0-8 exceptions
  so they must be moved to 0xf0 - 0xff */
 
-outb(0x20,ICW1_INIT | ICW1_SINGLE);	/* remap irq */
-outb(0xA0,ICW1_INIT | ICW1_SINGLE);
+outb(PIC_MASTER_COMMAND,ICW1_INIT | ICW1_SINGLE);	/* remap irq */
+outb(PIC_SLAVE_COMMAND,ICW1_INIT | ICW1_SINGLE);
 
-outb(0x21,0xf0);				/* remap master pic irqs to interrupts f0-f7 */
-outb(0xA1,0xf8);			/* remap slave pic irqs to interrupts f8-ff */
+outb(PIC_MASTER_DATA,0xf0);				/* remap master pic irqs to interrupts f0-f7 */
+outb(PIC_SLAVE_DATA,0xf8);			/* remap slave pic irqs to interrupts f8-ff */
 
-outb(0x21,4);
-outb(0xa1,2);
-outb(0x21,ICW4_8086);
-outb(0xa1,ICW4_8086);
+outb(PIC_MASTER_DATA,4);
+outb(PIC_SLAVE_DATA,2);
+outb(PIC_MASTER_DATA,ICW4_8086);
+outb(PIC_SLAVE_DATA,ICW4_8086);
 
-outb(0x21,0);	/* enable all irqs */
-outb(0xa1,0);	
+outb(PIC_MASTER_DATA,0);	/* enable all irqs */
+outb(PIC_SLAVE_DATA,0);	
 
 enable_interrupts();
 
@@ -107,7 +106,11 @@ void setirqhandler(size_t irqnumber,void *handler);
 void pic_init(void);
 
 void setirqhandler(size_t irqnumber,void *handler) {
- irq_handlers[irqnumber]=handler;
- return;
+irq_handlers[irqnumber]=handler;
+return;
 }
 
+//void disable_timer() {
+//uint8_t pic_data;
+
+//pic_data=inb(

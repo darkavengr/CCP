@@ -675,6 +675,9 @@ switch(highbyte) {		/* function */
 	 	case 0x4401:			/* send commands to device */
 	  		return(ioctl((size_t) argtwo,(unsigned long) argthree,(void *) argsix));
 
+		case 0xAB12:
+			// fall through
+
 	 	case 0x4b00:			/* create process and load executable */
 			if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
 				setlasterror(INVALID_ADDRESS);

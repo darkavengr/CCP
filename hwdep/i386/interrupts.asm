@@ -514,7 +514,7 @@ ret
 ; Returns: Nothing
 ;
 d_lowlevel:
-call	disablemultitasking
+;xchg	bx,bx
 
 push	eax
 push	ebx
@@ -529,7 +529,8 @@ mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
 
-;xchg	bx,bx
+call	disablemultitasking
+
 sti
 call	dispatchhandler
 cli
