@@ -27,6 +27,8 @@
 #include <stddef.h>
 #include "../../header/kernelhigh.h"
 #include "hwdefs.h"
+#include "../../processmanager/mutex.h"
+#include "../../devicemanager/device.h"
 #include "../../filemanager/vfs.h"
 #include "../../memorymanager/memorymanager.h"
 #include "../../processmanager/process.h"

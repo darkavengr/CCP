@@ -21,12 +21,11 @@
 #include <stddef.h>
 #include "../header/kernelhigh.h"
 #include "../header/errors.h"
-#include "vfs.h"
-#include "../processmanager/mutex.h"
+#include "../processmanager/mutex.h"	
 #include "../devicemanager/device.h"
+#include "vfs.h"
 #include "../header/bootinfo.h"
 #include "../header/debug.h"
-
 
 FILERECORD *openfiles=NULL;
 FILESYSTEM *filesystems=NULL;
@@ -146,7 +145,7 @@ while(next != NULL) {					/* return error if open */
 	next=next->next;
 }
 
-/* Open block device */
+/* If opening block device */
 
 if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
 	if(openfiles == NULL) {
@@ -164,10 +163,11 @@ if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
 	next->currentblock=0;
 	next->currentpos=0;
 	next->owner_process=getpid();
-	next->blockio=blockdevice.blockio;
 	next->flags=FILE_BLOCK_DEVICE;
 	next->handle=handle;
 	next->access=access;
+
+	memcpy(&next->blockdevice,&blockdevice,sizeof(BLOCKDEVICE));	/* copy device information */
 	next->next=NULL;
 	
 	unlock_mutex(&vfs_mutex);
@@ -207,7 +207,7 @@ if(findcharacterdevice(filename,&chardevice) == 0) {
 	return(handle);					/* return handle */
 }
 
-/* opening regular file */
+/* If opening regular file */
 
 getfullpath(filename,fullname);				/* get full path of file */
 
@@ -460,6 +460,7 @@ size_t read(size_t handle,void *addr,size_t size) {
 FILESYSTEM fs;
 FILERECORD *next;
 SPLITBUF splitbuf;
+BLOCKDEVICE *blockdevice;
 
 lock_mutex(&vfs_mutex);
 
@@ -486,6 +487,22 @@ unlock_mutex(&vfs_mutex);
 if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */		
 
 	if(next->charioread(addr,size) == -1) {
+		unlock_mutex(&vfs_mutex);
+		return(-1);
+	}
+
+	unlock_mutex(&vfs_mutex);
+
+	setlasterror(NO_ERROR);
+	return(NO_ERROR);
+}
+
+/*
+ * if reading from block device, call device handler and return
+ */
+
+if(next->flags == FILE_BLOCK_DEVICE) {		/* device i/o */			
+	if(next->blockdevice.blockio(_READ,next->drive,(next->currentblock/(next->blockdevice.sectorsize*next->blockdevice.sectorsperblock)),addr) == -1) {
 		unlock_mutex(&vfs_mutex);
 		return(-1);
 	}
@@ -551,6 +568,23 @@ if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */
 	if(next->chariowrite(addr,size) == -1) {
 		unlock_mutex(&vfs_mutex);
 
+		return(-1);
+	}
+
+	unlock_mutex(&vfs_mutex);
+
+	setlasterror(NO_ERROR);
+	return(NO_ERROR);
+}
+
+/*
+ * if writing to block device, call device handler and return
+ */
+
+if(next->flags == FILE_BLOCK_DEVICE) {
+
+	if(next->blockdevice.blockio(_WRITE,next->drive,(next->currentblock/(next->blockdevice.sectorsize*next->blockdevice.sectorsperblock)),addr) == -1) {
+		unlock_mutex(&vfs_mutex);
 		return(-1);
 	}
 
@@ -708,8 +742,8 @@ next=openfiles;
 while(next != NULL) {					/* find filename in struct */
 
 	if(next->owner_process == getpid()) {		/* if file is owned by process */
-		last->next=next->next;
-		kernelfree(next);
+		last->next=next->next;			/* remove it from then list */
+		kernelfree(next);			/* free list entry */
 	}
 
 	next=next->next;
@@ -1502,4 +1536,5 @@ updatehandle(handle,&seek_file_record);		/* update */
 setlasterror(NO_ERROR);
 return(seek_file_record.currentpos);
 }
+
 

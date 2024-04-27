@@ -23,10 +23,10 @@
 #include "../header/kernelhigh.h"
 #include "../header/errors.h"
 #include "mutex.h"
+#include "../devicemanager/device.h"
 #include "../filemanager/vfs.h"
 #include "../memorymanager/memorymanager.h"
 #include "process.h"
-#include "../devicemanager/device.h"
 #include "signal.h"
 #include "../header/bootinfo.h"
 #include "../header/debug.h"
@@ -79,10 +79,10 @@ disable_interrupts();
 
 /* add process to process list and find process id */
 
-if(processes == NULL) {  
-	processes=kernelalloc(sizeof(PROCESS));
+if(processes == NULL) {  					/* first process */
+	processes=kernelalloc(sizeof(PROCESS));			/* add entry to beginning of list */
 
-	if(processes == NULL) {
+	if(processes == NULL) {					/* return if can't allocate */
 		loadpagetable(getppid());
 		freepages(highest_pid_used);
 		enablemultitasking();	
@@ -91,14 +91,14 @@ if(processes == NULL) {
 		return(-1);
 	}
 
-processes_end=processes;
+processes_end=processes;					/* save end of list */
 
 next=processes;
 }
-else
+else								/* not first process */
 {
-	processes_end->next=kernelalloc(sizeof(PROCESS));
-	if(processes_end->next == NULL) {
+	processes_end->next=kernelalloc(sizeof(PROCESS));	/* add entry to end of list */
+	if(processes_end->next == NULL) {			/* return error if can't allocate */
 		loadpagetable(getppid());
 		freepages(highest_pid_used);
 		enablemultitasking();	
@@ -108,38 +108,42 @@ else
 		return(-1);
 	}
 
-next=processes_end->next;
+next=processes_end->next;		/* get a copy of end, so that the list is not affected if any errors occur */
 }
 
-getfullpath(filename,fullpath);
+getfullpath(filename,fullpath);		/* get full path to executable */
 
-/* create struct */
-strcpy(next->filename,fullpath);
-strcpy(next->args,argsx);
-strcpy(tempfilename,fullpath);
-strcpy(tempargs,argsx);
+strcpy(tempfilename,fullpath);		/* save executable filename and arguments into variables that are not affected by any stack change */
+strcpy(tempargs,argsx);			   
 
-getcwd(next->currentdir);		/* current directory */
-next->maxticks=DEFAULT_QUANTUM_COUNT;
-next->ticks=0;
-next->parentprocess=getpid();
+/* fill struct with process information */
+
+strcpy(next->filename,fullpath);	/* process executable filename */
+strcpy(next->args,argsx);		/* process arguments */
+
+getcwd(next->currentdirectory);		/* current directory */
+next->maxticks=DEFAULT_QUANTUM_COUNT;	/* maximum number of ticks for this process */
+next->ticks=0;				/* start at 0 for number of ticks */
+next->parentprocess=getpid();		/* parent process ID */
+next->pid=highest_pid_used;		/* process ID */
+next->errorhandler=NULL;		/* error handler, NULL for now */
+next->signalhandler=NULL;		/* signal handle, NULL for now */
+next->childprocessreturncode=0;		/* return code from child process */
+next->flags=0;				/* process flags */
+next->lasterror=0;			/* last error */
 next->next=NULL;
-next->pid=highest_pid_used;
-next->errorhandler=NULL;
-next->signalhandler=NULL;
-next->rc=0;
-next->flags=0;
-next->lasterror=0;
-next->ticks=0;
-next->maxticks=DEFAULT_QUANTUM_COUNT;
-next->next=NULL;
 
 
-next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);
-if(next->kernelstacktop == NULL) {
+/* Create kernel stack for process */
+
+next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);	/* allocate stack */
+if(next->kernelstacktop == NULL) {	/* return if can't allocate */
 	currentprocess=oldprocess;
+
 	loadpagetable(getpid());
+
 	freepages(highest_pid_used);
+
 	enablemultitasking();
 
 	close(handle);
@@ -158,29 +162,29 @@ next->kernelstackpointer=next->kernelstacktop;			/* intial kernel stack address 
 saveenv=NULL;
 
 if(currentprocess != NULL) {
-	saveenv=kernelalloc(ENVIROMENT_SIZE);
-	memcpy(saveenv,currentprocess->envptr,ENVIROMENT_SIZE);
+	saveenv=kernelalloc(ENVIROMENT_SIZE);		/* allocate a buffer to save enviroment variables in */
+	memcpy(saveenv,currentprocess->envptr,ENVIROMENT_SIZE);		/* copy enviroment variables */
 }
 
 page_init(highest_pid_used);				/* intialize page directory */	
-loadpagetable(highest_pid_used);				/* load page table */
+loadpagetable(highest_pid_used);			/* load page table */
 
-currentprocess=next;				/* use new process */
+currentprocess=next;					/* use new process */
 	
 highest_pid_used++;
 
-/* Part two of enviroment variables duplication
-*
-* copy variables from buffer */
+/* Part two of enviroment variables duplication */
 
+/* allocate enviroment block at the highest user program address minus enviroment size */
 currentprocess->envptr=alloc_int(ALLOC_NORMAL,getpid(),ENVIROMENT_SIZE,KERNEL_HIGH-ENVIROMENT_SIZE-1);
 
 if(saveenv != NULL) {
-	memcpy(currentprocess->envptr,saveenv,ENVIROMENT_SIZE);
+	memcpy(currentprocess->envptr,saveenv,ENVIROMENT_SIZE);		/* copy from saved enviroment buffer */
 	kernelfree(saveenv);
 }
 
-/* allocate user mode stack */
+/* allocate user mode stack below enviroment variables */
+
 stackp=alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,KERNEL_HIGH-PROCESS_STACK_SIZE-ENVIROMENT_SIZE);
 if(stackp == NULL) {
 	currentprocess=oldprocess;
@@ -190,7 +194,7 @@ if(stackp == NULL) {
 	return(-1);
 }
 
-next->stackbase=stackp;
+next->stackbase=stackp;					/* add user mode stack base and pointer to new process entry */
 next->stackpointer=stackp+PROCESS_STACK_SIZE;
 
 /* duplicate stdin, stdout and stderr */
@@ -208,7 +212,7 @@ enable_interrupts();
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
-if(entrypoint == -1) {
+if(entrypoint == -1) {					/* can't load executable */
 	kernelfree(next);
 
 	currentprocess=oldprocess;			/* restore previous process */
@@ -221,7 +225,7 @@ if(entrypoint == -1) {
 /* create process heap */
 
 currentprocess->heapaddress=alloc_int(ALLOC_NORMAL,getpid(),INITIAL_HEAP_SIZE,-1);	/* allocate process heap */
-if(currentprocess->heapaddress == NULL) {
+if(currentprocess->heapaddress == NULL) {		/* can't allocate */
 	currentprocess=oldprocess;			/* restore previous process */
 
 	loadpagetable(getpid());
@@ -229,14 +233,22 @@ if(currentprocess->heapaddress == NULL) {
 	return(-1);
 }
 
-currentprocess->heapend=currentprocess->heapaddress+INITIAL_HEAP_SIZE;		/* end of heap */
+currentprocess->heapend=currentprocess->heapaddress+INITIAL_HEAP_SIZE;		/* end of process's heap */
 
-initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE);	/* initial kernel stack */
+initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE); /* initializes kernel stack */
 
 /* create psp */ 
 ksprintf(psp->commandline,"%s %s",next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
+
+//next=processes;
+
+//while(next != NULL) {
+//	kprintf_direct("%X %s\n",next->pid,next->filename);
+
+//	next=next->next;
+//}
 
 if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 	currentprocess=oldprocess;			/* restore previous process */
@@ -279,9 +291,9 @@ disablemultitasking();
 
 lock_mutex(&process_mutex);			/* lock mutex */
 
-shut();			/* close open files for process */
+shut();						/* close open files for process */
 
-oldprocess=getpid();
+oldprocess=getpid();				/* save current process ID */
 
 next=processes;
 last=next;
@@ -293,8 +305,8 @@ while(next != NULL) {
 	next=next->next;
 }
 
-if(next == NULL) {
-	setlasterror(INVALID_PROCESS);		/* invalid process */
+if(next == NULL) {				/* return if process was not found */
+	setlasterror(INVALID_PROCESS);
 
 	unlock_mutex(&process_mutex);			/* unlock mutex */
 
@@ -377,7 +389,7 @@ void shutdown(size_t shutdown_status) {
 	kprintf_direct("Waiting %d seconds for processes to terminate\n",SHUTDOWN_WAIT);
 	kwait(SHUTDOWN_WAIT);
 	
-	if(processes != NULL) kprintf_direct("processes did not terminate in time (too bad)\n");
+	if(processes != NULL) kprintf_direct("kernel: Processes did not terminate in time (too bad)\n");
 
 	if(shutdown_status == _SHUTDOWN) {
 		kprintf_direct("It is now safe to turn off your computer\n");
@@ -438,7 +450,7 @@ return(-1);
       argfour			| Arguments to pass to functions
       argthree			|
       argtwo		        /
-      argsone			Function code of function to call
+      argsone			Function code
 *
 * Returns -1 on error or function return value on success
 *
@@ -457,7 +469,7 @@ argone=argone & 0xffff;				/* get 16 bits */
 highbyte=(argone & 0xff00) >> 8;
 lowbyte=(argone & 0xff);
 
-switch(highbyte) {		/* function */
+switch(highbyte) {
 	case 0:			/* exit */
 		kill(getpid());
 		break;
@@ -474,7 +486,7 @@ switch(highbyte) {		/* function */
 	case 0x4c:			/* terminate process */
 		return(exit(lowbyte));
 
-	case 0x50:			/* get pid */
+	case 0x50:			/* get process ID */
 		return(getpid());
 
 	case 0x3e:			/* close */
@@ -504,7 +516,7 @@ switch(highbyte) {		/* function */
 
 		return(findfirst(argfour,argtwo));	
 	
-	case 0x4f:			/* find next file*/
+	case 0x4f:			/* find next file */
 		if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
@@ -875,7 +887,7 @@ if(currentprocess == NULL) {			/* no processes, so get from boot drive */
 	 return(NO_ERROR);
 }
 
-strcpy(dir,currentprocess->currentdir);
+strcpy(dir,currentprocess->currentdirectory);
 
 setlasterror(NO_ERROR);
 return(NO_ERROR);
@@ -897,21 +909,21 @@ FILERECORD chdir_file_record;
 
 getfullpath(dirname,fullpath);
 
-/* findfirst (and other other filesystem calls) use currentprocess->currentdir to get the
+/* findfirst (and other other filesystem calls) use currentprocess->currentdirectory to get the
 	  full path of a file, but this function checks that a new current directory is valid,
-	  so it must copy the new current directory to currentprocess->currentdir to make sure that 
+	  so it must copy the new current directory to currentprocess->currentdirectory to make sure that 
 	  it will be used to validate it.
 
 	  If it fails, the old path is restored
 */
 
-strcpy(savecwd,currentprocess->currentdir);		/* save current directory */
-memcpy(currentprocess->currentdir,fullpath,3);		/* get new path */
+strcpy(savecwd,currentprocess->currentdirectory);		/* save current directory */
+memcpy(currentprocess->currentdirectory,fullpath,3);		/* get new path */
 
 /* check if directory exists */
 
 if(findfirst(fullpath,&chdir_file_record) == -1) {		/* path doesn't exist */
-	strcpy(currentprocess->currentdir,savecwd);		/* restore old current directory */
+	strcpy(currentprocess->currentdirectory,savecwd);		/* restore old current directory */
 	return(-1);		
 }
 
@@ -920,7 +932,7 @@ if((chdir_file_record.flags & FILE_DIRECTORY) == 0) {		/* not directory */
 	return(-1);
 }
 
-strcpy(currentprocess->currentdir,fullpath);	/* set directory */
+strcpy(currentprocess->currentdirectory,fullpath);	/* set directory */
 
 setlasterror(NO_ERROR);  
 return(NO_ERROR);				/* no error */
@@ -969,7 +981,7 @@ currentprocess->lasterror=err;
 */
 
 size_t getlasterror(void) {
-	if(currentprocess == NULL) return(last_error_no_process);
+	if(currentprocess == NULL) return(last_error_no_process);		/* if there are no processes, use temporary variable */
 
 	return(currentprocess->lasterror);
 }
@@ -984,12 +996,12 @@ size_t getlasterror(void) {
 */
 
 size_t getprocessfilename(char *buf) {
-if(currentprocess == NULL) {
+if(currentprocess == NULL) {			/* if there are no processes, return "<unknown>" */
 	strcpy(buf,"<unknown>");
 	return;
 }
 
-strcpy(buf,currentprocess->filename);
+strcpy(buf,currentprocess->filename);		/* get filename */
 }
 
 /*
@@ -1002,7 +1014,7 @@ strcpy(buf,currentprocess->filename);
 */
 
 void getprocessargs(char *buf) {
-if(currentprocess == NULL) return;
+if(currentprocess == NULL) return;		/* return if there are no processes */
 
 strcpy(buf,currentprocess->args);
 }
@@ -1017,7 +1029,7 @@ strcpy(buf,currentprocess->args);
 */
 
 size_t getppid(void) {
-if(currentprocess == NULL) return(0);
+if(currentprocess == NULL) return(0);			/* return 0 if there are no processes */
 
 return(currentprocess->parentprocess);
 }
@@ -1027,15 +1039,24 @@ return(currentprocess->parentprocess);
 *
 * In: nothing
 *
-* Returns process return code
+* Returns: process return code
 *
 */
 
-size_t getreturncode(void) {
+size_t getreturncode(void) {				/* return 0 if there are no processes */
 if(currentprocess == NULL) return(0);
 
-return(currentprocess->rc);
+return(currentprocess->childprocessreturncode);
 }
+
+/*
+* Increment process ticks
+*
+* In: nothing
+*
+* Returns: Nothing
+*
+*/
 
 void increment_process_ticks(void) {
 if(currentprocess == NULL) return;
@@ -1082,15 +1103,15 @@ if(next == NULL) {
 }
 
 
-if(next->signalhandler != NULL) {
+if(next->signalhandler != NULL) {		/* if the process has a signal handler */
 	disablemultitasking();
-	signalno=signal;		/* save signal number so that when the process address space changes it won't be lost */
+	signalno=signal;			/* save signal number so that when the process address space changes it won't be lost */
 
-	thisprocess=getpid();	/* get current process */
+	thisprocess=getpid();			/* get current process */
 
 	loadpagetable(process);			/* switch to process address space */
 
-	next->signalhandler(signalno);	/*call signal handler */
+	next->signalhandler(signalno);		/*call signal handler */
 	loadpagetable(thisprocess);		/* switch back to original address space */
 
 	enablemultitasking();
@@ -1435,7 +1456,7 @@ if(read(handle,buffer,MAX_PATH) == -1) {
 
 close(handle);
 
-/* find format */
+/* find format and call handler */
 
 next=executableformats;
 
@@ -1499,9 +1520,9 @@ tickcount++;
 void kwait(size_t ticks) {
 size_t newticks;
 
-newticks=get_tick_count()+ticks;
+newticks=get_tick_count()+ticks;			/* Get last tick */
 
-while(get_tick_count() < newticks) ;;
+while(get_tick_count() < newticks) ;;			/* until tickcount is at last tick */
 }
 
 /*

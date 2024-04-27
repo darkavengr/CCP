@@ -11,6 +11,7 @@
 #define FILE_BLOCK_DEVICE	2
 #define FILE_DIRECTORY		4
 #define FILE_POS_MOVED_BY_SEEK	8
+#define FILE_FIFO		16
 
 #define _FILE			0
 #define _DIR 			1
@@ -80,8 +81,8 @@ typedef struct {
 	size_t currentpos;
 	size_t flags;
 	size_t handle;
-	size_t (*blockio)(size_t,size_t,size_t,void *);			/* function pointer */
-	size_t (*charioread)(size_t,void *);			/* function pointer */
+	BLOCKDEVICE blockdevice;		/* holds information about an opened block device */
+	size_t (*charioread)(size_t,void *);			/* note: uses function pointers, because character device I/O can be redirected*/
 	size_t (*chariowrite)(size_t,void *);			/* function pointer */
 	size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
 	uint64_t findlastblock; /* last block read by find() */

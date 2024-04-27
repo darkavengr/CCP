@@ -30,8 +30,8 @@ typedef struct {
 	size_t parentprocess;
 	size_t (*errorhandler)(char *,size_t,size_t,size_t);
 	size_t (*signalhandler)(size_t);
-	uint8_t currentdir[MAX_PATH];		
-	size_t rc;			
+	uint8_t currentdirectory[MAX_PATH];		
+	size_t childprocessreturncode;			
 	size_t flags;
 	size_t kernelstackpointer;
 	size_t kernelstacktop;

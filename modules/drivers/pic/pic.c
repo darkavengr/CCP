@@ -47,7 +47,7 @@ extern irq15;
  *
  * In: nothing
  *
- *  Returns nothing
+ *  Returns: nothing
  *
  */
 void pic_init(void) {
@@ -96,21 +96,52 @@ return;
 /*
  * Set IRQ handler
  *
- * In: size_t irqnumber	IRQ number
-       void *handler		IRQ handler
+ * In: irqnumber	IRQ number
+ *     handler		IRQ handler
  *
- *  Returns nothing
+ *  Returns: nothing
  *
  */
-void setirqhandler(size_t irqnumber,void *handler);
-void pic_init(void);
-
 void setirqhandler(size_t irqnumber,void *handler) {
 irq_handlers[irqnumber]=handler;
 return;
 }
 
-//void disable_timer() {
-//uint8_t pic_data;
+/*
+ * Disable IRQ
+ *
+ * In: irqnumber	IRQ number
+ *
+ *  Returns: nothing
+ *
+ */
+void disableirq(size_t irqnumber) {
+if(irqnumber < 8) {				/* if master */
+	outb(PIC_MASTER_DATA, (inb(PIC_MASTER_DATA) & ~(1 << irqnumber)) );	/* mask IRQ bit */
+}
+else						/* if slave */
+{
+	outb(PIC_SLAVE_DATA, (inb(PIC_SLAVE_DATA) & ~(1 << (irqnumber-8))) );	/* mask IRQ bit */
+}
 
-//pic_data=inb(
+}
+
+/*
+ * Enable IRQ
+ *
+ * In: irqnumber	IRQ number
+ *
+ *  Returns: nothing
+ *
+ */
+void enableirq(size_t irqnumber) {
+if(irqnumber < 8) {				/* if master */
+	outb(PIC_MASTER_DATA, (inb(PIC_MASTER_DATA) | (1 << irqnumber)) );	/* mask IRQ bit */
+}
+else						/* if slave */
+{
+	outb(PIC_SLAVE_DATA, (inb(PIC_SLAVE_DATA) | (1 << (irqnumber-8))) );	/* set IRQ bit */
+}
+
+}
+

@@ -37,6 +37,8 @@ extern exit
 extern dispatchhandler					; high-level dispatcher
 extern disablemultitasking
 extern enablemultitasking
+extern enableirq
+extern disableirq
 
 section .text
 [BITS 32]
@@ -523,13 +525,17 @@ push	edx
 push	esi
 push	edi
 
+call	disablemultitasking
+
+push	0
+call	disableirq
+add	esp,4
+
 mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
 mov 	ds,ax
 mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
-
-call	disablemultitasking
 
 sti
 call	dispatchhandler
@@ -542,6 +548,12 @@ mov 	ds,ax
 mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
+
+push	0
+call	enableirq
+add	esp,4
+
+call	enablemultitasking
 
 pop	edi
 pop	esi
@@ -556,8 +568,6 @@ je	iret_error
 mov	eax,[tempone]					; then return old eax
 
 iret_error:
-
-call	enablemultitasking
 iret  
 
 section .data

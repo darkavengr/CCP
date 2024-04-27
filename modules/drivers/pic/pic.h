@@ -17,3 +17,7 @@
 #define ICW4_BUF_MASTER	0x0C		/* Buffered mode/master */
 #define ICW4_SFNM	0x10		/* Special fully nested (not) */
 
+void setirqhandler(size_t irqnumber,void *handler);
+void pic_init(void);
+
+

@@ -138,7 +138,7 @@ switch_task:
 
 mov	[save_esp],esp
 
-inc	byte [0x800b8000]
+;inc	byte [0x800b8000]
 
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
@@ -170,6 +170,8 @@ call	getpid
 
 cmp	eax,1
 jne	not_debug
+
+xchg	bx,bx
 
 not_debug:
 ;

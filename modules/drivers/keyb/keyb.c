@@ -24,6 +24,7 @@
 #include "../../../header/errors.h"
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
+#include "../../../filemanager/vfs.h"
 #include "../../../processmanager/signal.h"
 #include "../../../header/bootinfo.h"
 #include "../../../header/debug.h"
@@ -69,7 +70,7 @@ keyboardflags=0;
 readcount=0;
 
 /* create con devide */
-strcpy(&device.name,"CON");
+strcpy(&device.name,"CON",1);
 device.charioread=&readconsole;
 device.chariowrite=NULL;
 device.ioctl=NULL;
@@ -110,7 +111,7 @@ while(readcount < size) {
 
 			movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
 
-			outputconsole(" ",1);
+			write(stdout," ",1);
 
 			bootinfo->cursor_col--;
 			movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
@@ -175,7 +176,7 @@ if(readcount++ == KEYB_BUFFERSIZE) return;				/* buffer full - must reset count 
 switch(keycode) {								/* control characters */
 
 	case KEY_TAB:
-		kprintf_direct("        ");
+		write(stdout,"\t",1);
 	 	return;
 
 	case KEY_HOME_7:							/* move cursor to start of line */  
@@ -236,132 +237,132 @@ if((keyboardflags & CTRL_PRESSED)) { 							/* control characters */
 switch(keycode) {
 	case KEY_SINGQUOTE_AT:
 		*keybuf++=CTRL_AT;
-		kprintf_direct("^@");
+		write(stdout,"^@",1);
 
 		return;
 
 	case KEY_A:
 		*keybuf++=CTRL_A;
-		kprintf_direct("^A");
+		write(stdout,"^A",1);
 
 		return;
 	  
 	case KEY_B:
 		*keybuf++=CTRL_B;
-		kprintf_direct("^B");
+		write(stdout,"^B",1);
 
 	return;
 
 	case KEY_C:
-		kprintf_direct("^C");
+		write(stdout,"^C",1);
 
 		sendsignal(getpid(),SIGTERM);		/* send signal to terminate signal */
 		return;
 
 	case KEY_D:
 		*keybuf++=CTRL_D;
-		kprintf_direct("^D");
+		write(stdout,"^D",1);
 	 	return;
 
 	case KEY_E:
 		*keybuf++=CTRL_E;
-		kprintf_direct("^E");
+		write(stdout,"^E",1);
 		return;
 
 	case KEY_F:
 		*keybuf++=CTRL_F;
-		kprintf_direct("^F");
+		write(stdout,"^F",1);
 
 		return;
 
 	case KEY_G:
 		*keybuf++=CTRL_G;
-		kprintf_direct("^G");
+		write(stdout,"^G",1);
 
 		return;
 
 
 	case KEY_I:								/* tab */
 	 	*keybuf++="\t";
-		kprintf_direct("\t");
+		write(stdout,"\t",1);
 	  	return;
 
 	case KEY_J:
 		*keybuf++=CTRL_J;
-		kprintf_direct("^J");
+		write(stdout,"^J",1);
 
 	 	return;
 
 	case KEY_K:
 		*keybuf++=CTRL_K;
-		kprintf_direct("^K");
+		write(stdout,"^K",1);
 
 	 	return;
 
 	case KEY_L:
 		*keybuf++=CTRL_L;
-	  	kprintf_direct("^L");
+	  	write(stdout,"^L",1);
 
 	  	return;
 
 	case KEY_M:
 		*keybuf++=CTRL_M;
-		kprintf_direct("^M");
+		write(stdout,"^M",1);
 		return;
 
 	case KEY_N:
 		*keybuf++=CTRL_N;
-		kprintf_direct("^N");
+		write(stdout,"^N",1);
 		return;
 
 	case KEY_O:
 		*keybuf++=CTRL_O;
-		kprintf_direct("^O");
+		write(stdout,"^O",1);
 		return;
 
 	case KEY_P:
 		*keybuf++=CTRL_P;
-		kprintf_direct("^P");
+		write(stdout,"^P",1);
 		return;
 
 	case KEY_Q:
 		*keybuf++=CTRL_Q;
-		kprintf_direct("^Q");
+		write(stdout,"^Q",1);
 		return;
 
 	case KEY_R:
 		*keybuf++=CTRL_R;
-		kprintf_direct("^R");
+		write(stdout,"^R",1);
 		return;
 
 	case KEY_S:
 		*keybuf++=CTRL_S;
-		kprintf_direct("^S");
+		write(stdout,"^S",1);
 		return;
 
 	case KEY_T:
 		*keybuf++=CTRL_T;
-		kprintf_direct("^T");
+		write(stdout,"^T",1);
 		return;
 
 	case KEY_V:
 		*keybuf++=CTRL_V;
-		kprintf_direct("^V");
+		write(stdout,"^V",1);
 		return;
 
 	case KEY_W:
 		*keybuf++=CTRL_W;
-		kprintf_direct("^W");
+		write(stdout,"^W",1);
 		return;
 
 	case KEY_X:
 		*keybuf++=CTRL_X;
-	  	kprintf_direct("^X");
+	  	write(stdout,"^X",1);
 	  	return;
 
 	case KEY_Y:
 		*keybuf++=CTRL_Y;
-		kprintf_direct("^Y");
+		write(stdout,"^Y",1);
 		return;
 
 	case KEY_Z:
@@ -372,7 +373,6 @@ switch(keycode) {
 }
 
 if((keyboardflags & CTRL_PRESSED) && (keyboardflags & ALT_PRESSED) && keycode == KEY_DEL) {	/* press ctrl-alt-del */
-	kprintf_direct("CTRL-ALT-DEL\n\n");
 	shutdown(1);
 }
 
@@ -384,13 +384,14 @@ if((keyboardflags & CAPSLOCK_PRESSED)) {
  	if((c >= 'A' && c <= 'Z') && ((keyboardflags & SHIFT_PRESSED) == 0)) {
 		c=c+32;				/* to lowercase */
 		*keybuf++=c;
-		kprintf_direct(scancodes_shifted[keycode]);
+		write(stdout,scancodes_shifted[keycode],1);
 		return;
 	}
 
 	if((c >= 'A' && c <= 'Z') && (keyboardflags & SHIFT_PRESSED)) {
 		*keybuf++=c;
-		kprintf_direct(scancodes_unshifted[keycode]);
+
+		write(stdout,scancodes_unshifted[keycode],1);
 		return;
 	}
 
@@ -399,12 +400,14 @@ if((keyboardflags & CAPSLOCK_PRESSED)) {
 /* If capslock is not on, use uppercase letters if shift pressed. Use lowercase letters otherwise */
 
 if((keyboardflags & SHIFT_PRESSED)) {
-	kprintf_direct(scancodes_shifted[keycode]);
+	write(stdout,scancodes_shifted[keycode],1);
+
 	*keybuf++=*scancodes_shifted[keycode];
 }
 else
 {
-	kprintf_direct(scancodes_unshifted[keycode]);
+	write(stdout,scancodes_unshifted[keycode],1);
+
 	*keybuf++=*scancodes_unshifted[keycode];	
 }
 

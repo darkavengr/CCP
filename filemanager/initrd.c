@@ -20,8 +20,8 @@
 #include <stdint.h>
 #include "../header/kernelhigh.h"
 #include "../processmanager/mutex.h"
-#include "vfs.h"
 #include "../devicemanager/device.h"
+#include "vfs.h"
 #include "initrd.h"
 #include "../header/errors.h"
 #include "../header/bootinfo.h"

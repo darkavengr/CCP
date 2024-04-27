@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include "../processmanager/mutex.h"
+#include "../devicemanager/device.h"
 #include "../filemanager/vfs.h"
 #include "../header/errors.h"
 #include "../header/bootinfo.h"

@@ -124,7 +124,7 @@ out	020h,al
 
 mov	ebx,[irqnumber]			        ; get interrupt number
 cmp	ebx,7			     	        ; if slave irq
-jle	nslave				        ; continue
+jle	nslave				        ; continue if not
 
 mov	al,20h				        ; reset slave			     
 out	0a0h,al

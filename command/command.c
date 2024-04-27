@@ -307,7 +307,7 @@ while(1) {	/* forever */
 	c=*buffer;
 	kprintf("%c>",c);
 
-	//memset(buffer,0,MAX_PATH);
+	memset(buffer,0,MAX_PATH);
 
 	readline(commandconsolein,buffer,MAX_PATH);			/* get line */
 
@@ -344,7 +344,7 @@ if(strcmp(command,"\n") == 0) return;	/* blank line */
 b=command+strlen(command)-1;
 if(*b == '\n') *b=0;		/* remove newline */
 
-//memset(parsebuf,0,COMMAND_TOKEN_COUNT*MAX_PATH);
+memset(parsebuf,0,COMMAND_TOKEN_COUNT*MAX_PATH);
 
 tc=tokenize_line(command,parsebuf," \t");	
 
@@ -479,7 +479,7 @@ else
 /* don't put anything here, drop through to below */
 
 if(tc > 1) {						/* copy args if any */
-	//memset(temp,0,MAX_PATH);
+	memset(temp,0,MAX_PATH);
 
 	for(count=1;count<tc;count++) {				/* get args */
 		strcat(temp,parsebuf[count]);
@@ -1010,7 +1010,7 @@ b=b+2;
 
 kprintf(directoryof,buffer);
 	
-//memset(&direntry.filename,0,MAX_PATH);
+memset(&direntry.filename,0,MAX_PATH);
 
 if(findfirst(parsebuf[1],&direntry) == -1) {
 	if(getlasterror() != END_OF_DIRECTORY) writeerror();
@@ -1036,18 +1036,13 @@ do {
 	  }
 	  else
 	  {
-	  	itoa(direntry.filesize,buffer);		/* pad out file size */		
-	  	//memset(temp,0,10);
-	  	//memset(temp,' ',10-strlen(buffer));
-	  	kprintf(temp);
-
-	  	kprintf("%d ",direntry.filesize);
+	  	kprintf(" %d ",direntry.filesize);
 	 }
 
 	  kprintf("%s\n",direntry.filename);
 	  fcount++;
 
-	  //memset(&direntry,sizeof(FILERECORD));
+	  memset(&direntry,sizeof(FILERECORD));
 
 //	  asm("xchg %bx,%bx");
 } while(findnext(parsebuf[1],&direntry) != -1);

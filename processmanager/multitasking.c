@@ -16,6 +16,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "mutex.h"
+#include "../devicemanager/device.h"
 #include "../filemanager/vfs.h"
 #include "../memorymanager/memorymanager.h"
 #include "process.h"
