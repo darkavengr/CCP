@@ -28,9 +28,10 @@
 #include "../header/debug.h"
 
 FILERECORD *openfiles=NULL;
+FILERECORD *openfiles_last=NULL;
 FILESYSTEM *filesystems=NULL;
 MUTEX vfs_mutex;
-
+size_t highest_handle=0;
 char *old;
 
 /*
@@ -96,7 +97,7 @@ return(fs.findnext(name,buf));		/* Call via function pointer */
  * Open file
  *
  * In:  name	File to open
-	flags	File mode(O_RD_RW, O_RDONLY)
+	flags	File mode, see vfs.h
  *
  * Returns: -1 on error, 0 on success
  *
@@ -133,7 +134,7 @@ while(next != NULL) {					/* return error if open */
 			return(next->handle);	/* opening by owner process */
 		}
 
-		if(next->access & FILE_ACCESS_EXCLUSIVE) {		/* reopening file with exclusive access */
+		if((next->access & O_SHARED) == 0) {		/* reopening file with exclusive access */
 			unlock_mutex(&vfs_mutex);
 
 			setlasterror(ACCESS_DENIED);
@@ -141,7 +142,6 @@ while(next != NULL) {					/* return error if open */
 		}
 	}
 
-	if(next->handle >= handle) handle=next->handle+1;	/* find highest handle number */
 	next=next->next;
 }
 
@@ -164,16 +164,18 @@ if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
 	next->currentpos=0;
 	next->owner_process=getpid();
 	next->flags=FILE_BLOCK_DEVICE;
-	next->handle=handle;
+	next->handle=++highest_handle;
 	next->access=access;
 
 	memcpy(&next->blockdevice,&blockdevice,sizeof(BLOCKDEVICE));	/* copy device information */
 	next->next=NULL;
 	
+	openfiles_last=next;				/* save pointer to end */
+
 	unlock_mutex(&vfs_mutex);
 
 	setlasterror(NO_ERROR);
-	return(handle);					/* return handle */
+	return(next->handle);					/* return handle */
 }
 
 /* If opening character device */
@@ -194,24 +196,42 @@ if(findcharacterdevice(filename,&chardevice) == 0) {
 	next->charioread=chardevice.charioread;
 	next->chariowrite=chardevice.chariowrite;
 	next->ioctl=chardevice.ioctl;
-	next->flags=FILE_CHAR_DEVICE;
+	next->flags=FILE_CHARACTER_DEVICE;
 	next->currentpos=0;
 	next->access=access;
-	next->handle=handle;
+	next->owner_process=getpid();		/* owner process */
+	next->handle=++highest_handle;
 	next->currentblock=0;
 	next->next=NULL;
+
+	openfiles_last=next;				/* save pointer to end */
 
 	unlock_mutex(&vfs_mutex);
 
 	setlasterror(NO_ERROR);
-	return(handle);					/* return handle */
+	return(next->handle);					/* return handle */
 }
 
 /* If opening regular file */
 
 getfullpath(filename,fullname);				/* get full path of file */
 
+if(access & O_TRUNC) {			/* truncate file */
+	if(unlink(fullname) == -1) return(-1);	/* delete it */
+	if(create(fullname) == -1) return(-1);	/* recreate it */
+}
+
 if(findfirst(fullname,&dirent) == -1) {			/* check if file exists */
+	
+	if(access & O_CREAT) {		/* if O_CREAT is set, create file if it does not exist */
+		if(create(fullname) == -1) return(-1);
+
+		unlock_mutex(&vfs_mutex);
+
+		setlasterror(NO_ERROR);
+		return(NO_ERROR);
+	}
+
 	unlock_mutex(&vfs_mutex);
 	return(-1);
 }
@@ -245,15 +265,17 @@ strcpy(next->filename,fullname);	/* copy full filename */
 next->currentpos=0;			/* set position to start of file */
 next->access=access;			/* access mode */
 next->flags=FILE_REGULAR;		/* file information flags */
-next->handle=handle;			/* file handle */
+next->handle=++highest_handle;		/* file handle */
 next->owner_process=getpid();		/* owner process */
 next->currentblock=next->startblock;
 next->next=NULL;
 	
+openfiles_last=next;				/* save pointer to end */
+
 setlasterror(NO_ERROR);
 unlock_mutex(&vfs_mutex);
 
-return(handle);					/* return handle */
+return(next->handle);					/* return handle */
 } 
 
 /*
@@ -352,7 +374,7 @@ if(fs.create == NULL) {			/* not implemented */
 
 if(fs.create(name) == -1) return(-1);
 
-return(open(name,_O_RDWR));
+return(open(name,O_RDWR));
 }
 
 /*
@@ -484,7 +506,7 @@ unlock_mutex(&vfs_mutex);
  * if reading from character device, call device handler and return
  */
 
-if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */		
+if((next->flags & FILE_CHARACTER_DEVICE)) {		/* character device I/O */
 
 	if(next->charioread(addr,size) == -1) {
 		unlock_mutex(&vfs_mutex);
@@ -501,7 +523,7 @@ if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */
  * if reading from block device, call device handler and return
  */
 
-if(next->flags == FILE_BLOCK_DEVICE) {		/* device i/o */			
+if((next->flags & FILE_BLOCK_DEVICE)) {		/* block device I/O */			
 	if(next->blockdevice.blockio(_READ,next->drive,(next->currentblock/(next->blockdevice.sectorsize*next->blockdevice.sectorsperblock)),addr) == -1) {
 		unlock_mutex(&vfs_mutex);
 		return(-1);
@@ -513,11 +535,18 @@ if(next->flags == FILE_BLOCK_DEVICE) {		/* device i/o */
 	return(NO_ERROR);
 }
 
+/* 
+ * if reading from a pipe
+ *
+ */
+
+if((next->flags & FILE_FIFO)) return(readpipe(next,addr,size));
+
+/* reading from a regular file */
+
 splitname(next->filename,&splitbuf);				/* split name */
 
-unlock_mutex(&vfs_mutex);
 if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
-
 
 if(fs.read == NULL) {			/* not implemented */
 	unlock_mutex(&vfs_mutex);
@@ -535,8 +564,8 @@ return(fs.read(handle,addr,size));
  * Write to file or device
  *
  * In:  handle	File handle
-	addr	Buffer to read to
-	size	Number of bytes to read
+	addr	Buffer to write from
+	size	Number of bytes to write
  *
  * Returns: -1 on error, 0 on success
  *
@@ -547,6 +576,7 @@ FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
 FILERECORD *next;
 SPLITBUF splitbuf;
+char *newbuf;
 
 lock_mutex(&vfs_mutex);
 
@@ -563,8 +593,7 @@ if(next == NULL) {
 	return(-1);
 }
 
-if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */		
-
+if((next->flags & FILE_CHARACTER_DEVICE)) {		/* device i/o */		
 	if(next->chariowrite(addr,size) == -1) {
 		unlock_mutex(&vfs_mutex);
 
@@ -581,7 +610,7 @@ if(next->flags == FILE_CHAR_DEVICE) {		/* device i/o */
  * if writing to block device, call device handler and return
  */
 
-if(next->flags == FILE_BLOCK_DEVICE) {
+if((next->flags == FILE_BLOCK_DEVICE)) {
 
 	if(next->blockdevice.blockio(_WRITE,next->drive,(next->currentblock/(next->blockdevice.sectorsize*next->blockdevice.sectorsperblock)),addr) == -1) {
 		unlock_mutex(&vfs_mutex);
@@ -593,6 +622,17 @@ if(next->flags == FILE_BLOCK_DEVICE) {
 	setlasterror(NO_ERROR);
 	return(NO_ERROR);
 }
+
+/* 
+ * if writing to a pipe
+ *
+ */
+
+if((next->flags & FILE_FIFO)) {			/* pipe I/O */
+	return(writepipe(next,addr,size));
+}
+
+/* writing to a regular file */
 
 splitname(next->filename,&splitbuf);				/* split name */
 
@@ -644,7 +684,7 @@ if(next == NULL) {
 	return(-1);
 }
 
-if(((next->flags & FILE_CHAR_DEVICE) == 0) || ((next->flags & FILE_BLOCK_DEVICE) == 0)) {	/* not device */
+if(((next->flags & FILE_CHARACTER_DEVICE) == 0) || ((next->flags & FILE_BLOCK_DEVICE) == 0)) {	/* not device */
 	setlasterror(NOT_DEVICE);
 	return(-1);
 }
@@ -684,13 +724,14 @@ size_t close(size_t handle) {
 size_t count;
 FILERECORD *last;
 FILERECORD *next;
+
+last=next;
 	
 lock_mutex(&vfs_mutex);
 
 next=openfiles;
 
 while(next != NULL) {					/* find filename in struct */
-
 	if(next->handle == handle) {
 
 		if(next->owner_process != getpid()) {		/* if file is owned by process */
@@ -700,26 +741,43 @@ while(next != NULL) {					/* find filename in struct */
 			return(-1);
 		}
 
-		last->next=next->next;
-		kernelfree(next);
-
-		unlock_mutex(&vfs_mutex);
-
-		setlasterror(NO_ERROR);  
-		return(NO_ERROR);				/* no error */
+		break;
 	}
 
-
 	last=next;
-
 	next=next->next;
-	count++;
 }
+
+if(next == NULL) {			/* invalid handle */
+	setlasterror(INVALID_HANDLE);
+	return(-1);
+}
+
+if((next->flags & FILE_FIFO)) closepipe(next);		/* if closing pipe */
+
+if(next == openfiles) {			/* first entry */
+	last=openfiles;			/* save pointer to start */
+
+	openfiles=last->next;		/* set new beginning of list */
+	kernelfree(last);		/* free old beginning */
+}
+else if(next->next == NULL) {		/* last entry */	
+	kernelfree(last->next);		/* free last */
+	last->next=NULL;		/* remove from end of list */
+}
+else
+{
+	last->next=next->next;		/* remove from list */
+
+	kernelfree(next);
+}
+
+if(next->next == NULL) openfiles_last=next;		/* save last */
 
 unlock_mutex(&vfs_mutex);
 
-setlasterror(INVALID_HANDLE);
-return(-1);
+setlasterror(NO_ERROR);  
+return(NO_ERROR);
 }
 
 /*
@@ -766,17 +824,20 @@ return(-1);
  *
  */
 
-size_t dup_internal(size_t handle,size_t sourcepid,size_t destpid) {
+size_t dup_internal(size_t handle,size_t desthandle,size_t sourcepid,size_t destpid) {
 FILERECORD *source;
 FILERECORD *dest;
 FILERECORD *last;
+FILERECORD *saveend;
+
 size_t count;
 
 lock_mutex(&vfs_mutex);
 
 source=openfiles;
 	
-while(source != NULL) {					/* find handle in struct */
+while(source != NULL) {					/* find handle in list */
+
 	if((source->handle == handle) && (source->owner_process == sourcepid)) break;
 
 	source=source->next;
@@ -790,7 +851,8 @@ if(source == NULL) {
 	return(-1);
 }
 
-/* find end */
+/* copy source handle to end of list*/
+
 dest=openfiles;
 	
 while(dest != NULL) {
@@ -806,22 +868,26 @@ if(last->next == NULL) {
 	return(-1);
 }
 
-last=last->next;		/* point to struct */	
 
 memcpy(last,source,sizeof(FILERECORD));  /* copy data */
-	
+
 last->owner_process=destpid;
 last->next=NULL;
 
-dest=openfiles;
-	
-while(dest != NULL) {
-	dest=dest->next;
+/* copy destination to source handle, saving original handle number */
+
+if(desthandle != -1) {
+	saveend=source->next;				/* save pointer to next */
+
+	memcpy(source,dest,sizeof(FILERECORD));
+	source->handle=desthandle;
+
+	source->next=saveend;				/* restore pointer to next */
 }
 
 unlock_mutex(&vfs_mutex);
-setlasterror(NO_ERROR);
 
+setlasterror(NO_ERROR);
 return(count);
 }
 
@@ -835,53 +901,21 @@ return(count);
  */
 
 size_t dup(size_t handle) {
-dup_internal(handle,getpid(),getpid());
+dup_internal(handle,-1,getpid(),getpid());
 }
 
 /*
- * Duplicate handle and overwrite
+ * Duplicate to existing handle
  *
  * In:  oldhandle	Existing file handle
-	newhandle	File handle to overwrite
+	newhandle	Destination file handle
  *
  * Returns: -1 on error, 0 on success
  *
  */
 
 size_t dup2(size_t oldhandle,size_t newhandle) {
-FILERECORD *oldnext;
-FILERECORD *newnext;
-FILERECORD *next;
-size_t savenext;
-
-lock_mutex(&vfs_mutex);
-
-next=openfiles;
-	
-while(next != NULL) {					/* find handles */
-	if(next->handle == oldhandle) oldnext=next;
-	if(next->handle == newhandle) newnext=next;
-
-	next=next->next;
-}
-
-if((oldnext == NULL) || (oldnext == NULL)) {
-	unlock_mutex(&vfs_mutex);
-
-	setlasterror(INVALID_HANDLE);
-	return(-1);
-}
-
-memcpy(newnext,oldnext,sizeof(FILERECORD));  /* copy data */
-
-newnext->next=savenext;
-newnext->owner_process=getpid();
-
-unlock_mutex(&vfs_mutex);
-
-setlasterror(NO_ERROR);
-
-return(newnext->handle);
+return(dup_internal(oldhandle,newhandle,getpid(),getpid()));
 }
 
 /*
@@ -1111,7 +1145,7 @@ strcpy(openfiles->filename,"stdin");
 openfiles->handle=0;
 openfiles->charioread=NULL;			/* for now */
 openfiles->chariowrite=NULL;
-openfiles->flags=FILE_CHAR_DEVICE;
+openfiles->flags=FILE_CHARACTER_DEVICE;
 
 openfiles->next=kernelalloc(sizeof(FILERECORD));			/* stdin */
 if(openfiles->next == NULL) {	/*can't allocate */
@@ -1125,7 +1159,7 @@ strcpy(next->filename,"stdout");
 next->handle=1;
 next->charioread=NULL;			/* for now */
 next->chariowrite=NULL;
-next->flags=FILE_CHAR_DEVICE;
+next->flags=FILE_CHARACTER_DEVICE;
 
 next->next=kernelalloc(sizeof(FILERECORD));			/* stdin */
 if(next->next == NULL) {	/*can't allocate */
@@ -1140,6 +1174,11 @@ next->handle=2;
 next->charioread=NULL;			/* for now */
 next->chariowrite=NULL;
 next->next=NULL;
+
+openfiles_last=next;			/* save last */
+highest_handle=2;			/* save highest handle number */
+
+return;
 }
 
 /*
@@ -1466,30 +1505,6 @@ count++;
 return(count);						/* return number of tokens */
 }
 
-
-size_t change_file_owner_pid(size_t handle,size_t pid) {
-FILERECORD *next;
-
-lock_mutex(&vfs_mutex);
-
-next=openfiles;
-
-while(next != NULL) {
-	if(next->handle == handle) {		/* found handle */
-		next->owner_process=pid;		/* set owner */
-		unlock_mutex(&vfs_mutex);
-
-		return(0);
-	}
-
-
-	next=next->next;
-}
-
-unlock_mutex(&vfs_mutex);
-return(-1);
-}
-
 /*
  * Set file position
  *
@@ -1507,7 +1522,12 @@ if(gethandle(handle,&seek_file_record) == -1) {			/* bad handle */
 	setlasterror(INVALID_HANDLE);
 	return(-1);
 }
-	
+
+if(((seek_file_record.flags & FILE_REGULAR) == 0) && ((seek_file_record.flags & FILE_BLOCK_DEVICE) == 0)) {	/* not file or block device */
+	setlasterror(INVALID_HANDLE_TYPE);
+	return(-1);
+}
+
 if((whence == SEEK_SET) || (whence == SEEK_CUR)) {		/* check new file position */
 	if((seek_file_record.currentpos+pos) > seek_file_record.filesize) {	/* invalid position */
 		setlasterror(SEEK_PAST_END);
@@ -1537,4 +1557,193 @@ setlasterror(NO_ERROR);
 return(seek_file_record.currentpos);
 }
 
+/*
+ * Create pipe
+ *
+ * In:  Nothing
+ *
+ * Returns: -1 on error, file handle on success.
+ *
+ */
+size_t pipe(void) {
+	openfiles_last->next=kernelalloc(sizeof(FILERECORD));	/* add file descriptor */
+	if(openfiles_last->next == NULL) return(-1);
+
+	openfiles_last=openfiles_last->next;
+
+	openfiles_last->flags=FILE_FIFO;
+	openfiles_last->handle=++highest_handle;
+
+	PIPE *pipe;
+	PIPE *pipereadprevious;
+	PIPE *pipelast;
+	PIPE *pipereadptr;
+
+	openfiles_last->pipe=NULL;			/* empty, for now */
+	openfiles_last->pipereadprevious=NULL;
+	openfiles_last->pipelast=NULL;
+	openfiles_last->pipereadptr=NULL;
+
+	return(openfiles_last->handle);
+}
+
+/*
+ * Write to pipe (internal function)
+ *
+ * In:  entry	Pointer to open file descriptor
+ *	addr	Pointer to buffer to write data from
+ *	size	Number of bytes to write
+ *
+ * Returns: -1 on error,number of bytes written on success.
+ *
+ */
+size_t writepipe(FILERECORD *entry,void *addr,size_t size) {
+
+if(entry->pipe == NULL) {		/* no pipe */
+	entry->pipe=kernelalloc(sizeof(PIPE));	
+	if(entry->pipe == NULL) return(-1);
+	
+	entry->pipelast=entry->pipe;
+	entry->pipereadprevious=entry->pipe;
+	entry->pipereadptr=entry->pipe;
+	
+}
+else					/* add to end */
+{
+	entry->pipereadprevious=entry->pipelast;
+
+	entry->pipelast->next=kernelalloc(sizeof(PIPE));	
+	if(entry->pipelast->next == NULL) return(-1);
+
+	entry->pipelast=entry->pipelast->next;
+}
+
+entry->pipelast->buffer=kernelalloc(size);	/* allocate pipe buffer */
+if(entry->pipelast->buffer == NULL) return(-1);
+
+entry->pipelast->bufptr=entry->pipelast->buffer;
+
+entry->pipelast->size=size;
+
+memcpy(entry->pipelast->buffer,addr,size);		/* copy data */
+
+if(entry->pipereadptr == NULL) entry->pipereadptr=entry->pipe; /* if writing after emptying pipe */
+
+return(size);
+}
+
+/*
+ * Read from pipe (internal function)
+ *
+ * In:  entry	Pointer to open file descriptor
+ *	addr	Pointer to buffer to read data to
+ *	size	Number of bytes to read
+ *
+ * Returns: -1 on error, number of bytes read on success.
+ *
+ */
+size_t readpipe(FILERECORD *entry,char *addr,size_t size) {
+size_t readsize=0;
+char *addrptr;
+int numberofbytes;
+PIPE *saveentry;
+size_t atend=FALSE;
+
+kprintf_direct("FIFO read\n");
+
+if(entry->pipe == NULL) {		/* no data in pipe */
+	setlasterror(INPUT_PAST_END);
+	return(-1);
+}
+
+/* read data from entries */
+
+addrptr=addr;
+
+do {
+	if(size < entry->pipereadptr->size) {		/* normalize */
+		numberofbytes=size;
+	}
+	else
+	{
+		numberofbytes=entry->pipereadptr->size;
+	}
+
+	memcpy(addr,entry->pipereadptr->bufptr,numberofbytes);	/* copy data */
+
+	entry->pipereadptr->size -= numberofbytes;		/* decrease size */
+	entry->pipereadptr->bufptr += numberofbytes;		/* point to next in buffer */	
+
+	if(entry->pipereadptr->size <= 0) {			/* if entry used up, remove it */
+
+		if(entry == entry->pipe) {			/* first entry */
+			saveentry=entry->pipe;			/* save pointer to start */
+
+			entry->pipe=entry->pipe->next;		/* set new beginning of list */
+			kernelfree(saveentry);		/* free old beginning */
+		}
+		else if(entry->pipereadptr->next == NULL) {
+			atend=TRUE;		/* at end */
+			
+			saveentry=entry->pipereadprevious->next;
+
+			kernelfree(entry->pipereadprevious);		/* free last */
+			entry->pipereadprevious->next=NULL;		/* remove from end of list */
+		}
+		else
+		{
+			entry->pipereadprevious->next=entry->pipereadptr->next;		/* remove from list */
+			kernelfree(entry->pipereadptr);
+		}
+		
+		if(atend == TRUE) {		/* no more data to read */
+			setlasterror(END_OF_FILE);
+			return(0);
+		}
+
+		entry->pipereadptr=entry->pipereadptr->next;
+	}
+
+	size -= numberofbytes;
+	
+} while(readsize < size);
+
+
+return(size);
+}
+
+/*
+ * Close pipe (internal function)
+ *
+ * In:  entry	Pointer to open file descriptor
+ *
+ * Returns: Nothing
+ *
+ */
+void closepipe(FILERECORD *entry) {
+PIPE *next;
+PIPE *savepointer;
+
+next=entry->pipe;			/* point to first entry */
+
+/* loop through entries, freeing buffers and removing pipe entries */
+
+while(next != NULL) {
+	if(next->buffer != NULL) kernelfree(next->buffer);	/* free buffer */
+
+	savepointer=next->next;		/* save next pointer */
+
+	kernelfree(next);		/* free entry */
+
+	if(savepointer == NULL) break;
+
+	next=savepointer->next;
+}
+
+entry->pipe=NULL;
+entry->pipelast=NULL;
+entry->pipereadprevious=NULL;
+entry->pipereadptr=NULL;
+return;
+}
 

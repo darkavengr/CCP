@@ -3,11 +3,11 @@ CC=@cc@
 LD=@ld@
 CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,../command.map
 LDFLAGS=-ffreestanding -nostdlib -T ld.script.command  -Wl,-Map -Wl,../command.map
-OBJFILES=addvar.o command.o copyfile.o err.o getfullpath.o kprintf.o readline.o runcommand.o ../obj/@arch@/string.o call.o
+OBJFILES=../obj/@arch@/string.o addvar.o command.o copyfile.o err.o getfullpath.o kprintf.o readline.o runcommand.o call.o
 OUTFILE=../bin/@arch@/COMMAND.RUN 
 
 all: 	$(OBJFILES)
-	$(CC) -o $(OUTFILE) *.o $(LDFLAGS)
+	$(CC) -o $(OUTFILE) $(OBJFILES) $(LDFLAGS)
 
 addvar.o:
 	$(CC) $(CCFLAGS) addvar.c

@@ -42,17 +42,14 @@ unsigned long result;
 unsigned long count;
 unsigned long countx;
 
-sourcehandle=open(source,_O_RDONLY);
+sourcehandle=open(source,O_RDONLY);
 if(sourcehandle == -1) {				/* can't open */
 	writeerror();
 	return(-1);
 }
 
-desthandle=create(destination);
-if(desthandle == -1)  {
-	 if(getlasterror() == FILE_EXISTS) desthandle=open(destination,_O_RDWR);			/* file exists */
-	 if(desthandle == -1)   return(-1);
-}
+desthandle=open(destination,O_WRONLY | O_CREAT | O_TRUNC);			/* file exists */
+if(desthandle == -1)   return(-1);
 
 readbuf=alloc(MAX_PATH);
 if(readbuf == -1) {

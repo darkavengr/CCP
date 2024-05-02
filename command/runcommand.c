@@ -155,7 +155,7 @@ if(flags == RUN_BACKGROUND) {				/* run batch file in background */
 	return(exec(buf,batchfileargs,flags));
 }
 
-handle=open(filename,_O_RDONLY);
+handle=open(filename,O_RDONLY);
 if(handle == -1) return(-1);
 
 parsecount=tokenize_line(args,parsebuf," \t");

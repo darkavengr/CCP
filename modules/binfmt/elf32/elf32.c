@@ -44,7 +44,7 @@ Elf32_Ehdr elf_header;
 
 getfullpath(filename,fullname);
 
-handle=open(fullname,_O_RDONLY);		/* open file */
+handle=open(fullname,O_RDONLY);		/* open file */
 if(handle == -1) return(-1);		/* can't open */
 
 if(read(handle,&elf_header,sizeof(Elf32_Ehdr)) == -1) {
@@ -96,7 +96,7 @@ if(read(handle,phbuf,(elf_header.e_phentsize*elf_header.e_phnum)) == -1) {
 }
 
 /*
-	* go through program headers and load them if they are PT_LOAD */
+ * go through program headers and load them if they are PT_LOAD */
 
 for(count=0;count<elf_header.e_phnum;count++) {
 	if(phbuf->p_type == PT_LOAD) {			/* if segment is loadable */

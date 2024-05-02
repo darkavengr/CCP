@@ -200,9 +200,9 @@ next->stackpointer=stackp+PROCESS_STACK_SIZE;
 /* duplicate stdin, stdout and stderr */
 
 if(getpid() != 0) {
-	dup_internal(stdin,getppid(),getpid());
-	dup_internal(stdout,getppid(),getpid());
-	dup_internal(stderr,getppid(),getpid());
+	dup_internal(stdin,-1,getppid(),getpid());
+	dup_internal(stdout,-1,getppid(),getpid());
+	dup_internal(stderr,-1,getppid(),getpid());
 }
 
 processes_end=next;						/* save last process address */
@@ -606,6 +606,8 @@ switch(highbyte) {
 	case 0x8a:			/* wait for process to change state */
 		return(wait((size_t)  argtwo));
 
+	case 0x93:			/* create pipe */
+		return(pipe());
 }
 
 	switch(argone) {
@@ -616,7 +618,7 @@ switch(highbyte) {
 				return(-1);
 			}
 
-			return(open((char *) argfour,_O_RDONLY));
+			return(open((char *) argfour,O_RDONLY));
 
 		case 0x3d02:
 			if(argfour >= KERNEL_HIGH) {		/* invalid argument */
@@ -624,7 +626,7 @@ switch(highbyte) {
 				return(-1);
 			}
 
-			return(open((char *) argfour,_O_RDWR));
+			return(open((char *) argfour,O_RDWR));
 
 	 	case 0x4200:		/* set file position */
 	  		return(seek((size_t)  argtwo,argfour,SEEK_SET));
@@ -1167,6 +1169,7 @@ return(currentprocess->errorhandler(name,drive,flags,error));
 void processmanager_init(void) {
 processes=NULL;
 currentprocess=NULL;
+last_error_no_process=0;
 
 initialize_mutex(&process_mutex);
 }
@@ -1446,7 +1449,7 @@ size_t handle;
 
 /* read magic number */
 
-handle=open(filename,_O_RDONLY);		/* open file */
+handle=open(filename,O_RDONLY);		/* open file */
 if(handle == -1) return(-1);		/* can't open */
 
 if(read(handle,buffer,MAX_PATH) == -1) {
@@ -1462,7 +1465,7 @@ next=executableformats;
 
 while(next != NULL) {
 	if(memcmp(next->magic,buffer,next->magicsize) == 0) {		/* found format */
-	 return(next->callexec(filename));				/* call via function pointer */
+		return(next->callexec(filename));				/* call via function pointer */
 	}
 
 	next=next->next;

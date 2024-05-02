@@ -395,7 +395,7 @@ p=(virtaddr & 0xfff);
 
 v=(uint32_t *) 0xffc00000 + (pd*1024);
 
-if((v[pt] & PAGE_PRESENT) != PAGE_PRESENT) return(-1);	/* page not present */
+//if((v[pt] & PAGE_PRESENT) == 0) return(-1);	/* page not present */
 
 return(v[pt] & 0xfffff000);				/* return physical address */
 }

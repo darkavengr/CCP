@@ -55,6 +55,7 @@ global register_filesystem
 global lock_mutex
 global unlock_mutex
 global getenv
+global pipe
 
 exit:
 mov 	eax,0x4c
@@ -427,6 +428,12 @@ mov	ecx,[esp+4]
 mov	edx,[esp+8]
 int	0x21
 ret
+
+pipe:
+mov	ah,0x93
+int	0x21
+ret
+
 
 blockwrite:
 mov	eax,0x9100

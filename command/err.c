@@ -27,16 +27,13 @@ char *errs[] = { "No error",\
 "No handles",\
 "Access denied",\
 "Invalid handle",\
-"Reserved 1",\
+"Heap header corrupt",\
 "Out of memory",\
-"Reserved 2",\
-"Reserved 3",\
 "Unknown drive format",\
 "Access error",\
 "Invalid file",\
-"Reserved 4",\
-"Invalid drive specification",\
 "Directory not empty",\
+"Invalid drive specification",\
 "Can't rename across drives",\
 "End of directory",\
 "Write protect error",\
@@ -45,7 +42,7 @@ char *errs[] = { "No error",\
 "Invalid CRC",\
 "File already exists",\
 "Directory is full",\
-"Disk full",\
+"Drive is full",\
 "Input past end of file",\
 "Device I/O error",\
 "Invalid file",\
@@ -57,7 +54,7 @@ char *errs[] = { "No error",\
 "Invalid kernel module",\
 "Kernel module already loaded",\
 "No processes",\
-"End of file",\
+"End of file reached",\
 "No drives",\
 "Seek past end",\
 "Can't close device",\
@@ -68,7 +65,12 @@ char *errs[] = { "No error",\
 "Not implemented",\
 "File in use",\
 "Invalid executable format",\
-"Unknown filesystem" };
+"Unknown filesystem",\
+"Directory not empty",\
+"Invalid address",\
+"Kernel module already loaded",
+"Not a device"
+ };
 
 char *errty[] = { "reading","writing" };
 char *nolabel = { "Missing label\n" };
@@ -100,7 +102,7 @@ char *terminatebatchjob = { "\nTerminate batch job (y/n)?" };
 void writeerror(void) {
 unsigned long err=getlasterror();
 
-if(err == 0) return;			/* no noerror */
+if(err == 0) return;			/* no error */
 
 kprintf("%s\n",errs[err]);
 kprintf("\n");

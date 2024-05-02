@@ -207,7 +207,7 @@ return((void *) firstpage);
 }
 
 /*
-* Internal free page frame function
+* Internal free memory function
 *
 * In: 	process		Process to free memory from
 *	b		Start address of memory area
@@ -225,15 +225,6 @@ size_t *z;
 
 lock_mutex(&memmanager_mutex);
 
-/* check if address is valid */
-
-p=(size_t) b;
-
-if(p % PAGE_SIZE) {
-	kprintf_direct("kernel memory free: Invalid memory address %X (must be multiple of %d)",b,PAGE_SIZE);
-	setlasterror(INVALID_ADDRESS);
-}
-
 /* Get start of memory chain */
 
 if((flags & FREE_PHYSICAL)) {			/* freeing physical address */
@@ -244,6 +235,8 @@ else
 	c=getphysicaladdress(process,b);
 	if(c == -1) {
 		unlock_mutex(&memmanager_mutex);
+
+		setlasterror(INVALID_ADDRESS);
 		return(-1);					/* bad address */
 	 }
 }
@@ -268,13 +261,6 @@ do {
 	pc=pc+PAGE_SIZE;
 }  while(p != -1);
 
-
-if(c == NULL) {						
-	unlock_mutex(&memmanager_mutex);
-
-	setlasterror(NO_MEM);
-	return(-1);
-}
 
 unlock_mutex(&memmanager_mutex);
 

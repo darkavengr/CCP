@@ -6,21 +6,23 @@
 #define TRUE			1
 #define FALSE 			0
 
-#define FILE_REGULAR		0
-#define FILE_CHAR_DEVICE	1
-#define FILE_BLOCK_DEVICE	2
-#define FILE_DIRECTORY		4
-#define FILE_POS_MOVED_BY_SEEK	8
-#define FILE_FIFO		16
+#define FILE_REGULAR		1
+#define FILE_CHARACTER_DEVICE	2
+#define FILE_BLOCK_DEVICE	4
+#define FILE_DIRECTORY		8
+#define FILE_POS_MOVED_BY_SEEK	16
+#define FILE_FIFO		32
 
 #define _FILE			0
 #define _DIR 			1
 
-#define _O_RDONLY 		1
-#define _O_WRONLY 		2
-#define _O_RDWR 		_O_RDONLY | _O_WRONLY
-
-#define FILE_ACCESS_EXCLUSIVE	4
+#define O_RDONLY 		1
+#define O_WRONLY 		2
+#define O_CREAT			4
+#define O_NONBLOCK		8
+#define O_SHARED		16
+#define O_TRUNC			32
+#define O_RDWR 			O_RDONLY | O_WRONLY
 
 #define MAX_PATH		255
 #define VFS_MAX 		1024
@@ -65,9 +67,15 @@ typedef struct {
 	size_t drive;
 } SPLITBUF;
 
+typedef struct {
+	char *buffer;
+	char *bufptr;
+	size_t size;
+	struct PIPE *next;
+} PIPE;
 
 typedef struct {
-	uint8_t filename[MAX_PATH]; 		
+	uint8_t filename[MAX_PATH];
 	size_t attribs;
 	TIME create_time_date;
 	TIME last_written_time_date;
@@ -76,20 +84,24 @@ typedef struct {
 	uint64_t startblock;
 	size_t drive;
 	uint64_t currentblock;
-	size_t dirent; 		/* directory entry number */
-	size_t access; 		/* access */
+	size_t dirent;
+	size_t access;
 	size_t currentpos;
 	size_t flags;
 	size_t handle;
-	BLOCKDEVICE blockdevice;		/* holds information about an opened block device */
-	size_t (*charioread)(size_t,void *);			/* note: uses function pointers, because character device I/O can be redirected*/
-	size_t (*chariowrite)(size_t,void *);			/* function pointer */
+	BLOCKDEVICE blockdevice;
+	size_t (*charioread)(size_t,void *);
+	size_t (*chariowrite)(size_t,void *);	
 	size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
-	uint64_t findlastblock; /* last block read by find() */
+	uint64_t findlastblock;
 	size_t findentry;
 	size_t owner_process;
 	uint8_t searchfilename[MAX_PATH];
-	struct FILERECORD *next;
+	PIPE *pipe;
+	PIPE *pipereadprevious;
+	PIPE *pipelast;
+	PIPE *pipereadptr;
+	struct FILERECORD *next;		
 } __attribute__((packed)) FILERECORD;
 
 size_t findfirst(char *name,FILERECORD *buf);
@@ -106,7 +118,7 @@ size_t write(size_t handle,void *addr,size_t size);
 size_t close(size_t handle); 
 size_t dup(size_t handle);
 size_t dup2(size_t oldhandle,size_t newhandle);
-size_t dup_internal(size_t handle,size_t sourcepid,size_t destpid);
+size_t dup_internal(size_t handle,size_t desthandle,size_t sourcepid,size_t destpid);
 size_t seek(size_t handle,size_t pos,size_t whence);
 size_t tell(size_t handle);
 size_t touch(char *filename,TIME *create_time_date,TIME *last_modified_time_date,TIME *last_accessed_time_date);
@@ -123,4 +135,8 @@ size_t change_file_owner_pid(size_t handle,size_t pid);
 size_t init_console_device(size_t type,size_t handle,void *cptr);
 size_t filemanager_init(void);
 void shut(void);
+size_t pipe(void);
+size_t writepipe(FILERECORD *entry,void *addr,size_t size);
+size_t readpipe(FILERECORD *entry,char *addr,size_t size);
+void closepipe(FILERECORD *entry);
 

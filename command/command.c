@@ -69,24 +69,24 @@ size_t commandconsoleout;
 
 
 unsigned long doline(char *buf);
-int set_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int if_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int cd_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int copy_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int for_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int del_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int mkdir_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int rmdir_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int rename_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int echo_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int exit_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int type_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int dir_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int ps_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int kill_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
-int goto_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int set_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int if_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int cd_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int copy_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int for_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int del_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int mkdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int rmdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int rename_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int echo_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int exit_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int type_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int dir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int ps_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int kill_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int goto_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 int critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
-int rem_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int rem_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 void signal_handler(size_t signalno);
 
 extern char *errty[];
@@ -112,25 +112,25 @@ size_t dirattribs;
 int critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
 
 struct {
-	char *statement;
-	size_t (*call_statement)(int,void *);		/* function pointer */
-} statements[] = { {  "DIR",&dir_statement },\
-		   {  "SET",&set_statement },\
-		   {  "IF",&if_statement },\
-		   {  "CD",&cd_statement },\
-		   {  "COPY",&copy_statement },\
-		   {  "FOR",&for_statement },\
-		   {  "MKDIR",&mkdir_statement },\
-		   {  "RMDIR",&rmdir_statement },\
-		   {  "RENAME",&rename_statement },\
-		   {  "ECHO",&echo_statement },\
-		   {  "EXIT",&exit_statement },\
-		   {  "TYPE",&type_statement },\
-		   {  "PS",&ps_statement },\
-		   {  "KILL",&kill_statement },\
-		   {  "GOTO",&goto_statement },\
-		   {  "DEL",&del_statement },\	
-		   {  "REM",&rem_statement },\	
+	char *command;
+	size_t (*call_command)(int,void *);		/* function pointer */
+} commands[] = { {  "DIR",&dir_command },\
+		   {  "SET",&set_command },\
+		   {  "IF",&if_command },\
+		   {  "CD",&cd_command },\
+		   {  "COPY",&copy_command },\
+		   {  "FOR",&for_command },\
+		   {  "MKDIR",&mkdir_command },\
+		   {  "RMDIR",&rmdir_command },\
+		   {  "RENAME",&rename_command },\
+		   {  "ECHO",&echo_command },\
+		   {  "EXIT",&exit_command },\
+		   {  "TYPE",&type_command },\
+		   {  "PS",&ps_command },\
+		   {  "KILL",&kill_command },\
+		   {  "GOTO",&goto_command },\
+		   {  "DEL",&del_command },\	
+		   {  "REM",&rem_command },\	
 		   {  NULL,NULL } };
 
 size_t errorlevel;
@@ -232,6 +232,7 @@ unsigned char *b;
 unsigned char *d;
 char *commandlinearguments[10][MAX_PATH];
 int argcount;
+
 commandlineoptions=0;
 
 struct psp {
@@ -328,16 +329,18 @@ unsigned long xdir;
 unsigned long backg;
 unsigned char *b;
 unsigned char *d;
-size_t findresult;
 char x;
 int savepos;
 int tc;
 char *parsebuf[COMMAND_TOKEN_COUNT][MAX_PATH];
-int statementcount;
+int commandcount;
 char c;
 char firstchar;
 char lastchar;
-size_t drivenumber;
+int drivenumber;
+int pipecount;
+int inputpipehandle;
+int outputpipehandle;
 
 if(strcmp(command,"\n") == 0) return;	/* blank line */
 
@@ -384,55 +387,113 @@ for(count=1;count<tc;count++) {	/* replace variables with value */
 
 
 /* redirection */
+savepos=0;					/* no redirection for now */
 	 
 for(count=0;count<tc;count++) {
 
-	 if(strcmp(parsebuf[count],"<") == 0) {		/* input redir */
-	 	handle=open(parsebuf[count+1],_O_RDONLY);
-	 
+	 if(strcmp(parsebuf[count],"<") == 0) {		/* input redirection */
+		if(savepos == 0) savepos=count;		/* save position of first redirect */
+
+	 	handle=open(parsebuf[count-1],O_RDONLY);
 	 	if(handle == -1) {			/* can't open */
 	 		writeerror();
 	 		return;
 	   	}
 
-	  	dup2(handle,stdin); 		/* redirect input */
+	  	dup2(handle,stdin);	 		/* redirect input */
 
-	   	xdir=count;
+		continue;
+	}
+	else if(strcmp(parsebuf[count],">") == 0) {	/* output redirection */
+		if(savepos == 0) savepos=count;		/* save position of first redirect */
 
-	    	while(xdir < tc) {						/* overwrite redir */
-	    		if(strcmp(parsebuf[xdir],">") == 0 || strcmp(parsebuf[count],">>") == 0 ) break;	/* second redirect */
-			strcpy(parsebuf[xdir],parsebuf[xdir-1]);
-	    	}
-
-	    	tc=tc-(tc-xdir);		
-	    	break;   
-	  }
-
-	  if(strcmp(parsebuf[count],">") == 0 || strcmp(parsebuf[count],">>") == 0 ) {		/* output redir */
-	  	handle=open(parsebuf[count+1],_O_RDWR);	
-	    
+	  	handle=open(parsebuf[count+1],O_WRONLY | O_CREAT | O_TRUNC);		
 	  	if(handle == -1) {			/* can't open */
 	    		writeerror();
 	     		return;
 	    	}
 	 
-	   	if(strcmp(parsebuf[count],">>") == 0) seek(handle,getfilesize(handle),SEEK_SET);	/* seek to end */
-	  
 		dup2(handle,stdout); 		/* redirect output */
-	   	xdir=count;
 
-	   	while(xdir < tc) {						/* overwrite redir */
-			if(strcmp(parsebuf[xdir],"<") == 0) break;	/* second redirect */
+		continue;
+	}
+	else if(strcmp(parsebuf[count],">>") == 0) {	/* output redirection with append */
+		if(savepos == 0) savepos=count;		/* save position of first redirect */
 
-	    		strcpy(parsebuf[xdir],parsebuf[xdir-1]);
-	  	}
+	  	handle=open(parsebuf[count+1],O_WRONLY);		
+	  	if(handle == -1) {			/* can't open */
+	    		writeerror();
+	     		return;
+	    	}
+	 
+		if(seek(handle,0,SEEK_END) == -1) {	/* seek to end */
+	    		writeerror();
+	     		return;
+	    	}
+		
+		dup2(handle,stdout); 		/* redirect output */
 
-	   	tc=tc-(tc-xdir);		
-	   	break;   
-	 }
+		continue;
+	}
 
 } 
 
+if(savepos != 0) {				/* if there was a redirection */
+	/* remove remainder of command */
+
+	for(count=savepos;count<tc;count++) {
+		memset(parsebuf[count],0,MAX_PATH);
+	}
+
+	tc=(savepos-1);				/* new end */
+}
+
+/* pipe data */
+
+pipecount=0;
+
+for(count=0;count<tc;count++) {
+
+	if(strcmp(parsebuf[count],"|") == 0) {	/* pipe command */
+
+		/* command1 | command2 | command3 */
+		if((count == 0) || (count == tc)) {	/* no command before or after */
+			kprintf(syntaxerror);
+			return;
+		}
+
+
+		/* get command arguments */
+
+		memset(temp,0,MAX_PATH);
+		
+		for(commandcount=count+1;commandcount<tc;commandcount++) {
+			strcat(temp,parsebuf[commandcount]);
+	
+			if(strcmp(parsebuf[commandcount],"|") == 0) break;
+		}
+
+		outputpipehandle=pipe();		/* create a pipe */
+				
+		dup2(outputpipehandle,stdout);	/* connect stdout to pipe */
+		dup2(outputpipehandle,stderr);	/* connect stderr to pipe */
+
+		if(runcommand(parsebuf[count],temp,FALSE) == -1) {		/* run command */
+			writeerror();
+			return;
+		}
+
+		if(pipecount > 0) {		/* if it's not the first command */
+				inputpipehandle=outputpipehandle;		/* copy output handle to input handle */				
+
+				dup2(inputpipehandle,stdin);		/* connect stdin to pipe */
+		}
+
+		pipecount++;
+	}
+}
+
+/* if changing drive */
 
 b=parsebuf[0];
 b++;
@@ -447,22 +508,22 @@ if(*b == ':' && strlen(parsebuf[0]) == 2) {
 }
 
 
-/* execute if it's an internal command */
+/* check if it's an internal command */
 
-statementcount=0;
+commandcount=0;
 
 do {
 	touppercase(parsebuf[0]);
 
-	if(strcmp(statements[statementcount].statement,parsebuf[0]) == 0) {  /* found statement */
-		statements[statementcount].call_statement(tc,parsebuf);	
-		statementcount=0;
+	if(strcmp(commands[commandcount].command,parsebuf[0]) == 0) {  /* found command */
+		commands[commandcount].call_command(tc,parsebuf);	
+		commandcount=0;
 		return;
 	}
 	
-	statementcount++;
+	commandcount++;
 
-} while(statements[statementcount].statement != NULL);
+} while(commands[commandcount].command != NULL);
 
 /* if external command */
 
@@ -526,7 +587,7 @@ setvar("ERRORLEVEL","255");
 return(-1);
 }
 
-int set_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int set_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *varptr=getenv();
 char *buffer[MAX_PATH];
 char *b;
@@ -552,7 +613,7 @@ setvar(parsebuf[1],parsebuf[3]);
 return;
 }
 
-int if_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int if_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t start;
 size_t inverse;
 size_t condition;
@@ -621,7 +682,7 @@ if(condition == TRUE) {
  * cd: set current directory
  */
 
-int cd_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int cd_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *directoryname[MAX_PATH];
 size_t drivenumber;
 
@@ -646,7 +707,7 @@ return;
 }
 
 
-int copy_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int copy_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t count;
 size_t runopts;
 size_t inverse;
@@ -709,7 +770,7 @@ return;
 }
 
 
-int for_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int for_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t start;
 size_t count;
 size_t startvars;
@@ -815,7 +876,7 @@ return;
  *
 */
 
-int del_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int del_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t inverse;
 int runopts;
 char c;
@@ -843,7 +904,7 @@ return;
 }
 
 
-int mkdir_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int mkdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* not enough args */
 	kprintf(noparams);
 	return;
@@ -858,7 +919,7 @@ return;
 }
 
 
-int rmdir_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int rmdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* not enough args */
 	kprintf(noparams);
 	return;
@@ -874,7 +935,7 @@ return;
 
 
 
-int rename_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int rename_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* not enough args */
 	kprintf(noparams);
 	return;
@@ -892,7 +953,7 @@ return;
  * echo: display text
  */
 
-int echo_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int echo_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t count;
 size_t isnewline=TRUE;
 size_t starttoken=1;
@@ -921,7 +982,7 @@ return;
  * exit: terminate command
  */
 
-int exit_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int exit_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 	if((commandlineoptions & COMMAND_PERMENANT) == 0) exit(0);
 }
 
@@ -933,7 +994,7 @@ int exit_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
  */
 
 
-int type_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int type_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *readbuf;
 size_t handle;
 int findresult;
@@ -950,7 +1011,7 @@ if(readbuf == NULL) {			/* can't allocate */
 	return;
 }
 
-handle=open(parsebuf[1],_O_RDONLY);
+handle=open(parsebuf[1],O_RDONLY);
 
 if(handle == -1) {				/* can't open */
 	writeerror();
@@ -988,7 +1049,7 @@ return;
  *
  */
 
-int dir_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int dir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *b;
 char *buffer[MAX_PATH];
 size_t dircount;
@@ -1060,7 +1121,7 @@ kprintf(filesdirectories,fcount,dircount);
 return;
 }
 
-int ps_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int ps_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t findresult;
 PROCESS pbuf;
 PROCESS *handle;
@@ -1078,7 +1139,7 @@ do {
 return;
 }
 
-int kill_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int kill_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 int findresult;
 
 if(tc == 1) {		/* missing argument */
@@ -1091,7 +1152,7 @@ if(findresult == -1) writeerror();
 return;
 }
 
-int goto_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int goto_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *buffer[MAX_PATH];
 char *bufptr;
 char *b;
@@ -1135,7 +1196,7 @@ kprintf(nolabel);
 return(-1);
 }
 
-int rem_statement(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+int rem_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 }
 
 int critical_error_handler(char *name,size_t drive,size_t flags,size_t error) {

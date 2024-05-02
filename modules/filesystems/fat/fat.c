@@ -275,8 +275,6 @@ while(1) {
 	
 		if(dirent.attribs == 0x0f) {			/* long filename */
 			lfncount=fat_read_long_filename(splitbuf->drive,buf->findlastblock,buf->findentry-1,lfnbuf);
-
-			DEBUG_PRINT_STRING(lfnbuf->filename);
 	
 			blockptr += (lfncount*FAT_ENTRY_SIZE);	
 
@@ -2360,10 +2358,6 @@ if(fat_read_long_filename(drive,(uint64_t) block,entryno,&lfn) == -1) return(-1)
  *
  */
 
-DEBUG_PRINT_STRING(new->filename);
-DEBUG_PRINT_STRING(lfn.filename);
-asm("xchg %bx,%bx");
-
 if(strlen(new->filename) <= strlen(lfn.filename)) {
 	if(fat_unlink_long_filename(lfn.filename,(uint64_t) block,entryno) == -1) return(-1);		/* delete filename and recreate it */
 	if(fat_create_long_filename(type,new,(uint64_t) block,entryno) == -1) return(-1);
@@ -2372,9 +2366,6 @@ if(strlen(new->filename) <= strlen(lfn.filename)) {
 }
 	
 /* Otherwise new long filename is longer than old long filename */
-
-kprintf_direct("Is longer\n");
-asm("xchg %bx,%bx");
 
 /* attempt to create free entries in free directory entries, if none could be found, create entries at end of directory */
 
@@ -2424,16 +2415,9 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 			free_entry_count++;
 
 			if((uint8_t) *blockptr == 0) break;		/* at end of directory and dont' need so search for more entries */
-
-//			kprintf_direct("Found free entry %d of %d\n",free_entry_count,flen);
-//			asm("xchg %bx,%bx");
-
 		}
 		else
 		{
-//			kprintf_direct("Used entry found. Resetting counter\n");
-//			asm("xchg %bx,%bx");
-
 			first_free_entry=entry_count+1;
 			free_entry_count=0;		/* entries must be contingous */
 		}
