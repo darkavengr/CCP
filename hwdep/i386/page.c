@@ -118,7 +118,7 @@ if(next->pagedir[pd] == 0) {				/* if page directory empty */
 v=(uint32_t *) 0xffc00000 + (pd*1024);
 v[pt]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
 
-return;
+return(0);
 }
 
 /*
@@ -139,7 +139,7 @@ uint32_t pp;
 size_t count;
 size_t size;
 
-if(process == 0) return;
+if(process == 0) return(0);
 
 p=processpaging;							/* find process */
 last=p;
@@ -149,8 +149,7 @@ while(p != NULL) {
 	p=p->next;
 }
 
-/* get a physical address and manually map it to a virtual address becaus the physical addres of p->pagedir
-	 is needed to fill cr3 */
+/* get a physical address and manually map it to a virtual address, the physical addres of p->pagedir is needed to fill cr3 */
 
 size=(sizeof(struct ppt) & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round */
 
@@ -180,7 +179,7 @@ memcpy(&last->pagedir[512],&processpaging->pagedir[512],PAGE_SIZE/2);			/* copy 
 last->pagedir[1023]=last->pagedirphys+(PAGE_RW+PAGE_PRESENT);
 
 last->next=NULL;
-return;
+return(0);
 }
 
 /*
@@ -193,8 +192,7 @@ return;
 * 
 */
 size_t removepage(uint32_t page,size_t process) {
-addpage_int(0,process,page,0);						/* clear page */
-return;
+return(addpage_int(0,process,page,0));						/* clear page */
 }
 
 /*
@@ -249,7 +247,7 @@ last->next=next->next;
 
 // kernelfree(next);						/* and free it */
 
-return;
+return(0);
 }
 
 /*
@@ -395,7 +393,7 @@ p=(virtaddr & 0xfff);
 
 v=(uint32_t *) 0xffc00000 + (pd*1024);
 
-//if((v[pt] & PAGE_PRESENT) == 0) return(-1);	/* page not present */
+if((v[pt] & PAGE_PRESENT) == 0) return(-1);	/* page not present */
 
 return(v[pt] & 0xfffff000);				/* return physical address */
 }

@@ -174,9 +174,11 @@ rep	stosd
 
 mov	ecx,(1024*1024)				; map first 1mb
 
+;xchg	bx,bx
+
 mov	esi,offset kernel_size
 sub	esi,KERNEL_HIGH
-mov	ecx,[esi]
+add	ecx,[esi]
 
 mov	esi,offset initrd_size
 sub	esi,KERNEL_HIGH
@@ -186,9 +188,14 @@ mov	esi,offset symtab_size
 sub	esi,KERNEL_HIGH
 add	ecx,[esi]
 
-mov	esi,offset memory_size
+mov	esi,offset memory_size			; memory map size
 sub	esi,KERNEL_HIGH
-add	ecx,[esi]	
+
+mov	eax,[esi]
+shr	eax,12					; number of pages
+shl	eax,2					; number if 4-byte entries
+add	ecx,eax
+
 and	ecx,0fffff000h
 add	ecx,1000h
 

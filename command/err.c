@@ -17,61 +17,6 @@
     along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <stdint.h>
-#include "command.h"
-
-char *errs[] = { "No error",\
-"Invalid function",\
-"File not found",\
-"Path not found",\
-"No handles",\
-"Access denied",\
-"Invalid handle",\
-"Heap header corrupt",\
-"Out of memory",\
-"Unknown drive format",\
-"Access error",\
-"Invalid file",\
-"Directory not empty",\
-"Invalid drive specification",\
-"Can't rename across drives",\
-"End of directory",\
-"Write protect error",\
-"Invalid device",\
-"Drive not ready",\
-"Invalid CRC",\
-"File already exists",\
-"Directory is full",\
-"Drive is full",\
-"Input past end of file",\
-"Device I/O error",\
-"Invalid file",\
-"Invalid executable",\
-"Device already exists",\
-"Invalid process",\
-"Invalid device",\
-"Device is in use",\
-"Invalid kernel module",\
-"Kernel module already loaded",\
-"No processes",\
-"End of file reached",\
-"No drives",\
-"Seek past end",\
-"Can't close device",\
-"Invalid block number",\
-"File already open",\
-"General failure",\
-"Not a directory",\
-"Not implemented",\
-"File in use",\
-"Invalid executable format",\
-"Unknown filesystem",\
-"Directory not empty",\
-"Invalid address",\
-"Kernel module already loaded",
-"Not a device"
- };
-
 char *errty[] = { "reading","writing" };
 char *nolabel = { "Missing label\n" };
 char *syntaxerror = { "Syntax error\n" };
@@ -91,20 +36,3 @@ char *commandbanner = { "Command version %d.%d\n" };
 char *areyousure = { "Are you sure (y/n)?" };
 char *terminatebatchjob = { "\nTerminate batch job (y/n)?" };
 
-/*
- * Display error
- *
- * In:  nothing
- *
- * Returns nothing
- */
-
-void writeerror(void) {
-unsigned long err=getlasterror();
-
-if(err == 0) return;			/* no error */
-
-kprintf("%s\n",errs[err]);
-kprintf("\n");
-return(0);
-}

@@ -1,0 +1,5 @@
+Scheduler switch causes stack to be incorrect.
+Errors in module references after loading.
+ATA DMA I/O doesn't work.
+Error in heap allocator.
+

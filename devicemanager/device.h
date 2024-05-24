@@ -48,4 +48,15 @@ typedef struct {
 	struct BLOCKDEVICE *next;
 }  BLOCKDEVICE;
 
+size_t add_block_device(BLOCKDEVICE *driver);
+size_t add_char_device(CHARACTERDEVICE *device);
+size_t blockio(size_t op,size_t drive,uint64_t block,void *buf);
+size_t findcharacterdevice(char *name,CHARACTERDEVICE *buf);
+size_t getblockdevice(size_t drive,BLOCKDEVICE *buf);
+size_t getdevicebyname(char *name,BLOCKDEVICE *buf);
+size_t update_block_device(size_t drive,BLOCKDEVICE *driver);
+size_t remove_block_device(char *name);
+size_t remove_char_device(char *name);
+size_t allocatedrive(void);
+void devicemanager_init(void);
 

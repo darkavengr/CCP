@@ -79,6 +79,7 @@ int tc;
 int subtc;
 int whichp;
 int countx;
+char *nptr;
 
 ports[0].readhandler=&read_com1;		/* intialize function pointers */
 ports[1].readhandler=&read_com2;
@@ -156,9 +157,10 @@ for(count=0;count<4;count++) {
 	ports[count].buffer=kernelalloc(ports[count].buffersize);		/* allocate buffer */
 	if(ports[count].buffer == NULL) return(-1);
 
-	ports[count].bufptr= ports[count].buffer;
+	ports[count].bufptr=ports[count].buffer;
 
 	strcpy(&device.name,ports[count].name);		/* add device */
+
 	device.charioread=ports[count].readhandler;
 	device.chariowrite=ports[count].writehandler;
 
@@ -240,11 +242,11 @@ return(size);
 }
 
 /*
- * COM1 I/O functions
+ * COMx I/O functions
  *
- * In: size_t op	Operation (0=read, 1=write)
-	      char *buf	Buffer
-	      size_t size	Number of bytes to read/write
+ * In: op	Operation (0=read, 1=write)
+       buf	Buffer
+       size	Number of bytes to read/write
  *
  *  * Returns number of bytes read/written on success, -1 on error
  *
@@ -256,16 +258,6 @@ void read_com1(char *buf,size_t size) {
 void write_com1(char *buf,size_t size) {
 	return(comport(_WRITE,COM1,buf,size));
 }
-/*
- * COM2 I/O function
- *
- * In: size_t op	Operation (0=read, 1=write)
-	      char *buf	Buffer
-	      size_t size	Number of bytes to read/write
- *
- *  * Returns number of bytes read/written on success, -1 on error
- *
- */
 
 void read_com2(char *buf,size_t size) {
 	return(comport(_READ,COM2,buf,size));

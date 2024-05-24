@@ -3,7 +3,7 @@ CC=@cc@
 LD=@ld@
 CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,../command.map
 LDFLAGS=-ffreestanding -nostdlib -T ld.script.command  -Wl,-Map -Wl,../command.map
-OBJFILES=../obj/@arch@/string.o addvar.o command.o copyfile.o err.o getfullpath.o kprintf.o readline.o runcommand.o call.o
+OBJFILES=../obj/@arch@/string.o ../obj/@arch@/error.o addvar.o command.o copyfile.o err.o getfullpath.o kprintf.o readline.o runcommand.o call.o
 OUTFILE=../bin/@arch@/COMMAND.RUN 
 
 all: 	$(OBJFILES)
@@ -32,6 +32,12 @@ readline.o:
 
 runcommand.o:
 	$(CC) $(CCFLAGS) runcommand.c
+
+../obj/@arch@/string.o:
+	$(CC) $(CCFLAGS) ../obj/@arch@/string.c
+
+../obj/@arch@/error.o:
+	$(CC) $(CCFLAGS) ../obj/@arch@/error.c
 
 call.o:
 	$(ASM) @asm_opts@ @arch@/call.asm -o call.o

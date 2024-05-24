@@ -69,13 +69,15 @@ void *kernelstackbase;
 PROCESS *next;
 PROCESS *oldprocess;
 size_t stackp;
-PROCESS *last;
+PROCESS *lastprocess;
 PSP *psp=0;
 size_t *stackinit;
 char *fullpath[MAX_PATH];
 
 disablemultitasking(); 
 disable_interrupts();
+
+oldprocess=currentprocess;					/* save current process pointer */
 
 /* add process to process list and find process id */
 
@@ -92,6 +94,7 @@ if(processes == NULL) {  					/* first process */
 	}
 
 processes_end=processes;					/* save end of list */
+lastprocess=processes_end;			/* save current end */
 
 next=processes;
 }
@@ -108,7 +111,8 @@ else								/* not first process */
 		return(-1);
 	}
 
-next=processes_end->next;		/* get a copy of end, so that the list is not affected if any errors occur */
+	lastprocess=processes_end;			/* save current end */
+	next=processes_end->next;		/* get a copy of end, so that the list is not affected if any errors occur */
 }
 
 getfullpath(filename,fullpath);		/* get full path to executable */
@@ -129,22 +133,25 @@ next->pid=highest_pid_used;		/* process ID */
 next->errorhandler=NULL;		/* error handler, NULL for now */
 next->signalhandler=NULL;		/* signal handle, NULL for now */
 next->childprocessreturncode=0;		/* return code from child process */
-next->flags=0;				/* process flags */
+next->flags=flags;			/* process flags */
 next->lasterror=0;			/* last error */
 next->next=NULL;
-
 
 /* Create kernel stack for process */
 
 next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);	/* allocate stack */
 if(next->kernelstacktop == NULL) {	/* return if can't allocate */
-	currentprocess=oldprocess;
+	currentprocess=oldprocess;	/* restore current process pointer */
 
 	loadpagetable(getpid());
-
 	freepages(highest_pid_used);
 
 	enablemultitasking();
+
+	kernelfree(lastprocess->next);	/* remove process from list */
+
+	lastprocess->next=NULL;		/* remove process */
+	processes_end=lastprocess;
 
 	close(handle);
 	return(-1);
@@ -187,7 +194,14 @@ if(saveenv != NULL) {
 
 stackp=alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,KERNEL_HIGH-PROCESS_STACK_SIZE-ENVIROMENT_SIZE);
 if(stackp == NULL) {
-	currentprocess=oldprocess;
+	currentprocess=oldprocess;	/* restore current process pointer */
+
+	kernelfree(next->kernelstacktop);	/* free kernel stack */
+
+	kernelfree(lastprocess->next);	/* remove process from list */
+	lastprocess->next=NULL;		/* remove process */
+	processes_end=lastprocess;
+
 	loadpagetable(getpid());
 	freepages(highest_pid_used);
 	enablemultitasking();	
@@ -213,9 +227,15 @@ entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
 if(entrypoint == -1) {					/* can't load executable */
-	kernelfree(next);
+	asm("xchg %bx,%bx");
 
-	currentprocess=oldprocess;			/* restore previous process */
+	kernelfree(next->kernelstacktop);	/* free kernel stack */
+	kernelfree(lastprocess->next);	/* remove process from list */
+
+	lastprocess->next=NULL;		/* remove process */
+	processes_end=lastprocess;
+
+	currentprocess=lastprocess;	/* restore current process */
 
 	loadpagetable(getpid());
 	enablemultitasking();
@@ -226,7 +246,13 @@ if(entrypoint == -1) {					/* can't load executable */
 
 currentprocess->heapaddress=alloc_int(ALLOC_NORMAL,getpid(),INITIAL_HEAP_SIZE,-1);	/* allocate process heap */
 if(currentprocess->heapaddress == NULL) {		/* can't allocate */
-	currentprocess=oldprocess;			/* restore previous process */
+	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
+
+	kernelfree(next->kernelstacktop);	/* free kernel stack */
+	kernelfree(lastprocess->next);	/* remove process from list */
+
+	lastprocess->next=NULL;		/* remove process */
+	processes_end=lastprocess;
 
 	loadpagetable(getpid());
 	enablemultitasking();
@@ -242,16 +268,15 @@ ksprintf(psp->commandline,"%s %s",next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
 
-//next=processes;
-
-//while(next != NULL) {
-//	kprintf_direct("%X %s\n",next->pid,next->filename);
-
-//	next=next->next;
-//}
-
 if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
-	currentprocess=oldprocess;			/* restore previous process */
+	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
+
+	kernelfree(next->kernelstacktop);	/* free kernel stack */
+	kernelfree(currentprocess->heapaddress);	/* free heap */
+	kernelfree(lastprocess->next);	/* remove process from list */
+
+	lastprocess->next=NULL;		/* remove process */
+	processes_end=lastprocess;
 
 	loadpagetable(getpid());
 	enablemultitasking();
@@ -384,7 +409,7 @@ void shutdown(size_t shutdown_status) {
 	kprintf_direct("Shutting down:\n");
 	kprintf_direct("Sending SIGTERM signal to all processes...\n");
 
-	sendsignal(-1,SIGTERM);		/*  send terminate signal */
+	sendsignal(-1,SIGTERM);		/*  send terminate signal to all processes */
 
 	kprintf_direct("Waiting %d seconds for processes to terminate\n",SHUTDOWN_WAIT);
 	kwait(SHUTDOWN_WAIT);
@@ -456,7 +481,7 @@ return(-1);
 *
 */
 
-size_t dispatchhandler(void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone) {
+size_t dispatchhandler(size_t ignored1,size_t ignored2,size_t ignored3,size_t ignored4,void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone) {
 char *b;
 char x;
 size_t count;
@@ -499,7 +524,10 @@ switch(highbyte) {
 		}
 
 		return(create((char *) argfour));
-	  
+	 
+	case 0x31:
+		return(yield());
+
 	case 0x41:                     /* delete */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
@@ -689,9 +717,6 @@ switch(highbyte) {
 	 	case 0x4401:			/* send commands to device */
 	  		return(ioctl((size_t) argtwo,(unsigned long) argthree,(void *) argsix));
 
-		case 0xAB12:
-			// fall through
-
 	 	case 0x4b00:			/* create process and load executable */
 			if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
 				setlasterror(INVALID_ADDRESS);
@@ -700,7 +725,7 @@ switch(highbyte) {
 
 	  		return(exec(argfour,argtwo,FALSE));
 	 
-	 	case 0x4b02:
+	 	case 0x4b01:
 			if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
 				setlasterror(INVALID_ADDRESS);
 				return(-1);

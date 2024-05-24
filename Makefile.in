@@ -1,7 +1,7 @@
 ASM=@asm@
 CC=@cc@
 LD=@cc@
-FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c processmanager/module.c header/kprintf_direct.c header/string.c @cc_opt_files@
+FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c processmanager/module.c header/kprintf_direct.c header/string.c header/error.c @cc_opt_files@
 
 #
 # Recipe to make everything
@@ -79,6 +79,9 @@ obj/@arch@/module.o:
 
 obj/@arch@/string.o:
 	$(CC) -c -w header/string.c
+
+obj/@arch@/error.o:
+	$(CC) -c -w header/error.c
 
 $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))):
 	$(CC) -c -w @cc_opt_files@

@@ -252,10 +252,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 					symtype=relptra->r_info & 0xff;		/* symbol type */
 
 		  			ref=(buf+rel_shptr->sh_offset)+relptra->r_offset;
-		  
-				}
-				
-//				if(*ref == 0) {		/* if it does not have a value, assign one */
+  				}
 					
 				/* Get the value to place at the location ref into symval */
 
@@ -263,34 +260,29 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 				/* get symbol value */
 
-
 				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,\
 					       (buf+elf_header->e_shoff)+(symptr->st_shndx*sizeof(Elf32_Shdr)),whichsym,name);	/* get name of symbol */				
 
 
 				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */							
-
 					symval=getkernelsymbol(name);
 
 					if(symval == -1) {	/* if it's not a kernel symbol, check if it is a external module symbol */
 				 		symval=get_external_module_symbol(name);
 						if(symval == -1) symval=symptr->st_value;
 					}
-								
+		
 					add_external_module_symbol(name,symval);		/* add external symbol to list */
 				}
 				else
 				{								
 				
-					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC)) {	/* code symbol */	
-					//	kprintf_direct("is code symbol\n");
-					
-						symval=codestart+symptr->st_value;								
+					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC)) {	/* code symbol */						
+						symval=codestart+symptr->st_value;							
 					}
 					else if((symtype == STT_OBJECT) || (symtype == STT_COMMON) || ((symptr->st_info  & 0xf) == STT_FUNC)) {		/* data symbol */
 						if(strcmp(name,"rodata") == 0) {
-						//	kprintf_direct("is rodata symbol\n");
-								
+							
 							if(symptr->st_value == 0) {
 								next_free_address_rodata += symptr->st_size;
 								symval=next_free_address_rodata;
@@ -302,14 +294,11 @@ for(count=0;count<elf_header->e_shnum;count++) {
 								symval=rodata+symptr->st_value;			
 							}
 						
-
+							next_free_address_data += symptr->st_size;
 						}
 						else
 						{	
-							//kprintf_direct("is data symbol\n");
-	
 							if(symptr->st_value == 0) {
-								next_free_address_data += symptr->st_size;
 								symval=next_free_address_data;
 
 								if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
@@ -324,11 +313,11 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
 				}				
-	
+
 				/* update reference in section */
 
 				if(symtype == R_386_NONE) {
-					;;
+				;;
 				}
 				else if(symtype == R_386_32) {
 					*ref=DO_386_32(symval,*ref);
@@ -368,17 +357,29 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 /* add new module */
 
-kernelmodulelast->next=kernelalloc(sizeof(KERNELMODULE));
-if(kernelmodulelast->next == NULL) {
-	close(handle);
+if(kernelmodules == NULL) {			/* first in list */
+	kernelmodules=kernelalloc(sizeof(KERNELMODULE));
+	if(kernelmodules == NULL) {
+		close(handle);
+		kernelfree(buf);
+		enablemultitasking();	
+		return(-1);
+	}
 
-	kernelfree(buf);
-
-	enablemultitasking();	
-	return(-1);
+	kernelmodulelast=kernelmodules;
 }
+else
+{
+	kernelmodulelast->next=kernelalloc(sizeof(KERNELMODULE));
+	if(kernelmodulelast->next == NULL) {
+		close(handle);
+		kernelfree(buf);
+		enablemultitasking();	
+		return(-1);
+	}
 
-kernelmodulelast=kernelmodulelast->next;
+	kernelmodulelast=kernelmodulelast->next;
+}
 
 strcpy(kernelmodulelast->filename,fullname);
 
@@ -394,13 +395,13 @@ return(entry(argsx));
 /*
  * Get name of symbol from kernel module
  *
- * In: strtab	Pointer to ELF string table
-		 strtab String table
-		 sectionheader_strptr Section header string table
-		 symtab Symbol table
-		 sectionptr Section header
-		 which	Symbol index
-		 name	Symbol name buffer
+ * In:  strtab		     Pointer to ELF string table
+	sectionheader_strptr Section header string table
+	buf		     Pointer to start of module
+	symtab		     Symbol table
+	sectionptr	     Section header
+	which		     Symbol index
+	name		     Symbol name buffer
  *
  * Returns 0 on success, -1 otherwise
  * 

@@ -500,7 +500,10 @@ if(next == NULL) {
 	return(-1);
 }
 
-unlock_mutex(&vfs_mutex);
+if((next->access & O_RDONLY) == 0) {		/* not opened for read access */
+	setlasterror(ACCESS_DENIED);
+	return(-1);
+}
 
 /*
  * if reading from character device, call device handler and return
@@ -528,6 +531,9 @@ if((next->flags & FILE_BLOCK_DEVICE)) {		/* block device I/O */
 		unlock_mutex(&vfs_mutex);
 		return(-1);
 	}
+
+	next->currentblock++;			/* point to next block */
+	next->currentpos += (next->blockdevice.sectorsize*next->blockdevice.sectorsperblock);	/* update current position */
 
 	unlock_mutex(&vfs_mutex);
 
@@ -617,6 +623,9 @@ if((next->flags == FILE_BLOCK_DEVICE)) {
 		return(-1);
 	}
 
+	next->currentblock++;			/* point to next block */
+	next->currentpos += (next->blockdevice.sectorsize*next->blockdevice.sectorsperblock);	/* update current position */
+
 	unlock_mutex(&vfs_mutex);
 
 	setlasterror(NO_ERROR);
@@ -633,6 +642,11 @@ if((next->flags & FILE_FIFO)) {			/* pipe I/O */
 }
 
 /* writing to a regular file */
+
+if((next->access & O_WRONLY) == 0) {		/* not opened for write access */
+	setlasterror(ACCESS_DENIED);
+	return(-1);
+}
 
 splitname(next->filename,&splitbuf);				/* split name */
 
@@ -1069,7 +1083,7 @@ else if((d == ':') && (e != '\\')) {		/* drive and filename only */
 	memcpy(buf,filename,2); 		/* get drive */
 	strcat(buf,filename+3);                 /* get filename */
 }
-else if(d != ':' && e != '\\') {               /* filename only */
+else if(d != ':') {               /* filename only */
 	c=(char) *cwd;
 
 	b=buf;
@@ -1146,6 +1160,7 @@ openfiles->handle=0;
 openfiles->charioread=NULL;			/* for now */
 openfiles->chariowrite=NULL;
 openfiles->flags=FILE_CHARACTER_DEVICE;
+openfiles->access=O_RDONLY;
 
 openfiles->next=kernelalloc(sizeof(FILERECORD));			/* stdin */
 if(openfiles->next == NULL) {	/*can't allocate */
@@ -1160,6 +1175,7 @@ next->handle=1;
 next->charioread=NULL;			/* for now */
 next->chariowrite=NULL;
 next->flags=FILE_CHARACTER_DEVICE;
+next->access=O_WRONLY;
 
 next->next=kernelalloc(sizeof(FILERECORD));			/* stdin */
 if(next->next == NULL) {	/*can't allocate */
@@ -1173,6 +1189,8 @@ strcpy(next->filename,"stderr");
 next->handle=2;
 next->charioread=NULL;			/* for now */
 next->chariowrite=NULL;
+next->flags=FILE_CHARACTER_DEVICE;
+next->access=O_WRONLY;
 next->next=NULL;
 
 openfiles_last=next;			/* save last */
@@ -1523,7 +1541,7 @@ if(gethandle(handle,&seek_file_record) == -1) {			/* bad handle */
 	return(-1);
 }
 
-if(((seek_file_record.flags & FILE_REGULAR) == 0) && ((seek_file_record.flags & FILE_BLOCK_DEVICE) == 0)) {	/* not file or block device */
+if(seek_file_record.flags & FILE_FIFO) {	/* not file or block device */
 	setlasterror(INVALID_HANDLE_TYPE);
 	return(-1);
 }
@@ -1566,25 +1584,25 @@ return(seek_file_record.currentpos);
  *
  */
 size_t pipe(void) {
-	openfiles_last->next=kernelalloc(sizeof(FILERECORD));	/* add file descriptor */
-	if(openfiles_last->next == NULL) return(-1);
+lock_mutex(&vfs_mutex);
 
-	openfiles_last=openfiles_last->next;
+openfiles_last->next=kernelalloc(sizeof(FILERECORD));	/* add file descriptor */
+if(openfiles_last->next == NULL) return(-1);
 
-	openfiles_last->flags=FILE_FIFO;
-	openfiles_last->handle=++highest_handle;
+openfiles_last=openfiles_last->next;
 
-	PIPE *pipe;
-	PIPE *pipereadprevious;
-	PIPE *pipelast;
-	PIPE *pipereadptr;
+openfiles_last->flags=FILE_FIFO;
+openfiles_last->handle=++highest_handle;
+	
+openfiles_last->pipe=NULL;			/* empty, for now */
+openfiles_last->pipereadprevious=NULL;
+openfiles_last->pipelast=NULL;
+openfiles_last->pipereadptr=NULL;
+openfiles_last->access=O_RDWR;			/* open pipe for reading and writing */
 
-	openfiles_last->pipe=NULL;			/* empty, for now */
-	openfiles_last->pipereadprevious=NULL;
-	openfiles_last->pipelast=NULL;
-	openfiles_last->pipereadptr=NULL;
+unlock_mutex(&vfs_mutex);
 
-	return(openfiles_last->handle);
+return(openfiles_last->handle);
 }
 
 /*
@@ -1606,10 +1624,14 @@ if(entry->pipe == NULL) {		/* no pipe */
 	entry->pipelast=entry->pipe;
 	entry->pipereadprevious=entry->pipe;
 	entry->pipereadptr=entry->pipe;
-	
+
+	initialize_mutex(&entry->pipe->mutex);	/* create mutex */
+	lock_mutex(&entry->pipe->mutex);		/* lock mutex */
 }
 else					/* add to end */
 {
+	lock_mutex(&entry->pipe->mutex);		/* lock mutex */
+
 	entry->pipereadprevious=entry->pipelast;
 
 	entry->pipelast->next=kernelalloc(sizeof(PIPE));	
@@ -1622,12 +1644,13 @@ entry->pipelast->buffer=kernelalloc(size);	/* allocate pipe buffer */
 if(entry->pipelast->buffer == NULL) return(-1);
 
 entry->pipelast->bufptr=entry->pipelast->buffer;
-
 entry->pipelast->size=size;
 
 memcpy(entry->pipelast->buffer,addr,size);		/* copy data */
 
 if(entry->pipereadptr == NULL) entry->pipereadptr=entry->pipe; /* if writing after emptying pipe */
+
+unlock_mutex(&entry->pipe->mutex);		/* unlock mutex */
 
 return(size);
 }
@@ -1645,14 +1668,17 @@ return(size);
 size_t readpipe(FILERECORD *entry,char *addr,size_t size) {
 size_t readsize=0;
 char *addrptr;
-int numberofbytes;
+int numberofbytes=0;
 PIPE *saveentry;
 size_t atend=FALSE;
+size_t bytesread=0;
 
-kprintf_direct("FIFO read\n");
+lock_mutex(&entry->pipe->mutex);		/* lock mutex */
 
 if(entry->pipe == NULL) {		/* no data in pipe */
 	setlasterror(INPUT_PAST_END);
+
+	unlock_mutex(&entry->pipe->mutex);		/* unlock mutex */
 	return(-1);
 }
 
@@ -1673,6 +1699,8 @@ do {
 
 	entry->pipereadptr->size -= numberofbytes;		/* decrease size */
 	entry->pipereadptr->bufptr += numberofbytes;		/* point to next in buffer */	
+
+	bytesread += numberofbytes;
 
 	if(entry->pipereadptr->size <= 0) {			/* if entry used up, remove it */
 
@@ -1697,6 +1725,8 @@ do {
 		}
 		
 		if(atend == TRUE) {		/* no more data to read */
+			unlock_mutex(&entry->pipe->mutex);		/* unlock mutex */
+
 			setlasterror(END_OF_FILE);
 			return(0);
 		}
@@ -1708,8 +1738,8 @@ do {
 	
 } while(readsize < size);
 
-
-return(size);
+unlock_mutex(&entry->pipe->mutex);		/* unlock mutex */
+return(bytesread);
 }
 
 /*
@@ -1723,6 +1753,8 @@ return(size);
 void closepipe(FILERECORD *entry) {
 PIPE *next;
 PIPE *savepointer;
+
+lock_mutex(&entry->pipe->mutex);		/* lock mutex */
 
 next=entry->pipe;			/* point to first entry */
 
@@ -1744,6 +1776,7 @@ entry->pipe=NULL;
 entry->pipelast=NULL;
 entry->pipereadprevious=NULL;
 entry->pipereadptr=NULL;
+
 return;
 }
 

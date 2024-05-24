@@ -106,7 +106,7 @@ push	es
 push	fs
 push	gs
 
-mov	ax,0x10					; kernel data selector
+mov	ax,KERNEL_DATA_SELECTOR			; kernel data selector
 mov	ds,ax
 mov	es,ax
 mov	fs,ax

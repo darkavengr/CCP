@@ -44,7 +44,7 @@ unsigned long countx;
 
 sourcehandle=open(source,O_RDONLY);
 if(sourcehandle == -1) {				/* can't open */
-	writeerror();
+	kprintf("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -53,7 +53,7 @@ if(desthandle == -1)   return(-1);
 
 readbuf=alloc(MAX_PATH);
 if(readbuf == -1) {
-	writeerror();
+	kprintf("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -61,14 +61,14 @@ while((count != -1) || (countx != -1)) {
 	count=read(sourcehandle,readbuf,MAX_PATH);
 
 	if(count == -1) {
-		writeerror();
+		kprintf("%s\n",kstrerr(getlasterror()));
 		return(-1);
 	}
 
 	countx=write(desthandle,readbuf,count);
 
 	if(countx == -1) {
-		writeerror();
+		kprintf("%s\n",kstrerr(getlasterror()));
 		return(-1);
 	}
 	

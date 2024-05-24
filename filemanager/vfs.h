@@ -71,6 +71,7 @@ typedef struct {
 	char *buffer;
 	char *bufptr;
 	size_t size;
+	MUTEX mutex;
 	struct PIPE *next;
 } PIPE;
 

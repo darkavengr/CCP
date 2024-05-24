@@ -516,20 +516,18 @@ ret
 ; Returns: Nothing
 ;
 d_lowlevel:
-;xchg	bx,bx
-
 push	eax
 push	ebx
 push	ecx
 push	edx
 push	esi
 push	edi
+push	ds
+push	es
+push	fs
+push	gs
 
-call	disablemultitasking
-
-push	0
-call	disableirq
-add	esp,4
+;call	disablemultitasking
 
 mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
 mov 	ds,ax
@@ -549,12 +547,12 @@ mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
 
-push	0
-call	enableirq
-add	esp,4
+;call	enablemultitasking
 
-call	enablemultitasking
-
+pop	gs
+pop	fs
+pop	es
+pop	ds
 pop	edi
 pop	esi
 pop	edx
