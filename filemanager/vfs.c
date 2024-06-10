@@ -841,20 +841,21 @@ return(-1);
 size_t dup_internal(size_t handle,size_t desthandle,size_t sourcepid,size_t destpid) {
 FILERECORD *source;
 FILERECORD *dest;
-FILERECORD *last;
+FILERECORD *next;
 FILERECORD *saveend;
-
-size_t count;
+size_t count=0;
 
 lock_mutex(&vfs_mutex);
 
-source=openfiles;
+/* find source and destination handles */
+next=openfiles;
 	
-while(source != NULL) {					/* find handle in list */
+while(next != NULL) {					/* find handle in list */
 
-	if((source->handle == handle) && (source->owner_process == sourcepid)) break;
-
-	source=source->next;
+	if((next->handle == handle) && (next->owner_process == sourcepid)) source=next;
+	if((next->handle == desthandle) && (next->owner_process == destpid)) dest=next;		/* if desthandle == -1, it will not match any */
+												/* in the list */
+	next=next->next;
 	count++;
 }
 
@@ -865,38 +866,31 @@ if(source == NULL) {
 	return(-1);
 }
 
-/* copy source handle to end of list*/
+if(desthandle == -1) {				/* if desthandle == -1, add to end */
+	asm("xchg %bx,%bx");
 
-dest=openfiles;
-	
-while(dest != NULL) {
-	last=dest;
-	dest=dest->next;
+	openfiles_last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+
+	if(openfiles_last->next == NULL) {
+		unlock_mutex(&vfs_mutex);
+		setlasterror(NO_MEM);				/* out of memory */
+		return(-1);
+	}
+
+	dest=openfiles_last;
 }
 
-last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
-	
-if(last->next == NULL) {
-	unlock_mutex(&vfs_mutex);
-	setlasterror(NO_MEM);				/* out of memory */
-	return(-1);
-}
-
-
-memcpy(last,source,sizeof(FILERECORD));  /* copy data */
-
-last->owner_process=destpid;
-last->next=NULL;
-
-/* copy destination to source handle, saving original handle number */
-
-if(desthandle != -1) {
+if(desthandle == -1) {
 	saveend=source->next;				/* save pointer to next */
 
 	memcpy(source,dest,sizeof(FILERECORD));
 	source->handle=desthandle;
 
 	source->next=saveend;				/* restore pointer to next */
+}
+else
+{
+	memcpy(source,dest,sizeof(FILERECORD));
 }
 
 unlock_mutex(&vfs_mutex);

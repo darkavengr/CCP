@@ -178,6 +178,8 @@ loadpagetable(highest_pid_used);			/* load page table */
 
 currentprocess=next;					/* use new process */
 	
+DEBUG_PRINT_HEX(currentprocess);
+
 highest_pid_used++;
 
 /* Part two of enviroment variables duplication */
@@ -199,6 +201,7 @@ if(stackp == NULL) {
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
 
 	kernelfree(lastprocess->next);	/* remove process from list */
+
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
 
@@ -214,6 +217,8 @@ next->stackpointer=stackp+PROCESS_STACK_SIZE;
 /* duplicate stdin, stdout and stderr */
 
 if(getpid() != 0) {
+	asm("xchg %bx,%bx");
+
 	dup_internal(stdin,-1,getppid(),getpid());
 	dup_internal(stdout,-1,getppid(),getpid());
 	dup_internal(stderr,-1,getppid(),getpid());
@@ -227,8 +232,6 @@ entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
 if(entrypoint == -1) {					/* can't load executable */
-	asm("xchg %bx,%bx");
-
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
 	kernelfree(lastprocess->next);	/* remove process from list */
 

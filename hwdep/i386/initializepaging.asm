@@ -22,6 +22,8 @@ global initializepaging
 global unmap_lower_half
 
 extern paging_type
+extern processpaging
+extern processpaging_end
 
 %define offset
 %include "init.inc"
@@ -68,6 +70,17 @@ mov	[esi],eax
 mov	eax,[esp+16]			; get memory size
 mov	esi,offset memory_size
 sub	esi,KERNEL_HIGH
+mov	[esi],eax
+
+; set end of page table list
+
+mov	esi,offset processpaging
+sub	esi,KERNEL_HIGH
+
+mov	eax,[esi]
+mov	esi,offset processpaging_end
+sub	esi,KERNEL_HIGH
+
 mov	[esi],eax
 
 lea	esi,[paging_type-KERNEL_HIGH]

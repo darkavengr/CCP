@@ -39,7 +39,6 @@ size_t dmabufsize=0;
 MUTEX memmanager_mutex;
 HEAPENTRY *kernelheapend;
 HEAPENTRY *kernelheappointer;
-size_t bpoint=0;
 
 /*
 * Internal page frame allocator function
@@ -139,9 +138,6 @@ mb=(size_t *) MEMBUF_START;
 pcount=0;
 	
 for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
-
-//	if(getpid() == 1) DEBUG_PRINT_HEX(mb);
-
 	if(*mb == 0) {
 		pcount++;
 
@@ -161,6 +157,8 @@ for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 	 
 	     	if(flags != ALLOC_NOPAGING) {	
 
+			if(process == 1) kprintf_direct("alloc=%X %X\n",startpage,physpage);
+
 	     		switch(flags) {
 	     			case ALLOC_NORMAL:				/* add normal page */
 	 				addpage_user(startpage,process,physpage);
@@ -169,11 +167,6 @@ for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 					break;
 
 				case ALLOC_KERNEL:
-					//if(getpid() == 1) {
-					//	kprintf_direct("addpage=%X %X\n",startpage,physpage);
-					//	if(bpoint == 1) asm("xchg %bx,%bx");
-					//}
-	
 	 				addpage_system(startpage,process,physpage); /* add kernel page */
 
 	        			if(process == getpid()) loadpagetable(process);
@@ -202,12 +195,16 @@ for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 
 *mb=(size_t *) -1;							/* mark end of chain */
 
+if(getpid() == 1) {
+	DEBUG_PRINT_HEX(flags);
+	DEBUG_PRINT_HEX(firstpage);
+}
+
 if(flags != ALLOC_NOPAGING) memset(firstpage,0,oldsize-1);
 
 unlock_mutex(&memmanager_mutex);
 
 setlasterror(NO_ERROR);
-
 return((void *) firstpage);
 }
 
@@ -344,8 +341,6 @@ return(heapfree(ALLOC_KERNEL,address));
 * 
 */
 void *kernelalloc_nopaging(size_t size) {
-if(getpid() == 1) asm("xchg %bx,%bx");
-
 return(alloc_int(ALLOC_NOPAGING,getpid(),size,-1));
 }
 
@@ -423,25 +418,12 @@ return;
 *
 * Returns: start address on success, NULL otherwise
 * 
-*/
-
-
-/*
-* Allocate from heap
-*
-* In: heap	pointer to user or kernel heap
-*
-* Returns: start address on success, NULL otherwise
-* 
-*/
+*/	
 void *heapalloc_int(size_t type,HEAPENTRY *heap,HEAPENTRY *heapend,size_t size) {
 void *heapptr;
 void *saveaddress;
 HEAPENTRY *heapheader;
 void *hend;
-
-//	asm("xchg %bx,%bx");
-
 
 /* increase size of heap */
 
@@ -466,27 +448,13 @@ else
 {
 	heapptr=heap;
 
-
 	if((heapptr+INITIAL_HEAP_SIZE) > heapend) {		/* if past end of heap */
-		/*if(type == ALLOC_NORMAL) {
-			kprintf_direct("extending application heap\n");
-		}
-		else
-		{
-			kprintf_direct("extending kernel heap\n");
-		}
-
 		heapptr=heapend;
 
-		if(type == ALLOC_NORMAL) {
-			kprintf_direct("application heapptr=%X\n",heapptr);
-			kprintf_direct("application heapend=%X\n",heapend);
+		if(getpid() == 1) {
+			DEBUG_PRINT_HEX(type);
+			asm("xchg %bx,%bx");
 		}
-		else
-		{
-			kprintf_direct("kernel heapptr=%X\n",heapptr);
-			kprintf_direct("kernel heapend=%X\n",heapend);
-		}*/
 
 		if(alloc_int(type,getpid(),INITIAL_HEAP_SIZE,heapptr) == NULL) return(NULL);	/* extend heap */
 
@@ -552,18 +520,33 @@ if((heapheader->allocationtype != 'M') && (heapheader->allocationtype != 'Z')) {
 heapnext=(address+heapheader->size);		/* get next header */
 oldsize=heapnext->size;			/* save size */
 
-if(heapnext->allocationtype == 'Z') {	/* if next is last entry */
+if(heapnext->allocationtype == 'Z') {	/* if next entry is the last entry */
 	heapheader->allocationtype='Z';	/* new last entry */
 	heapheader->size=0;
 
 	heapnext->allocationtype=0;
 	heapnext->size=0;
 
+	addr=heapheader;
+	addr &= ((size_t) 0-1)-(PAGE_SIZE-1);			/* round down to page boundary */
+
+	if(getpid() == 1) kprintf_direct("heapfree() address=%X\n",addr);
+
+	free_internal(getpid(),(void *) addr,0);		/* free end of heap */
+
+	/* adjust end of heap */
+
+	if(type == ALLOC_NORMAL) {
+		SetUserHeapEnd(addr);
+	}
+	else
+	{
+		kernelheapend=addr;
+	}
 }
 else
 {
 	heapheader->size += heapnext->allocationtype;	/* merge headers */
-
 	heapnext->allocationtype=0;		/* remove header */
 	heapnext->size=0;
 }
@@ -579,26 +562,6 @@ else
 	heapend=kernelheapend;
 }
 
-addr=heapnext;
-addr &= ((size_t) 0-1)-(PAGE_SIZE-1);			/* round down to page boundary */
-
-if((addr & INITIAL_HEAP_SIZE) == INITIAL_HEAP_SIZE) {
-	//DEBUG_PRINT_HEX(addr);
-	//asm("xchg %bx,%bx");
-
-	free_internal(getpid(),(void *) addr,0);		/* free end of heap */
-
-	/* adjust end of heap */
-
-	if(type == ALLOC_NORMAL) {
-		SetUserHeapEnd(addr);
-	}
-	else
-	{
-		kernelheapend=addr;
-	}
-}
-
 return(0);
 }
-			
+

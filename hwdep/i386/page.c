@@ -34,6 +34,7 @@
 #include "page.h"
 #include "hwdefs.h"
 #include "../../header/errors.h"
+#include "../../header/debug.h"
 
 size_t PAGE_SIZE=4096;
 
@@ -62,6 +63,8 @@ struct ppt {
 	size_t process; 
 	struct ppt *next;
 } *processpaging=PAGE_DIRECTORY_LOCATION+KERNEL_HIGH;
+
+struct ppt *processpaging_end;
 		
 /* add page */
 
@@ -79,8 +82,6 @@ struct ppt {
 size_t addpage_int(size_t mode,size_t process,uint32_t page,void *physaddr) { 
 size_t count;
 struct ppt *next;
-struct ppt *remap;
-struct ppt *current;
 uint32_t pd;
 uint32_t pt;
 uint32_t p;
@@ -91,7 +92,6 @@ uint32_t temp;
 next=processpaging;
 
 while(next != NULL) {					/* find process */	
-	if(next->process == getpid()) current=next;
 	if(next->process == process) break;		
 
 	next=next->next;
@@ -110,6 +110,7 @@ if(next->pagedir[pd] == 0) {				/* if page directory empty */
 	next->pagedir[pd]=(uint32_t) c | PAGE_USER | PAGE_RW | PAGE_PRESENT;	/* page directory entry */
 
 	v=(uint32_t *) 0xffc00000 + (pd*1024);
+
 	memset(v,0,PAGE_SIZE);
 }
 
@@ -130,8 +131,6 @@ return(0);
 * 
 */
 size_t page_init(size_t process) {
-struct ppt *p;
-struct ppt *last;
 uint32_t oldvirtaddress;
 uint32_t virtaddress;
 uint32_t oldpp;
@@ -141,19 +140,11 @@ size_t size;
 
 if(process == 0) return(0);
 
-p=processpaging;							/* find process */
-last=p;
-
-while(p != NULL) {
-	last=p;  
-	p=p->next;
-}
-
 /* get a physical address and manually map it to a virtual address, the physical addres of p->pagedir is needed to fill cr3 */
 
 size=(sizeof(struct ppt) & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round */
 
-pp=kernelalloc_nopaging(size);					/* add link */
+pp=kernelalloc_nopaging(size);					/* get the physical address of the new paging entry */
 if(pp == NULL) return(-1);
 
 virtaddress=findfreevirtualpage(size,ALLOC_KERNEL,0);		/* find free virtual address */
@@ -168,17 +159,20 @@ for(count=0;count<(size/PAGE_SIZE)+1;count++) {
 	virtaddress += PAGE_SIZE;
 }
 
-last->next=oldvirtaddress;
-last=last->next;
+/* Important: make sure that is processpaging_end == processpaging. This most be done in the paging intialization code */
 
-last->pagedirphys=oldpp;						/* physical address of page directory */
-last->process=process;
+if(processpaging_end == NULL) processpaging_end=processpaging; /* do it anyway */
 
-memcpy(&last->pagedir[512],&processpaging->pagedir[512],PAGE_SIZE/2);			/* copy page directory */
+processpaging_end->next=oldvirtaddress;					/* add link to list */
+processpaging_end=processpaging_end->next;		/* point to end */
+processpaging_end->pagedirphys=oldpp;						/* physical address of page directory */
+processpaging_end->process=process;
 
-last->pagedir[1023]=last->pagedirphys+(PAGE_RW+PAGE_PRESENT);
+memcpy(&processpaging_end->pagedir[512],&processpaging->pagedir[512],PAGE_SIZE/2);		/* copy higher half of page directory */
 
-last->next=NULL;
+processpaging_end->pagedir[1023]=processpaging_end->pagedirphys+(PAGE_RW+PAGE_PRESENT);
+
+processpaging_end->next=NULL;
 return(0);
 }
 

@@ -141,8 +141,6 @@ else
 	firstpage=(startpage*PAGE_SIZE);
 }
 
-if(oldsize == 1234) kprintf_direct("ALLOC 4\n");
-
 /* create new chain in buffer */
 
 physpage=0;
@@ -195,8 +193,6 @@ for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 
 		if(pcount == (size/PAGE_SIZE)+1) break;			/* found enough */
 	}
-
-	if(size == 1234) DEBUG_PRINT_HEX(mb);
 
 	mb++;
 	physpage=physpage+PAGE_SIZE;

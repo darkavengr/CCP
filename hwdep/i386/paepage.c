@@ -60,11 +60,13 @@ size_t addpage_system(uint32_t page,size_t process,void *physaddr);
 #define PDPT_LOCATION 0x2000
 
 struct ppt {
-uint64_t pdpt[4] __attribute__((aligned(0x20)));			/* PDPT */
-size_t process; 							/* process ID */
-uint32_t pdptphys;							/* Physical address of PDPT */
-struct ppt *next;							/* pointer to next paging entry */
-}  __attribute__((packed)) *processpaging=PDPT_LOCATION+KERNEL_HIGH;
+	uint64_t pdpt[4] __attribute__((aligned(0x20)));			/* PDPT */
+	size_t process; 							/* process ID */
+	uint32_t pdptphys;							/* Physical address of PDPT */
+	struct ppt *next;							/* pointer to next paging entry */
+} __attribute__((packed)) *processpaging=PDPT_LOCATION+KERNEL_HIGH;
+
+struct ppt *processpaging_end;
 
 /*
 * Add page
@@ -157,15 +159,7 @@ uint32_t pp;
 size_t count;
 size_t size;
 
-if(process == 0) return;
-
-p=processpaging;							/* find process */
-last=p;
-
-while(p != NULL) {
-	last=p;  
-	p=p->next;
-}
+if(process == 0) return;		/* don't need to intialize if process 0 */
 
 /* Get a physical address and manually map it to a virtual address. The physical addres of p->pagedir is needed to fill cr3 */
 
@@ -186,11 +180,14 @@ for(count=0;count<(size/PAGE_SIZE)+1;count++) {
 	virtaddress += PAGE_SIZE;
 }
 
-last->next=oldvirtaddress;
-last=last->next;
+/* Important: make sure that is processpaging_end == processpaging. This most be done in the paging intialization code */
 
-last->pdptphys=oldpp;
-last->process=process;
+if(processpaging_end == NULL) processpaging_end=processpaging; /* do it anyway */
+
+processpaging_end->next=oldvirtaddress;					/* add link to list */
+processpaging_end=processpaging_end->next;		/* point to end */
+processpaging_end->pagedirphys=oldpp;						/* physical address of page directory */
+processpaging_end->process=process;
 
 /* add bottom half PDPTs */
 
@@ -220,8 +217,6 @@ return;
 */
 
 size_t removepage(uint32_t page,size_t process) {
-//kprintf_direct("remove page\n");
-
 addpage_int(0,process,page,0);						/* clear page */
 return(NULL);
 }
