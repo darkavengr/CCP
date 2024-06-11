@@ -58,15 +58,15 @@ while((size_t) *varptr != NULL) {
 	  	*b++=*varptr++;
 	}
 
-	if(strcmpi(buffer,name) == 0) {	/* variable found */
+	if(strncmpi(buffer,name,MAX_PATH) == 0) {	/* variable found */
 		if(strlen(varptr) == strlen(val)) { /* same size */
-			strcpy(varptr,val);
+			strncpy(varptr,val);
 	  		return(0);
 		}
 		else if(strlen(buffer) < strlen(val)) { /* smaller size */
 	   		diff=(strlen(val)-strlen(buffer))+1;	/* get difference */
 		
-	   		strcpy(varptr,val);
+	   		strncpy(varptr,val);
 	   
 			varptr += strlen(varptr);		/* point to end */
 	   		*varptr++=0;				/* put null at end */
@@ -78,7 +78,7 @@ while((size_t) *varptr != NULL) {
 			/* copy forward */
 	   		memcpy(varptr+strlen(val),varptr,ENVIROMENT_SIZE-strlen(val));
 
- 	   		strcpy(varptr,val);
+ 	   		strncpy(varptr,val);
 	   		varptr += strlen(varptr);		/* point to end */
 	   		*varptr++=0;				/* put null at end */
 	   
@@ -90,11 +90,11 @@ while((size_t) *varptr != NULL) {
  }
 
 /* add new variable */
-strcpy(varptr,name);	/* name */
+strncpy(varptr,name);	/* name */
 
 varptr += strlen(varptr);	/* point to end */
 *varptr++='=';
-strcpy(varptr,val);	/* value */
+strncpy(varptr,val);	/* value */
 
 return(0);
 }
@@ -129,8 +129,8 @@ while(*varptr != 0) {
 	 *nameptr++=*varptr++;
 	}
 
-	if(strcmpi(varname,name) == 0) {	/* variable found */
-		strcpy(buf,varptr);
+	if(strncmpi(varname,name,MAX_PATH) == 0) {	/* variable found */
+		strncpy(buf,varptr);
 		return(0);
 	}
 

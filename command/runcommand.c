@@ -148,9 +148,9 @@ if(flags == RUN_BACKGROUND) {				/* run batch file in background */
 	
 	/* create arguments to command interpreter */
 
-	strcpy(batchfileargs,filename);
-	strcat(batchfileargs," ");
-	strcat(batchfileargs,args);
+	strncpy(batchfileargs,filename,MAX_PATH);
+	strncat(batchfileargs," ",MAX_PATH);
+	strncat(batchfileargs,args,MAX_PATH);
 
 	return(exec(buf,batchfileargs,flags));
 }

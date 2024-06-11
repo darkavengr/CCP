@@ -77,8 +77,8 @@ size_t create_subdirectory_entries(char *dirname,size_t datastart,size_t startbl
 size_t fat_init(char *initstr) {
 FILESYSTEM fatfilesystem;
 
-strcpy(fatfilesystem.name,"FAT");
-strcpy(fatfilesystem.magicnumber,"FAT");
+strncpy(fatfilesystem.name,"FAT",MAX_PATH);
+strncpy(fatfilesystem.magicnumber,"FAT",MAX_PATH);
 fatfilesystem.size=3;
 fatfilesystem.location=0x36;
 fatfilesystem.findfirst=&fat_findfirst;
@@ -166,7 +166,7 @@ if(find_type == FALSE) {
 	buf->findlastblock=fat_get_start_block(splitbuf->dirname);
 	if(buf->findlastblock == -1) return(-1);
 
-	strcpy(buf->searchfilename,fp); 
+	strncpy(buf->searchfilename,fp,MAX_PATH); 
 }
 else
 {
@@ -174,7 +174,7 @@ else
 
 }
 
-if(strlen(splitbuf->filename) == 0) strcpy(splitbuf->filename,"*");
+if(strlen(splitbuf->filename) == 0) strncpy(splitbuf->filename,"*",MAX_PATH);
 
 fattype=fat_detect_change(splitbuf->drive);
 if(fattype == -1) {
@@ -193,7 +193,7 @@ if(getblockdevice(splitbuf->drive,&blockdevice) == -1) {
 
 bpb=blockdevice.superblock;
 
-if(strcmp(splitbuf->dirname,"\\") != 0) { /* not root */
+if(strncmp(splitbuf->dirname,"\\",MAX_PATH) != 0) { /* not root */
 	if(fattype == 12 || fattype == 16) {
 		rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
 		start_of_data_area=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
@@ -224,7 +224,7 @@ if(blockbuf == NULL) {
  * If it's the root directory, it is located at a fixed position for fat12 and fat16.
    All other directories are located in the data area. */
 
-if(strcmp(splitbuf->dirname,"\\") != 0) {		 /* not root */
+if(strncmp(splitbuf->dirname,"\\",MAX_PATH) != 0) {		 /* not root */
 	if(fattype == 12 || fattype == 16) {
 		rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
 		start_of_data_area=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
@@ -279,7 +279,7 @@ while(1) {
 			blockptr += (lfncount*FAT_ENTRY_SIZE);	
 
 			if(wildcard(splitbuf->filename,lfnbuf->filename) == 0) { 	/* if file found */      	
-				strcpy(buf->filename,lfnbuf->filename); 	/* copy file information from long filename data returned */
+				strncpy(buf->filename,lfnbuf->filename,MAX_PATH); 	/* copy file information from long filename data returned */
 				buf->attribs=lfnbuf->attribs;
 
 				buf->create_time_date.day=lfnbuf->create_time_date.day;
@@ -339,7 +339,7 @@ while(1) {
 				memset(buf->filename,0,MAX_PATH);
 
 				/* copy file information from the FAT entry */
-				strcpy(buf->filename,file);			/* convert filename */
+				strncpy(buf->filename,file,MAX_PATH);			/* convert filename */
 
 				buf->attribs=dirent.attribs;
 				buf->filesize=dirent.filesize;
@@ -458,7 +458,7 @@ if(findfirst(newfullpath,&newbuf) == 0) {		/* if new filename exists */
 }
 
 if(fat_is_long_filename(splitbuf_new.filename)) {	/* long filename */
-	strcpy(buf.filename,splitbuf_new.filename);
+	strncpy(buf.filename,splitbuf_new.filename,MAX_PATH);
 
 	if(newbuf.attribs & FAT_ATTRIB_DIRECTORY) {		/* renaming directory */
 		type=_DIR;
@@ -600,7 +600,7 @@ if(rb == -1) return(-1);
 
 while(1) {
 
-	if(strcmp(splitbuf.dirname,"\\") == 0) {	/* root */		
+	if(strncmp(splitbuf.dirname,"\\",MAX_PATH) == 0) {	/* root */		
 		readblock=rb;
 	}
 	else
@@ -642,7 +642,7 @@ while(1) {
 		if((fattype == 12 && rb >= 0xff8) || (fattype == 16 && rb >= 0xfff8) || (fattype == 32 && rb >= 0xfffffff8)) {
 			/* The root directory is fixed in size for fat12 and fat16 */
 
-			if((strcmp(splitbuf.dirname,"\\") == 0) && (fattype == 12 || fattype == 16)) { 
+			if((strncmp(splitbuf.dirname,"\\",MAX_PATH) == 0) && (fattype == 12 || fattype == 16)) { 
 				kernelfree(blockbuf);
 
 				setlasterror(DIRECTORY_FULL);
@@ -707,7 +707,7 @@ if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 	if(fat_is_long_filename(filename) == TRUE) {		/* create long filename */
 		memset(&lfn_filerecord,0,sizeof(FILERECORD));
 
-		strcpy(lfn_filerecord.filename,&splitbuf.filename);
+		strncpy(lfn_filerecord.filename,&splitbuf.filename,MAX_PATH);
 		memcpy(&lfn_filerecord.create_time_date,&TIME,sizeof(TIME));
 		memcpy(&lfn_filerecord.last_written_time_date,&TIME,sizeof(TIME));
 		memcpy(&lfn_filerecord.last_accessed_time_date,&TIME,sizeof(TIME));
@@ -760,7 +760,7 @@ if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 
 	memcpy(blockptr,&dirent,FAT_ENTRY_SIZE);			/* copy directory entry */
 
-	if(strcmp(splitbuf.dirname,"\\") == 0) {	/* root */		
+	if(strncmp(splitbuf.dirname,"\\",MAX_PATH) == 0) {	/* root */		
 		writeblock=rb;
 	}
 	else
@@ -832,11 +832,11 @@ for(count=0;count<2;count++) {
 	/* padded FAT entry filename */
 
 	if(count == 0) {
-		strcpy(dirent.filename,".          ");	/* this directory */
+		strncpy(dirent.filename,".          ",MAX_PATH);	/* this directory */
 	}
 	else
 	{
-		strcpy(dirent.filename,"..         ");	/* parent directory */
+		strncpy(dirent.filename,"..         ",MAX_PATH);	/* parent directory */
 	}
 
 	dirent.attribs=FAT_ATTRIB_DIRECTORY;
@@ -912,12 +912,12 @@ if(findfirst(filename,&buf) == -1) {		/* get file entry */
 }
 
 if(buf.attribs & FAT_ATTRIB_DIRECTORY) {	/* if deleting directory, check if empty */
-	ksprintf(delete_dir_path,"%s\\*",subdirbuf.filename);
+	ksnprintf(delete_dir_path,"%s\\*",subdirbuf.filename,MAX_PATH);
 	
 	if(findfirst(delete_dir_path,&subdirbuf) == 0) {		/* directory not empty */
 		do {
 			DEBUG_PRINT_HEX(subdirbuf.filename);
-			if( (strcmp(subdirbuf.filename,".") != 0) && (strcmp(subdirbuf.filename,"..") != 0)) { /* non empty directorys have files other than */
+			if( (strncmp(subdirbuf.filename,".",MAX_PATH) != 0) && (strncmp(subdirbuf.filename,"..",MAX_PATH) != 0)) { /* non empty directorys have files other than */
 				setlasterror(DIRECTORY_NOT_EMPTY);				 /* . and .. */
 				return(-1);
 			}
@@ -1729,7 +1729,7 @@ count=1;
 if(fattype == 12 || fattype == 16) rb=bpb->reservedsectors+(bpb->sectorsperfat*bpb->numberoffats);  /* get start of root directory */
 if(fattype == 32) rb=bpb->fat32rootdirstart;  /* get start of root directory */
 
-if(strcmp(splitbuf->dirname,"\\") == 0) {						           /* root directory */
+if(strncmp(splitbuf->dirname,"\\",MAX_PATH) == 0) {						           /* root directory */
 	if(strlen(splitbuf->filename) == 0) { 
 		kernelfree(lfnbuf);
 		kernelfree(blockbuf);
@@ -2097,7 +2097,7 @@ char *d;
 size_t count;
 char *temp[MAX_PATH];
 
-strcpy(temp,filename);				/* copy filename */
+strncpy(temp,filename,MAX_PATH);				/* copy filename */
 
 s=temp;
 d=outname;
@@ -2268,7 +2268,7 @@ while((fattype == 12 && blockcount <= 0xff8) || (fattype == 16 && blockcount <= 
 		if((lfn->sequence == 1) || (lfn->sequence == 0x41)) {		/* at end of filename copy filename */
 			lfncount++;			/* skip short entry */
 
-			strcpy(n->filename,d);			/* copy filename */
+			strncpy(n->filename,d,MAX_PATH);			/* copy filename */
 
 			/* at end, so will point to short entry */
 
@@ -2449,7 +2449,7 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 /* root directory is fixed size for fat12 and fat16 */
 
 if(fattype == 12 || fattype == 16) {
-	if(strcmp(splitbuf.dirname,"\\") == 0) {
+	if(strncmp(splitbuf.dirname,"\\",MAX_PATH) == 0) {
 		setlasterror(DIRECTORY_FULL);
 		return(-1);
 	}
@@ -2572,7 +2572,7 @@ for(longfilecount=1;longfilecount<9999;longfilecount++) {
 		}
 	} 
 
-	strcat(s,f);	/* append extension */
+	strncat(s,f,MAX_PATH);	/* append extension */
 
 	s=out;
 

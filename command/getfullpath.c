@@ -57,14 +57,14 @@ e=*b++;
 /* is already full path, just exit */
 
 if(d == ':' && e == '\\') {               /* full path */
-	strcpy(buf,filename);                     /* copy path */
+	strncpy(buf,filename,MAX_PATH);                     /* copy path */
 }
 
 
 /* drive and filename only */
 if(d == ':' && e != '\\') { 
 	 memcpy(buf,filename,2); 	  		 /* get drive */
-	 strcat(buf,filename+3);                       /* get filename */
+	 strncat(buf,filename+3,MAX_PATH);                /* get filename */
 }
 
 /* filename only */
@@ -74,11 +74,11 @@ if(d != ':' && e != '\\') {
 
 	c=*b;
 	if(c == '\\') {
-		ksprintf(buf,"%s%s",cwd,filename);
+		ksnprintf(buf,"%s%s",cwd,filename,MAX_PATH);
 	}
 	else
 	{
-		ksprintf(buf,"%s\\%s",cwd,filename);
+		ksnprintf(buf,"%s\\%s",cwd,filename,MAX_PATH);
 	}
 }
 
@@ -87,26 +87,26 @@ dottc=tokenize_line(filename,dottoken,"\\");		/* tokenize line */
 
 
 for(countx=0;countx<dottc;countx++) {
-	if(strcmp(dottoken[countx],"..") == 0 ||  strcmp(dottoken[countx],".") == 0) {
+	if(strncmp(dottoken[countx],"..",MAX_PATH) == 0 ||  strncmp(dottoken[countx],".",MAX_PATH) == 0) {
 
 		for(count=0;count<dottc;count++) {
-			if(strcmp(dottoken[count],"..") == 0 || strcmp(dottoken[countx],".") == 0) {
+			if(strncmp(dottoken[count],"..",MAX_PATH) == 0 || strncmp(dottoken[countx],".",MAX_PATH) == 0) {
 				tc--;
 	 		}
 	 		else
 	 		{
-	 			strcpy(token[tc],dottoken[count]);
+	 			strncpy(token[tc],dottoken[count],MAX_PATH);
 	 			tc++;
 	 		}
 		}
 
 
-		strcpy(buf,token[0]);
-		strcat(buf,"\\");
+		strncpy(buf,token[0],MAX_PATH);
+		strncat(buf,"\\",MAX_PATH);
 
 		for(count=1;count<tc;count++) {
-			strcat(buf,token[count]);
-			if(count != tc-1) strcat(buf,"\\");
+			strncat(buf,token[count],MAX_PATH);
+			if(count != tc-1) strncat(buf,"\\",MAX_PATH);
 		}
 
 	  }

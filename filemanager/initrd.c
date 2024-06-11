@@ -109,7 +109,7 @@ while(*tarptr->name != 0) {
 	touppercase(tarptr->name);
 
 	if(wildcard(split.filename,tarptr->name) == 0) { 	/* if file found */      	
-		strcpy(buf->filename,tarptr->name);	/* copy information */
+		strncpy(buf->filename,tarptr->name);	/* copy information */
 
 		buf->filesize=atoi(tarptr->size,8);
 		buf->drive=25;
@@ -204,7 +204,7 @@ if(boot_info->initrd_size == 0) {	/* no initrd */
 }
 
 /* create block device */
-strcpy(bd.name,"INITRD");
+strncpy(bd.name,"INITRD");
 bd.blockio=&initrd_io;		/*setup struct */
 bd.ioctl=NULL;
 bd.physicaldrive=0;
@@ -217,7 +217,7 @@ add_block_device(&bd);
 memset(&fs,0,sizeof(FILESYSTEM));
 
 /* register filesystem driver */
-strcpy(fs.name,"INITRDFS");	/* name */
+strncpy(fs.name,"INITRDFS",MAX_PATH);	/* name */
 
 memcpy(fs.magicnumber,magic,INITRD_MAGIC_SIZE);
 fs.size=INITRD_MAGIC_SIZE;
@@ -280,7 +280,7 @@ if(findfirst("Z:\\*.o",&findmodule) == -1) return(FILE_NOT_FOUND);
 do {
 	kprintf_direct("Loading module Z:\\%s\n",findmodule.filename);
 
-	ksprintf(filename,"Z:\\%s",findmodule.filename);
+	ksnprintf(filename,"Z:\\%s",findmodule.filename,MAX_PATH);
 
 	if(load_kernel_module(filename,NULL) == -1) {	/* load module */
 		kprintf_direct("kernel: Error loading kernel module %s from initrd\n",filename);			

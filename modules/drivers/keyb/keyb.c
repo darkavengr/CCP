@@ -69,8 +69,8 @@ CHARACTERDEVICE device;
 keyboardflags=0;
 readcount=0;
 
-/* create con devide */
-strcpy(&device.name,"CON",1);
+/* create console device */
+strncpy(&device.name,"CON",MAX_PATH);
 device.charioread=&readconsole;
 device.chariowrite=NULL;
 device.ioctl=NULL;

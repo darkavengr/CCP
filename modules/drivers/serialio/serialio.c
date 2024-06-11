@@ -99,9 +99,9 @@ if(init != NULL) {			/* args found */
 	for(count=0;count<tc;count++) {
 		tokenize_line(tokens[count],op,"=");	/* tokenize line */
 
-		if(strcmp(op[0],"port") == 0) {		/* set port */
+		if(strncmp(op[0],"port",MAX_PATH) == 0) {		/* set port */
 			for(whichp=0;whichp<5;whichp++) {
-				if(strcmp(ports[whichp],op[1]) == 0) break;
+				if(strncmp(ports[whichp],op[1],MAX_PATH) == 0) break;
 			}
 
 	
@@ -111,29 +111,29 @@ if(init != NULL) {			/* args found */
 	  		}
 	 	}
 
-	 	if(strcmp(op[0],"buffersize") == 0) {
+	 	if(strncmp(op[0],"buffersize",MAX_PATH) == 0) {
 	  		ports[whichp].buffersize=atoi(op[1]);
 	  		return;
 	 	}
 
-	 	if(strcmp(op[0],"baud") == 0) {		/* set baud */
+	 	if(strncmp(op[0],"baud") == 0,MAX_PATH) {		/* set baud */
 	  		ports[whichp].baud=atoi(op[0]);
 	 	}
 
-	 	if(strcmp(op[0],"databits") == 0) {		/* set databits */
+	 	if(strncmp(op[0],"databits",MAX_PATH) == 0) {		/* set databits */
 	  		ports[whichp].databits=atoi(op[1]);
 	 	}
 
 
-	 	if(strcmp(op[0],"stopbits") == 0) {		/* set stop bits */
+	 	if(strncmp(op[0],"stopbits",MAX_PATH) == 0) {		/* set stop bits */
 	 		ports[whichp].stopbits=atoi(op[1]);
 	 	}
 
-	 	if(strcmp(tokens[count],"parity") == 0) {		/* set baud */
+	 	if(strncmp(tokens[count],"parity",MAX_PATH) == 0) {		/* set baud */
 	 		countx=0;
 	  
 			while(countx != -1) {
-				if(strcmp(parityvals[countx].name,op[1]) == 0) ports[whichp].parity=parityvals[countx].val;
+				if(strncmp(parityvals[countx].name,op[1],MAX_PATH) == 0) ports[whichp].parity=parityvals[countx].val;
 
 	   			countx++;
 			}
@@ -159,7 +159,7 @@ for(count=0;count<4;count++) {
 
 	ports[count].bufptr=ports[count].buffer;
 
-	strcpy(&device.name,ports[count].name);		/* add device */
+	strncpy(&device.name,ports[count].name,MAX_PATH);		/* add device */
 
 	device.charioread=ports[count].readhandler;
 	device.chariowrite=ports[count].writehandler;
@@ -395,7 +395,7 @@ if(gethandle(handle,&serialdevice) == -1) {		/* get information about device */
 /* find device name */
 
 for(count=0;count<4;count++) {
-	if(strcmp(ports[count].name,serialdevice.filename)) break;	/* found device */
+	if(strncmp(ports[count].name,serialdevice.filename),MAX_PATH) break;	/* found device */
 }
 
 if(count > 4) return(-1);			/* not a serial device */

@@ -28,11 +28,11 @@
 
 size_t strlen(char *str);
 size_t strlen_unicode(char *str,size_t maxlen);
-void strcpy(char *d,char *s);
-void strcat(char *d,char *s);
+void strncpy(char *d,char *s,size_t size);
+void strncat(char *d,char *s,size_t size);
 size_t memcpy(void *d,void *s,size_t c);
 size_t memcmp(char *source,char *dest,size_t count);
-size_t strcmp(char *source,char *dest);
+size_t strncmp(char *source,char *dest,size_t size);
 void memset(void *buf,char i,size_t size);
 size_t itoa(size_t n, char s[]);
 void reverse(char s[]);
@@ -41,7 +41,7 @@ size_t touppercase(char *string);
 size_t wildcard_rename(char *name,char *mask,char *out);
 int strtrunc(char *str,int c);
 int atoi(char *hex,int base);
-void ksprintf(char *buf,char *format, ...);
+void ksnprintf(char *buf,char *format,size_t size, ...);
 void tohex(uint32_t hex,char *buf);
 size_t tokenize_line(char *linebuf,char *tokens[MAX_PATH][MAX_PATH],char *split);
 void tohex64(uint64_t hex,char *buf);
@@ -104,42 +104,60 @@ size_t strlen_unicode(char *str,size_t maxlen) {
 /*
  * Copy string
  *
- * In: char *d		Destination string
-	   char *s		Source string
+ * In: d		Destination string
+       s		Source string
  *
  * Returns nothing
  *
  */
 
-void strcpy(char *d,char *s) {
- char *x;
- char *y;
+void strncpy(char *d,char *s,size_t size) {
+char *x;
+char *y;
+size_t count=0;
 
- x=s;
- y=d;
+x=s;
+y=d;
 
- while(*x != 0) *y++=*x++;
- *y--=0;
+while(*x != 0) {			/* until end */
+	if(++count == size) break;	/* too large */
+
+	*y++=*x++;	
+}
+
+if(count < (size-1)) *y--=0;
 }
 
 /*
  * Conatecate string
  *
- * In: char *d		String to conatecate to
-	   char *s		String to conatecate
+ * In: d		String to conatecate to
+       s		String to conatecate
  *
  * Returns nothing
  *
  */
 
-void strcat(char *d,char *s) {
+void strncat(char *d,char *s,size_t size) {
 char *x=s;
 char *y=d;
+size_t count=0;
 
-while(*y != 0) y++;		/* find end */
-while(*x != 0) *y++=*x++;	/* append byte */
+while(*y != 0) {
+	if(++count == size) break;		/* at end */
 
-*y--=0;
+	y++;		/* find end */
+}
+
+count=0;
+
+while(*x != 0) {
+	if(++count == size) break;		/* at end */
+
+	*y++=*x++;	/* append byte */
+}
+
+if(count < (size-1)) *y--=0;
 }
 
 /*
@@ -205,7 +223,7 @@ return(0);
  * Returns different of last source and destination bytes if they do not match, 0 otherwise
  *
  */
-size_t strcmp(char *source,char *dest) {
+size_t strncmp(char *source,char *dest,size_t size) {
 char c,d;
 
 while(*source == *dest) {
@@ -230,18 +248,18 @@ return(d-c);
  * Returns different of last source and destination bytes if they do not match, 0 otherwise
  *
  */
-size_t strcmpi(char *source,char *dest) {
+size_t strncmpi(char *source,char *dest,size_t size) {
 char a,b;
 char *sourcetemp[MAX_PATH];
 char *desttemp[MAX_PATH];
 
-strcpy(sourcetemp,source);
-strcpy(desttemp,dest);
+strncpy(sourcetemp,source,size);
+strncpy(desttemp,dest,size);
 
 touppercase(sourcetemp);
 touppercase(desttemp);
 
-return(strcmp(sourcetemp,desttemp));
+return(strncmp(sourcetemp,desttemp,size));
 }
 
 /*
@@ -336,8 +354,8 @@ char *d;
 char *mmask[MAX_PATH];
 char *nname[MAX_PATH];
 
-strcpy(mmask,mask);
-strcpy(nname,filename);
+strncpy(mmask,mask,MAX_PATH);
+strncpy(nname,filename,MAX_PATH);
 
 touppercase(mmask);
 touppercase(nname);
@@ -419,8 +437,8 @@ char *newmask[MAX_PATH];
 char *mmask[MAX_PATH];
 char *nname[MAX_PATH];
 
-strcpy(mmask,mask);
-strcpy(nname,name);
+strncpy(mmask,mask,MAX_PATH);
+strncpy(nname,name,MAX_PATH);
 
  touppercase(mmask);					/* convert to uppercase */
  touppercase(nname);
@@ -564,7 +582,7 @@ return(num);
  * Returns nothing
  */
 
-void ksprintf(char *buf,char *format, ...) {
+void ksnprintf(char *buf,char *format,size_t size, ...) {
 va_list args;
 char *b;
 char c;
@@ -574,6 +592,7 @@ double d;
 char *z[MAX_SIZE];
 char *bufptr;
 int is64bit=FALSE;
+int count=0;
 
 bufptr=buf;
 
@@ -581,6 +600,8 @@ va_start(args,format);			/* get start of variable args */
 b=format;
 
 while(*b != 0) {
+	if(count == size) break;	/* at end */
+
 	c=*b;
 
 	if(c == '%') {
@@ -597,18 +618,24 @@ while(*b != 0) {
 		case 's':				/* string */
 			s=va_arg(args,const char*);
 
-			strcat(bufptr,s);
+			strncat(bufptr,z,size-count);
+			count += size;
+
 			bufptr=bufptr+strlen(s);
+
 			b++;
 			break;
 
 		case 'd':				/* signed decimal */
 			num=va_arg(args,int);
 
-			if((num >> ((sizeof(int)*8)-1)) == 1)  strcat(bufptr,"-");
+			if((num >> ((sizeof(int)*8)-1)) == 1)  strncat(bufptr,"-",MAX_PATH);
   
 			itoa(num,z);
-			strcat(bufptr,z);
+
+			strncat(bufptr,z,size-count);
+			count += size;
+
 			bufptr=bufptr+strlen(z)+1;
 
 			b++;
@@ -618,7 +645,8 @@ while(*b != 0) {
 			num=va_arg(args,size_t);
 
 			itoa(num,z);
-			strcat(bufptr,z);
+
+			strncat(bufptr,z,size-count);
 			bufptr=bufptr+strlen(z)+1;
 	
 			b++;
@@ -628,7 +656,10 @@ while(*b != 0) {
 			num=va_arg(args,size_t);
 
 			itoa(num,z);
-			strcat(bufptr,z);
+
+			strncat(bufptr,z,size-count);
+			count += size;
+
 			bufptr=bufptr+strlen(z)+1;
 
 			b++;
@@ -640,7 +671,9 @@ while(*b != 0) {
 			num=va_arg(args,size_t);
 			tohex(num,z);
  
-			strcat(bufptr,z);
+			strncat(bufptr,z,size-count);
+			count += size;
+
 			bufptr=bufptr+strlen(z)+1;
 			b++;
   
@@ -652,7 +685,7 @@ while(*b != 0) {
 			break;
 
 		case '%':
-			strcat(bufptr,"%");
+			strncat(bufptr,"%",size-count);
 			break;
 
 		case 'f':
@@ -701,7 +734,7 @@ for(count=1;count<9;count++) {
 
 	shiftamount=shiftamount-4;
 	mask=mask >> 4;  
-	strcpy(b++,hexbuf[h]);
+	strncpy(b++,hexbuf[h],MAX_PATH);
 }
 
 }

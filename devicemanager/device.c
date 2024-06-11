@@ -56,7 +56,7 @@ lock_mutex(&blockdevice_mutex);			/* lock mutex */
 next=blockdevices;
 	
 while(next != NULL) {
-	 if(strcmpi(next->name,device->name) == 0) {		/* block device exists */
+	 if(strncmpi(next->name,device->name,MAX_PATH) == 0) {		/* block device exists */
 	 	setlasterror(DEVICE_EXISTS);
 		return(-1);
 	 }
@@ -120,7 +120,7 @@ else
 	charnext=characterdevs;
 
 	do {
-		if(strcmpi(device->name,charnext->name) == 0) {		 		/* already loaded */
+		if(strncmpi(device->name,charnext->name,MAX_PATH) == 0) {		 		/* already loaded */
 			setlasterror(DEVICE_EXISTS);
 			return(-1);
 		}
@@ -254,7 +254,7 @@ lock_mutex(&characterdevice_mutex);			/* lock mutex */
 next=characterdevs;
 
 while(next != NULL) {
-	if(strcmpi(next->name,name) == 0) {		/* found */
+	if(strncmpi(next->name,name,MAX_PATH) == 0) {		/* found */
 		memcpy(buf,next,sizeof(CHARACTERDEVICE));
 
 		unlock_mutex(&characterdevice_mutex);			/* unlock mutex */
@@ -328,7 +328,7 @@ lock_mutex(&blockdevice_mutex);			/* lock mutex */
 next=blockdevices;
 
 while(next != NULL) {
-	if(strcmpi(next->name,name) == 0) {		/* found device */
+	if(strncmpi(next->name,name,MAX_PATH) == 0) {		/* found device */
 		savenext=next->next;
 
 		memcpy(buf,next,sizeof(BLOCKDEVICE));
@@ -410,7 +410,7 @@ next=blockdevices;
 last=blockdevices;
 
 while(next != NULL) {
-	 if(strcmpi(next->name,name) == 0) {		 		/* already loaded */
+	 if(strncmpi(next->name,name,MAX_PATH) == 0) {		 		/* already loaded */
 
 		if(gethandle(name,&buf) == 0) {		/* file is open */
 			setlasterror(FILE_IN_USE);
@@ -467,7 +467,7 @@ next=characterdevs;
 last=next;
 
 while(next != NULL) {
-	 if(strcmpi(next->name,name) == 0) {		/* device found */
+	 if(strncmpi(next->name,name,MAX_PATH) == 0) {		/* device found */
 
 		if(gethandle(name,&buf) == 0) {		/* device is in use */
 			setlasterror(FILE_IN_USE);

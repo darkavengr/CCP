@@ -21,6 +21,7 @@
 #include "../../../header/errors.h"
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
+#include "../../../filemanager/vfs.h"
 
 #define MODULE_INIT null_init
 
@@ -38,7 +39,8 @@ void nul(size_t op,void *buf,size_t size);
 void null_init(char *init) {
 CHARACTERDEVICE device;
 
-strcpy(&device.name,"NUL");
+strncpy(&device.name,"NUL",MAX_PATH);
+
 device.charioread=&nul;
 device.chariowrite=NULL;
 device.ioctl=NULL;

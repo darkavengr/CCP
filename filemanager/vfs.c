@@ -127,7 +127,7 @@ handle=0;
 while(next != NULL) {					/* return error if open */
 	last=next;
 
-	if(strcmpi(filename,next->filename) == 0) {	/* found filename */
+	if(strncmpi(filename,next->filename,MAX_PATH) == 0) {	/* found filename */
 	
 		if(next->owner_process == getpid()) {
 			unlock_mutex(&vfs_mutex);
@@ -158,7 +158,7 @@ if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
 		next=last->next;
 	}
 
-	strcpy(next->filename,blockdevice.name);
+	strncpy(next->filename,blockdevice.name,MAX_PATH);
 
 	next->currentblock=0;
 	next->currentpos=0;
@@ -191,7 +191,7 @@ if(findcharacterdevice(filename,&chardevice) == 0) {
 		next=last->next;
 	}
 
-	strcpy(next->filename,chardevice.name);
+	strncpy(next->filename,chardevice.name,MAX_PATH);
 
 	next->charioread=chardevice.charioread;
 	next->chariowrite=chardevice.chariowrite;
@@ -260,7 +260,7 @@ getfullpath(filename,fullname);
 memset(next,0,sizeof(FILERECORD));
 memcpy(next,&dirent,sizeof(FILERECORD));  /* copy data */
 
-strcpy(next->filename,fullname);	/* copy full filename */
+strncpy(next->filename,fullname,MAX_PATH);	/* copy full filename */
 
 next->currentpos=0;			/* set position to start of file */
 next->access=access;			/* access mode */
@@ -867,8 +867,6 @@ if(source == NULL) {
 }
 
 if(desthandle == -1) {				/* if desthandle == -1, add to end */
-	asm("xchg %bx,%bx");
-
 	openfiles_last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
 
 	if(openfiles_last->next == NULL) {
@@ -955,7 +953,7 @@ else
 
 	while(next != NULL) {
 
-		if(strcmp(newfs->name,next->name) == 0) {		/* already loaded */
+		if(strncmp(newfs->name,next->name,MAX_PATH) == 0) {		/* already loaded */
 			unlock_mutex(&vfs_mutex);
 			setlasterror(INVALID_MODULE);
 			return(-1);
@@ -1071,11 +1069,11 @@ d=*b++;
 e=*b++;
 
 if((d == ':') && (e == '\\')) {               /* full path */
-	strcpy(buf,filename);                     /* copy path */
+	strncpy(buf,filename,MAX_PATH);                     /* copy path */
 }
 else if((d == ':') && (e != '\\')) {		/* drive and filename only */
 	memcpy(buf,filename,2); 		/* get drive */
-	strcat(buf,filename+3);                 /* get filename */
+	strncat(buf,filename+3,MAX_PATH);                 /* get filename */
 }
 else if(d != ':') {               /* filename only */
 	c=(char) *cwd;
@@ -1086,7 +1084,7 @@ else if(d != ':') {               /* filename only */
 	*b++=':';
 	if(*filename != '\\') 	*b++='\\';
 
-	strcat(b,filename);	
+	strncat(b,filename,MAX_PATH);	
 }
 
 tc=tokenize_line(cwd,token,"\\");		/* tokenize line */
@@ -1094,28 +1092,28 @@ dottc=tokenize_line(filename,dottoken,"\\");		/* tokenize line */
 
 
 for(countx=0;countx<dottc;countx++) {
-	if(strcmp(dottoken[countx],"..") == 0 ||  strcmp(dottoken[countx],".") == 0) {
+	if(strncmp(dottoken[countx],"..",MAX_PATH) == 0 ||  strncmp(dottoken[countx],".",MAX_PATH) == 0) {
 
 		for(count=0;count<dottc;count++) {
 
-			if(strcmp(dottoken[count],"..") == 0 || strcmp(dottoken[countx],".") == 0) {
+			if(strncmp(dottoken[count],"..",MAX_PATH) == 0 || strncmp(dottoken[countx],".",MAX_PATH) == 0) {
 				tc--;
 			}
 			else
 			{
-				strcpy(token[tc],dottoken[count]);
+				strncpy(token[tc],dottoken[count],MAX_PATH);
 					tc++;
 			}
 		}
 
 
-		strcpy(buf,token[0]);
-		strcat(buf,"\\");
+		strncpy(buf,token[0],MAX_PATH);
+		strncat(buf,"\\",MAX_PATH);
 
 		for(count=1;count<tc;count++) {
-			strcat(buf,token[count]);
+			strncat(buf,token[count],MAX_PATH);
 
-			if(count != tc-1) strcat(buf,"\\");
+			if(count != tc-1) strncat(buf,"\\",MAX_PATH);
 		}
 
 	}
@@ -1149,7 +1147,7 @@ if(openfiles == NULL) {						/*can't allocate */
 	return(-1);
 }
 
-strcpy(openfiles->filename,"stdin");
+strncpy(openfiles->filename,"stdin",MAX_PATH);
 openfiles->handle=0;
 openfiles->charioread=NULL;			/* for now */
 openfiles->chariowrite=NULL;
@@ -1164,7 +1162,7 @@ if(openfiles->next == NULL) {	/*can't allocate */
 
 next=openfiles->next;
 
-strcpy(next->filename,"stdout");
+strncpy(next->filename,"stdout",MAX_PATH);
 next->handle=1;
 next->charioread=NULL;			/* for now */
 next->chariowrite=NULL;
@@ -1179,7 +1177,7 @@ if(next->next == NULL) {	/*can't allocate */
 
 next=next->next;
 
-strcpy(next->filename,"stderr");
+strncpy(next->filename,"stderr",MAX_PATH);
 next->handle=2;
 next->charioread=NULL;			/* for now */
 next->chariowrite=NULL;

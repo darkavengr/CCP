@@ -117,13 +117,13 @@ else								/* not first process */
 
 getfullpath(filename,fullpath);		/* get full path to executable */
 
-strcpy(tempfilename,fullpath);		/* save executable filename and arguments into variables that are not affected by any stack change */
-strcpy(tempargs,argsx);			   
+strncpy(tempfilename,fullpath,MAX_PATH);		/* save executable filename and arguments into variables that are not affected by any stack change */
+strncpy(tempargs,argsx,MAX_PATH);			   
 
 /* fill struct with process information */
 
-strcpy(next->filename,fullpath);	/* process executable filename */
-strcpy(next->args,argsx);		/* process arguments */
+strncpy(next->filename,fullpath,MAX_PATH);	/* process executable filename */
+strncpy(next->args,argsx,MAX_PATH);		/* process arguments */
 
 getcwd(next->currentdirectory);		/* current directory */
 next->maxticks=DEFAULT_QUANTUM_COUNT;	/* maximum number of ticks for this process */
@@ -177,8 +177,6 @@ page_init(highest_pid_used);				/* intialize page directory */
 loadpagetable(highest_pid_used);			/* load page table */
 
 currentprocess=next;					/* use new process */
-	
-DEBUG_PRINT_HEX(currentprocess);
 
 highest_pid_used++;
 
@@ -217,8 +215,6 @@ next->stackpointer=stackp+PROCESS_STACK_SIZE;
 /* duplicate stdin, stdout and stderr */
 
 if(getpid() != 0) {
-	asm("xchg %bx,%bx");
-
 	dup_internal(stdin,-1,getppid(),getpid());
 	dup_internal(stdout,-1,getppid(),getpid());
 	dup_internal(stderr,-1,getppid(),getpid());
@@ -267,7 +263,7 @@ currentprocess->heapend=currentprocess->heapaddress+INITIAL_HEAP_SIZE;		/* end o
 initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE); /* initializes kernel stack */
 
 /* create psp */ 
-ksprintf(psp->commandline,"%s %s",next->filename,next->args);
+ksnprintf(psp->commandline,"%s %s",next->filename,next->args,MAX_PATH);
 
 psp->cmdlinesize=strlen(psp->commandline);
 
@@ -917,7 +913,7 @@ if(currentprocess == NULL) {			/* no processes, so get from boot drive */
 	 return(NO_ERROR);
 }
 
-strcpy(dir,currentprocess->currentdirectory);
+strncpy(dir,currentprocess->currentdirectory);
 
 setlasterror(NO_ERROR);
 return(NO_ERROR);
@@ -947,13 +943,13 @@ getfullpath(dirname,fullpath);
 	  If it fails, the old path is restored
 */
 
-strcpy(savecwd,currentprocess->currentdirectory);		/* save current directory */
+strncpy(savecwd,currentprocess->currentdirectory,MAX_PATH);		/* save current directory */
 memcpy(currentprocess->currentdirectory,fullpath,3);		/* get new path */
 
 /* check if directory exists */
 
 if(findfirst(fullpath,&chdir_file_record) == -1) {		/* path doesn't exist */
-	strcpy(currentprocess->currentdirectory,savecwd);		/* restore old current directory */
+	strncpy(currentprocess->currentdirectory,savecwd,MAX_PATH);		/* restore old current directory */
 	return(-1);		
 }
 
@@ -962,7 +958,7 @@ if((chdir_file_record.flags & FILE_DIRECTORY) == 0) {		/* not directory */
 	return(-1);
 }
 
-strcpy(currentprocess->currentdirectory,fullpath);	/* set directory */
+strncpy(currentprocess->currentdirectory,fullpath,MAX_PATH);	/* set directory */
 
 setlasterror(NO_ERROR);  
 return(NO_ERROR);				/* no error */
@@ -1027,11 +1023,11 @@ size_t getlasterror(void) {
 
 size_t getprocessfilename(char *buf) {
 if(currentprocess == NULL) {			/* if there are no processes, return "<unknown>" */
-	strcpy(buf,"<unknown>");
+	strncpy(buf,"<unknown>",MAX_PATH);
 	return;
 }
 
-strcpy(buf,currentprocess->filename);		/* get filename */
+strncpy(buf,currentprocess->filename,MAX_PATH);		/* get filename */
 }
 
 /*
@@ -1046,7 +1042,7 @@ strcpy(buf,currentprocess->filename);		/* get filename */
 void getprocessargs(char *buf) {
 if(currentprocess == NULL) return;		/* return if there are no processes */
 
-strcpy(buf,currentprocess->args);
+strncpy(buf,currentprocess->args,MAX_PATH);
 }
 
 /*
@@ -1438,7 +1434,7 @@ else
 	while(next != NULL) {
 	 last=next;
 
-	 if(strcmpi(next->name,format->name)) {		/* Return error if format exists */
+	 if(strncmpi(next->name,format->name,MAX_PATH)) {		/* Return error if format exists */
 	  setlasterror(DRIVER_ALREADY_LOADED);
 	  return(-1);
 	 }

@@ -120,8 +120,6 @@ pop	es
 pop	ds
 
 popa						; restore registers
-
-;sti
 iret						; jump to cs:EIP
 
 ;
@@ -199,6 +197,8 @@ add	esp,4
 
 call	get_kernel_stack_pointer
 mov	esp,eax						; switch kernel stack
+
+sub	esp,4
 
 ; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
 call	get_kernel_stack_top

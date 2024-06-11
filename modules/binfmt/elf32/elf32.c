@@ -16,7 +16,7 @@ int elf32_init(char *init) {
 EXECUTABLEFORMAT exec;
 uint8_t magicnumber[] = { 0x7f,'E','L','F',1,1,1 };
 
-strcpy(exec.name,"ELF32");
+strncpy(exec.name,"ELF32",MAX_PATH);
 memcpy(exec.magic,magicnumber,ELF32_MAGIC_SIZE);
 
 exec.magicsize=ELF32_MAGIC_SIZE;

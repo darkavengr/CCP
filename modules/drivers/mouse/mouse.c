@@ -22,6 +22,7 @@
 #include "mouse.h"
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
+#include "../../../filemanager/vfs.h"
 
 #define MODULE_INIT mouse_init
 
@@ -98,7 +99,8 @@ readmouse();
 
 /* no ack */
 
-strcpy(&device.dname,"MOUSE");			/* add character device */
+strncpy(&device.dname,"MOUSE",MAX_PATH);			/* add character device */
+
 device.charioread=&mouseio_read;
 device.chariowrite=NULL;
 device.flags=0;
@@ -115,7 +117,7 @@ if(init != NULL) {			/* args found */
 	for(count=0;count<tc;count++) {
 		tokenize_line(tokens[count],op,"=");	/* tokenize line */
 
-	  	if(strcmp(op[0],"resolution") == 0) {		/* mouse resolution */
+	  	if(strncmp(op[0],"resolution",MAX_PATH) == 0) {		/* mouse resolution */
 			mr=atoi(op[1]);
 
 			if(mr < 3) {
@@ -126,12 +128,12 @@ if(init != NULL) {			/* args found */
 			mouse_set_resolution(mr);
 		}
 
-		if(strcmp(op[0],"samplerate") == 0) {
+		if(strncmp(op[0],"samplerate",MAX_PATH) == 0) {
 			mr=atoi(op[1]);	/* sample rate */
 			mouse_set_sample_rate(mr);
 		}
 	
-		if(strcmp(op[0],"enablescrollwheel") == 0) {
+		if(strncmp(op[0],"enablescrollwheel",MAX_PATH) == 0) {
 			mouse_enable_scrollwheel();
 		}
 	}
@@ -182,35 +184,25 @@ if(mreadcount == 3 && (mousestatus & MOUSE_DATA_READY_READ) == 0) {
 	 mouseinfo.mousey += my;
 
 	 if(mousepacket[0] & MOUSE_LEFT_BUTTON_MASK) {
-	 //  kprintf_direct("%X %X\n",mouse_click_timestamp,get_tick_count());
-
-
 	 	if(get_tick_count() < (mouse_click_timestamp+MOUSE_DOUBLECLICK_INTERVAL)) {		/* double click */    
 
-	  //     kprintf_direct("Mouse double clicked\n");
 		mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_DOUBLECLICK;
 	}
 	else
 	{
 		mouse_click_timestamp=get_tick_count()+MOUSE_DOUBLECLICK_INTERVAL;
-
-	//        kprintf_direct("Mouse left clicked\n");
 		mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_MASK;
 	}
 }
 
 if(mousepacket[0] & MOUSE_RIGHT_BUTTON_MASK) {
-//        kprintf_direct("Mouse right clicked\n");
-
 	mouseinfo.mousebuttons |= MOUSE_RIGHT_BUTTON_MASK;
 }
 
 if(mousepacket[0] & MOUSE_MIDDLE_BUTTON_MASK) {
-	kprintf_direct("Mouse left clicked\n");
 	mouseinfo.mousebuttons |= MOUSE_MIDDLE_BUTTON_MASK;
 }
 
-kprintf_direct("x=%X y=%X\n",mouseinfo.mousex,mouseinfo.mousey);
 }
 
 return;

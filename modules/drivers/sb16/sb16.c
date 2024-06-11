@@ -79,11 +79,11 @@ if(init != NULL) {			/* args found */
 	for(count=0;count<tc;count++) {
 		tokenize_line(tokens[count],op,"=");	/* tokenize line */
 
-		if(strcmp(op[0],"buffersize") == 0) {		/* set buffer size */
+		if(strncmp(op[0],"buffersize",MAX_PATH) == 0) {		/* set buffer size */
 			sb_dma_buffer_size=atoi(op[1]);  
 	 	}
 
-		if(strcmp(op[0],"irq") == 0) {		/* set irq */
+		if(strncmp(op[0],"irq",MAX_PATH) == 0) {		/* set irq */
 			sb_irq_number=atoi(op[1]);
 		}
 
@@ -92,11 +92,11 @@ if(init != NULL) {			/* args found */
 			return;
 	  	}
 
-		if(strcmp(op[0],"samplerate") == 0) {		/* set sample rate */
+		if(strncmp(op[0],"samplerate",MAX_PATH) == 0) {		/* set sample rate */
 			sb_sample_rate=atoi(op[1]);
 		}
 
-		if(strcmp(op[0],"channel") == 0) {		/* set channel */
+		if(strncmp(op[0],"channel",MAX_PATH) == 0) {		/* set channel */
 			sb_channel=atoi(op[1]);
 
 			if((sb_channel == 0) || (sb_channel > 3)) {
@@ -105,7 +105,7 @@ if(init != NULL) {			/* args found */
 	  		}
 	 	}
 
-		if(strcmp(op[0],"volume") == 0) {		/* set volume */
+		if(strncmp(op[0],"volume",MAX_PATH) == 0) {		/* set volume */
 
 	  		if(atoi(op[1]) > 0xff) {
 				kprintf_direct("sb16: Invalid volume value\n");
@@ -127,7 +127,7 @@ if(sb_dma_buffer == -1) {					/* can't alloc */
 	return(-1);
 }
 
-strcpy(bd.dname,"AUDIO");		/* add char device */
+strncpy(bd.dname,"AUDIO",MAX_PATH);		/* add char device */
 bd.charioread=&sb16_io_read;
 bd.chariowrite=NULL;
 bd.flags=0;

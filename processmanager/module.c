@@ -97,7 +97,7 @@ kernelmodulenext=kernelmodules;
 while(kernelmodulenext != NULL) {
 	kernelmodulelast=kernelmodulenext;
 
-	if(strcmpi(kernelmodulenext->filename,fullname) == 0) {		/* found module name */
+	if(strncmpi(kernelmodulenext->filename,fullname,MAX_PATH) == 0) {		/* found module name */
 		enablemultitasking();
 
 		setlasterror(MODULE_ALREADY_LOADED);
@@ -170,18 +170,18 @@ for(count=0;count < elf_header->e_shnum;count++) {
 	if(shptr->sh_type == SHT_STRTAB) {		/* string table */
 		bufptr=sectionheader_strptr+shptr->sh_name;	/* point to section header string table */
 
-		if(strcmp(bufptr,"strtab") == 0) strtab=buf+shptr->sh_offset+1;		/* string table */
+		if(strncmp(bufptr,"strtab",MAX_PATH) == 0) strtab=buf+shptr->sh_offset+1;		/* string table */
  	}
 
 	bufptr=sectionheader_strptr+shptr->sh_name;	/* point to section header string table */
 
-	if(strcmp(bufptr,"text") == 0) {		/* found code section */ 
+	if(strncmp(bufptr,"text",MAX_PATH) == 0) {		/* found code section */ 
 		codestart=buf+shptr->sh_offset;
 	}
 
-	if(strcmp(bufptr,"rodata") == 0) rodata=buf+shptr->sh_offset;	/* found rodata section */ 
+	if(strncmp(bufptr,"rodata",MAX_PATH) == 0) rodata=buf+shptr->sh_offset;	/* found rodata section */ 
 
-	if(strcmp(bufptr,"data") == 0) data=buf+shptr->sh_offset;	/* found data section */ 
+	if(strncmp(bufptr,"data",MAX_PATH) == 0) data=buf+shptr->sh_offset;	/* found data section */ 
 		
 	shptr++;
 }
@@ -281,7 +281,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 						symval=codestart+symptr->st_value;							
 					}
 					else if((symtype == STT_OBJECT) || (symtype == STT_COMMON) || ((symptr->st_info  & 0xf) == STT_FUNC)) {		/* data symbol */
-						if(strcmp(name,"rodata") == 0) {
+						if(strncmp(name,"rodata",MAX_PATH) == 0) {
 							
 							if(symptr->st_value == 0) {
 								next_free_address_rodata += symptr->st_size;
@@ -381,7 +381,7 @@ else
 	kernelmodulelast=kernelmodulelast->next;
 }
 
-strcpy(kernelmodulelast->filename,fullname);
+strncpy(kernelmodulelast->filename,fullname);
 
 kernelmodulelast->next=NULL;
 
@@ -415,13 +415,13 @@ char *shptr;
 
 symptr=(size_t) symtab+(sizeof(Elf32_Sym)*which);		/* point to symbol table entry */
 
-strcpy(name,(strtab+symptr->st_name)-1);
+strncpy(name,(strtab+symptr->st_name)-1);
 
-if(strcmp(name,"") == 0) {		/* not a symbol table entry */
+if(strncmp(name,"",MAX_PATH) == 0) {		/* not a symbol table entry */
 	shptr=sectionheader_strptr;
 	shptr += sectionptr->sh_name;	
 	
-	strcpy(name,shptr);
+	strncpy(name,shptr);
 	return(0);
 }
 	
@@ -450,7 +450,7 @@ symptr += KERNEL_HIGH;		/* point to symbol table */
 /* loop through symbols and find the kernel symbol */
 
 for(count=0;count<bootinfo->number_of_symbols;count++) {
-	if(strcmp(symptr,name) == 0) {				/* symbol found */
+	if(strncmp(symptr,name,MAX_PATH) == 0) {				/* symbol found */
 
 		symptr += strlen(name)+1;		/* skip over name */
   
@@ -489,7 +489,7 @@ else
 	while(next != NULL) {
 		last=next;
 
-		if(strcmp(next->name,name) == 0) return(-1);		/* symbol exists */
+		if(strncmp(next->name,name,MAX_PATH) == 0) return(-1);		/* symbol exists */
 		next=next->next;
 	}
 
@@ -501,7 +501,7 @@ else
 
 /* add details to end */
 
-strcpy(next->name,name);
+strncpy(next->name,name);
 next->address=val;
 next->next=NULL;
 
@@ -525,7 +525,7 @@ SYMBOL_TABLE_ENTRY *next;
 next=externalmodulesymbols;
 
 while(next != NULL) {
-	if(strcmp(next->name,name) == 0) return(next->address);
+	if(strncmp(next->name,name,MAX_PATH) == 0) return(next->address);
 
 	next=next->next;
 }
@@ -555,7 +555,7 @@ kernelmodulenext=kernelmodules;
 while(kernelmodulenext != NULL) {
 	kernelmodulelast=kernelmodulenext;
 
-	if(strcmpi(kernelmodulenext->filename,fullname) == 0) {		/* found module name */
+	if(strncmpi(kernelmodulenext->filename,fullname,MAX_PATH) == 0) {		/* found module name */
 		kernelmodulelast->next=kernelmodulenext->next;		/* remove from list */
 
 		kernelfree(kernelmodulenext);

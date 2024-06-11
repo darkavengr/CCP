@@ -249,21 +249,21 @@ argcount=tokenize_line(psp->commandline,commandlinearguments," \t");		/* tokeniz
 
 if(argcount >= 2) {
 	for(count=1;count<argcount;count++) {
-		if(strcmpi(commandlinearguments[count],"/C") == 0) {		/* run command and exit */
+		if(strncmpi(commandlinearguments[count],"/C",MAX_PATH) == 0) {		/* run command and exit */
 			doline(commandlinearguments[count+1]);
 			exit(0);
 		}
 
-		if(strcmpi(commandlinearguments[count],"/K") == 0) {		/* run command */
+		if(strncmpi(commandlinearguments[count],"/K",MAX_PATH) == 0) {		/* run command */
 			doline(commandlinearguments[count+1]);
 	
 		}
 	
-		if(strcmpi(commandlinearguments[count],"/P") == 0) {		/* Make command interpreter pemenant */
+		if(strncmpi(commandlinearguments[count],"/P",MAX_PATH) == 0) {		/* Make command interpreter pemenant */
 			commandlineoptions |= COMMAND_PERMENANT;
 		}	
 		
-		if(strcmpi(commandlinearguments[count],"/?") == 0) {		/* Show help */
+		if(strncmpi(commandlinearguments[count],"/?",MAX_PATH) == 0) {		/* Show help */
 			kprintf("Command interpreter\n");
 			kprintf("\n");
 			kprintf("COMMAND [/C command] [/K command] /P\n");
@@ -342,7 +342,7 @@ int pipecount;
 int inputpipehandle;
 int outputpipehandle;
 
-if(strcmp(command,"\n") == 0) return;	/* blank line */
+if(strncmp(command,"\n",MAX_PATH) == 0) return;	/* blank line */
 
 b=command+strlen(command)-1;
 if(*b == '\n') *b=0;		/* remove newline */
@@ -367,7 +367,7 @@ for(count=1;count<tc;count++) {	/* replace variables with value */
 	 	b++;
 	  
 		if(getvar(b,temp) != -1) {
-	   		strcpy(parsebuf[count],temp); 			/* replace with value */
+	   		strncpy(parsebuf[count],temp); 			/* replace with value */
 	  	}
 	  	else
 	  	{
@@ -376,7 +376,7 @@ for(count=1;count<tc;count++) {	/* replace variables with value */
 	 }
 	 else if(firstchar == '%' && (lastchar >= '0' || lastchar <= '9')) {	/* command-line parameter */
 	 	if(getvar(parsebuf[count],temp) != -1) {
-	 		strcpy(parsebuf[count],temp); 			/* replace with value */
+	 		strncpy(parsebuf[count],temp); 			/* replace with value */
 	 	}
 	 	else
 	 	{
@@ -391,7 +391,7 @@ savepos=0;					/* no redirection for now */
 	 
 for(count=0;count<tc;count++) {
 
-	 if(strcmp(parsebuf[count],"<") == 0) {		/* input redirection */
+	 if(strncmp(parsebuf[count],"<",MAX_PATH) == 0) {		/* input redirection */
 		if(savepos == 0) savepos=count;		/* save position of first redirect */
 
 	 	handle=open(parsebuf[count-1],O_RDONLY);
@@ -404,7 +404,7 @@ for(count=0;count<tc;count++) {
 
 		continue;
 	}
-	else if(strcmp(parsebuf[count],">") == 0) {	/* output redirection */
+	else if(strncmp(parsebuf[count],">",MAX_PATH) == 0) {	/* output redirection */
 		if(savepos == 0) savepos=count;		/* save position of first redirect */
 
 	  	handle=open(parsebuf[count+1],O_WRONLY | O_CREAT | O_TRUNC);		
@@ -417,7 +417,7 @@ for(count=0;count<tc;count++) {
 
 		continue;
 	}
-	else if(strcmp(parsebuf[count],">>") == 0) {	/* output redirection with append */
+	else if(strncmp(parsebuf[count],">>",MAX_PATH) == 0) {	/* output redirection with append */
 		if(savepos == 0) savepos=count;		/* save position of first redirect */
 
 	  	handle=open(parsebuf[count+1],O_WRONLY);		
@@ -454,7 +454,7 @@ pipecount=0;
 
 for(count=0;count<tc;count++) {
 
-	if(strcmp(parsebuf[count],"|") == 0) {	/* pipe command */
+	if(strncmp(parsebuf[count],"|",MAX_PATH) == 0) {	/* pipe command */
 
 		/* command1 | command2 | command3 */
 		if((count == 0) || (count == tc)) {	/* no command before or after */
@@ -468,9 +468,9 @@ for(count=0;count<tc;count++) {
 		memset(temp,0,MAX_PATH);
 		
 		for(commandcount=count+1;commandcount<tc;commandcount++) {
-			strcat(temp,parsebuf[commandcount]);
+			strncat(temp,parsebuf[commandcount],MAX_PATH);
 	
-			if(strcmp(parsebuf[commandcount],"|") == 0) break;
+			if(strncmp(parsebuf[commandcount],"|",MAX_PATH) == 0) break;
 		}
 
 		outputpipehandle=pipe();		/* create a pipe */
@@ -515,7 +515,7 @@ commandcount=0;
 do {
 	touppercase(parsebuf[0]);
 
-	if(strcmp(commands[commandcount].command,parsebuf[0]) == 0) {  /* found command */
+	if(strncmp(commands[commandcount].command,parsebuf[0],MAX_PATH) == 0) {  /* found command */
 		commands[commandcount].call_command(tc,parsebuf);	
 		commandcount=0;
 		return;
@@ -527,7 +527,7 @@ do {
 
 /* if external command */
 
-if(strcmp(parsebuf[tc],"&") == 0) {	/* run in background */
+if(strncmp(parsebuf[tc],"&",MAX_PATH) == 0) {	/* run in background */
 	tc--;
 
 	backg=1;
@@ -543,8 +543,8 @@ if(tc > 1) {						/* copy args if any */
 	memset(temp,0,MAX_PATH);
 
 	for(count=1;count<tc;count++) {				/* get args */
-		strcat(temp,parsebuf[count]);
-		if(count < tc) strcat(temp," ");
+		strncat(temp,parsebuf[count],MAX_PATH);
+		if(count < tc) strncat(temp," ",MAX_PATH);
 	}
 
 	strtrunc(temp,1);
@@ -628,12 +628,12 @@ if(tc == 1) {			/* not enough args */
 
 start=1;
 
-if(strcmp(parsebuf[1],"NOT")) {
+if(strncmp(parsebuf[1],"NOT",MAX_PATH)) {
 	inverse=FALSE;
 	start++;
 }
 
-if(strcmp(parsebuf[start],"EXIST") == 0) {
+if(strncmp(parsebuf[start],"EXIST",MAX_PATH) == 0) {
 	if(inverse == FALSE) {
 		if(getfileattributes(parsebuf[start+1]) != -1) {
 			condition=TRUE;
@@ -651,7 +651,7 @@ else
 /* find == */
 
 	 for(count=start;count<tc;count++) {
-	 	if(strcmp(parsebuf[count],"==") == 0) break;
+	 	if(strncmp(parsebuf[count],"==",MAX_PATH) == 0) break;
 	 }
 
 	 if(count >= tc) {	/* no == */
@@ -659,7 +659,7 @@ else
 	 	return;
 	 }
 
-	 if(strcmp(parsebuf[count-1],parsebuf[count+1]) == 0) condition=TRUE;
+	 if(strncmp(parsebuf[count-1],parsebuf[count+1],MAX_PATH) == 0) condition=TRUE;
 }
 
 start=count+2;		/* save start of command */
@@ -667,9 +667,9 @@ start=count+2;		/* save start of command */
 /* copy tokens to buffer */
 if(condition == TRUE) {
 	for(count=start;count<tc;count++) {				/* get args */
-		strcat(buffer,parsebuf[count]);
+		strncat(buffer,parsebuf[count],MAX_PATH);
 	    
-	   	if(count <= tc-1) strcat(buffer," ");
+	   	if(count <= tc-1) strncat(buffer," ",MAX_PATH);
 	}
 
 	doline(buffer);
@@ -702,7 +702,7 @@ if(chdir(parsebuf[1]) == -1) {		/* set directory */
 
 drivenumber=(char) *directoryname-'A';	/* get drive number */
 
-strcpy(directories[drivenumber],directoryname);	/* save directory name */
+strncpy(directories[drivenumber],directoryname);	/* save directory name */
 return;
 }
 
@@ -754,7 +754,7 @@ do {
 	count++;
 
 	if(direntry.flags == FILE_DIRECTORY) {	/* copying to directory */
-		ksprintf(buffer,"%s\\%s",parsebuf[2],&direntry.filename);
+		ksnprintf(buffer,"%s\\%s",parsebuf[2],&direntry.filename,MAX_PATH);
 	}
 
 	if(copyfile(sourcedirentry.filename,parsebuf[2]) == -1) {
@@ -783,7 +783,7 @@ char c;
 //  0   1 2   3    4   5  6
 //for %a in (*.*) do echo %a
 
-if(strcmpi(parsebuf[2],"IN") != 0) {
+if(strncmpi(parsebuf[2],"IN",MAX_PATH) != 0) {
 	kprintf(syntaxerror);
 	return;
 }
@@ -791,14 +791,14 @@ if(strcmpi(parsebuf[2],"IN") != 0) {
 for(start=3;start<tc;start++) {		/* find start */
 	touppercase(parsebuf[start]);
 
-	if(strcmpi(parsebuf[start],"do") == 0) {
-		ksprintf(buffer,"%s ",parsebuf[start+1]);
+	if(strncmpi(parsebuf[start],"do",MAX_PATH) == 0) {
+		ksnprintf(buffer,"%s ",parsebuf[start+1],MAX_PATH);
 
 		for(count=start+2;count<tc;count++) {				/* get args */
-			if(strcmpi(parsebuf[count],")") == 0) break;			/* at end */
+			if(strncmpi(parsebuf[count],")",MAX_PATH) == 0) break;			/* at end */
 
-			strcat(buffer,parsebuf[count]);
-			strcat(buffer," ");
+			strncat(buffer,parsebuf[count],MAX_PATH);
+			strncat(buffer," ",MAX_PATH);
 	   	}
 
 	  	break;
@@ -815,7 +815,7 @@ endvars=start-1;
 
 /* remove ( and ) */
 
-if(strcmp(parsebuf[startvars],"(") == 0) {
+if(strncmp(parsebuf[startvars],"(",MAX_PATH) == 0) {
 	 startvars++;			/* skip ( */
 }
 else
@@ -833,12 +833,12 @@ else
 		b=parsebuf[startvars];
 		b++;
 
-		strcpy(tempbuffer,b);
-		strcpy(parsebuf[startvars],tempbuffer);
+		strncpy(tempbuffer,b);
+		strncpy(parsebuf[startvars],tempbuffer);
 	}
 }
 
-if(strcmp(parsebuf[start-1],")") == 0) {
+if(strncmp(parsebuf[start-1],")") == 0,MAX_PATH) {
 	endvars--;			/* skip ( */
 }
 else
@@ -886,7 +886,7 @@ if(tc == 1) {			/* not enough args */
 	return;
 }
 
-if(strcmp(parsebuf[1],"*") == 0 || strcmp(parsebuf[1],"*.*") == 0) {
+if(strncmp(parsebuf[1],"*",MAX_PATH) == 0 || strncmp(parsebuf[1],"*.*",MAX_PATH) == 0) {
 	kprintf(allfilesdeleted);
 
 	while(1) {  
@@ -963,7 +963,7 @@ if(tc == 1) {			/* not enough args */
 	return;
 }
 
-if(strcmp(parsebuf[1],"-n") == 0) {		/* no newline */
+if(strncmp(parsebuf[1],"-n",MAX_PATH) == 0) {		/* no newline */
 	isnewline=FALSE;
 	
 	starttoken++;
@@ -1056,7 +1056,7 @@ size_t dircount;
 size_t fcount;
 char *temp[MAX_PATH];
 
-if(!*parsebuf[1]) strcpy(parsebuf[1],"*");	/* find all by default */
+if(!*parsebuf[1]) strncpy(parsebuf[1],"*");	/* find all by default */
 
 getfullpath(parsebuf[1],buffer);
 
@@ -1108,7 +1108,8 @@ do {
 //	  asm("xchg %bx,%bx");
 } while(findnext(parsebuf[1],&direntry) != -1);
 
-ksprintf(temp,"%d",getlasterror()); 
+ksnprintf(temp,"%d",getlasterror(),MAX_PATH); 
+
 setvar("ERRORLEVEL",temp);
 
 if(getlasterror() != END_OF_DIRECTORY) {
@@ -1180,7 +1181,7 @@ while(*bufptr != 0) {
 		if(*b == ':') {		/* is label */
 			b++;
 	
-			if(strcmp(b,parsebuf[1]) == 0) {	/* found label */	
+			if(strncmp(b,parsebuf[1],MAX_PATH) == 0) {	/* found label */	
 				set_current_batchfile_pointer(b);
 	        		return;
 	       		}

@@ -20,6 +20,7 @@
 #include "pit.h"
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
+#include "../../../filemanager/vfs.h"
 
 #define MODULE_INIT pit_init
 
@@ -44,7 +45,8 @@ outb(0x43,0x34);
 outb(0x40,PIT_VAL & 0xFF);
 outb(0x40,((PIT_VAL >> 8) & 0xFF));
 
-strcpy(bd.name,"TIMER");		/* add char device */
+strncpy(bd.name,"TIMER",MAX_PATH);		/* add char device */
+
 bd.charioread=&pit_read;
 bd.chariowrite=&pit_write;
 bd.ioctl=NULL;

@@ -21,6 +21,7 @@
 #include "../../../header/errors.h"
 #include "../../../processmanager/mutex.h"
 #include "../../../devicemanager/device.h"
+#include "../../../filemanager/vfs.h"
 #include "clock.h"
 
 #define MODULE_INIT clock_init
@@ -45,7 +46,7 @@ void clock_init(char *init);
 void clock_init(char *init) {
 CHARACTERDEVICE device;
 
-strcpy(&device.name,"CLOCK$");
+strncpy(&device.name,"CLOCK$",MAX_PATH);
 device.charioread=&clockio;
 device.ioctl=NULL;
 device.flags=0;

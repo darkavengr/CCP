@@ -527,7 +527,7 @@ push	es
 push	fs
 push	gs
 
-;call	disablemultitasking
+call	disablemultitasking
 
 mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
 mov 	ds,ax
@@ -547,7 +547,7 @@ mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
 
-;call	enablemultitasking
+call	enablemultitasking
 
 pop	gs
 pop	fs

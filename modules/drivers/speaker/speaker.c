@@ -37,7 +37,7 @@ size_t speaker_io_write(size_t *buf,size_t len);
 void speaker_init(char *initstring) {
 CHARACTERDEVICE bd;
 
-strcpy(bd.dname,"SPEAKER");		/* add char device */
+strncpy(bd.dname,"SPEAKER",MAX_PATH);		/* add char device */
 bd.chariowrite=&speaker_io_write;
 bd.charioread=NULL;
 bd.ioctl=NULL;
