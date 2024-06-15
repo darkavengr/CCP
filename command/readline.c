@@ -41,7 +41,11 @@ int count=0;
 bufptr=buf;				/* point to buffer */
 
 while(1) { 
-	read(stdin,bufptr,1);
+	if(read(stdin,bufptr,1) == -1) {
+		kprintf("command: Error reading stdin\n");
+		return(-1);
+	}
+
 
 	if(count++ >= size) return;
 

@@ -811,7 +811,7 @@ lock_mutex(&vfs_mutex);
 
 next=openfiles;
 
-while(next != NULL) {					/* find filename in struct */
+while(next != NULL) {
 
 	if(next->owner_process == getpid()) {		/* if file is owned by process */
 		last->next=next->next;			/* remove it from then list */
@@ -875,21 +875,16 @@ if(desthandle == -1) {				/* if desthandle == -1, add to end */
 		return(-1);
 	}
 
+	openfiles_last=openfiles_last->next;		/* point to new end */
+
 	dest=openfiles_last;
 }
 
-if(desthandle == -1) {
-	saveend=source->next;				/* save pointer to next */
+memcpy(dest,source,sizeof(FILERECORD));		/* copy file handle */
 
-	memcpy(source,dest,sizeof(FILERECORD));
-	source->handle=desthandle;
+dest->owner_process=destpid;
 
-	source->next=saveend;				/* restore pointer to next */
-}
-else
-{
-	memcpy(source,dest,sizeof(FILERECORD));
-}
+//if(desthandle == -1) dest->handle=++highest_handle;		/* set handle of destination */
 
 unlock_mutex(&vfs_mutex);
 

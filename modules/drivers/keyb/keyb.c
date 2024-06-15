@@ -1,20 +1,20 @@
 /*  CCP Version 0.0.1
-	   (C) Matthew Boote 2020-2023
+   (C) Matthew Boote 2020-2023
 
-	   This file is part of CCP.
+   This file is part of CCP.
 
-	   CCP is free software: you can redistribute it and/or modify
-	   it under the terms of the GNU General Public License as published by
-	   the Free Software Foundation, either version 3 of the License, or
-	   (at your option) any later version.
+   CCP is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-	   CCP is distributed in the hope that it will be useful,
-	   but WITHOUT ANY WARRANTY; without even the implied warranty of
-	   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	   GNU General Public License for more details.
+   CCP is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
-	   You should have received a copy of the GNU General Public License
-	   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+   You should have received a copy of the GNU General Public License
+   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 /* CCP keyboard driver */
@@ -85,6 +85,7 @@ setirqhandler(1,&readkey);		/* set irq handler */
 init_console_device(_READ,0,&readconsole);
 return;
 }
+
 /*
  * Read from console
  *
@@ -99,27 +100,12 @@ void readconsole(char *buf,size_t size) {
 keybuf=keybbuf; 						/* point to start of buffer */
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
-while(readcount < size) {
-/* if backspace, delete character */
-	 
-	if(*keybuf == 0x8) {
-	  
-		if(bootinfo->cursor_col > 0) {
-			if(keybuf > keybbuf) *--keybuf=0;
+readcount=0;
 
-			bootinfo->cursor_col--;
+do {	
+	if(readcount > size) readcount=0;
 
-			movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
-
-			write(stdout," ",1);
-
-			bootinfo->cursor_col--;
-			movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
-		 }
-
-		return;
-	}
-}      
+}  while(readcount < size);
 
 memcpy(buf,keybbuf,size);				
 readcount=0;
@@ -171,7 +157,9 @@ if((keycode & 128) == 128) {
 
 /* for the rest of the keys, only make codes matter */
 
-if(readcount++ == KEYB_BUFFERSIZE) return;				/* buffer full - must reset count see above */
+if(readcount++ == KEYB_BUFFERSIZE) return;
+
+DEBUG_PRINT_HEX(readcount);
 
 switch(keycode) {								/* control characters */
 
@@ -192,19 +180,19 @@ switch(keycode) {								/* control characters */
 	case LEFT_SHIFT:
 		keyboardflags |= SHIFT_PRESSED;
 
-		readcount--;				/* decrement readcount because shift shouldn't count this as a character on it's own */
+		if((readcount-1) > 0) readcount--;				/* decrement readcount because shift shouldn't count this as a character on it's own */
 		return;
 	
 	case RIGHT_SHIFT:
 		keyboardflags |= SHIFT_PRESSED;
 
-	 	readcount--;				/* see above comment */
+	 	if((readcount-1) > 0) readcount--;				/* see above comment */
 	 	return;
 
 	case KEY_ALT:
 		keyboardflags |= ALT_PRESSED;
 	
-		readcount--;				/* see above comment */
+		if((readcount-1) > 0) readcount--;				/* see above comment */
 		return;
 
 	case KEY_BACK:
@@ -220,7 +208,7 @@ switch(keycode) {								/* control characters */
 			keyboardflags |= CAPSLOCK_PRESSED;
 		}
 
-		readcount--;				/* see above comment */
+		if((readcount-1) > 0) readcount--;				/* see above comment */
 	 	return;
 
 	case KEY_CTRL:					/* ctrl characters and ctrl alt del */
@@ -228,7 +216,7 @@ switch(keycode) {								/* control characters */
 
 		keyboardflags |= CTRL_PRESSED;
 
-		readcount--;				/* see above comment about ignoring keys */
+		if((readcount-1) > 0) readcount--;				/* see above comment about ignoring keys */
 		return;
 }
 

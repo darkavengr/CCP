@@ -243,22 +243,22 @@ if(entrypoint == -1) {					/* can't load executable */
 
 /* create process heap */
 
-currentprocess->heapaddress=alloc_int(ALLOC_NORMAL,getpid(),INITIAL_HEAP_SIZE,-1);	/* allocate process heap */
-if(currentprocess->heapaddress == NULL) {		/* can't allocate */
-	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
+//currentprocess->heapaddress=alloc_int(ALLOC_NORMAL,getpid(),INITIAL_HEAP_SIZE,-1);	/* allocate process heap */
+//if(currentprocess->heapaddress == NULL) {		/* can't allocate */
+//	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
 
-	kernelfree(next->kernelstacktop);	/* free kernel stack */
-	kernelfree(lastprocess->next);	/* remove process from list */
+//	kernelfree(next->kernelstacktop);	/* free kernel stack */
+//	kernelfree(lastprocess->next);	/* remove process from list */
 
-	lastprocess->next=NULL;		/* remove process */
-	processes_end=lastprocess;
+//	lastprocess->next=NULL;		/* remove process */
+//	processes_end=lastprocess;
 
-	loadpagetable(getpid());
-	enablemultitasking();
-	return(-1);
-}
+//	loadpagetable(getpid());
+//	enablemultitasking();
+//	return(-1);
+//}
 
-currentprocess->heapend=currentprocess->heapaddress+INITIAL_HEAP_SIZE;		/* end of process's heap */
+//currentprocess->heapend=currentprocess->heapaddress+INITIAL_HEAP_SIZE;		/* end of process's heap */
 
 initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE); /* initializes kernel stack */
 
@@ -375,6 +375,7 @@ if(process == oldprocess) {
 	enablemultitasking();
 
 	yield();			/* switch to next process if killing current process */
+
 }
 
 enablemultitasking();
@@ -566,10 +567,10 @@ switch(highbyte) {
 		return(getcwd((char *) argfour));
 	 
 	case 0x3f:			/* read from file or device */
-		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
-			setlasterror(INVALID_ADDRESS);
-			return(-1);
-		}
+		//if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+		//	setlasterror(INVALID_ADDRESS);
+		//	return(-1);
+		//}
 
 		return(read((size_t)  argtwo,(char *) argfour,(size_t)  argthree));
 	 

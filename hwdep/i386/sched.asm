@@ -37,6 +37,8 @@ extern increment_process_ticks
 extern get_next_process_pointer
 extern get_current_process_pointer
 extern get_processes_pointer
+extern enablemultitasking
+extern disablemultitasking
 
 %define offset
 
@@ -132,11 +134,7 @@ iret						; jump to cs:EIP
 ;
 
 switch_task:
-;xchg	bx,bx
-
 mov	[save_esp],esp
-
-;inc	byte [0x800b8000]
 
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
@@ -145,6 +143,8 @@ jnz	multitasking_enabled
 jmp	end_switch
 
 multitasking_enabled:
+call	disablemultitasking
+
 push	dword [save_esp]			; save current task's stack pointer
 call	save_kernel_stack_pointer
 add	esp,4
@@ -152,26 +152,20 @@ add	esp,4
 call	increment_process_ticks
 
 mov	eax,[save_descriptor]			; get descriptor
-test	eax,eax					; if not switching to a specific process
+test	eax,eax					; if switching to a specific process
 jnz	task_time_slice_finished		; don't check if process is ready to switch
 
 call	is_process_ready_to_switch
 test	eax,eax					; if process not ready to switch, return
 jnz	task_time_slice_finished
 
+call	enablemultitasking
+
 jmp	end_switch
 
 task_time_slice_finished:
 call	reset_process_ticks
 
-call	getpid
-
-cmp	eax,1
-jne	not_debug
-
-xchg	bx,bx
-
-not_debug:
 ;
 ; Switch to next process
 ;
@@ -198,14 +192,14 @@ add	esp,4
 call	get_kernel_stack_pointer
 mov	esp,eax						; switch kernel stack
 
-sub	esp,4
-
 ; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
 call	get_kernel_stack_top
 
 push	eax
 call	set_tss_esp0
 add	esp,4
+
+call	enablemultitasking
 
 end_switch:
 xor	eax,eax

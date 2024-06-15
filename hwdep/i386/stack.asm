@@ -84,7 +84,7 @@ mov	dword [edi+16],KERNEL_DATA_SELECTOR	; gs
 mov	dword [edi+20],0xAAAAAAAA		; edi
 mov	dword [edi+24],0xBBBBBBBB		; esi
 mov	[edi+28],edx				; ebp
-mov	[edi+32],ebx				; esp
+mov	[edi+32],esi				; esp
 mov	dword [edi+36],0xCCCCCCCC		; ebx
 mov	dword [edi+40],0xDDDDDDDD		; edx
 mov	dword [edi+44],0xEEEEEEEE		; ecx
