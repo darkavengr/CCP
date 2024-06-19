@@ -7,26 +7,24 @@ echo \#define NULL 0 >>drive.c
 echo>>drive.c
 
 for f in $*; do
- name=`echo $f | cut -d/ -f 1`
- a=`echo $f | cut -d/ -f 2`
+	a=`echo $f | rev | cut -d/ -f 2 | rev`
+	name=`echo $f | rev | cut -d/ -f 1 | rev`
 
- if [ $name == "drivers" ] || [ $name == "filesystems" ] || [ $name == "executable_formats" ]; then
-  echo extern $a\_init\(\)\;>>drive.c
- fi
-
+	if [ $name == "drivers" ] || [ $name == "filesystems" ] || [ $name == "executable_formats" ]; then
+		echo extern $a\_init\(\)\;>>drive.c
+	fi
 done
 
 echo void driver_init\(void\) {>>drive.c
 
 for f in $*; do
- m=`echo $f | cut -d/ -f 1`
- name=`echo $f | cut -d/ -f 2`
- a=`echo $f | cut -d/ -f 3`
+	name=`echo $f | rev | cut -d/ -f 2 | rev`
+	a=`echo $f | rev | cut -d/ -f 1 | rev`
 
- if [ $name == "drivers" ]  || [ $name == "filesystems" ] || [ $name == "binfmt" ]; then
-  echo Including driver $a
-  echo $a\_init\(NULL\)\;>>drive.c
- fi
+	if [ $name == "drivers" ]  || [ $name == "filesystems" ] || [ $name == "binfmt" ]; then
+		echo Including driver $a
+		echo $a\_init\(NULL\)\;>>drive.c
+	fi
 
 done
 

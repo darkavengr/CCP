@@ -1,13 +1,13 @@
 #include <elf.h>
 #include <stdint.h>
 #include <stddef.h>
-#include "../../../header/kernelhigh.h"
-#include "../../../header/errors.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
-#include "../../../filemanager/vfs.h"
-#include "../../../memorymanager/memorymanager.h"
-#include "../../../processmanager/process.h"
+#include "kernelhigh.h"
+#include "errors.h"
+#include "mutex.h"
+#include "device.h"
+#include "vfs.h"
+#include "memorymanager.h"
+#include "process.h"
 #include "elf32.h"
 
 #define MODULE_INIT elf32_init

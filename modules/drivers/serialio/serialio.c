@@ -19,11 +19,11 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../../../header/errors.h"
+#include "errors.h"
 #include "serialio.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
-#include "../../../filemanager/vfs.h"
+#include "mutex.h"
+#include "device.h"
+#include "vfs.h"
 
 #define MODULE_INIT serialio_init
 

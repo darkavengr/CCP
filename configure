@@ -14,8 +14,9 @@ function check_if_module_included {
 return 0
 }  
 	 
-list_of_arches=`ls hwdep`
+list_of_arches=`ls kernel/hwdep`
 module_names=""
+BUILDROOT=`pwd`				# get built root
 
 echo
 echo Interactive configure script
@@ -50,8 +51,8 @@ while [ ${#response} == 0 ]; do		# no input, use default
 	
 done
 
-if [ ! -e hwdep/$compile_arch/config ]; then		# check if config file exists
-	echo configure: Missing file hwdep/$compile_arch/config
+if [ ! -e config-$compile_arch ]; then		# check if config file exists
+	echo configure: Missing file config-$compile_arch
 	exit 1
 fi
 
@@ -110,7 +111,7 @@ do
 	  		;;
 	esac
 	  
-done < hwdep/$compile_arch/config
+done < config-$compile_arch
 
 #
 # Select optional features
@@ -215,13 +216,13 @@ for f in $SEARCH;do
 
 			if [  ${#response} == 0 ]; then		# use default response
 					if [ "$COMPILE_OPT" == "y" ] || [ "$COMPILE_OPT" == "Y" ]; then	# prompt if module is built-in
-						module_list="$module_list $f"	# add to list
+						module_list="$module_list $BUILDROOT/$f"	# add to list
 						module_names="$module_names $DRIVERNAME"	# add to list     
 				
 						response="y"
 
 					elif [ "$COMPILE_OPT" == "m" ] || [ "$COMPILE_OPT" == "M" ]; then	# initrd modult
-						initrd_module_list="$initrd_module_list $f"	# add to list
+						initrd_module_list="$initrd_module_list $BUILDROOT/$f"	# add to list
 						module_names="$module_names $DRIVERNAME"	# add to list     
 
 						response="m"
@@ -230,12 +231,12 @@ for f in $SEARCH;do
 			   if  [ "$response" == "y" ] || [ "$response" == "Y" ] || [ "$response" == "m" ] || [ "$response" == "M" ]; then	# do response
 	
 				if  [ "$response" == "y" ] || [ "$response" == "Y" ]; then		# built-in module
-					module_list="$module_list $f"	# add to list
+					module_list="$module_list $BUILDROOT/$f"	# add to list
 					module_names="$module_names $DRIVERNAME"	# add to list     
 				fi
 
 				if  [ "$response" == "m" ] || [ "$response" == "M" ]; then		# initrd module
-					initrd_module_list="$initrd_module_list $f"	# add to list
+					initrd_module_list="$initrd_module_list $BUILDROOT/$f"	# add to list
 					module_names="$module_names $DRIVERNAME"	# add to list     
 				fi		
 
@@ -252,7 +253,7 @@ for f in $SEARCH;do
 						echo Including required dependency $REQUIRED
 						echo
 
-		     				module_list="$module_list modules/drivers/$REQUIRED"	# add to list
+		     				module_list="$module_list $BUILDROOT/modules/drivers/$REQUIRED"	# add to list
 		     				module_names="$module_names $REQUIRED"	# add to list     
 					fi
 	  			fi
@@ -289,6 +290,7 @@ for f in $SEARCH;do			# for each directory in search path
 	| sed s:\@initrd_driver_list\@:"$initrd_module_list":g | sed s/\@asm_opts\@/"$ASM_OPTS"/g \
 	| sed s/\@cc_opts\@/"$CC_OPTS"/g \
 	| sed s:\@cc_base_files\@:"$CC_BASE_FILES":g \
+	| sed s:\@buildroot\@:"$BUILDROOT":g \
 	| sed s:\@cc_opt_files\@:"$CC_OPT_FILES":g  > $f/Makefile
 
 	if [ $? != 0 ]; then

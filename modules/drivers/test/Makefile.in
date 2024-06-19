@@ -2,7 +2,8 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=test.c
+CCOPTS=-c -w -I@buildroot@/kernel/memorymanager -I@buildroot@/kernel/devicemanager -I @buildroot@/kernel/filemanager -I@buildroot@/kernel/processmanager -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 
-../../../obj/@arch@/test.o:
-	$(CC) @cc_opts@ $(FILES) -o ../../../obj/@arch@/test.o
+@buildroot@obj/@arch@/test.o:
+	$(CC) $(CCOPTS) $(FILES) -o @buildroot@/obj/@arch@/test.o
 

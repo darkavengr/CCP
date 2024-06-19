@@ -1,40 +1,32 @@
 ASM=@asm@
 CC=@cc@
 LD=@cc@
-FILES=drive.c memorymanager/memorymanager.c ccp.c devicemanager/device.c filemanager/vfs.c filemanager/initrd.c processmanager/process.c processmanager/multitasking.c processmanager/module.c header/kprintf_direct.c header/string.c header/error.c @cc_opt_files@
 
 #
 # Recipe to make everything
 #
-all: hwdep drivers ccp initrd command
+all: kernel loader initrd command
 
 #
 # Recipe to make kernel
 #
-ccp: obj/@arch@/drive.o obj/@arch@/memorymanager.o obj/@arch@/ccp.o obj/@arch@/device.o obj/@arch@/vfs.o obj/@arch@/process.o obj/@arch@/multitasking.o obj/@arch@/string.o
-	$(CC) -T hwdep/@arch@/ld.script -o bin/@arch@/CCP.SYS -ffreestanding -nostdlib `ls obj/@arch@/*.o` -lgcc -Wl,-Map -Wl,ccp.map
-	./gensym bin/i386/CCP.SYS
+.PHONY: kernel
+kernel:
+	make -C kernel
 
 #
-# Recipe to make hardware-dependent code
+# Recipe to make loader
 #
-
-.PHONY: hwdep
-hwdep:
-	make -C hwdep/@arch@
+.PHONY: loader
+loader:
+	make -C loader
 
 #
-# Recipe to make drivers
+# Recipe to make intial RAM disk
 #
-.PHONY: drivers
-drivers:
-	./gendrivelist  @driver_list@
-	echo $(OBJFILES)
-
-	for f in @driver_list@; do make -C $$f;done
-
-	for f in @initrd_driver_list@; do make -C $$f;done
-	$(foreach f,$(FILES),$(CC) -c -w -w -ffreestanding -nostdlib -lgcc  $f -o $(patsubst %.c,%.o, obj/@arch@/$(notdir $(f)));)
+.PHONY: initrd
+initrd:
+	./gen_initrd  @buildroot@/obj/@arch@ @buildroot@/bin/@arch@/INITRD.SYS @initrd_driver_list@
 
 #
 # Recipe to make command interpreter
@@ -42,56 +34,6 @@ drivers:
 .PHONY: command
 command:
 	make -C command
-
-#
-# Rules for building the core files
-#
-
-obj/@arch@/drive.o:
-	$(CC) -c -w drive.c
-
-obj/@arch@/memorymanager.o:
-	$(CC) -c -w  memorymanager/memorymanager.c
-
-obj/@arch@/ccp.o:
-	$(CC) -c -w ccp.c
-
-obj/@arch@/device.o:
-	$(CC) -c -w devicemanager/device.c
-
-obj/@arch@/vfs.o:
-	$(CC) -c -w filemanager/vfs.c
-
-obj/@arch@/initrd.o:
-	$(CC) -c -w filemanager/initrd.c
-
-obj/@arch@/process.o:
-	$(CC) -c -w processmanager/process.c
-
-obj/@arch@/multitasking.o:
-	$(CC) -c -w processmanager/multitasking.c
-
-obj/i386/kprintf_direct.o:
-	$(CC) -c -w header/kprintf_direct.c
-
-obj/@arch@/module.o:
-	$(CC) -c -w processmanager/module.c
-
-obj/@arch@/string.o:
-	$(CC) -c -w header/string.c
-
-obj/@arch@/error.o:
-	$(CC) -c -w header/error.c
-
-$(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))):
-	$(CC) -c -w @cc_opt_files@
-
-
-#
-# Recipe to make intial RAM disk
-#
-initrd:
-	./gen_initrd  obj/@arch@ bin/@arch@/INITRD.SYS @initrd_driver_list@
 
 clean:
 	rm bin/@arch@/*

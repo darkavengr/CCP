@@ -2,8 +2,8 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=fat.c
+CCOPTS=-c -w -I@buildroot@/kernel/memorymanager -I@buildroot@/kernel/devicemanager -I @buildroot@/kernel/filemanager -I@buildroot@/kernel/processmanager -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 
-../../../obj/@arch@/fat.o:
-
-	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
+@buildroot@/obj/@arch@/fat.o:
+	$(CC) $(CCOPTS) $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
 

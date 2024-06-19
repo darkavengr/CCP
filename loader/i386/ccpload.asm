@@ -4,7 +4,7 @@
 ; CCP intermediate loader
 ; 
 ;
-%include "../hwdep/i386/bootinfo.inc"
+%include "../kernel/hwdep/i386/bootinfo.inc"
 
 NULL equ 0
 LOAD_ADDRESS		equ 0x100000				; load address for CCP.SYS

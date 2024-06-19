@@ -16,9 +16,9 @@
 	   You should have received a copy of the GNU General Public License
 	   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include "../../../header/kernelhigh.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
+#include "kernelhigh.h"
+#include "mutex.h"
+#include "device.h"
 #include "sb16.h"
 
 #define MODULE_INIT sb16_init

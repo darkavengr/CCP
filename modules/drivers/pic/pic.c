@@ -23,8 +23,6 @@
 
 #define MODULE_INIT pic_init
 
-void *irq_handlers[15];
-
 extern irq0;
 extern irq1;
 extern irq2;
@@ -90,20 +88,6 @@ outb(PIC_SLAVE_DATA,0);
 
 enable_interrupts();
 
-return;
-}
-
-/*
- * Set IRQ handler
- *
- * In: irqnumber	IRQ number
- *     handler		IRQ handler
- *
- *  Returns: nothing
- *
- */
-void setirqhandler(size_t irqnumber,void *handler) {
-irq_handlers[irqnumber]=handler;
 return;
 }
 

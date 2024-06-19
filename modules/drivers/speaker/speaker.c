@@ -17,9 +17,9 @@
     along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
-#include "../../../filemanager/vfs.h"
+#include "processmanager/mutex.h"
+#include "device.h"
+#include "vfs.h"
 
 #define MODULE_INIT speaker_io
 

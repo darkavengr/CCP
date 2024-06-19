@@ -20,10 +20,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
-#include "errors.h"
-#include "../processmanager/mutex.h"
-#include "../devicemanager/device.h"
-#include "../filemanager/vfs.h"
+#include "mutex.h"
+#include "device.h"
+#include "vfs.h"
 #include "string.h"
 
 size_t strlen(char *str);
@@ -280,7 +279,7 @@ char *b;
 b=buf;					/* point to buffer */
 
 for(count=0;count<size;count++) { 
-	*b++=0;				/* put byte */
+	*b++=i;				/* put byte */
 }
 
 return;

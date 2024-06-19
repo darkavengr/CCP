@@ -11,7 +11,7 @@ CC=i386-elf-gcc
 LD=i386-elf-ld
 
 # options to pass to the compiler, @cc_opts@ in Makefile.in is replaced with this
-CC_OPTS=-c -w -ffreestanding -nostdlib -lgcc 
+CC_OPTS=-c -w -ffreestanding -nostdlib -lgcc
 
 # options to pass to the assembler, @asm_opts@ in Makefile.in is replaced with this
 
@@ -19,12 +19,12 @@ ASM_OPTS=-felf32
 
 # optional files, these are files that will be added in if the user wants
 #   opt_question:opt_yes:opt_no
-CC_OPT_FILE=Include support for PAE paging?:hwdep/i386/paepage.c:hwdep/i386/page.c
+CC_OPT_FILE=Include support for PAE paging:hwdep/i386/paepage.c:hwdep/i386/page.c
 
 
 # directories to search for Makefile.in files
 # either specify a directory by itself or directory/* to search subdirs
 
-SEARCH=. loader modules/drivers/* modules/filesystems/* modules/binfmt/* command hwdep/i386
+SEARCH=. kernel kernel/hwdep/i386 loader modules/drivers/* modules/filesystems/* modules/binfmt/* command
 
 

@@ -18,10 +18,10 @@
 */
 
 #include <stdint.h>
-#include "../../../header/errors.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
-#include "../../../filemanager/vfs.h"
+#include "errors.h"
+#include "mutex.h"
+#include "device.h"
+#include "vfs.h"
 #include "clock.h"
 
 #define MODULE_INIT clock_init

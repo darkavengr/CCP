@@ -39,14 +39,14 @@
 	  FOR		 *
 */
 #include <stdint.h>
-#include "../header/errors.h"
+#include "errors.h"
 #include "command.h"
-#include "../processmanager/mutex.h"
-#include "../devicemanager/device.h"
-#include "../filemanager/vfs.h"
-#include "../memorymanager/memorymanager.h"
-#include "../processmanager/process.h"
-#include "../processmanager/signal.h"
+#include "mutex.h"
+#include "device.h"
+#include "vfs.h"
+#include "memorymanager.h"
+#include "process.h"
+#include "signal.h"
 
 FILERECORD direntry;
 extern char *errors[255];

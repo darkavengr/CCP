@@ -1,4 +1,4 @@
-%include "../../../hwdep/i386/kernelselectors.inc"
+%include "kernelselectors.inc"
 
 extern irq_handlers
 

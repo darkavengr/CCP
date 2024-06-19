@@ -1,4 +1,5 @@
-/*  CCP Version 0.0.1
+/*			 CCP Version 0.0.1
+
 			(C) Matthew Boote 2020-2023
 
 			This file is part of CCP.
@@ -18,13 +19,13 @@
 */
 
 #include <stdint.h>
-#include "../../../header/kernelhigh.h"
-#include "../../../header/errors.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
-#include "../../../filemanager/vfs.h"
+#include "kernelhigh.h"
+#include "errors.h"
+#include "mutex.h"
+#include "device.h"
+#include "vfs.h"
 #include "console.h"
-#include "../../../header/bootinfo.h"
+#include "bootinfo.h"
 
 #define MODULE_INIT console_init
 

@@ -29,7 +29,7 @@ typedef struct _port {
 	void (*writehandler)(int,int,int,int,void *);
 	char *buffer;
 	char *bufptr;
-	int port_data_count;
+	int portrcount;
 	int buffersize;
 } port;
 

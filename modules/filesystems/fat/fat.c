@@ -21,13 +21,13 @@
  */
 
 #include <stdint.h>
-#include "../../../header/errors.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
-#include "../../../filemanager/vfs.h"
-#include "../../../memorymanager/memorymanager.h"
+#include "errors.h"
+#include "mutex.h"
+#include "device.h"
+#include "vfs.h"
+#include "memorymanager.h"
 #include "fat.h"
-#include "../../../header/debug.h"
+#include "debug.h"
 
 #define MODULE_INIT fat_init
 
@@ -2820,7 +2820,7 @@ if(findfirst(newname->filename,&exists) == -1) {	/* creating, not updating file 
 /* create long filename entries in reverse order */
 
 while(1) {
-	memset(lfn[count],0,sizeof(LFN_ENTRY));
+	memset(&lfn[count],0,sizeof(LFN_ENTRY));
 
 	lfn[count].attributes=0x0f;					/* attributes must be 0x0f */
 	lfn[count].sc_alwayszero=0;					/* must be zero */

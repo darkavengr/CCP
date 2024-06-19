@@ -20,14 +20,14 @@
 /* CCP keyboard driver */
 
 #include <stdint.h>
-#include "../../../header/kernelhigh.h"
-#include "../../../header/errors.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
-#include "../../../filemanager/vfs.h"
-#include "../../../processmanager/signal.h"
-#include "../../../header/bootinfo.h"
-#include "../../../header/debug.h"
+#include "kernelhigh.h"
+#include "errors.h"
+#include "mutex.h"
+#include "device.h"
+#include "vfs.h"
+#include "signal.h"
+#include "bootinfo.h"
+#include "debug.h"
 #include "keyb.h"
 
 #define MODULE_INIT keyb_init

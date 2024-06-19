@@ -20,12 +20,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "command.h"
-#include "../header/errors.h"
-#include "../memorymanager/memorymanager.h"
-#include "../processmanager/process.h"
-#include "../processmanager/mutex.h"
-#include "../devicemanager/device.h"
-#include "../filemanager/vfs.h"
+#include "errors.h"
+#include "memorymanager.h"
+#include "process.h"
+#include "mutex.h"
+#include "device.h"
+#include "vfs.h"
 
 	
 /*

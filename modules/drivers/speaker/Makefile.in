@@ -3,7 +3,8 @@ CC=@cc@
 LD=@ld@
 FILES=speaker.c
 OBJFILE=speaker.o
+CCOPTS=-c -w -I@buildroot@/kernel/memorymanager -I@buildroot@/kernel/devicemanager -I @buildroot@/kernel/filemanager -I@buildroot@/kernel/processmanager -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 
-../../../obj/@arch@/speaker.o:
-	$(CC) @cc_opts@ $(FILES) -o ../../../obj/@arch@/speaker.o
+@buildroot@obj/@arch@/speaker.o:
+	$(CC) $(CCOPTS) $(FILES) -o @buildroot@obj/@arch@/speaker.o
 

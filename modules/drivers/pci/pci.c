@@ -14,9 +14,9 @@
 */
 
 #include <stdint.h>
-#include "../../../header/errors.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
+#include "errors.h"
+#include "mutex.h"
+#include "device.h"
 #include "pci.h"
 
 #define MODULE_INIT pci_init

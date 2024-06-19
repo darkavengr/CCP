@@ -18,7 +18,7 @@
 */
 
 #include <stdint.h>
-#include "../header/errors.h"
+#include "errors.h"
 #include "command.h"
 #include <stddef.h>
 

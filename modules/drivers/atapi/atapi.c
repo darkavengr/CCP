@@ -19,9 +19,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../../../header/errors.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
+#include "header/errors.h"
+#include "processmanager/mutex.h"
+#include "devicemanager/device.h"
 #include "atapi.h"
 #include "../ata/ata.h"
 

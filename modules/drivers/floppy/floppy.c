@@ -22,12 +22,12 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../../../header/kernelhigh.h"
-#include "../../../header/errors.h"
-#include "../../../processmanager/mutex.h"
-#include "../../../devicemanager/device.h"
+#include "kernelhigh.h"
+#include "errors.h"
+#include "mutex.h"
+#include "device.h"
 #include "floppy.h"
-#include "../../../header/debug.h"
+#include "debug.h"
 
 #define MODULE_INIT floppy_init
 
