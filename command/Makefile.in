@@ -1,7 +1,7 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,../command.map -I@buildroot@/kernel/memorymanager -I@buildroot@/kernel/devicemanager -I @buildroot@/kernel/filemanager -I@buildroot@/kernel/processmanager -I@buildroot@/header
+CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,../command.map -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 LDFLAGS=-ffreestanding -nostdlib -T ld.script.command  -Wl,-Map -Wl,../command.map
 OBJFILES=@buildroot@/obj/@arch@/string.o @buildroot@/obj/@arch@/error.o addvar.o command.o copyfile.o err.o getfullpath.o kprintf.o readline.o runcommand.o call.o
 OUTFILE=@buildroot@/bin/@arch@/COMMAND.RUN 

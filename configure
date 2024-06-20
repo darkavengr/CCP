@@ -56,6 +56,14 @@ if [ ! -e config-$compile_arch ]; then		# check if config file exists
 	exit 1
 fi
 
+if [ ! -e bin/$compile_arch ]; then
+	mkdir bin/$compile_arch
+fi
+
+if [ ! -e obj/$compile_arch ]; then
+	mkdir obj/$compile_arch
+fi
+
 echo Compiling for $compile_arch
 
 CC_OPT_COUNT=0
@@ -126,9 +134,12 @@ while [ "$optcount" != 0 ]; do		# until all optional features done
 	read -p "$cc_desc (Y/n)?" yesno		# prompt user to include feature
 	
 	if [ ${#yesno} == 0 ] || [ $yesno == "y" ]; then		# include feature
-		CC_OPT_FILES="$CC_OPT_FILES $cc_yes"		# use file for this feature
+		CC_OPT_FILES="$CC_OPT_FILES $BUILDROOT/$cc_yes"
+
+		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES $BUILDROOT/obj/$compile_arch/`echo $(basename $cc_yes) | sed s/.c/.o/`"	# get path of object file 
 	else
-		CC_OPT_FILES="$CC_OPT_FILES $cc_no"		# use alternative file
+		CC_OPT_FILES="$CC_OPT_FILES $BUILDROOT/$cc_no"
+		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES $BUILDROOT/obj/$compile_arch/`echo $(basename $cc_no) | sed s/.c/.o/`"
 	fi
 
 	
@@ -280,17 +291,21 @@ for f in $SEARCH;do			# for each directory in search path
 
 	echo Creating $f/Makefile
 
-	echo $CC_BASE_FILES
-
 # Generate makefiles from templates
 
-	cat $f/Makefile.in | sed s/\@asm\@/$ASM/g | sed s/\@cc\@/$CC/g | sed s/\@arch\@/$compile_arch/g \
-	| sed s/\@ld\@/"$LD"/g |  sed s/\@ldopts\@/$LDOPTS/g \
-	| sed s:\@driver_list\@:"$module_list":g | sed s/\@asm_opts\@/"$ASM_OPTS"/g \
-	| sed s:\@initrd_driver_list\@:"$initrd_module_list":g | sed s/\@asm_opts\@/"$ASM_OPTS"/g \
+	cat $f/Makefile.in | sed s:\@buildroot\@:"$BUILDROOT":g \
+	| sed s/\@asm\@/$ASM/g \
+	| sed s/\@cc\@/$CC/g \
+	| sed s/\@arch\@/$compile_arch/g \
+	| sed s/\@ld\@/"$LD"/g  \
+	| sed s/\@ldopts\@/$LDOPTS/g \
+	| sed s:\@driver_list\@:"$module_list":g \
+	| sed s/\@asm_opts\@/"$ASM_OPTS"/g \
+	| sed s:\@initrd_driver_list\@:"$initrd_module_list":g \
+	| sed s/\@asm_opts\@/"$ASM_OPTS"/g \
 	| sed s/\@cc_opts\@/"$CC_OPTS"/g \
 	| sed s:\@cc_base_files\@:"$CC_BASE_FILES":g \
-	| sed s:\@buildroot\@:"$BUILDROOT":g \
+	| sed s:\@cc_opt_obj_files\@:"$CC_OPT_OBJ_FILES":g \
 	| sed s:\@cc_opt_files\@:"$CC_OPT_FILES":g  > $f/Makefile
 
 	if [ $? != 0 ]; then

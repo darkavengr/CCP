@@ -1,6 +1,6 @@
 #include <stddef.h>
-#include "../../header/errors.h"
-#include "../../header/time.h"
+#include "errors.h"
+#include "time.h"
 
 #define	NULL			0
 #define TRUE			1

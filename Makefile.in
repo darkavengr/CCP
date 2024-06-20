@@ -39,16 +39,16 @@ clean:
 	rm bin/@arch@/*
 	rm obj/@arch@/*
 	rm *.map
-	rm drive.c
+	rm kernel/drive.c
 	rm command/*.o
 	rm ccp.sym
 
 distclean:
-	rm obj/@arch@/*
-	rm bin/@arch@/*
 	rm `find -iname Makefile`
-	rm drive.c
-	rm *.map
+	rm kernel/drive.c
+	rm obj/@arch@/*
 	rm command/*.o
+	rm *.map
 	rm ccp.sym
+	rm bin/@arch@/*
 

@@ -2,10 +2,14 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=pic.c
-ASMFILES=@arch@/pic.asm
-CCOPTS=-c -w -I@buildroot@/kernel/memorymanager -I@buildroot@/kernel/devicemanager -I @buildroot@/kernel/filemanager -I@buildroot@/kernel/processmanager -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
+ASMFILES=@arch@/pic386.asm
+CCOPTS=-c -w -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 
-@buildroot@/obj/@arch@/pic.o  @buildroot@/obj/@arch@/pic386.o:
-	$(ASM) @asm_opts@ -i@buildroot@/kernel/hwdep/@arch@/-o @buildroot@/obj/@arch@/pic386.o $(ASMFILES)
+all: @buildroot@/obj/@arch@/pic.o @buildroot@/obj/@arch@/pic386.o
+
+@buildroot@/obj/@arch@/pic.o:
 	$(CC) $(CCOPTS) $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
+
+@buildroot@/obj/@arch@/pic386.o:
+	$(ASM) @asm_opts@ -i@buildroot@/kernel/hwdep/@arch@/ $(ASMFILES) -o $(patsubst %.asm,%.o,@buildroot@/obj/@arch@/$(notdir $(ASMFILES))) 
 

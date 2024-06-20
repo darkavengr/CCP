@@ -3,7 +3,7 @@ CC=@cc@
 LD=@ld@
 FILES=keyb.c
 OBJFILE=keyb.o
-CCOPTS=-c -w -I@buildroot@/kernel/memorymanager -I@buildroot@/kernel/devicemanager -I @buildroot@/kernel/filemanager -I@buildroot@/kernel/processmanager -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
+CCOPTS=-c -w -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 
 @buildroot@obj/@arch@/keyb.o:
 	$(CC) $(CCOPTS) $(FILES) -o  @buildroot@/obj/@arch@/keyb.o
