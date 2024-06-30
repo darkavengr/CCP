@@ -2,8 +2,7 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=console.c
-CCOPTS=-c -w -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 
 @buildroot@/obj/@arch@/console.o:
-	$(CC) $(CCOPTS) -c -w -ffreestanding -nostdlib -lgcc  -g $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
+	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
 

@@ -2,8 +2,7 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=test.c
-CCOPTS=-c -w -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 
 @buildroot@obj/@arch@/test.o:
-	$(CC) $(CCOPTS) $(FILES) -o @buildroot@/obj/@arch@/test.o
+	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header $(FILES) -o @buildroot@/obj/@arch@/test.o
 

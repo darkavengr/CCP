@@ -18,6 +18,7 @@
 */
 
 #include <stdint.h>
+#include "port.h"
 
 /*
  * Write byte to port
@@ -106,5 +107,4 @@ uint32_t ind(uint16_t port) {
  asm volatile("in %1,%0":"=a"(val) : "d"(port));
  return(val);
  }
-
 

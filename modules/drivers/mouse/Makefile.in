@@ -2,8 +2,7 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=mouse.c
-CCOPTS=-c -w -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 
 @buildroot@/obj/@arch@/mouse.o:
-	$(CC) $(CCOPTS) $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
+	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
 

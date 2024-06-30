@@ -1,13 +1,9 @@
 Must have:
 
-64bit support
 ACPI
+APIC
 UEFI
 USB
-
-
-Should have:
-APIC
 
 Could have:
 ext2

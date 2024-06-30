@@ -1,0 +1,4 @@
+name=elf64
+description=Adds support for 64-bit ELF executables
+compile_opt=y
+compile_external_module=n

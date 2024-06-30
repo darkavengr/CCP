@@ -31,6 +31,9 @@
 #include "memorymanager.h"
 #include "process.h"
 #include "debug.h"
+#include "string.h"
+
+void halt(void);
 
 /*
  * High-level kernel initalization

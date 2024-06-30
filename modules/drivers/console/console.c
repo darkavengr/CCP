@@ -19,6 +19,7 @@
 */
 
 #include <stdint.h>
+#include <stddef.h>
 #include "kernelhigh.h"
 #include "errors.h"
 #include "mutex.h"
@@ -31,7 +32,7 @@
 
 size_t outputconsole(char *s,size_t size);
 void movecursor(uint16_t row,uint16_t col);
-uint32_t getcursorpos(void);
+size_t getcursorpos(void);
 void console_init(char *init);
 void setconsolecolour(uint8_t c);
 
@@ -73,7 +74,6 @@ add_character_device(&device);			/* con */
 
 init_console_device(_WRITE,1,&outputconsole);
 init_console_device(_WRITE,2,&outputconsole);
-
 return(NULL);
 }
 
@@ -89,7 +89,7 @@ return(NULL);
  */
 size_t outputconsole(char *s,size_t size) {
 char *consolepos;
-uint32_t pos;
+size_t pos;
 char *scrollbuf[MAX_X*MAX_Y];
 size_t wch;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
@@ -135,7 +135,7 @@ asm("mov al,0x0f");
 asm("out dx,al");
 
 asm("mov dx,0x3d5");
-asm("mov ax,[ppos]");
+asm("movabs ax,[ppos]");
 asm("and ax,0xff");
 asm("out dx,al");
 
@@ -144,7 +144,7 @@ asm("mov al,0x0e");
 asm("out dx,al");
 			
 asm("mov  dx,0x3d5");
-asm("mov ax,[ppos]");
+asm("movabs ax,[ppos]");
 asm("mov cl,8");
 asm("shr ax,cl");
 asm("and ax,0xFF");
@@ -165,15 +165,15 @@ return(size);
  */
 
 void movecursor(uint16_t r,uint16_t c) {
-uint16_t ppos;
+uint16_t newpos;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
-ppos=(r*MAX_X)+c;
+newpos=(r*MAX_X)+c;
 
 outb(0x3d4,0xf);							/* cursor high */
-outb(0x3d5,(ppos  & 0xff));
+outb(0x3d5,(newpos  & 0xff));
 outb(0x3d4,0xe);							/* cursor bootinfo->cursor_row */
-outb(0x3d5,(ppos >> 8) & 0xff);
+outb(0x3d5,(newpos >> 8) & 0xff);
 
 bootinfo->cursor_row=r;
 bootinfo->cursor_col=c;
