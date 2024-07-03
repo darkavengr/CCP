@@ -5,6 +5,9 @@ APIC
 UEFI
 USB
 
+Should have:
+SMP
+
 Could have:
 ext2
 ext3

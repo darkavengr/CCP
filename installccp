@@ -1,9 +1,10 @@
 #!/bin/bash
+
 mount -o loop ccp.img /mnt
-cp "bin/i386/CCP.SYS" /mnt
-cp "bin/i386/INITRD.SYS" /mnt
-cp "bin/i386/COMMAND.RUN" /mnt
-cp "bin/i386/CCPLOAD.SYS" /mnt
+cp "bin/$1/CCP.SYS" /mnt
+cp "bin/$1/INITRD.SYS" /mnt
+cp "bin/$1/COMMAND.RUN" /mnt
+cp "bin/$1/CCPLOAD.SYS" /mnt
 umount /mnt
 sync
-dd if=bin/i386/boot of=ccp.img conv=notrunc
+dd if=bin/$1/boot of=ccp.img conv=notrunc

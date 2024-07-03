@@ -108,10 +108,12 @@ test  al,1
 jz    %%a202
 %endmacro
 
-section .lowcode
+section .text
 
 [BITS 16]
 use16
+
+xchg	bx,bx
 
 cli
 mov	sp,0e000h				; temporary stack
@@ -171,6 +173,8 @@ a20wait
 		
 a20done:
 ; check for long mode support
+
+xchg	bx,bx
 
 mov	eax,0x80000000
 cpuid
@@ -318,7 +322,6 @@ longmode:
 
 [BITS 64]
 use64
-.text
 
 mov	rax,qword higher_half
 jmp	rax				; jump to higher half

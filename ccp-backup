@@ -1,3 +1,0 @@
-#!/bin/bash
-for f in "USB DISK" 7499-D57D; do cp -R * /media/matt/"$f"/programs/ccp;sync;done
-

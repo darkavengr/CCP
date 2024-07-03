@@ -54,61 +54,112 @@ RETRY_COUNT equ 3
  _VOLUMELABEL		equ 43
  _FATNAME		equ 54
 
-ELF_MAGIC 	equ 0
-ELF_BITS  	equ 4
-ELF_ENDIAN 	equ 5
-ELF_HEADER_VER	equ 6
-ELF_OS_ABI	equ 7
-ELF_PADDING5	equ 8
-ELF_TYPE	equ 16
-ELF_MACHINE	equ 18
-ELF_VERSION	equ 20
-ELF_ENTRY	equ 24
-ELF_PHDR	equ 28
-ELF_SHDR	equ 32
-ELF_FLAGS	equ 36
-ELF_HDRSIZE	equ 40
-ELF_PHDRSIZE	equ 42
-ELF_PHCOUNT	equ 44
-ELF_SHDRSIZE	equ 46
-ELF_SHCOUNT	equ 48
-ELF_INDEX	equ 50
+; 32-bit table indexes
 
-PHDR_TYPE 	equ 0
-PHDR_OFFSET 	equ 4
-PHDR_VADDR	equ 8
-PHDR_UNDEF 	equ 12
-PHDR_SEGSIZE	equ 16
-PHDR_VSIZE	equ 20
-PHDR_FLAGS	equ 24
-PHDR_ALIGN	equ 28
+ELF32_MAGIC 	equ 0
+ELF32_BITS  	equ 4
+ELF32_ENDIAN 	equ 5
+ELF32_HEADER_VER	equ 6
+ELF32_OS_ABI	equ 7
+ELF32_PADDING5	equ 8
+ELF32_TYPE	equ 16
+ELF32_MACHINE	equ 18
+ELF32_VERSION	equ 20
+ELF32_ENTRY	equ 24
+ELF32_PHDR	equ 28
+ELF32_SHDR	equ 32
+ELF32_FLAGS	equ 36
+ELF32_HDRSIZE	equ 40
+ELF32_PHDRSIZE	equ 42
+ELF32_PHCOUNT	equ 44
+ELF32_SHDRSIZE	equ 46
+ELF32_SHCOUNT	equ 48
+ELF32_INDEX	equ 50
 
-SH_NAME		equ 0
-SH_TYPE		equ 4
-SH_FLAGS	equ 8
-SH_ADDR		equ 12
-SH_OFFSET	equ 16
-SH_SIZE		equ 20
-SH_LINK		equ 24
-SH_INFO		equ 28
-SH_ADDRALIGN	equ 32
-SH_ENTSIZE	equ 36
+PHDR32_TYPE 	equ 0
+PHDR32_OFFSET 	equ 4
+PHDR32_VADDR	equ 8
+PHDR32_UNDEF 	equ 12
+PHDR32_SEGSIZE	equ 16
+PHDR32_VSIZE	equ 20
+PHDR32_FLAGS	equ 24
+PHDR32_ALIGN	equ 28
 
-SYM_NAME	equ 0
-SYM_VALUE	equ 0x4
-SYM_SIZE	equ 0x8
-SYM_INFO	equ 0xC
-SYM_VISIBILITY	equ 0xD
-SYM_SECTION	equ 0xE
+SH32_NAME	equ 0
+SH32_TYPE	equ 4
+SH32_FLAGS	equ 8
+SH32_ADDR	equ 12
+SH32_OFFSET	equ 16
+SH32_SIZE	equ 20
+SH32_LINK	equ 24
+SH32_INFO	equ 28
+SH32_ADDRALIGN	equ 32
+SH32_ENTSIZE	equ 36
 
-SYM_ENTRY_SIZE	equ 0x10
+SYM32_NAME	equ 0
+SYM32_VALUE	equ 0x4
+SYM32_SIZE	equ 0x8
+SYM32_INFO	equ 0xC
+SYM32_VISIBILITY equ 0xD
+SYM32_SECTION	equ 0xE
+
+SYM32_ENTRY_SIZE	equ 0x10
+
+; 64-bit indexes
+
+ELF64_MAGIC 	equ 0
+ELF64_BITS  	equ 4
+ELF64_ENDIAN 	equ 5
+ELF64_HEADER_VER	equ 6
+ELF64_OS_ABI	equ 7
+ELF64_PADDING5	equ 8
+ELF64_TYPE	equ 16
+ELF64_MACHINE	equ 18
+ELF64_VERSION	equ 20
+ELF64_ENTRY	equ 24
+ELF64_PHDR	equ 32
+ELF64_SHDR	equ 40
+ELF64_FLAGS	equ 48
+ELF64_HDRSIZE	equ 52
+ELF64_PHDRSIZE	equ 54
+ELF64_PHCOUNT	equ 56
+ELF64_SHDRSIZE	equ 58
+ELF64_SHCOUNT	equ 60
+ELF64_SINDEX	equ 62
+
+PHDR64_TYPE 	equ 0
+PHDR64_FLAGS	equ 4
+PHDR64_OFFSET 	equ 8
+PHDR64_VADDR	equ 16
+PHDR64_PADDR 	equ 24
+PHDR64_FILESZ	equ 32
+PHDR64_MEMSZ	equ 40
+PHDR64_ALIGN	equ 48
+
+SH64_NAME	equ 0
+SH64_TYPE	equ 4
+SH64_FLAGS	equ 8
+SH64_ADDR	equ 16
+SH64_OFFSET	equ 24
+SH64_SIZE	equ 32
+SH64_LINK	equ 40
+SH64_INFO	equ 44
+SH64_ADDRALIGN	equ 48
+SH64_ENTSIZE	equ 56
+
+SYM64_NAME	equ 0
+SYM64_INFO	equ 4
+SYM64_OTHER	equ 5
+SYM64_SECTION	equ 6	
+SYM64_VALUE	equ 14
+SYM64_SIZE	equ 24
 
 PROG_LOADABLE	equ 1
 PROG_EXECUTABLE equ 2
 
 MACHINE_X86	equ 3
 LITTLEENDIAN	equ 1
-ELF_32BIT	equ 1
+ELF32_BIT	equ 1
 
 SHT_SYMTAB	equ 2
 SHT_STRTAB	equ 3
@@ -283,43 +334,31 @@ mov	[loadbuf],edx
 call	loadfile				
 
 mov	esi,edx
-mov	eax,[esi+ELF_MAGIC]				; get elf marker
+mov	eax,[esi+ELF32_MAGIC]				; get elf marker
 cmp	eax,464c457Fh					; check if file is elf file
 je	is_elf
 jmp	short bad_elf
 
 is_elf:
-mov	ax,[esi+ELF_TYPE]				; check elf type
+mov	ax,[esi+ELF32_TYPE]				; check elf type
 cmp	ax,PROG_EXECUTABLE
 je	is_exec
 jmp	bad_elf
 
 is_exec:
-mov	ah,[esi+ELF_ENDIAN]				; check endianness
+mov	ah,[esi+ELF32_ENDIAN]				; check endianness
 cmp	ah,LITTLEENDIAN
 je	is_endian
 jmp	bad_elf
 
 is_endian:
-mov	ah,[esi+ELF_BITS]				; check bits
-cmp	ah,ELF_32BIT
-je	is32bit
-jmp	bad_elf
-
-is32bit:
-mov	ax,[esi+ELF_MACHINE]			; check machine
-cmp	ax,MACHINE_X86
-je	is_x86
-jmp	bad_elf
-
-is_x86:
-mov	ax,[esi+ELF_PHCOUNT]			; check program header count
+mov	ax,[esi+ELF32_PHCOUNT]			; check program header count
 test	eax,eax
 jnz	is_phok
 jmp	bad_elf
 
 bad_elf:
-mov	esi,offset elf_invalid
+mov	esi,offset ELF32_invalid
 call	output16
 
 mov	esi,offset pressanykey
@@ -330,25 +369,34 @@ call	readkey
 int	19h
 
 is_phok:
+mov	ah,[esi+ELF32_BITS]			; get 32 or 64-bit
+cmp	ah,ELF32_BIT
+je	load_elf32
+
+jmp	load_elf64
+
 ;
 ; Copy kernel symbols before copying kernel, copying segments overwrites temporary buffer
 ;
 
 ; find size of program segments to calculate destination address
 
+load_elf32:
+mov	esi,[loadbuf]
+movsx	edx,word [esi+ELF64_SHCOUNT]			; number of program headers
+mov	[sectioncount],edx
+xor	ecx,ecx
 
 mov	esi,[loadbuf]
-movsx	ecx,word [esi+ELF_PHCOUNT]			; number of program headers
-
-add	esi,[esi+ELF_PHDR]				; point to program headers
+add	esi,[esi+ELF32_PHDR]				; point to program headers
 xor	edx,edx						; clear counter
 
 next_size:
-mov	eax,[esi+PHDR_TYPE]				; get segment type
+mov	eax,[esi+PHDR32_TYPE]				; get segment type
 cmp	eax,PROG_LOADABLE
 jne	next_segment_size
 
-add	edx,[esi+PHDR_VSIZE]
+add	edx,[esi+PHDR32_VSIZE]
 
 next_segment_size:
 loop	next_size
@@ -359,13 +407,14 @@ add	eax,edx
 mov	[symbols_start],eax
 
 ; Copy symbol names and addresses
-mov	esi,[loadbuf]
-movsx	ecx,word [esi+ELF_SHCOUNT]			; number of section headers
 
-add	esi,[esi+ELF_SHDR]				; point to section headers
+mov	esi,[loadbuf]
+movsx	ecx,word [esi+ELF32_SHCOUNT]			; number of section headers
+
+add	esi,[esi+ELF32_SHDR]				; point to section headers
 
 next_find_sections:
-mov	eax,[esi+SH_TYPE]				; get section type
+mov	eax,[esi+SH32_TYPE]				; get section type
 cmp	eax,SHT_SYMTAB					; symbol table
 je	save_symtab
 
@@ -375,15 +424,14 @@ je	save_strtab
 jmp	not_section
 
 save_symtab:
-mov	eax,[esi+SH_OFFSET]				; get offset
+mov	eax,[esi+SH32_OFFSET]				; get offset
 add	eax,[loadbuf]
 add	eax,16						; skip first
 
 mov	[symtab],eax
 
-mov	edx,[esi+SH_SIZE]				; get size
+mov	edx,[esi+SH32_SIZE]				; get size
 shr	edx,4						; divide by sixteen
-
 dec	edx
 
 mov	[number_of_symbols],edx
@@ -391,7 +439,13 @@ mov	[BOOT_INFO_NUM_SYMBOLS],edx
 jmp	not_section
 
 save_strtab:
-mov	eax,[esi+SH_OFFSET]				; get offset
+mov	ebx,[loadbuf]
+movsx	ebx,word [ebx+ELF64_SINDEX]			; get string header index
+
+cmp	ecx,ebx						; if is .shstrtab
+je	not_section
+
+mov	eax,[esi+SH32_OFFSET]				; get offset
 add	eax,[loadbuf]
 inc	eax
 
@@ -401,10 +455,13 @@ jmp	not_section
 not_section:
 ; point to next section header
 mov	edx,[loadbuf]					; point to elf header
-movsx	eax,word [edx+ELF_SHDRSIZE]			; size of section header
+movsx	eax,word [edx+ELF32_SHDRSIZE]			; size of section header
 add	esi,eax						; point to next section header
 
-loop	next_find_sections
+inc	ecx						; increment counter
+cmp	ecx,[sectioncount]
+jle	next_find_sections
+
 
 ;
 ; copy the symbol names and addresses to symbol table
@@ -415,7 +472,7 @@ mov	ebx,[symtab]					; point to symbol table
 
 next_symbol:
 mov	esi,[strtab]					; point to string table
-add	esi,[ebx+SYM_NAME]				; point to string
+add	esi,[ebx+SYM32_NAME]				; point to string
 dec	esi
 
 next_string:
@@ -424,15 +481,11 @@ a32	movsb
 cmp	byte [edi-1],0
 jne	next_string
 
-mov	eax,[ebx+SYM_NAME]
-
-mov	eax,[ebx+SYM_VALUE]				; get value
-
+mov	eax,[ebx+SYM32_VALUE]				; get value
 mov	[edi],eax
 
 add	edi,4						; point to next
-
-add	ebx,SYM_ENTRY_SIZE
+add	ebx,SYM32_ENTRY_SIZE
 
 mov	eax,[number_of_symbols]
 dec	eax
@@ -454,22 +507,22 @@ sub	edi,eax						; get size of symbol table
 mov	[BOOT_INFO_SYMBOL_SIZE],edi
 
 mov	esi,[loadbuf]
-movsx	ecx,word [esi+ELF_PHCOUNT]			; number of program headers
-add	esi,[esi+ELF_PHDR]				; point to program headers
+movsx	ecx,word [esi+ELF32_PHCOUNT]			; number of program headers
+add	esi,[esi+ELF32_PHDR]				; point to program headers
 
 next_programheader:
-mov	eax,[esi+PHDR_TYPE]				; get segment type
+mov	eax,[esi+PHDR32_TYPE]				; get segment type
 cmp	eax,PROG_LOADABLE
 jne	next_segment
 
 push	esi
 push	ecx
 
-mov	edi,[esi+PHDR_VADDR]				; get destination address
+mov	edi,[esi+PHDR32_VADDR]				; get destination address
 sub	edi,KERNEL_HIGH					; minus higher-half address
 
-mov	ecx,[esi+PHDR_SEGSIZE]				; number of bytes to copy
-mov	eax,[esi+PHDR_OFFSET]				; get address
+mov	ecx,[esi+PHDR32_SEGSIZE]				; number of bytes to copy
+mov	eax,[esi+PHDR32_OFFSET]				; get address
 mov	esi,[loadbuf]					; add load address
 add	esi,eax
 
@@ -479,6 +532,165 @@ pop	ecx
 pop	esi
 next_segment:
 loop	next_programheader
+
+jmp	load_initrd
+
+;
+; load 64-bit ELF file
+;
+load_elf64:
+mov	esi,[loadbuf]
+movsx	ecx,word [esi+ELF64_PHCOUNT]			; number of program headers
+add	esi,[esi+ELF64_PHDR]				; point to program headers offset in file low dword
+
+xor	edx,edx						; clear counter
+
+next_size64:
+mov	eax,[esi+PHDR64_TYPE]				; get segment type
+cmp	eax,PROG_LOADABLE
+jne	next_segment_size64
+
+add	edx,[esi+PHDR64_MEMSZ]
+
+next_segment_size64:
+loop	next_size64
+
+mov	eax,LOAD_ADDRESS				; calculate destination address for symbols
+add	eax,edx
+
+mov	[symbols_start],eax
+
+mov	esi,[loadbuf]
+movsx	edx,word [esi+ELF64_SHCOUNT]			; number of program headers
+mov	[sectioncount],edx
+xor	ecx,ecx
+
+; Copy symbol names and addresses
+
+mov	esi,[loadbuf]
+add	esi,[esi+ELF64_SHDR]				; point to section headers
+
+next_find_sections64:
+mov	eax,[esi+SH64_TYPE]				; get section type
+cmp	eax,SHT_SYMTAB					; symbol table
+je	save_symtab64
+
+cmp	eax,SHT_STRTAB					; string table
+je	save_strtab64
+
+jmp	not_section64
+
+save_symtab64:
+mov	edx,[esi+SH64_OFFSET]				; get offset
+add	edx,[loadbuf]
+add	edx,SYM64_SIZE					; skip first
+mov	[symtab],edx
+
+mov	eax,[esi+SH64_SIZE]				; size of section data
+xor	edx,edx
+
+mov	ebx,SYM64_SIZE					; divide by SYM64_SIZE
+div	ebx
+dec	eax
+
+mov	[number_of_symbols],eax
+mov	[BOOT_INFO_NUM_SYMBOLS],eax
+jmp	not_section64
+
+save_strtab64:
+mov	ebx,[loadbuf]
+movsx	ebx,word [ebx+ELF64_SINDEX]			; get string header index
+
+cmp	ecx,ebx						; if is .shstrtab
+je	not_section64
+
+found_symtab_section64:
+mov	eax,[esi+SH64_OFFSET]				; get offset
+add	eax,[loadbuf]
+
+mov	[strtab],eax
+;jmp	not_section64
+
+not_section64:
+; point to next section header
+mov	edx,[loadbuf]					; point to elf header
+movsx	eax,word [edx+ELF64_SHDRSIZE]			; size of section header
+add	esi,eax						; point to next section header
+
+inc	ecx						; increment counter
+cmp	ecx,[sectioncount]
+jle	next_find_sections64
+
+;
+; copy the symbol names and addresses to symbol table
+;
+mov	edi,[symbols_start]				; output address
+mov	ebx,[symtab]					; point to symbol table
+
+next_symbol64:
+mov	esi,[strtab]					; point to string table
+add	esi,[ebx+SYM64_NAME]				; point to string
+
+next_string64:
+a32	movsb
+
+cmp	byte [edi-1],0
+jne	next_string64
+
+mov	eax,[ebx+SYM64_VALUE]				; get value low word
+mov	[edi],eax
+mov	eax,[ebx+SYM64_VALUE+4]				; get value high word
+mov	[edi+4],eax
+
+add	edi,8						; point to next
+add	ebx,SYM64_SIZE
+
+mov	eax,[number_of_symbols]
+dec	eax
+mov	[number_of_symbols],eax
+
+test	eax,eax					; if at end
+jnz	next_symbol64
+
+;
+; load program segments
+;
+;
+load_segments64:
+mov	eax,[symbols_start]				; symbols address
+mov	[BOOT_INFO_SYMBOL_START],eax
+
+mov	eax,[symbols_start]				; output address
+sub	edi,eax						; get size of symbol table
+mov	[BOOT_INFO_SYMBOL_SIZE],edi
+
+xchg	bx,bx
+
+mov	esi,[loadbuf]
+movsx	ecx,word [esi+ELF64_PHCOUNT]			; number of program headers
+add	esi,[esi+ELF64_PHDR]				; point to program headers
+
+next_programheader64:
+mov	eax,[esi+PHDR64_TYPE]				; get segment type
+cmp	eax,PROG_LOADABLE
+jne	next_segment64
+
+push	esi
+push	ecx
+
+mov	edi,LOAD_ADDRESS				; get destination address low dword
+mov	ecx,[esi+PHDR64_MEMSZ]				; number of bytes to copy
+mov	eax,[esi+PHDR64_OFFSET]				; get address
+mov	esi,[loadbuf]					; add load address
+add	esi,eax
+
+a32 rep	movsb						; copy data
+
+pop	ecx
+pop	esi
+next_segment64:
+loop	next_programheader64
+
 
 ;***********************
 ; Load initrd
@@ -1232,12 +1444,12 @@ initrd_notfound db 10,13,"No initrd found (INITRD.SYS), skipping it.",0
 noa20_error db "Can't enable A20 line",0
 loading_ccp db "Loading CCP.SYS...",0
 loading_initrd db 10,13,"Loading INITRD.SYS...",0
-elf_invalid db 10,13,"CCP.SYS is not a valid ELF executable",10,13,0
+ELF32_invalid db 10,13,"CCP.SYS is not a valid ELF executable",10,13,0
 pressanykey db " Press any key to reboot",10,13,0
 ccp_name db    "CCP     SYS",0
 initrd_name db "INITRD  SYS",0
 crlf db 10,13,0
-symbol_section_name db ".strtab",0
+string_section_name db ".strtab",0
 entrycount dd 0
 fattype dw 0
 blockno dd 0
@@ -1265,6 +1477,7 @@ symbols_start dd 0
 symtab dd 0
 strtab dd 0
 number_of_symbols dd 0
+sectioncount dd 0
 
 findbuf TIMES 32 db 0
 dap	TIMES 16 db 0
