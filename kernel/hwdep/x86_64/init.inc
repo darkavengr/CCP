@@ -17,8 +17,8 @@
 ; You should have received a copy of the GNU General Public License
 ; along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
-KERNEL_HIGH	equ 0x80000000
+KERNEL_HIGH	equ 0xffffff0000000000
 PAGE_SIZE equ 4096					; size of page  DON'T CHANGE	
-BASE_OF_SECTION equ 0x80100000
+BASE_OF_SECTION equ 0xFFFFFF0000100000
 
 

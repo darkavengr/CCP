@@ -4,5 +4,5 @@ LD=@ld@
 FILES=mouse.c
 
 @buildroot@/obj/@arch@/mouse.o:
-	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
+	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
 

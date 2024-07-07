@@ -1,0 +1,3 @@
+#define KERNEL_HIGH	0xffffff0000000000
+
+

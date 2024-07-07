@@ -5,5 +5,5 @@ FILES=keyb.c
 OBJFILE=keyb.o
 
 @buildroot@obj/@arch@/keyb.o:
-	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header $(FILES) -o  @buildroot@/obj/@arch@/keyb.o
+	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header -I/home/matt/programs/ccp/kernel/hwdep/@arch@ $(FILES) -o  @buildroot@/obj/@arch@/keyb.o
 

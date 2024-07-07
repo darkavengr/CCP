@@ -54,9 +54,9 @@ extern enablemultitasking
 extern enableirq
 extern disableirq
 
-section .text
 [BITS 64]
 use64
+section .text
 
 ;
 ; Initialize interrupts

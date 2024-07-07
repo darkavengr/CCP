@@ -664,8 +664,6 @@ mov	eax,[symbols_start]				; output address
 sub	edi,eax						; get size of symbol table
 mov	[BOOT_INFO_SYMBOL_SIZE],edi
 
-xchg	bx,bx
-
 mov	esi,[loadbuf]
 movsx	ecx,word [esi+ELF64_PHCOUNT]			; number of program headers
 add	esi,[esi+ELF64_PHDR]				; point to program headers

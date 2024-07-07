@@ -33,11 +33,15 @@ ROOT_PAGEDIR		equ	0x3000
 ROOT_PAGETABLE		equ	0x4000
 ROOT_EMPTY		equ	0x5000
 
-TEMP_GDT		equ	0x6000
+PHYSICAL_START_ADDRESS	equ	0x100000
+KERNEL_STACK_SIZE equ  65536*2				; size of initial kernel stack
+INITIAL_KERNEL_STACK_ADDRESS equ 0x60000		; intial kernel stack address
+DMA_BUFFER_SIZE equ 32768	
+GDT_LIMIT equ 5
 
 PAGE_PRESENT equ 1
 PAGE_RW equ 2
-	
+
 %define TRUE 1
 %define FALSE 0
 %define offset
@@ -69,13 +73,6 @@ global MEMBUF_START
 global gdt
 global gdt_end
 
-KERNEL_STACK_SIZE equ  65536*2				; size of initial kernel stack
-INITIAL_KERNEL_STACK_ADDRESS equ 0x60000		; intial kernel stack address
-
-DMA_BUFFER_SIZE equ 32768	
-
-GDT_LIMIT equ 5
-
 %include "init.inc"
 %include "kernelselectors.inc"
 %include "bootinfo.inc"
@@ -87,12 +84,13 @@ _asm_init:
 ;
 ; here the computer is still in real mode,
 ; the kernel will enable the a20 line, detect memory
-; load gdt and idt and jump to protected mode
+; load gdt and idt and jump to long mode
 ;
 ;
 ; from here to jump_high, the code is located in the lower
 ; half of memory.
-; addresses should have KERNEL_HIGH subtracted from them
+;
+; Addresses should be position-independent until label longmode
 			
 %macro a20wait 0
 %%a20:
@@ -112,9 +110,19 @@ section .text
 
 [BITS 16]
 use16
+jmp	over
 
-xchg	bx,bx
+output16:
+next_char:
+mov	ah,0xe					; output character
+a32	lodsb
+int	10h
 
+test	al,al					; loop until end
+jnz	next_char
+ret
+
+over:
 cli
 mov	sp,0e000h				; temporary stack
 
@@ -123,22 +131,8 @@ mov	ds,ax
 mov	es,ax
 mov	ss,ax
 
-mov	esi,$-starting_ccp
-sub	esi,KERNEL_HIGH
-
-next_banner_char:
-mov	ah,0eh					; output character
-mov	al,[esi]
-int	10h
-
-inc	esi
-test	al,al					; loop until end
-jnz	next_banner_char
-
-jmp	short	over_msg
-
-starting_ccp db 10,13,10,13,"Starting CCP...",10,13,0
-over_msg:
+mov	esi,(starting_ccp-_asm_init)+PHYSICAL_START_ADDRESS
+call	output16				; display using bios
 
 ;
 ; enable a20 line
@@ -174,17 +168,16 @@ a20wait
 a20done:
 ; check for long mode support
 
-xchg	bx,bx
-
 mov	eax,0x80000000
 cpuid
-cmp	eax,0x80000001		; not extended support
-jne	not_long_mode
+
+cmp	eax,0x80000001		; no extended support
+jbe	not_long_mode
 
 mov	eax,0x80000001		; check for long mode
 cpuid
 
-and	edx,0x10000000
+and	edx,1 << 29
 test	edx,edx
 jnz	long_mode_supported
 
@@ -192,6 +185,9 @@ jnz	long_mode_supported
 ; long mode is not supported, display a message and halt
 ;
 not_long_mode:
+mov	esi,(no_long_mode-_asm_init)+PHYSICAL_START_ADDRESS
+call	output16				; display using bios
+
 cli
 hlt
 jmp 	$
@@ -216,27 +212,30 @@ mov	ecx,1024
 rep	stosd
 
 mov	edi,ROOT_PML4
-mov	eax,ROOT_PDPT | PAGE_PRESENT
-xor	edx,edx
-mov	[edi],eax
-mov	[edi+16],edx
+mov	eax,ROOT_PDPT+PAGE_RW+PAGE_PRESENT
 
-mov	eax,ROOT_PML4		; set pdptphys and processid
-mov	[edi+36],eax
+mov	[edi],eax			; map lower half
+mov	[edi+(510*8)],eax		; map higher half
+
+mov	eax,ROOT_PML4+PAGE_RW+PAGE_PRESENT	; map pml4 to itself
+mov	[edi+(511*8)],eax
+
+;mov	eax,ROOT_PML4			; set pml4phys and processid
+;mov	[edi+36],eax
 
 mov	edi,ROOT_PDPT			; create pdpt
-mov	eax,ROOT_PAGEDIR | PAGE_PRESENT
-xor	edx,edx
+mov	eax,ROOT_PAGEDIR+PAGE_RW+PAGE_PRESENT
 mov	[edi],eax
-mov	[edi+4],edx
+
+mov	edi,ROOT_PAGEDIR			; create page table
+mov	eax,ROOT_PAGETABLE+PAGE_RW+PAGE_PRESENT
+mov	[edi],eax
 
 ; create page table
 
 ; find number of page tables to create
 
-mov	ecx,(1024*1024)				; map first 1mb
-
-;xchg	bx,bx
+mov	ecx,(1024*1024)				; map first 1MB
 
 mov	esi,BOOT_INFO_KERNEL_SIZE
 add	ecx,[esi]
@@ -253,40 +252,23 @@ shr	eax,12					; number of pages
 shl	eax,3					; number of 8-byte entries
 add	ecx,eax
 
-and	ecx,0xfffffffffffff000
+and	ecx,0xfffff000
 
 add	ecx,1000h
 shr	ecx,12					; number of page table entries
+
 mov	edi,ROOT_PAGETABLE
 mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
-xor	edx,edx
 
 map_next_page:
-mov	[edi],edx			; high dword
-mov	[edi+4],eax			; low dword
+mov	[edi],eax			; low dword
 
 add	edi,8
 add	eax,1000h			; point to next page
 loop	map_next_page
 
-mov	edi,ROOT_PML4
-mov	eax,ROOT_PML4+PAGE_RW+PAGE_PRESENT
-xor	edx,edx
-
-mov	[edi],edx
-mov	[edi+4],eax			; map lower half
-
-mov	[edi+(512*4)+4],edx
-mov	[edi+(512*4)],eax		; map higher half
-
-mov	[edi+PAGE_SIZE],edi		; PAGEDIRPHYS
-
-mov	edi,ROOT_PML4+(255*8)	; map last entry to pml4
-mov	eax,ROOT_PML4+PAGE_RW+PAGE_PRESENT
-mov	[edi],eax
-
 mov	eax,cr4				; enable pae paging
-bt	eax,5
+or	eax,(1 << 5)
 mov	cr4,eax
 
 mov	ecx, 0xC0000080			; enable long mode
@@ -298,9 +280,13 @@ wrmsr
 mov	eax,ROOT_PML4
 mov	cr3,eax				; load cr3
 
-mov	edx,(1 << 31) | (1 << 0)
-or	ebx,edx				; enable protected mode and paging
-mov	cr0,ebx
+mov	eax,cr0
+or	eax,(1 << 31) | (1 << 0)
+mov	cr0,eax
+
+mov 	edi,(gdtinfo_64-_asm_init)+PHYSICAL_START_ADDRESS
+db	66h
+lgdt 	[ds:edi]			; load GDT
 
 mov	ax,KERNEL_DATA_SELECTOR	
 mov	ds,ax
@@ -308,13 +294,10 @@ mov	es,ax
 mov	fs,ax
 mov	gs,ax
 
-db	66h				; jmp dword 0x8:longmode
+db	66h				; jmp dword KERNEL_CODE_SELECTOR:longmode
 db	0eah
-dd	$-offset longmode
-dw	8
-
-longmode:
-
+dd	(longmode-_asm_init)+PHYSICAL_START_ADDRESS
+dw	KERNEL_CODE_SELECTOR
 
 ;****************************************************
 ; 64 bit long mode
@@ -322,49 +305,51 @@ longmode:
 
 [BITS 64]
 use64
-
-mov	rax,qword higher_half
+longmode:
+mov	rax,qword higher_half+PHYSICAL_START_ADDRESS
 jmp	rax				; jump to higher half
 
 higher_half:
 ;
-; from here, don't need to subtract KERNEL_HIGH
-;
-
-;
 ; place memory map after initrd and symbol table
-
+;
 xor	rdx,rdx
+xor	rax,rax
 
-mov	rax,[rel BOOT_INFO_KERNEL_START]
+mov	rsi,BOOT_INFO_KERNEL_START
+mov	eax,[rsi]
 add	rdx,rax
 
-mov	rax,[rel BOOT_INFO_KERNEL_SIZE]		; Point to end of kernel
+mov	rsi,qword BOOT_INFO_KERNEL_SIZE		; Point to end of kernel
+mov	eax,[rsi]
 add	rdx,rax
 
-mov	rax,[rel BOOT_INFO_SYMBOL_SIZE]
+mov	rsi,qword BOOT_INFO_SYMBOL_SIZE
+mov	eax,[rsi]
 add	rdx,rax
-mov	rax,[rel BOOT_INFO_INITRD_SIZE]
+
+mov	rsi,qword BOOT_INFO_INITRD_SIZE
+mov	eax,[rsi]
 add	rdx,rax
 
 mov	rax,qword KERNEL_HIGH	
+mov	eax,[rsi]
 add	rdx,rax
 
 mov	rdi,qword MEMBUF_START-KERNEL_HIGH
-mov	[rdi],rdx
+mov	eax,[rsi]
+add	rdx,rax
 
 mov	rsp,qword INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH+KERNEL_STACK_SIZE	; temporary 64-bit stack
 mov	rbp,qword INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH
 
 ; Unmap lower half
-mov	rdi,qword ROOT_PML4
+mov	rsi,qword ROOT_PML4
 xor	rax,rax
-mov	[rdi],rax
-
-mov	r11,gdtinfo_64
-lgdt	[r11]				; load 64-bit gdt
+mov	[rsi],rax
 
 call	initialize_interrupts		; initialize interrupts
+xchg	bx,bx
 call	load_idt			; load interrupts
 
 call	processmanager_init		; intialize process manager
@@ -473,14 +458,14 @@ sti
 ; jump to highlevel code
 jmp	kernel
 
-section .data
+
 ; 64-bit GDT
 
 gdtinfo_64:
-dw offset gdt_end - offset gdt-1
-dq offset gdt-KERNEL_HIGH
+dw (gdt_end-gdt)-1
+dq (gdt-_asm_init)+PHYSICAL_START_ADDRESS
 
-; null entries, don't modify
+; null entry, don't modify
 gdt dw 0
 dw 0
 db 0
@@ -493,7 +478,7 @@ db 0
 dw 0ffffh					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 09ah,0cfh					; Code segment
+db 09ah,0afh					; Code segment
 db 0						; last byte of base
 
 dw 0ffffh					; low word of limit
@@ -506,18 +491,19 @@ db 0						; last byte of base
 dw 0ffffh					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 0FAh,0cfh					; Code segment
+db 0FAh,0efh					; Code segment
 db 0						; last byte of base
 
 dw 0ffffh					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 0f2h,0cfh					; Data segment
+db 0f2h,0efh					; Data segment
 db 0						; last byte of base
 
-times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0		; extra entries for TSS and other things
-
+times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0	; extra entries for TSS and other things
 gdt_end:
+
 MEMBUF_START dq 0
-no_long_mode db 10,13,"This version of CCP requires a x86-64 CPU",10,13,0
+starting_ccp db "Starting CCP...",10,13,0
+no_long_mode db "This version of CCP requires a x86-64 CPU",10,13,0
 
