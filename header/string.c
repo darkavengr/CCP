@@ -41,10 +41,10 @@ size_t wildcard_rename(char *name,char *mask,char *out);
 int strtrunc(char *str,int c);
 int atoi(char *hex,int base);
 void ksnprintf(char *buf,char *format,size_t size, ...);
-void tohex(uint32_t hex,char *buf);
+void tohex(size_t hex,char *buf,size_t numberofbytes);
 size_t tokenize_line(char *linebuf,char *tokens[MAX_PATH][MAX_PATH],char *split);
-void tohex64(uint64_t hex,char *buf);
 void kprintf_direct(char *format, ...);
+size_t signextend(size_t num,size_t bitnum);
 
 /*
  * Get string length
@@ -590,8 +590,8 @@ int num;
 double d;
 char *z[MAX_SIZE];
 char *bufptr;
-int is64bit=FALSE;
-int count=0;
+size_t paramsize=4;		/* default size of 4 bytes */
+size_t count=0;
 
 bufptr=buf;
 
@@ -609,7 +609,7 @@ while(*b != 0) {
 		switch(c) {
 
 		case 'l':
-			is64bit=TRUE;
+			paramsize=8;
 			b++;
 
 		/* fall through */
@@ -668,7 +668,7 @@ while(*b != 0) {
    		case 'x':				/*  lowercase x */
    		case 'X':
 			num=va_arg(args,size_t);
-			tohex(num,z);
+			tohex(num,z,paramsize);
  
 			strncat(bufptr,z,size-count);
 			count += size;
@@ -708,34 +708,37 @@ va_end(args);
 /*
  * Convert number to hexadecimal string
  *
- * In: uint32_t hex	Number to convert
-	   char *buf	Buffer to store converted number
- *
+ * In:	hex		Number to convert
+ *	buf		Buffer to store converted number
+ *	bytecount	number of bytes to convert
  * Returns nothing
  */
 
-void tohex(uint32_t hex,char *buf) {
+void tohex(size_t hex,char *buf,size_t bytecount) {
 size_t count;
-uint32_t h;
-uint32_t shiftamount;
-uint32_t mask;
+size_t h;
+size_t shiftamount;
+size_t mask=0;
 
 char *b;
 char *hexbuf[] = {"0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"};
 
-mask=0xF0000000;
-shiftamount=28;
+mask=(size_t) ((size_t) 0xf << ((size_t) bytecount*8)-4);
+
+shiftamount=(bytecount*8)-4;
 
 b=buf;
 
-for(count=1;count<9;count++) {
+for(count=0;count<(bytecount*2);count++) {
 	h=((hex & mask) >> shiftamount);	/* shift nibbles to end */
 
 	shiftamount=shiftamount-4;
 	mask=mask >> 4;  
+
 	strncpy(b++,hexbuf[h],MAX_PATH);
 }
 
+return;
 }
 
 /*
@@ -806,4 +809,5 @@ do {
 
 return(num);
 }
- 
+
+

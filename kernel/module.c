@@ -30,6 +30,8 @@
 #include "kernelhigh.h"
 #include "debug.h"
 #include "module.h"
+#include "memorymanager.h"
+
 #include <elf.h>
 
 size_t load_kernel_module(char *filename,char *argsx);

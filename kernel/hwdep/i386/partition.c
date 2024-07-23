@@ -20,6 +20,7 @@
 #include "mutex.h"
 #include "device.h"
 #include "vfs.h"
+#include "memorymanager.h"
 
 #define NULL 0
 #define GPT_BLOCK_SIZE 65536

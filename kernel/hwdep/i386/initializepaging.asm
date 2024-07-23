@@ -216,6 +216,7 @@ shr	ecx,12					; number of page table entries
 mov	edi,ROOT_PAGETABLE
 mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
 
+cld
 map_next_page_legacy:
 stosd
 add	eax,1000h			; point to next page

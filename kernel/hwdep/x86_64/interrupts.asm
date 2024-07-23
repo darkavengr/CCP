@@ -21,23 +21,8 @@
 ; Interrupt functions
 ;
 
-%define offset
-
-%macro pushinterruptnumber_dummy 1
-xor	rax,rax
-push	rax
-mov	rax,qword %1
-push	rax
-%endmacro
-
-%macro pushinterruptnumber_no_dummy 1
-xor	rax,rax
-push	rax
-mov	rax,qword %1
-push	rax
-%endmacro
-
 %include "kernelselectors.inc"
+%include "init.inc"
 
 global disable_interrupts				; disable interrupts
 global enable_interrupts				; enable interrupts
@@ -58,6 +43,16 @@ extern disableirq
 use64
 section .text
 
+%macro initializeinterrupt 4
+push	dword %1			; interrupt number
+mov	rax,qword %2			; handler address
+push	rax
+push	dword %3			; selector
+push	dword %4			; flags
+call	set_interrupt
+add	rsp,32				; fix stack pointer
+%endmacro
+
 ;
 ; Initialize interrupts
 ;
@@ -69,276 +64,26 @@ initialize_interrupts:
 
 ; Initialize exception interrupts
 
-; Divide by zero
-
-xor	rax,rax
-push	rax
-mov	rax,qword int0_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Debug exception
-
-mov	qword rax,1
-push	rax
-mov	rax,qword int1_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Non-maskable interrupt
-
-mov	qword rax,2
-push	rax
-mov	rax,qword int2_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Breakpoint exception
-
-mov	qword rax,3
-push	rax
-mov	rax,qword int3_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-;'Into detected overflow'
-
-mov	qword rax,4
-push	rax
-mov	rax,qword int4_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Out of bounds exception
-mov	qword rax,5
-push	rax
-mov	rax,qword int5_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-;  Invalid opcode exception
-mov	qword rax,6
-push	rax
-mov	rax,qword int6_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; No coprocessor exception
-mov	qword rax,7
-push	rax
-mov	rax,qword int7_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Double fault
-
-mov	qword rax,8
-push	rax
-mov	rax,qword int8_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Coprocessor segment overrun
-mov	qword rax,9
-push	rax
-mov	rax,qword int9_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-
-; Bad TSS
-mov	qword rax,10
-push	rax
-mov	rax,qword int10_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Segment not present
-mov	qword rax,11
-push	rax
-mov	rax,qword int11_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Stack fault
-mov	qword rax,12
-push	rax
-mov	rax,qword int12_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; General protection fault
-mov	qword rax,13
-push	rax
-mov	rax,qword int13_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-
-; Page fault
-mov	qword rax,14
-push	rax
-mov	rax,qword int14_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-
-; Unknown interrupt exception
-mov	qword rax,15
-push	rax
-mov	rax,qword int15_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Coprocessor fault
-mov	qword rax,16
-push	rax
-mov	rax,qword int16_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-
-; Alignment check exception
-mov	qword rax,17
-push	rax
-mov	rax,qword int17_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-; Machine check exception
-mov	qword rax,18
-push	rax
-mov	rax,qword int18_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0x8e			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
-
-;
-; Set syscall interrupt
-;
-mov	qword rax,0x21
-push	rax
-mov	rax,qword int0_handler
-push	qword rax
-mov	rax,qword 8
-push	qword rax			; selector
-
-mov	rax,qword 0xee			; flags
-push	qword rax
-call	set_interrupt
-add	rsp,32				; fix stack pointer
+initializeinterrupt 0,int0_handler,8,0x8e00		; Divide by zero
+initializeinterrupt 1,int1_handler,8,0x8e00		; Debug exception
+initializeinterrupt 2,int2_handler,8,0x8e00		; Non-maskable interrupt
+initializeinterrupt 3,int3_handler,8,0x8e00		; Breakpoint exception
+initializeinterrupt 4,int4_handler,8,0x8e00		;'Into detected overflow'
+initializeinterrupt 5,int5_handler,8,0x8e00		; Out of bounds exception
+initializeinterrupt 6,int6_handler,8,0x8e00		;  Invalid opcode exception
+initializeinterrupt 7,int7_handler,8,0x8e00		; No coprocessor exception
+initializeinterrupt 8,int8_handler,8,0x8e00		; Double fault
+initializeinterrupt 9,int9_handler,8,0x8e00		; Coprocessor segment overrun
+initializeinterrupt 10,int10_handler,8,0x8e00	; Invalid TSS
+initializeinterrupt 11,int11_handler,8,0x8e00	; Segment not present
+initializeinterrupt 12,int12_handler,8,0x8e00	; Stack fault
+initializeinterrupt 13,int13_handler,8,0x8e00	; General protection fault
+initializeinterrupt 14,int14_handler,8,0x8e00	; Page fault
+initializeinterrupt 15,int15_handler,8,0x8e00	; Unknown interrupt exception
+initializeinterrupt 16,int16_handler,8,0x8e00	; Coprocessor fault
+initializeinterrupt 17,int17_handler,8,0x8e00	; Alignment check exception
+initializeinterrupt 18,int18_handler,8,0x8e00	; Machine check exception
+initializeinterrupt 0x21,d_lowlevel,8,0xee00	; Syscall interrupt
 ret
 
 ;
@@ -371,7 +116,6 @@ ret
 ; Returns: Nothing
 ;
 load_idt:
-nop
 mov	rax,qword idt
 lidt	[rax]					; load interrupts
 ret
@@ -379,241 +123,183 @@ ret
 ;
 ; Set interrupt
 ;
-; [rsp+16]			; Interrupt number
+; [rsp+32]			; Interrupt number
 ; [rsp+24]			; Address of interrupt handler
-; [rsp+40]			; Selector
-; [rsp+48]			; Flags
+; [rsp+16]			; Selector
+; [rsp+8]			; Flags
 ;
 ; Returns -1 on error or 0 on success
 ;
-
 set_interrupt:
-push	rbx		;+16
-push	rcx		;+24
-push	rdx		;+32
-push	rsi		;+40
-push	rdi		;+48
-nop
-nop
-
-mov	rdx,[rsp+16]			; get interrupt number
-mov	rax,[rsp+24]			; get address of interrupt handler
-mov	rcx,[rsp+40]			; get selector
-mov	rbx,[rsp+48]			; get flags
-
-cmp	rdx,256				; check if valid interrupt number
+mov	rax,[rsp+32]
+cmp	rax,256				; check if valid interrupt number
 jl	set_interrupt_number_is_ok
 
 mov	rax,0xffffffffffffffff
 jmp	end_set_interrupt
 
 set_interrupt_number_is_ok:
-shl	rdx,4				; each interrupt is 16 bytes long
-mov	rdi,rdx
+mov	rdi,rax				; point to entry in the IDT
+shl	rdi,4				; each interrupt is 16 bytes long
 
 mov	rax,qword idttable
 add	rdi,rax
 
-mov	[rdi],ax			; bits 15-0
+xor	edx,edx
+mov	[rdi+12],edx
 
-;mov	rsi,qword 0xffffffff0000ffff
-and	rax,rsi				; get bits 31-16
-shr	rax,16
+mov	rax,[rsp+24]			; get address
+mov	[rdi],ax			; bits 0-15
+
+shr	rax,16				; get bits 16-31
 mov	[rdi+6],ax
 
-mov	rsi,0x00000000ffffffff		; get bits 32-64
-and	rax,rsi				; get bits 32-64
-shr	rax,32
-mov	[rdi+8],rax
+shr	rax,16				; get bits 32-63
+mov	[rdi+8],eax
 
-mov	[rsi+2],cx			; put selector
-mov	[rsi+5],bx			; put flags
-;lidt	[idttable]
+mov	rax,[rsp+16]
+mov	[rdi+2],ax			; put selector
+
+mov	rax,[rsp+8]
+mov	[rdi+4],ax			; put flags
 
 xor	rax,rax				; return success
 
 end_set_interrupt:
-pop	rdi
-pop	rsi
-pop	rdx
-pop	rcx
-pop	rbx
 ret
 
 ;
-; Get address of interrupt handler
-;
-; In: Interrupt number
-;
-; Returns: -1 on error or address of interrupt handler
-;
-
-get_interrupt:
-push	rbx
-push	rcx
-push	rdx
-push	rsi
-push	rdi
-nop
-nop
-
-mov	rcx,[rsp+48]			; get address of interrupt handler
-mov	rbx,[rsp+48]			; get interrupt number
-
-cmp	rbx,256				; check if valid
-jl	get_interrupt_number_is_ok
-
-mov	rax,0xffffffffffffffff			; return error
-ret
-
-get_interrupt_number_is_ok:
-mov	rbx,rax
-
-shr	rbx,4				; each interrupt is eight bytes long
-mov	rax,qword idttable
-add	rbx,rax
-
-xor	rax,rax
-mov	eax,dword [rbx+8]			; bits 32-63
-shr	rax,32
-
-movzx	rbx,word [rbx+6]		; bits 16-31
-shr	rbx,16
-add	rax,rbx
-
-movzx	rbx,word [rbx]			; bits 0-15
-add	rax,rbx
-
-xor	rax,rax				; return success
-
-pop	rdi
-pop	rsi
-pop	rdx
-pop	rcx
-pop	rbx
-ret
-
 ;
 ; Interrupt handlers
 ;
 
 int0_handler:
-pushinterruptnumber_dummy 0
+mov	rdi,qword regbuf
+mov	rsi,qword 0
 jmp	int_common
 
 int1_handler:
-pushinterruptnumber_dummy 1
+mov	rdi,qword regbuf
+mov	rsi,qword 1
 jmp	int_common	
 
 int2_handler:
-pushinterruptnumber_dummy 2
+mov	rdi,qword regbuf
+mov	rsi,qword 2
 jmp	int_common	
 
 int3_handler:
-pushinterruptnumber_dummy 3
+mov	rdi,qword regbuf
+mov	rsi,qword 3
 jmp	int_common	
 
 int4_handler:
-pushinterruptnumber_dummy 4
+mov	rdi,qword regbuf
+mov	rsi,qword 4
 jmp	int_common	
 
 int5_handler:
-pushinterruptnumber_dummy 5
+mov	rdi,qword regbuf
+mov	rsi,qword 5
 jmp	int_common	
 
 int6_handler:
-pushinterruptnumber_dummy 6
+mov	rdi,qword regbuf
+mov	rsi,qword 6
 jmp	int_common	
 
 int7_handler:
-pushinterruptnumber_dummy 7
+mov	rdi,qword regbuf
+mov	rsi,qword 7
 jmp	int_common	
 
 int8_handler:
-pushinterruptnumber_no_dummy 8
+mov	rdi,qword regbuf
+mov	rsi,qword 8
 jmp	int_common	
 
 int9_handler:
-pushinterruptnumber_dummy 9
+mov	rdi,qword regbuf
+mov	rsi,qword 9
 jmp	int_common	
 
 int10_handler:
-pushinterruptnumber_no_dummy 10
+mov	rdi,qword regbuf
+mov	rsi,qword 10
 jmp	int_common	
 
 int11_handler:
-pushinterruptnumber_no_dummy 11
+mov	rdi,qword regbuf
+mov	rsi,qword 11
 jmp	int_common	
 
 int12_handler:
-pushinterruptnumber_no_dummy 12
+mov	rdi,qword regbuf
+mov	rsi,qword 12
 jmp	int_common	
 
 int13_handler:
-pushinterruptnumber_no_dummy 13
+mov	rdi,qword regbuf
+mov	rsi,qword 13
 jmp	int_common	
 
 int14_handler:
-pushinterruptnumber_no_dummy 14
+mov	rdi,qword regbuf
+mov	rsi,qword 14
 jmp	int_common	
 
 int15_handler:
-pushinterruptnumber_dummy 15
+mov	rdi,qword regbuf
+mov	rsi,qword 15
 jmp	int_common	
 
 int16_handler:
-pushinterruptnumber_dummy 16
+mov	rdi,qword regbuf
+mov	rsi,qword 16
 jmp	int_common	
 
 int17_handler:
-pushinterruptnumber_dummy 17
+mov	rdi,qword regbuf
+mov	rsi,qword 17
 jmp	int_common	
 
 int18_handler:
-pushinterruptnumber_dummy 18
-jmp	int_common	
+mov	rdi,qword regbuf
+mov	rsi,qword 18
+;jmp	int_common	
 
 int_common:
-mov	r11,regbuf
-mov	[r11+8],rsp			; save other registers into buffer to pass to exception handler
-mov	[r11+16],rax
-mov	[r11+24],rbx
-mov	[r11+32],rcx
-mov	[r11+40],rdx
-mov	[r11+48],rsi
-mov	[r11+56],rdi
-mov	[r11+64],rbp
+push	rdi
+mov	rdi,regbuf
+mov	[rdi+8],rsp			; save other registers into buffer to pass to exception handler
+mov	[rdi+16],rax
+mov	[rdi+24],rbx
+mov	[rdi+32],rcx
+mov	[rdi+40],rdx
+mov	[rdi+48],rsi
+mov	[rdi+64],rbp
+mov	[rdi+72],r10
+mov	[rdi+80],r11
+mov	[rdi+88],r12
+mov	[rdi+96],r13
+mov	[rdi+104],r14
+mov	[rdi+112],r15
 
-mov	rax,[rsp+16]			; get rip of interrupt handler from stack
-mov	[r11],rax			; save it
+pop	rax
+mov	[rdi+56],rax
 
-mov	rax,[rsp+24]			; get flags
-mov	[r11+68],rax			; save flags
+mov	rax,[rsp+16]			; get flags
+mov	[rdi+120],rax			; save flags
 
-mov	rax,qword regbuf
+mov	rax,[rsp+8]			; get RIP of interrupt handler from stack
+mov	[rdi],rax			; save it
 
-push	rax			; call exception handler
-call	exception
-add	rsp,12
+call	exception			; call exception handler
+add	rsp,16
 
 exit_exception:
 xchg	bx,bx
 iretq
-
-end_process:
-call exit
-iretq
-
-;
-; Get stack base pointer
-;
-; In: Nothing
-;
-; Returns: stack base pointer
-;
-get_stack_base_pointer:
-mov	rax,rbp
-ret
 
 ;
 ; low level dispatcher
@@ -623,18 +309,13 @@ ret
 ; Returns: Nothing
 ;
 d_lowlevel:
-push	rax						; save registers
-push	rbx
-push	rcx
-push	rdx
-push	rsi
-push	rdi
-push	r10
-push	r11
-push	r12
-push	r13
-push	r14
-push	r15
+mov	r10,rsi				; pass registers
+mov	r11,rdi
+
+mov	rdi,rax
+mov	rsi,rbx
+mov	r8,rcx
+mov	r9,rdx
 
 call	disablemultitasking
 
@@ -647,20 +328,7 @@ mov	[r11],rax
 
 call	enablemultitasking
 
-pop	r15						; restore registers
-pop	r14
-pop	r13
-pop	r12
-pop	r11
-pop	r10
-pop	rdi
-pop	rsi
-pop	rdx
-pop	rcx
-pop	rbx
-pop	rax
-
-cmp	rax,qword 0xffffffffffffffff					; if error ocurred
+cmp	rdx,qword 0xffffffffffffffff					; if error ocurred
 je	iretq_error
 
 mov	r11,tempone
@@ -669,10 +337,9 @@ mov	rax,[r11]				; then return old rax
 iretq_error:
 iretq  
 
-section .data
 idt:
 dw 0x3FFF					; limit
-dq offset idttable				; base
+dq idttable				; base
 
 idttable:
 times 256 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

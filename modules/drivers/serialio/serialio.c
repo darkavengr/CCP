@@ -24,6 +24,7 @@
 #include "mutex.h"
 #include "device.h"
 #include "vfs.h"
+#include "memorymanager.h"
 
 #define MODULE_INIT serialio_init
 

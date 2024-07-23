@@ -24,4 +24,5 @@ HEAPENTRY *getheapend(void);
 size_t getheapsize(void);
 void *heapalloc_int(size_t type,HEAPENTRY *heap,HEAPENTRY *heapend,size_t size);
 size_t kernelfree(void *address);
+size_t memorymanager_init(size_t dmasize);
 

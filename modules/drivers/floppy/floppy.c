@@ -28,6 +28,7 @@
 #include "device.h"
 #include "floppy.h"
 #include "debug.h"
+#include "memorymanager.h"
 
 #define MODULE_INIT floppy_init
 

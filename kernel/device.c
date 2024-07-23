@@ -29,6 +29,7 @@
 #include "bootinfo.h"
 #include "kernelhigh.h"
 #include "debug.h"
+#include "memorymanager.h"
 
 BLOCKDEVICE *blockdevices=NULL;
 size_t lastdrive=2;

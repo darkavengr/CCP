@@ -405,6 +405,7 @@ mov	eax,LOAD_ADDRESS				; calculate destination address
 add	eax,edx
 
 mov	[symbols_start],eax
+mov	[BOOT_INFO_SYMBOL_START],eax
 
 ; Copy symbol names and addresses
 
@@ -559,6 +560,7 @@ mov	eax,LOAD_ADDRESS				; calculate destination address for symbols
 add	eax,edx
 
 mov	[symbols_start],eax
+mov	[BOOT_INFO_SYMBOL_START],eax
 
 mov	esi,[loadbuf]
 movsx	edx,word [esi+ELF64_SHCOUNT]			; number of program headers

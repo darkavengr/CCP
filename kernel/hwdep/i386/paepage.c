@@ -40,22 +40,13 @@ XXAAAAAAAAABBBBBBBBBCCCCCCCCCCCC
 #include "hwdefs.h"
 #include "errors.h"
 #include "debug.h"
+#include "memorymanager.h"
 
 extern end(void);
 extern kernel_begin(void);
 
 size_t PAGE_SIZE=4096;
 size_t paging_type=2;
-
-size_t addpage_int(uint32_t mode,size_t process,uint32_t page,void *physaddr); 
-size_t page_init(size_t process);
-size_t removepage(uint32_t page,size_t process);
-size_t freepages(size_t process);
-size_t findfreevirtualpage(size_t size,size_t alloc,size_t process);
-size_t loadpagetable(size_t process);
-uint32_t getphysicaladdress(size_t process,uint32_t virtaddr);
-size_t addpage_user(uint32_t page,size_t process,void *physaddr); 
-size_t addpage_system(uint32_t page,size_t process,void *physaddr); 
 
 #define PDPT_LOCATION 0x2000
 

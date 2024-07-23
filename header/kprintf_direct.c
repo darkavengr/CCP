@@ -19,23 +19,30 @@ char *formatptr;
 char c;
 char *s;
 char *ptr;
-int num;
+size_t num;
 double d;
 char *tempbuffer[MAX_SIZE];
+size_t paramsize;
 
 va_start(args,format);			/* get start of variable args */
 
 formatptr=format;
 
 while(*formatptr != 0) {
+	paramsize=4;				/* default size is 4 bytes */
+
  	c=*formatptr;
 
 	if(c == '%') {					/* format specifier */
 		c=*++formatptr;
 
-		switch(c) {
+		if(c == 'l') {			/* long number */
+			paramsize=8;
+			c=*++formatptr;		
+		}
 
-			case's':				/* string */
+		switch(c) {		
+			case 's':				/* string */
 				s=va_arg(args,const char*);	/* get variable argument */
 
 				outputconsole(s,strlen(s));
@@ -80,7 +87,7 @@ while(*formatptr != 0) {
 			case 'X':
 				num=va_arg(args,size_t);
 
-	 			tohex(num,tempbuffer);
+	 			tohex(num,tempbuffer,paramsize);
 
 				outputconsole(tempbuffer,strlen(tempbuffer));
 	

@@ -20,7 +20,7 @@
 
 
 ;
-; Initialization code for x86_64 processors
+; Initialization for x86_64 processors
 ;
 ; In: Information passed via boot information
 ; 
@@ -28,12 +28,11 @@
 ;
 
 ROOT_PML4		equ	0x1000
-ROOT_PDPT		equ	0x2000
-ROOT_PAGEDIR		equ	0x3000
-ROOT_PAGETABLE		equ	0x4000
-ROOT_EMPTY		equ	0x5000
+ROOT_PDPT		equ	0x3000
+ROOT_PAGEDIR		equ	0x4000
+ROOT_PAGETABLE		equ	0x5000
+ROOT_EMPTY		equ	0x6000
 
-PHYSICAL_START_ADDRESS	equ	0x100000
 KERNEL_STACK_SIZE equ  65536*2				; size of initial kernel stack
 INITIAL_KERNEL_STACK_ADDRESS equ 0x60000		; intial kernel stack address
 DMA_BUFFER_SIZE equ 32768	
@@ -131,7 +130,7 @@ mov	ds,ax
 mov	es,ax
 mov	ss,ax
 
-mov	esi,(starting_ccp-_asm_init)+PHYSICAL_START_ADDRESS
+mov	esi,(starting_ccp-_asm_init)+phys_start_address
 call	output16				; display using bios
 
 ;
@@ -185,7 +184,7 @@ jnz	long_mode_supported
 ; long mode is not supported, display a message and halt
 ;
 not_long_mode:
-mov	esi,(no_long_mode-_asm_init)+PHYSICAL_START_ADDRESS
+mov	esi,(no_long_mode-_asm_init)+phys_start_address
 call	output16				; display using bios
 
 cli
@@ -198,7 +197,7 @@ long_mode_supported:
 ;
 mov	edi,ROOT_PML4
 xor	eax,eax
-mov	ecx,1024
+mov	ecx,8196/4
 rep	stosd
 
 mov	edi,ROOT_PDPT
@@ -220,8 +219,8 @@ mov	[edi+(510*8)],eax		; map higher half
 mov	eax,ROOT_PML4+PAGE_RW+PAGE_PRESENT	; map pml4 to itself
 mov	[edi+(511*8)],eax
 
-;mov	eax,ROOT_PML4			; set pml4phys and processid
-;mov	[edi+36],eax
+mov	eax,ROOT_PML4			; set pml4phys
+mov	[edi+4096],eax
 
 mov	edi,ROOT_PDPT			; create pdpt
 mov	eax,ROOT_PAGEDIR+PAGE_RW+PAGE_PRESENT
@@ -248,17 +247,19 @@ add	ecx,[esi]
 
 mov	esi,BOOT_INFO_MEMORY_SIZE			; memory map size
 mov	eax,[esi]
+
 shr	eax,12					; number of pages
 shl	eax,3					; number of 8-byte entries
+and	eax,0xfffff000
+add	eax,1000h
+
 add	ecx,eax
-
-and	ecx,0xfffff000
-
-add	ecx,1000h
 shr	ecx,12					; number of page table entries
 
 mov	edi,ROOT_PAGETABLE
 mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
+
+cld
 
 map_next_page:
 mov	[edi],eax			; low dword
@@ -284,7 +285,7 @@ mov	eax,cr0
 or	eax,(1 << 31) | (1 << 0)
 mov	cr0,eax
 
-mov 	edi,(gdtinfo_64-_asm_init)+PHYSICAL_START_ADDRESS
+mov 	edi,(gdtinfo_64-_asm_init)+phys_start_address
 db	66h
 lgdt 	[ds:edi]			; load GDT
 
@@ -296,7 +297,7 @@ mov	gs,ax
 
 db	66h				; jmp dword KERNEL_CODE_SELECTOR:longmode
 db	0eah
-dd	(longmode-_asm_init)+PHYSICAL_START_ADDRESS
+dd	(longmode-_asm_init)+phys_start_address
 dw	KERNEL_CODE_SELECTOR
 
 ;****************************************************
@@ -306,10 +307,13 @@ dw	KERNEL_CODE_SELECTOR
 [BITS 64]
 use64
 longmode:
-mov	rax,qword higher_half+PHYSICAL_START_ADDRESS
+mov	rax,qword higher_half
 jmp	rax				; jump to higher half
 
 higher_half:
+mov	rax,qword gdtinfo_high_64
+lgdt	[rax]				; load higher-half GDT
+
 ;
 ; place memory map after initrd and symbol table
 ;
@@ -333,12 +337,10 @@ mov	eax,[rsi]
 add	rdx,rax
 
 mov	rax,qword KERNEL_HIGH	
-mov	eax,[rsi]
 add	rdx,rax
 
-mov	rdi,qword MEMBUF_START-KERNEL_HIGH
-mov	eax,[rsi]
-add	rdx,rax
+mov	rdi,MEMBUF_START
+add	[rdi],rdx
 
 mov	rsp,qword INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH+KERNEL_STACK_SIZE	; temporary 64-bit stack
 mov	rbp,qword INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH
@@ -349,43 +351,30 @@ xor	rax,rax
 mov	[rsi],rax
 
 call	initialize_interrupts		; initialize interrupts
-xchg	bx,bx
 call	load_idt			; load interrupts
 
 call	processmanager_init		; intialize process manager
 call	devicemanager_init		; intialize device manager
 
-mov	rax,qword end			; calculate kernel size
-mov	r11,rax
-mov	rax,qword kernel_begin
-sub	r11,rdx
+;	rdi=Memory map address
+;	rsi=Initial kernel stack address
+;	rdx=Initial kernel stack size
+;	rcx=Memory size
+;
+mov	r11,MEMBUF_START		; memory map start address
+mov	rdi,[r11]
+mov	rsi,INITIAL_KERNEL_STACK_ADDRESS
+mov	rdx,KERNEL_STACK_SIZE		; kernel
 
-mov	rbx,qword BOOT_INFO_MEMORY_SIZE	; get memory size
-add	rbx,qword KERNEL_HIGH
-mov	rbx,[rbx]
+mov	r11,BOOT_INFO_MEMORY_SIZE+KERNEL_HIGH
+mov	rcx,[r11]
 
-mov	rcx,qword kernel_begin		; get kernel start address
-
-blah11:
-mov	r11,MEMBUF_START
-mov	rax,[r11]
-
-blah12:
-mov	r11,qword KERNEL_STACK_SIZE			; stack size
-push	r11
-mov	r11,qword INITIAL_KERNEL_STACK_ADDRESS	; stack address
-push	r11
-push	rax				; kernel size
-push	rcx				; kernel start address
-push	rbx				; memory size
-push	rdx				; memory map start address
 call	initialize_memory_map		; initialize memory map
 
-mov	rax,qword DMA_BUFFER_SIZE
-
-push	rax
+mov	rdi,qword DMA_BUFFER_SIZE
 call	memorymanager_init		; initalize memory manager
 
+xchg	bx,bx
 call	filemanager_init		; initialize file manager
 
 
@@ -463,7 +452,11 @@ jmp	kernel
 
 gdtinfo_64:
 dw (gdt_end-gdt)-1
-dq (gdt-_asm_init)+PHYSICAL_START_ADDRESS
+dq (gdt-_asm_init)+phys_start_address
+
+gdtinfo_high_64:
+dw (gdt_end-gdt)-1
+dq gdt
 
 ; null entry, don't modify
 gdt dw 0
@@ -491,13 +484,13 @@ db 0						; last byte of base
 dw 0ffffh					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 0FAh,0efh					; Code segment
+db 0FAh,0afh					; Code segment
 db 0						; last byte of base
 
 dw 0ffffh					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 0f2h,0efh					; Data segment
+db 0f2h,0cfh					; Data segment
 db 0						; last byte of base
 
 times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0	; extra entries for TSS and other things

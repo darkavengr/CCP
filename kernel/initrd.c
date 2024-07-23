@@ -26,6 +26,7 @@
 #include "errors.h"
 #include "bootinfo.h"
 #include "debug.h"
+#include "memorymanager.h"
 
 size_t initrd_findfirst(char *filename,FILERECORD *buf);
 size_t initrd_findnext(char *filename,FILERECORD *buf);

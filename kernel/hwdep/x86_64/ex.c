@@ -5,7 +5,7 @@
 
     CCP is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
+    the Free Software Foundation,either version 3 of the License,or
     (at your option) any later version.
 
     CCP is distributed in the hope that it will be useful,
@@ -14,7 +14,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+    along with CCP.  If not,see <https://www.gnu.org/licenses/>.
 */
 
 /*
@@ -54,6 +54,7 @@
 #define MACHINE_CHECK_EXCEPTION 18
 
 void enable_interrupts(void);
+void exception(uint64_t *regs,uint64_t e);
 
 /*
  * x86 exception handler
@@ -66,44 +67,44 @@ void enable_interrupts(void);
  * 
  */
 
-extern void exception(uint64_t *regs,uint64_t e,uint64_t dummy);
+
 uint64_t flags;
-char *exp[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception", \
-		"Into detected overflow","Out of bounds exception","Invalid opcode exception","No coprocessor exception", \
-		 "Double Fault","Coprocessor segment overrun","Bad TSS","Segment not present","Stack fault", \
-		 "General protection fault","Page fault","Unknown interrupt exception","Coprocessor fault", \
+char *exp[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception",\
+		"Into detected overflow","Out of bounds exception","Invalid opcode exception","No coprocessor exception",\
+		 "Double Fault","Coprocessor segment overrun","Bad TSS","Segment not present","Stack fault",\
+		 "General protection fault","Page fault","Unknown interrupt exception","Coprocessor fault",\
 		 "Alignment check exception","Machine check exception" };
 
-char *regnames[] = { "RIP", "RSP", "RAX", "RBX", "RCX", "RDX", "RSI", "RDI", "RBP","" };
+char *regnames[] = { "RIP","RSP","RAX","RBX","RCX","RDX","RSI","RDI","RBP","R10","R11","R12","R13","R14","R15",NULL};
 
-char *flagsname[]= { "","Overflow", " Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
+char *flagsname[]= { "","Overflow"," Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
 
-extern void exception(uint64_t *regs,uint64_t e,uint64_t dummy) {
-uint64_t count;
+void exception(uint64_t *regs,uint64_t e) {
+size_t count;
 uint64_t flagsmask;
 char *b;
 char processname[MAX_PATH];
-uint64_t shiftcount;
+size_t shiftcount;
 
 if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("Kernel panic [%s] at address %X\n",exp[e],regs[0]);
+	kprintf_direct("Kernel panic [%s] at address %lX\n",exp[e],regs[0]);
 }
 else
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %X in %s\n",exp[e],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %lX in %s\n",exp[e],regs[0],processname);  /* exception */
 }
 
 count=0;
 
-do {							/* dump registers */
-	if(regnames[count] == "") break;
+while(regnames[count] != NULL) {							/* dump registers */
+	if(regnames[count] == NULL) break;
 
-	kprintf_direct("%s=%X\n",regnames[count],regs[count]);
+	kprintf_direct("%s=%lX\n",regnames[count],regs[count]);
 
-} while(regs[count++] != "");
-
+	count++;
+}
 
 flagsmask=4096;						/* mask to get flags */
 count=0;
@@ -122,6 +123,7 @@ do {
 
 } while(flagsname[count] != "$");
 
+asm("xchg %bx,%bx");
 if(get_current_process_pointer() == NULL) {
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);

@@ -23,6 +23,9 @@
 
 global initialize_memory_map
 
+extern kernel_begin
+extern end
+
 %include "init.inc"
 %include "bootinfo.inc"
 
@@ -35,117 +38,137 @@ use64
 ;
 ; Initialize memory map
 ;
-; In:	Initial kernel stack size
-;	Initial kernel stack address
-;	Kernel size
-;	Kernel start address
-;	Memory size
-;	Memory map address
+; In:	
+;	rdi=Memory map address
+;	rsi=Initial kernel stack address
+;	rdx=Initial kernel stack size
+;	rcx=Memory size
 ;
 ; Returns: Nothing
 ;
 initialize_memory_map:
-mov	rax,qword [rsp+8]			; get memory map address
+mov	r11,qword memory_map_address
+mov	[r11],rdi
 
-mov	[rel memory_map_address],rax
-mov	rax,qword [rsp+16]			; get memory size
-mov	[rel memory_size],rax
-mov	rax,qword [rsp+24]			; get kernel start address
-mov	qword [rel kernel_begin],rax
+mov	r11,qword stack_address
+mov	[r11],rsi
 
-mov	rax,qword [rsp+32]			; get kernel size
-mov	[rel kernel_size],rax
+mov	r11,qword stack_size
+mov	[r11],rdx
 
-mov	rax,qword [rsp+40]			; get stack address
-mov	[rel stack_address],rax
+mov	r11,qword memory_size
+mov	[r11],rcx
 
-mov	rax,qword [rsp+48]			; get stack size
-mov	[rel stack_size],rax
-
+;xchg	bx,bx
 ; clear memory map area before filling it
-
-mov	rax,[rel memory_map_address]
-mov	rdi,rax
-
-mov	rax,[rel memory_size]
-mov	rax,qword 0xffffffffff000
-mov	rcx,rax
-and	rcx,rdx
 
 shr	rcx,12					; get number of 4096-byte pages
 xor	rax,rax
 rep	stosq
 
-mov	rax,[rel memory_map_address]
-mov	rdi,rax
+; map first 1MB
+
+mov	r11,memory_map_address
+mov	rdi,[r11]
 mov	rcx,(1024*1024)/PAGE_SIZE		; map first 1mb
 mov	rax,qword SYSTEM_USE
 rep	stosq					; real mode idt and data area
 
-mov	rax,qword [rel kernel_begin]
-mov	rdi,rax
+; map kernel
+
+mov	rdi,kernel_begin
 mov	rax,qword KERNEL_HIGH
-sub	rdi,rax
+sub	rdi,rax					
+
 mov	rax,qword 0xfffffffffffff000
-and	rdi,rax
+and	rdi,rax					; round down to multiple of 4096
 shr	rdi,12					; get number of 4096-byte pages
-shl	rdi,2
-add	rdi,[rel memory_map_address]
+shl	rdi,3					; nunber of 8-byte entries
+mov	r11,memory_map_address
+add	rdi,[r11]				
 
-mov	rcx,[rel kernel_size]
+mov	rcx,end
+mov	rax,kernel_begin
+sub	rcx,rax					; get kernel size
 add	rcx,PAGE_SIZE
-
-mov	rax,[rel memory_size]
-mov	rdx,0xfffffffffffff000
-and	rax,rdx
-
-shr	rax,12					; get number of 4096-byte pages
-shr	rax,2
-add	rcx,rax
-
 shr	rcx,12					; get number of 4096-byte pages
+rep	stosq
+
+; map memory map
+
+mov	r11,memory_map_address			; get address of memory map
+mov	rdi,[r11]
+mov	rax,qword 0xfffffffffffff000
+and	rdi,rax					; round down to multiple of 4096
+mov	rdx,rdi
+
+mov	rax,~KERNEL_HIGH
+and	rdx,rax
+
+shr	rdx,12					; get number of 4096-byte pages
+shr	rdx,3					; number of 8-byte entries
+add	rdi,rdx
+
+mov	r11,memory_size				; get memory size
+xor	rcx,rcx
+mov	ecx,[r11]
+shr	rcx,12					; get number of 4096-byte pages
+
 mov	rax,qword SYSTEM_USE
 rep	stosq					; page reserved
 
-mov	rdi,[rel stack_address]
+; map initial kernel stack
+
+mov	r11,stack_address			; get stack address
+mov	rdi,[r11]
 shr	rdi,12					; get number of 4096-byte pages
 shl	rdi,3					; multiply by 8,each 4096 byte page is represented by 8 byte entries
-add	rdi,[rel memory_map_address]
 
-mov	rcx,[rel stack_size]
-shr	rcx,12					; get number of 4096-byte pages
+mov	r11,memory_map_address			; add memory map address
+mov	rax,[r11]
+add	rdi,rax
+
+mov	r11,stack_size				; get stack size
+xor	rcx,rcx
+mov	ecx,[r11]
+shr	ecx,12					; get number of 4096-byte pages
+
 mov	rax,qword SYSTEM_USE
 rep	stosq
 
-mov	rdi,[rel memory_map_address]
-mov	rax,qword KERNEL_HIGH
-sub	rdi,rax
+; map initrd
+
+mov	r11,BOOT_INFO_INITRD_START+KERNEL_HIGH
+mov	rdi,[r11]
 shr	rdi,12					; get number of 4096-byte pages
 shl	rdi,3					; multiply by 8,each 4096 byte page is represented by 8 byte entries
-add	rdi,[rel memory_map_address]
+mov	r11,memory_map_address
+add	rdi,[r11]				
 
-mov	rcx,[rel stack_size]
-shr	rcx,12					; get number of 4096-byte pages
+mov	r11,BOOT_INFO_INITRD_SIZE+KERNEL_HIGH
+
+xor	rcx,rcx
+mov	ecx,[r11]
+shr	ecx,12					; get number of 4096-byte pages
+
 mov	rax,qword SYSTEM_USE
 rep	stosq
 
-mov	rdi,[rel BOOT_INFO_INITRD_START+KERNEL_HIGH]
+; map kernel symbols
+
+mov	r11,BOOT_INFO_SYMBOL_START+KERNEL_HIGH
+movsx	rdi,dword [r11]
 shr	rdi,12					; get number of 4096-byte pages
 shl	rdi,3					; multiply by 8,each 4096 byte page is represented by 8 byte entries
-add	rdi,qword [rel memory_map_address]
+mov	r11,memory_map_address			; add memory map address
+mov	rax,[r11]
+add	rdi,rax
 
-mov	rcx,qword [rel BOOT_INFO_INITRD_SIZE+KERNEL_HIGH]
-shr	rcx,12					; get number of 4096-byte pages
-mov	rax,qword SYSTEM_USE
-rep	stosq
+mov	r11,BOOT_INFO_SYMBOL_SIZE+KERNEL_HIGH	; get symbol data size
+xor	rcx,rcx
+mov	ecx,[r11]
+shr	ecx,12					; get number of 4096-byte pages
 
-mov	rdi,[rel BOOT_INFO_SYMBOL_START+KERNEL_HIGH]
-shr	rdi,12					; get number of 4096-byte pages
-shl	rdi,3					; multiply by 8,each 4096 byte page is represented by 8 byte entries
-add	rdi,[rel memory_map_address]
-
-mov	rcx,[rel BOOT_INFO_SYMBOL_SIZE+KERNEL_HIGH]
-shr	rcx,12					; get number of 4096-byte pages
 mov	rax,qword SYSTEM_USE
 rep	stosq
 ret
@@ -154,7 +177,6 @@ ret
 stack_size dq 0
 stack_address dq 0
 kernel_size dq 0
-kernel_begin dq 0
 memory_size dq 0
 memory_map_address dq 0
 

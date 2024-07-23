@@ -26,6 +26,7 @@
 #include "vfs.h"
 #include "bootinfo.h"
 #include "debug.h"
+#include "memorymanager.h"
 
 FILERECORD *openfiles=NULL;
 FILERECORD *openfiles_last=NULL;
@@ -1137,6 +1138,7 @@ filesystems=NULL;						/* no filesystem drivers for now */
 /* Create initial stdin, stdout and stderr handles */
 
 openfiles=kernelalloc(sizeof(FILERECORD));			/* stdin */
+
 if(openfiles == NULL) {						/*can't allocate */
 	kprintf_direct("kernel: can't allocate memory for stdin\n");
 	return(-1);
