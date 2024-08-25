@@ -34,10 +34,17 @@
 #include "debug.h"
 #include "page.h"
 
-extern kernel_begin(void);
+extern size_t kernel_begin(void);
 extern size_t PAGE_SIZE;
 
 extern size_t MEMBUF_START;
+
+void *alloc_int(size_t flags,size_t process,size_t size,size_t overrideaddress);
+size_t free_internal(size_t process,void *b,size_t flags);
+void *alloc(size_t size);
+void *kernelalloc(size_t size);
+void *kernelalloc_nopaging(size_t size);
+void *dma_alloc(size_t size);
 
 void *dmabuf=NULL;
 void *dmaptr=NULL;
@@ -116,12 +123,15 @@ if(flags != ALLOC_NOPAGING) {						/* find first page */
 	if(overrideaddress == -1) { 
 		firstpage=findfreevirtualpage(size,flags,process); 
 
+		//DEBUG_PRINT_HEX_LONG(firstpage);
+		//asm("xchg %bx,%bx");
+
 		if(firstpage == -1) {
 			unlock_mutex(&memmanager_mutex);
 	   		setlasterror(NO_MEM);
 	   		return(NULL);
 	  	}
-
+	 
 	  	startpage=firstpage;
 	}
 	else
@@ -200,7 +210,7 @@ for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 unlock_mutex(&memmanager_mutex);
 
 setlasterror(NO_ERROR);
-return(firstpage);
+return((void *) firstpage);
 }
 
 /*
@@ -291,7 +301,8 @@ void *alloc(size_t size) {
 * 
 */
 size_t free(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-return(free_internal(getpid(),b,0));
+	free_internal(getpid(),b,0);
+	return(NO_ERROR);
 }
 
 /*
@@ -304,7 +315,8 @@ return(free_internal(getpid(),b,0));
 * 
 */
 size_t free_physical(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-	return(free_internal(getpid(),b,FREE_PHYSICAL));
+	free_internal(getpid(),b,FREE_PHYSICAL);
+	return(NO_ERROR);
 }
 
 /*
@@ -316,7 +328,7 @@ size_t free_physical(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
 * 
 */
 void *kernelalloc(size_t size) {				/* allocate kernel memory (0 - 0x80000000) */
-return(alloc_int(ALLOC_KERNEL,getpid(),size,-1));
+	return(alloc_int(ALLOC_KERNEL,getpid(),size,-1));
 }
 
 /*
@@ -328,7 +340,7 @@ return(alloc_int(ALLOC_KERNEL,getpid(),size,-1));
 * 
 */
 size_t kernelfree(void *b) {
-return(free_internal(getpid(),b,0));
+	return(free_internal(getpid(),b,0));
 }
 
 /*
@@ -340,7 +352,7 @@ return(free_internal(getpid(),b,0));
 * 
 */
 void *kernelalloc_nopaging(size_t size) {
-return(alloc_int(ALLOC_NOPAGING,getpid(),size,-1));
+	return(alloc_int(ALLOC_NOPAGING,getpid(),size,-1));
 }
 
 /*
@@ -398,9 +410,9 @@ dmaptr=dmabuf;
 dmap=dmabuf;
 
 for(count=0;count<dmasize/PAGE_SIZE;count++) {
-	addpage_system(dmap+KERNEL_HIGH,0,dmap);
+	  addpage_system(dmap+KERNEL_HIGH,0,dmap);
 
-	dmap += PAGE_SIZE;
+	  dmap += PAGE_SIZE;
 }
 
 dmabufsize=dmasize;

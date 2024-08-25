@@ -59,7 +59,6 @@ mov	[r11],rdx
 mov	r11,qword memory_size
 mov	[r11],rcx
 
-;xchg	bx,bx
 ; clear memory map area before filling it
 
 shr	rcx,12					; get number of 4096-byte pages
@@ -71,6 +70,7 @@ rep	stosq
 mov	r11,memory_map_address
 mov	rdi,[r11]
 mov	rcx,(1024*1024)/PAGE_SIZE		; map first 1mb
+
 mov	rax,qword SYSTEM_USE
 rep	stosq					; real mode idt and data area
 
@@ -90,29 +90,33 @@ add	rdi,[r11]
 mov	rcx,end
 mov	rax,kernel_begin
 sub	rcx,rax					; get kernel size
-add	rcx,PAGE_SIZE
 shr	rcx,12					; get number of 4096-byte pages
+
 rep	stosq
 
 ; map memory map
 
 mov	r11,memory_map_address			; get address of memory map
-mov	rdi,[r11]
-mov	rax,qword 0xfffffffffffff000
-and	rdi,rax					; round down to multiple of 4096
-mov	rdx,rdi
+mov	rdx,[r11]
 
-mov	rax,~KERNEL_HIGH
-and	rdx,rax
+mov	rax,qword 0xfffffffffffff000
+and	rdx,rax					; round down to multiple of 4096
+
+mov	rax,KERNEL_HIGH
+sub	rdx,rax
 
 shr	rdx,12					; get number of 4096-byte pages
-shr	rdx,3					; number of 8-byte entries
+shr	rdx,12					; number of bytes
+
+mov	rdi,[r11]
 add	rdi,rdx
 
 mov	r11,memory_size				; get memory size
 xor	rcx,rcx
+
 mov	ecx,[r11]
 shr	rcx,12					; get number of 4096-byte pages
+shr	rcx,3
 
 mov	rax,qword SYSTEM_USE
 rep	stosq					; page reserved
@@ -130,6 +134,7 @@ add	rdi,rax
 
 mov	r11,stack_size				; get stack size
 xor	rcx,rcx
+
 mov	ecx,[r11]
 shr	ecx,12					; get number of 4096-byte pages
 
@@ -171,6 +176,7 @@ shr	ecx,12					; get number of 4096-byte pages
 
 mov	rax,qword SYSTEM_USE
 rep	stosq
+
 ret
 
 .data

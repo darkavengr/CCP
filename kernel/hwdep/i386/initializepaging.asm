@@ -210,7 +210,7 @@ shl	eax,2					; number if 4-byte entries
 add	ecx,eax
 
 and	ecx,0fffff000h
-add	ecx,1000h
+add	ecx,PAGE_SIZE
 
 shr	ecx,12					; number of page table entries
 mov	edi,ROOT_PAGETABLE

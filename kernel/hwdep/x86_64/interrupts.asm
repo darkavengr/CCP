@@ -30,6 +30,26 @@ global set_interrupt					; set interrupt
 global get_interrupt					; get interrupt
 global load_idt
 global initialize_interrupts
+global int0_handler
+global int1_handler
+global int2_handler
+global int3_handler
+global int4_handler
+global int5_handler
+global int6_handler
+global int7_handler
+global int8_handler
+global int9_handler
+global int10_handler
+global int11_handler
+global int12_handler
+global int13_handler
+global int14_handler
+global int15_handler
+global int16_handler
+global int17_handler
+global int18_handler
+global d_lowlevel
 
 extern exception					; exception handler
 extern exit
@@ -44,13 +64,11 @@ use64
 section .text
 
 %macro initializeinterrupt 4
-push	dword %1			; interrupt number
-mov	rax,qword %2			; handler address
-push	rax
-push	dword %3			; selector
-push	dword %4			; flags
+mov	rdi,qword %1			; flags
+mov	rsi,qword %2			; selector
+mov	rdx,qword %3			; address
+mov	rcx,qword %4			; interrupt number
 call	set_interrupt
-add	rsp,32				; fix stack pointer
 %endmacro
 
 ;
@@ -64,26 +82,26 @@ initialize_interrupts:
 
 ; Initialize exception interrupts
 
-initializeinterrupt 0,int0_handler,8,0x8e00		; Divide by zero
-initializeinterrupt 1,int1_handler,8,0x8e00		; Debug exception
-initializeinterrupt 2,int2_handler,8,0x8e00		; Non-maskable interrupt
-initializeinterrupt 3,int3_handler,8,0x8e00		; Breakpoint exception
-initializeinterrupt 4,int4_handler,8,0x8e00		;'Into detected overflow'
-initializeinterrupt 5,int5_handler,8,0x8e00		; Out of bounds exception
-initializeinterrupt 6,int6_handler,8,0x8e00		;  Invalid opcode exception
-initializeinterrupt 7,int7_handler,8,0x8e00		; No coprocessor exception
-initializeinterrupt 8,int8_handler,8,0x8e00		; Double fault
-initializeinterrupt 9,int9_handler,8,0x8e00		; Coprocessor segment overrun
-initializeinterrupt 10,int10_handler,8,0x8e00	; Invalid TSS
-initializeinterrupt 11,int11_handler,8,0x8e00	; Segment not present
-initializeinterrupt 12,int12_handler,8,0x8e00	; Stack fault
-initializeinterrupt 13,int13_handler,8,0x8e00	; General protection fault
-initializeinterrupt 14,int14_handler,8,0x8e00	; Page fault
-initializeinterrupt 15,int15_handler,8,0x8e00	; Unknown interrupt exception
-initializeinterrupt 16,int16_handler,8,0x8e00	; Coprocessor fault
-initializeinterrupt 17,int17_handler,8,0x8e00	; Alignment check exception
-initializeinterrupt 18,int18_handler,8,0x8e00	; Machine check exception
-initializeinterrupt 0x21,d_lowlevel,8,0xee00	; Syscall interrupt
+initializeinterrupt 0x8e00,8,int0_handler,0		; Divide by zero
+initializeinterrupt 0x8e00,8,int1_handler,1		; Debug exception
+initializeinterrupt 0x8e00,8,int2_handler,2		; Non-maskable interrupt
+initializeinterrupt 0x8e00,8,int3_handler,3		; Breakpoint exception
+initializeinterrupt 0x8e00,8,int4_handler,4		;'Into detected overflow'
+initializeinterrupt 0x8e00,8,int5_handler,5		; Out of bounds exception
+initializeinterrupt 0x8e00,8,int6_handler,6		; Invalid opcode exception
+initializeinterrupt 0x8e00,8,int7_handler,7		; No coprocessor exception
+initializeinterrupt 0x8e00,8,int8_handler,8		; Double fault
+initializeinterrupt 0x8e00,8,int9_handler,9		; Coprocessor segment overrun
+initializeinterrupt 0x8e00,8,int10_handler,10		; Invalid TSS
+initializeinterrupt 0x8e00,8,int11_handler,11		; Segment not present
+initializeinterrupt 0x8e00,8,int12_handler,12		; Stack fault
+initializeinterrupt 0x8e00,8,int13_handler,13		; General protection fault
+initializeinterrupt 0x8e00,8,int14_handler,14		; Page fault
+initializeinterrupt 0x8e00,8,int15_handler,15		; Unknown interrupt exception
+initializeinterrupt 0x8e00,8,int16_handler,16		; Coprocessor fault
+initializeinterrupt 0x8e00,8,int17_handler,17		; Alignment check exception
+initializeinterrupt 0x8e00,8,int18_handler,18		; Machine check exception
+initializeinterrupt 0xee00,8,d_lowlevel,0x21		; Syscall interrupt
 ret
 
 ;
@@ -123,45 +141,44 @@ ret
 ;
 ; Set interrupt
 ;
-; [rsp+32]			; Interrupt number
-; [rsp+24]			; Address of interrupt handler
-; [rsp+16]			; Selector
-; [rsp+8]			; Flags
-;
+; RDI			; Flags
+; RSI			; Selector
+; RDX			; Address of interrupt handler
+; RCX			; Interrupt number
+; 
 ; Returns -1 on error or 0 on success
 ;
+
 set_interrupt:
-mov	rax,[rsp+32]
-cmp	rax,256				; check if valid interrupt number
+mov	rbx,qword 256
+cmp	rcx,rbx					; check if valid interrupt number
 jl	set_interrupt_number_is_ok
 
-mov	rax,0xffffffffffffffff
+mov	rax,qword 0xffffffffffffffff	; return error
 jmp	end_set_interrupt
 
 set_interrupt_number_is_ok:
-mov	rdi,rax				; point to entry in the IDT
-shl	rdi,4				; each interrupt is 16 bytes long
+mov	rax,rcx				; point to entry in the IDT
+shl	rax,4				; each interrupt is 16 bytes long
 
-mov	rax,qword idttable
-add	rdi,rax
+mov	rbx,qword idttable		; point to IDT
+add	rax,rbx				; point to IDT entry
 
-xor	edx,edx
-mov	[rdi+12],edx
+xor	ebx,ebx
+mov	[rax+12],ebx			; put 0
 
-mov	rax,[rsp+24]			; get address
-mov	[rdi],ax			; bits 0-15
+mov	[rax],dx			; bits 0-15
 
-shr	rax,16				; get bits 16-31
-mov	[rdi+6],ax
+shr	rdx,16				; get bits 16-31
+mov	[rax+6],dx
 
-shr	rax,16				; get bits 32-63
-mov	[rdi+8],eax
+shr	rdx,16				; get bits 32-63
+mov	[rax+8],edx
 
-mov	rax,[rsp+16]
-mov	[rdi+2],ax			; put selector
+mov	rbx,rsi
+mov	[rax+2],bx			; put selector
 
-mov	rax,[rsp+8]
-mov	[rdi+4],ax			; put flags
+mov	[rax+4],di			; put flags
 
 xor	rax,rax				; return success
 

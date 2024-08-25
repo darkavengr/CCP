@@ -2,7 +2,7 @@ OUTPUT_FORMAT("elf64-x86-64")
 
 SECTIONS
 {
-  . = 0xFFFFFF0000100000;
+  . = 0xffffff0000100000;
  kernel_begin = 0xFFFFFF0000100000;
  .text : { *(.text) }
  .data : { *(.data) }

@@ -183,16 +183,24 @@ highest_pid_used++;
 /* Part two of enviroment variables duplication */
 
 /* allocate enviroment block at the highest user program address minus enviroment size */
-currentprocess->envptr=alloc_int(ALLOC_NORMAL,getpid(),ENVIROMENT_SIZE,KERNEL_HIGH-ENVIROMENT_SIZE-1);
+
+currentprocess->envptr=alloc_int(ALLOC_NORMAL,getpid(),ENVIROMENT_SIZE,END_OF_LOWER_HALF-ENVIROMENT_SIZE);
 
 if(saveenv != NULL) {
 	memcpy(currentprocess->envptr,saveenv,ENVIROMENT_SIZE);		/* copy from saved enviroment buffer */
 	kernelfree(saveenv);
 }
 
+kprintf_direct("EXEC BREAK 1\n");
+asm("xchg %bx,%bx");
+
 /* allocate user mode stack below enviroment variables */
 
-stackp=alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,KERNEL_HIGH-PROCESS_STACK_SIZE-ENVIROMENT_SIZE);
+stackp=alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,(END_OF_LOWER_HALF-PROCESS_STACK_SIZE-ENVIROMENT_SIZE));
+
+kprintf_direct("EXEC BREAK 2\n");
+asm("xchg %bx,%bx");
+
 if(stackp == NULL) {
 	currentprocess=oldprocess;	/* restore current process pointer */
 
@@ -1194,6 +1202,8 @@ return(currentprocess->errorhandler(name,drive,flags,error));
 void processmanager_init(void) {
 processes=NULL;
 currentprocess=NULL;
+executableformats=NULL;
+highest_pid_used=0;
 last_error_no_process=0;
 
 initialize_mutex(&process_mutex);

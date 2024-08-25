@@ -48,7 +48,7 @@ distclean:
 	rm kernel/drive.c
 	rm obj/@arch@/*
 	rm command/*.o
-	rm *.map
-	rm ccp.sym
+	rm mapfiles/*.map
+	rm mapfiles/ccp.sym
 	rm bin/@arch@/*
 

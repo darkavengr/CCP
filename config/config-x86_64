@@ -12,7 +12,7 @@ CC=x86_64-elf-gcc
 LD=x86_64-elf-ld
 
 # options to pass to the compiler, @cc_opts@ in Makefile.in is replaced with this
-CC_OPTS=-c -w -mcmodel=large -ffreestanding -nostdlib -lgcc
+CC_OPTS=-c -w -mcmodel=large -ffreestanding -nostdlib -mno-red-zone
 
 # options to pass to the assembler, @asm_opts@ in Makefile.in is replaced with this
 

@@ -19,6 +19,7 @@
 
 KERNEL_HIGH	equ 0xffffff0000000000
 PAGE_SIZE equ 4096					; size of page  DON'T CHANGE	
-BASE_OF_SECTION equ 0xFFFFFF0000100000
 phys_start_address equ 0x100000
+
+
 

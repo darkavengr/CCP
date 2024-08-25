@@ -4,14 +4,10 @@
 #define PAGE_RO 	0
 #define PAGE_RW		2 
 
-#define PML4_PHYS_LOCATION	0x1000
-#define PML4_LOCATION		0xfffffffffffff000
-#define PDPT_LOCATION		0xffffffffffffe000
-#define PAGEDIR_LOCATION	0xffffffffffc00000
-#define PAGETABLE_LOCATION	0xffffffff80000000
+#define PML4_PHYS_LOCATION	 0x1000
 
-extern end(void);
-extern kernel_begin(void);
+#define PML4_HIGHER_HALF_ENTRY	511
+
 size_t addpage_int(size_t mode,size_t process,size_t page,void *physaddr); 
 size_t page_init(size_t process);
 size_t removepage(size_t page,size_t process);

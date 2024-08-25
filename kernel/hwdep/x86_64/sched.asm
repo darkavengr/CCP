@@ -121,7 +121,7 @@ pop	rcx
 pop	rbx
 pop	rax
 
-iret						; jump to RIP
+iretq						; jump to RIP
 
 ;
 ; Switch task

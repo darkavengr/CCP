@@ -2,6 +2,7 @@ global set_gdt
 
 extern gdt
 extern gdt_end
+extern gdtinfo_high_64
 
 %define offset
 
@@ -9,7 +10,7 @@ GDT_LIMIT_LOW	equ 0
 GDT_BASE_LOW	equ 2
 GDT_BASE_MIDDLE equ 4
 GDT_ACCESS	equ 5
-GDT_GRANULARITY equ 6
+GDT_FLAGS	equ 6
 GDT_BASE_HIGH	equ 7
 
 section .text
@@ -20,23 +21,20 @@ use64
 ; Set GDT entry
 ;
 ; In: 
-; [rsp+8]	GDT entry number
-; [rsp+16]	Base address
-; [rsp+24]	Limit
-; [rsp+32]	Access bits
-; [rsp+40]	Granularity bits
+; RDI	GDT entry number
+; RSI	Base address
+; RDX	Limit
+; RCX	Access bits
+; R8	Flags
 ;
 ; Returns: -1 on error or 0 on success
 ;
 
 set_gdt:
-mov	rdi,[rsp+4]					; get gdt entry number
-mov	edx,[rsp+8]					; get base
-mov	rcx,[rsp+12]					; get limit
-mov	rbx,[rsp+16]					; get access
-mov	rax,[rsp+20]					; get granularity
+xchg	bx,bx
 
-shl	rdi,4						; multiply by size of gdt entry (16)
+shl	rdi,3						; multiply by size of gdt entry (8)
+
 mov	r11,qword gdt
 add	rdi,r11						; point to gdt entry
 
@@ -49,34 +47,37 @@ ret
 
 gdt_is_ok:
 ; put base
-mov	rsi,rdx
-and	rdx,0xffff
-mov	[rel rdi+GDT_BASE_LOW],dx
 
-mov	rdx,rsi
-shr	rdx,16
-and	rdx,0xff
-mov	[rel rdi+GDT_BASE_MIDDLE],dl
+xchg	bx,bx
+mov	rax,rsi
+and	rax,0xffff
+mov	[rdi+GDT_BASE_LOW],ax
 
-mov	rdx,rsi
-shr	rdx,24
-and	rdx,0xff
-mov	[rel rdi+GDT_BASE_HIGH],dl
+mov	rax,rsi
+shr	rax,16
+and	rax,0xff
+mov	[rdi+GDT_BASE_MIDDLE],al
+
+mov	rax,rsi
+shr	rax,24
+and	rax,0xff
+mov	[rdi+GDT_BASE_HIGH],al
 
 ; put limit
-mov	rsi,rcx
-and	rcx,0xffff
-mov	[rel rdi+GDT_LIMIT_LOW],cx
+mov	rax,rdx
+and	rax,0xffff
+mov	[rdi+GDT_LIMIT_LOW],ax
 
-; put granularity
-mov	rcx,rsi
-shr	rcx,16
-and	rcx,0x0f
-and	rax,0xf0
-or	rcx,rax
-mov	[rel rdi+GDT_GRANULARITY],cl
 
-mov	[rel rdi+GDT_ACCESS],bl		; put access
+; put flags
+
+mov	rax,rdx				; get limit
+shr	rax,16				; get bits 16-19
+and	rax,0x0f			; move them to lower nibble
+
+or	rax,r8				; copy flags+limit
+mov	[rdi+GDT_FLAGS],al
+mov	[rdi+GDT_ACCESS],cl		; put access byte
 
 xor	rax,rax			; return success
 ret

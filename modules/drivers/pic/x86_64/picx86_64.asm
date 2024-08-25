@@ -24,11 +24,11 @@ global irq_exit
 ; IRQ handlers
 ;
 irq0:
-;xchg	bx,bx
 mov	qword [rel irqnumber],0
 jmp	irq
 
 irq1:
+;xchg	bx,bx
 mov	qword [rel irqnumber],1
 jmp	irq
 
@@ -73,7 +73,6 @@ mov	qword [rel irqnumber],11
 jmp	irq
 
 irq12:
-;xchg	bx,bx
 mov	qword [rel irqnumber],12
 jmp	irq
 
@@ -104,28 +103,29 @@ push	r14
 push	r15
 
 mov	rdx,[rel irqnumber]
-shl	rdx,2					; multiply by four
+shl	rdx,3					; multiply by eight
 
 mov	rax,qword irq_handlers			; add start of irq handlers
-mov	rax,[rax]				; get irq handler address
 add	rdx,rax
+
+mov	rdx,[rdx]				; get handler
 
 test	rdx,rdx					; if no handler, return
 jz	irq_exit
 
-call	rdx					; call irq handler
+call	rdx					; call IRQ handler
 
 irq_exit:
 nop
-mov	al,20h				        ; reset master
-out	020h,al
+mov	al,0x20				        ; reset master
+out	0x20,al
 
-mov	ebx,[rel irqnumber]			        ; get interrupt number
-cmp	ebx,7			     	        ; if slave irq
+mov	ebx,[rel irqnumber]		        ; get IRQ number
+cmp	ebx,7			     	        ; if slave IRQ
 jle	nslave				        ; continue if not
 
-mov	al,20h				        ; reset slave			     
-out	0a0h,al
+mov	al,0x20				        ; reset slave			     
+out	0xA0,al
 
 nslave:
 pop	r15						; restore registers
@@ -140,7 +140,7 @@ pop	rdx
 pop	rcx
 pop	rbx
 pop	rax
-iret						; return
+iretq						; return
 
 irqnumber dq 0
 

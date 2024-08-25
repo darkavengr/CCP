@@ -2,9 +2,8 @@ global initialize_tss
 global set_tss_rsp0
 global get_stack_top
 
-extern set_gdt
+extern gdt
 
-%define offset
 %include "init.inc"
 %include "kernelselectors.inc"
 
@@ -23,9 +22,8 @@ use64
 ;
 
 set_tss_rsp0:
-mov	rax,[rsp+8]					; get address
 mov	r11,rsp0
-mov	[r11],rax
+mov	[r11],rdi
 ret
 
 ;
@@ -36,21 +34,42 @@ ret
 ; Returns: Nothing
 ;
 initialize_tss:
-;xchg	bx,bx
-xor	rax,rax
-push	rax
-mov	rax,0xe9
-push	rax
-mov	rax,qword (offset end_tss-offset tss)+offset tss	; limit
-push	rax
-mov	rax,qword offset tss				; base
-push	rax
-mov	rax,qword TSS_GDT_ENTRY				; gdt entry
-push	rax
-call	set_gdt
-add	rsp,40
+; don't use set_gdt(), TSSs have a different format
+; and TSS GDT entries take up two GDT entries
 
-mov	ax,TSS_SELECTOR + 3				; load tss for interrupt calls from ring 3
+mov	rdi,qword gdt
+
+mov	rax,qword TSS_GDT_ENTRY
+shl	rax,3
+add	rdi,rax
+
+mov	rax,qword (end_tss-tss)+tss
+mov	[rdi],ax			; put bits 0-15 of limit
+
+shr	rax,16				
+and	al,0fh				; get bottom 4 bits
+
+mov	[rdi+4],al			; put bits 16-23 of limit
+
+mov	rax,qword tss
+mov	[rdi+2],ax			; put bits 0-15 of base
+
+shr	rax,16
+mov	[rdi+4],al			; put bits 16-23 of base
+
+shr	rax,8
+mov	[rdi+7],al			; put bits 24-31 of base
+
+shr	rax,8
+mov	[rdi+8],al			; put bits 32-63 of base
+
+xor	eax,eax
+mov	[rdi+12],eax			; put reserved bits
+
+mov	al,(1 << 7) | (3 << 5) | 9	; access byte
+mov	[rdi+5],al
+
+mov	ax,TSS_SELECTOR + 3		; load tss for interrupt calls from ring 3
 ltr	ax
 ret
 

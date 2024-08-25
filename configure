@@ -51,18 +51,16 @@ while [ ${#response} == 0 ]; do		# no input, use default
 	
 done
 
-if [ ! -e config-$compile_arch ]; then		# check if config file exists
-	echo configure: Missing file config-$compile_arch
+if [ ! -e config/config-$compile_arch ]; then		# check if config file exists
+	echo configure: Missing file config/config-$compile_arch
 	exit 1
 fi
 
-if [ ! -e bin/$compile_arch ]; then
-	mkdir bin/$compile_arch
-fi
-
-if [ ! -e obj/$compile_arch ]; then
-	mkdir obj/$compile_arch
-fi
+for f in bin/$compile_arch obj/$compile_arch mapfiles; do
+	if [ ! -e $f ]; then
+		mkdir -p $f
+	fi
+done
 
 echo Compiling for $compile_arch
 

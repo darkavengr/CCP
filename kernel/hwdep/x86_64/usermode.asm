@@ -36,7 +36,7 @@ use
 ; Warning: the address must be accessible from user-mode or it will cause a general protection fault.
 ;
 switch_to_usermode_and_call_process:
-mov	rbx,[rsp+8]				; get entry point
+mov	rdi,[rsp+8]				; get entry point
 
 ; Create a stack frame to transfer to user-mode
 
@@ -51,7 +51,7 @@ or	rax,200h				; enable interrupts
 push	rax
 
 push	USER_CODE_SELECTOR			; user cs
-push	rbx					; user rip
+push	rdi					; user rip
 iretq
 
 

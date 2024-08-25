@@ -31,12 +31,12 @@ ROOT_PML4		equ	0x1000
 ROOT_PDPT		equ	0x3000
 ROOT_PAGEDIR		equ	0x4000
 ROOT_PAGETABLE		equ	0x5000
-ROOT_EMPTY		equ	0x6000
 
-KERNEL_STACK_SIZE equ  65536*2				; size of initial kernel stack
-INITIAL_KERNEL_STACK_ADDRESS equ 0x60000		; intial kernel stack address
+KERNEL_STACK_SIZE equ  65536*3				; size of initial kernel stack
+INITIAL_KERNEL_STACK_ADDRESS equ 0x70000		; intial kernel stack address
 DMA_BUFFER_SIZE equ 32768	
-GDT_LIMIT equ 5
+GDT_LIMIT equ 10
+
 
 PAGE_PRESENT equ 1
 PAGE_RW equ 2
@@ -50,7 +50,7 @@ extern kernel_begin						; start of kernel in memory
 extern filemanager_init						; intialize file manager
 extern memorymanager_init					; intialize memory manager
 extern processmanager_init					; intialize process manager
-extern devicemanager_init					; intialize device
+extern devicemanager_init					; intialize device manager
 extern init_multitasking					; initalize multitasking
 extern driver_init						; initialize built-in drivers
 extern initialize_interrupts					; initialize interrupts
@@ -71,6 +71,7 @@ global _asm_init
 global MEMBUF_START
 global gdt
 global gdt_end
+global gdtinfo_high_64
 
 %include "init.inc"
 %include "kernelselectors.inc"
@@ -181,7 +182,7 @@ test	edx,edx
 jnz	long_mode_supported
 
 ;
-; long mode is not supported, display a message and halt
+; if long mode is not supported, display a message and halt
 ;
 not_long_mode:
 mov	esi,(no_long_mode-_asm_init)+phys_start_address
@@ -219,16 +220,16 @@ mov	[edi+(510*8)],eax		; map higher half
 mov	eax,ROOT_PML4+PAGE_RW+PAGE_PRESENT	; map pml4 to itself
 mov	[edi+(511*8)],eax
 
-mov	eax,ROOT_PML4			; set pml4phys
-mov	[edi+4096],eax
-
 mov	edi,ROOT_PDPT			; create pdpt
 mov	eax,ROOT_PAGEDIR+PAGE_RW+PAGE_PRESENT
 mov	[edi],eax
 
-mov	edi,ROOT_PAGEDIR			; create page table
+mov	edi,ROOT_PAGEDIR			; create page directory
 mov	eax,ROOT_PAGETABLE+PAGE_RW+PAGE_PRESENT
 mov	[edi],eax
+
+mov	eax,ROOT_PML4			; set pml4phys
+mov	[eax+4096],eax
 
 ; create page table
 
@@ -247,14 +248,13 @@ add	ecx,[esi]
 
 mov	esi,BOOT_INFO_MEMORY_SIZE			; memory map size
 mov	eax,[esi]
+and	eax,0xfffff000
 
 shr	eax,12					; number of pages
 shl	eax,3					; number of 8-byte entries
-and	eax,0xfffff000
-add	eax,1000h
 
 add	ecx,eax
-shr	ecx,12					; number of page table entries
+shr	eax,12					; number of page table entries
 
 mov	edi,ROOT_PAGETABLE
 mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
@@ -265,7 +265,7 @@ map_next_page:
 mov	[edi],eax			; low dword
 
 add	edi,8
-add	eax,1000h			; point to next page
+add	eax,PAGE_SIZE			; point to next page
 loop	map_next_page
 
 mov	eax,cr4				; enable pae paging
@@ -294,6 +294,7 @@ mov	ds,ax
 mov	es,ax
 mov	fs,ax
 mov	gs,ax
+mov	ss,ax
 
 db	66h				; jmp dword KERNEL_CODE_SELECTOR:longmode
 db	0eah
@@ -346,6 +347,7 @@ mov	rsp,qword INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH+KERNEL_STACK_SIZE	; tempo
 mov	rbp,qword INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH
 
 ; Unmap lower half
+
 mov	rsi,qword ROOT_PML4
 xor	rax,rax
 mov	[rsi],rax
@@ -374,13 +376,11 @@ call	initialize_memory_map		; initialize memory map
 mov	rdi,qword DMA_BUFFER_SIZE
 call	memorymanager_init		; initalize memory manager
 
-xchg	bx,bx
 call	filemanager_init		; initialize file manager
-
 
 ; This block of code is a copy of the
 ; irq remapping code from drivers/pic/pic.c
-i; translated into assembler.
+; translated into assembler.
 ;
 ; It is  included here to make sure that
 ; the IRQs are remapped to interrupts
@@ -429,7 +429,8 @@ xor	al,al
 mov	dx,0A1h
 out	dx,al
 
-call	init_multitasking
+;call	init_multitasking
+
 call	driver_init				; initialize built-in drivers and filesystems
 
 call	initrd_init

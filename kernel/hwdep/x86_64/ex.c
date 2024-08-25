@@ -33,6 +33,7 @@
 #include "memorymanager.h"
 #include "process.h"
 #include "string.h"
+#include "debug.h"
 
 #define DIVZERO 	0
 #define DEBUGEX		1
@@ -59,9 +60,9 @@ void exception(uint64_t *regs,uint64_t e);
 /*
  * x86 exception handler
  *
- * In: uint64_t *regs	Registers
-       uint64_t e	Error number
-       uint64_t dummy	Dummy value
+ * In: regs	Registers
+       e	Error number
+       dummy	Dummy value
  *
  * Returns nothing
  * 
@@ -85,9 +86,10 @@ uint64_t flagsmask;
 char *b;
 char processname[MAX_PATH];
 size_t shiftcount;
+size_t rowcount;
 
 if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("Kernel panic [%s] at address %lX\n",exp[e],regs[0]);
+	kprintf_direct("\nKernel panic [%s] at address %lX\n",exp[e],regs[0]);
 }
 else
 {
@@ -97,11 +99,17 @@ else
 }
 
 count=0;
+rowcount=0;
 
 while(regnames[count] != NULL) {							/* dump registers */
 	if(regnames[count] == NULL) break;
 
-	kprintf_direct("%s=%lX\n",regnames[count],regs[count]);
+	kprintf_direct("%s=%lX ",regnames[count],regs[count]);
+
+	if(++rowcount == 3) {				/* at end of row */
+		kprintf_direct("\n");
+		rowcount=0;
+	}
 
 	count++;
 }

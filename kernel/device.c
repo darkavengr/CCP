@@ -38,7 +38,7 @@ MUTEX blockdevice_mutex;
 MUTEX characterdevice_mutex;
 uint32_t drive_bitmap=0;
 
-void *irq_handlers[15];
+void *irq_handlers[MAX_IRQ];
 	
 /*
  * Add block device
@@ -112,7 +112,7 @@ charnext=characterdevs;
 /* find device */
 
 if(characterdevs == NULL) {				/* if empty allocate struct */
-	characterdevs=kernelalloc(sizeof(CHARACTERDEVICE));
+	characterdevs=kernelalloc(0x1234);
 	if(characterdevs == NULL) return(-1);
 
 	memset(characterdevs,0,sizeof(CHARACTERDEVICE));
@@ -132,7 +132,7 @@ else
 	 	charnext=charnext->next;
 	} while(charnext != NULL);
 
-charlast->next=kernelalloc(sizeof(CHARACTERDEVICE)); /* add to struct */
+charlast->next=kernelalloc(0x1234); //sizeof(CHARACTERDEVICE)); /* add to struct */
 if(charlast->next == NULL) return(-1);
 
 charnext=charlast->next;
@@ -564,6 +564,8 @@ initialize_mutex(&blockdevice_mutex);		/* intialize mutex */
 initialize_mutex(&characterdevice_mutex);	/* intialize mutex */
 
 drive_bitmap=0;
+
+memset(irq_handlers,0,MAX_IRQ*sizeof(void *));
 }
 
 /*

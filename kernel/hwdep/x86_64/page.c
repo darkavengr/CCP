@@ -44,7 +44,6 @@ struct ppt *processpaging_end=NULL;
 
 SSSSSSSSSSSSSSSSZZZZZZZZZXXXXXXXXXAAAAAAAAABBBBBBBBBCCCCCCCCCCCC
 
-
 /* SSSSSSSSSSSSSSSS     ZZZZZZZZZ    XXXXXXXXX    AAAAAAAAA         BBBBBBBBB     CCCCCCCCCCCC
    Set to MSB of PML4  |   PML4 |    |  PDPT |    | page directory| | page table| |  4k page |  */
 
@@ -66,9 +65,14 @@ size_t pml4_of;
 size_t pdpt_of;
 size_t pd;
 size_t pt;
-uint64_t *v;
+size_t p;
+uint64_t *pml4ptr;
+uint64_t *pdptptr;
+uint64_t *pdptr;
+uint64_t *ptptr;
 uint64_t c;
 uint64_t addr;
+uint64_t *v;
 
 next=processpaging;					/* find process page directory */
 
@@ -83,73 +87,84 @@ if(next == NULL) {
 	return(-1);
 }
 
+kprintf_direct("**********************\n");
+
+
 pml4_of=((page & 0xFF8000000000) >> 39);
-pdpt_of=((page & 0x7FFFE00000) >> 30);
+pdpt_of=((page & 0x7FC0000000) >> 30);
 pd=((page & 0x3FE00000) >> 21);
 pt=((page & 0x1FF000) >> 12);
 
+pml4ptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) 0x1ff << 12),47);
+pdptptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) pml4_of << 12),47);
+pdptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) pml4_of << 21) | ((uint64_t) pdpt_of << 12),47);
+ptptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) pml4_of << 30) | ((uint64_t) pdpt_of << 21) | ((uint64_t) pd << 12),47);
+
 //DEBUG_PRINT_HEX_LONG(page);
-//DEBUG_PRINT_HEX(physaddr);
+//DEBUG_PRINT_HEX_LONG(physaddr);
 //DEBUG_PRINT_HEX_LONG(pml4_of);
 //DEBUG_PRINT_HEX_LONG(pdpt_of);
 //DEBUG_PRINT_HEX_LONG(pd);
 //DEBUG_PRINT_HEX_LONG(pt);
-//asm("xchg %bx,%bx");
 
-if(next->pml4[pml4_of] == 0) {			/* if pml4 empty */
+if(pml4ptr[pml4_of] == 0) {			/* if pml4 empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
-	if(c == -1) {					/* allocation error */
+	if(c == NULL) {					/* allocation error */
 		setlasterror(NO_MEM);
 		return(-1);
 	}
+	
+//	kprintf_direct("pml4 entry (pdpt) physical address=%lX\n",c);
+	pml4ptr[pml4_of]=(c & 0xfffffffffffff000) | PAGE_PRESENT;
 
-	////kprintf_direct("pml4 physical address=%lX\n",c);
+//	if(c ==  0x2009000) asm("xchg %bx,%bx");
 
-	next->pml4[pml4_of]=(c & 0xfffffffffffff000) | PAGE_PRESENT;
+//	kprintf_direct("pml4 virtual address=%lX\n",&pml4ptr[pml4_of]);
 }
 
-v=PML4_LOCATION+(pml4_of & 0xfff);
+//kprintf_direct("pdpt virtual address=%lX\n",&pdptptr[pdpt_of]);
 
-////kprintf_direct("pml4 virtual address=%lX\n",v);
-
-if(v[pdpt_of] == 0) {					/* if pdpt empty */
+if(pdptptr[pdpt_of] == 0) {					/* if pdpt empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
 
-	////kprintf_direct("pdpt physical address=%lX\n",c);
+//	kprintf_direct("pdpt physical address=%lX\n",c);
 
-	if(c == -1) {					/* allocation error */
+	if(c == NULL) {					/* allocation error */
 		setlasterror(NO_MEM);
 		return(-1);
 	}
 
-	v[pdpt_of]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;
+	pdptptr[pdpt_of]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;
+
+//	if(c ==  0x2009000) asm("xchg %bx,%bx");
 }
 
-v=PAGEDIR_LOCATION+(pdpt_of & 0xfff);
+//kprintf_direct("page directory virtual address=%lX\n",&pdptr[pdpt_of]);
 
-if(v[pd] == 0) {				/* if page directory empty */
+if(pdptr[pd] == 0) {				/* if page directory empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
 
-	if(c == -1) {					/* allocation error */
+	if(c == NULL) {					/* allocation error */
 		setlasterror(NO_MEM);
 		return(-1);
 	}
+	
+	kprintf_direct("page directory physical address=%lX\n",c);
 
-	////kprintf_direct("page directory physical address=%lX\n",c);
+	pdptr[pd]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;
 
-	v[pd]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;
+//	if(c ==  0x2009000) asm("xchg %bx,%bx");
 }
 	
 /* page tables are mapped at PAGETABLE_LOCATION via recursive paging */
 
-v=PAGETABLE_LOCATION+(pd*4096);
-
-////kprintf_direct("page directory virtual address=%lX\n",v);
-//asm("xchg %bx,%bx");
-
 addr=physaddr;
 
+v=((size_t) ptptr | (pml4_of << 30) | (pdpt_of << 21) | (pd << 12));
+
 v[pt]=(size_t) (addr & 0xfffffffffffff000)+mode;			/* page table */
+
+//if(physaddr ==  0x2009000) asm("xchg %bx,%bx");
 
 return(0);
 }
@@ -220,6 +235,7 @@ last->pml4[511]=oldpp | PAGE_PRESENT;		/* map last PML4 to PML4 */
 last->next=NULL;
 return(0);
 }
+
 /*
 * Remove page
 *
@@ -244,15 +260,19 @@ return(NULL);
 
 size_t freepages(size_t process) {
 struct ppt *next;
-size_t count;
-size_t countx;
 size_t *v;
 struct ppt *last;
 uint64_t *pagedir;
+size_t count;
+size_t pml4count;
 size_t pdptcount;
+size_t pdcount;
+size_t ptcount;
+uint64_t *pdptr;
+uint64_t *ptptr;
 
 next=processpaging;
-
+;
 while(next != NULL) {					/* find process */
 	if(next->process == process) break;		
 
@@ -260,29 +280,34 @@ while(next != NULL) {					/* find process */
 	next=next->next;
 }
 
-v=PAGETABLE_LOCATION;
+if(next == NULL) {
+	setlasterror(INVALID_PROCESS);
+	return(-1);
+}
 
-for(count=0;count != 512 ;count++) {				/* page directories */
+for(pml4count=0;pml4count != 512;pml4count++) {
+	for(pdptcount=0;pdptcount != 512;pdptcount++) {				/* page directories */
+		for(pdcount=0;pdcount != 512;pdcount++) {				/* page directories */
+			pdptr=signextend((0x1ff << 39) | (0x1ff << 30) | (pml4count << 21) | (pdptcount << 12),47);
 
-	v=(uint64_t)pagedir[count] & 0xfffffffffffff000;			/* point to page table */   
+			if(pdptr[pdcount] != 0) {							/* in use */
+				v=signextend((0x1ff << 39) | (pml4count << 30) | (pdptcount << 21) | (pdcount << 12),47);
 
-	if(v != 0) {							/* in use */
-
-		v += KERNEL_HIGH;
-
-		for(countx=0;countx<511;countx++) {
-			if(v[countx] != 0) {					/* free page table  */
-			     kernelfree(v[countx] & 0xfffffffffffff000);
-			     removepage(v[countx] & 0xfffffffffffff000,getpid());
-			}	 
-	  	}
+				for(ptcount=0;ptcount<511;ptcount++) {
+					if(v[ptcount] != 0) {					/* free page table  */
+					     kernelfree(v[ptcount] & 0xfffffffffffff000);
+					     removepage(v[ptcount] & 0xfffffffffffff000,getpid());
+					}
+				}	 
+		  	}
+		}
 	}
 }
 
 last->next=next->next;						/* entry before this entry will now point to the next entry,removing it from the chain */
 kernelfree(next);						/* and free it */
 
-return(NULL);
+return(0);
 }
 
 /*
@@ -301,8 +326,8 @@ size_t s;
 size_t start;
 size_t end;
 struct ppt *next;
-uint64_t *pagetableptr;
-uint64_t *pagedirptr;
+uint64_t *pdptr;
+uint64_t *ptptr;
 uint64_t *pdptptr;
 uint64_t *pml4ptr;
 size_t pdcount;
@@ -328,6 +353,7 @@ if(next == NULL) {
 
 /* walk through page directories and tables to find free pages in directories already used */
 
+
 if(alloc == ALLOC_NORMAL) {
 	start=0;	
 	end=255;	
@@ -338,58 +364,59 @@ else
 	end=511;
 }
 
-////kprintf_direct("FIND FREE VIRTUAL ADDRESS\n");
-
-/* search through mapped in page tables for a free entry */
-
-//asm("xchg %bx,%bx");
 last=0;
 
-for(pml4count=start;pml4count<end;pml4count++) {
+//kprintf_direct("findfreevirtualaddress() pml4ptr=%lX\n",next->pml4);
 
-//	//DEBUG_PRINT_HEX_LONG(pml4count);
-//	//DEBUG_PRINT_HEX_LONG(next->pml4[pml4count]);
+for(pml4count=start;pml4count != end;pml4count++) {
+
+//	DEBUG_PRINT_HEX_LONG(next->pml4[pml4count]);
 
 	if(next->pml4[pml4count] != 0) {
-//		//kprintf_direct("FOUND PML4 ENTRY\n");
-	
-		pdptptr=KERNEL_HIGH+(next->pml4[pml4count] & 0xfffffffffffff000);
+		pdptptr=signextend((uint64_t) (((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) pml4count << 12)),47);
 
-		//DEBUG_PRINT_HEX_LONG(pdptptr);
+//		kprintf_direct("findfreevirtualaddress() pdptptr=%lX\n",pdptptr);
 		//asm("xchg %bx,%bx");
 
-		for(pdptcount=0;pdptcount<511;pdptcount++) {
+		for(pdptcount=0;pdptcount != 511;pdptcount++) {
 
 			if(pdptptr[pdptcount] != 0) {
-//				//kprintf_direct("FOUND PDPT ENTRY\n");
 
-				pagedirptr=KERNEL_HIGH+(pdptptr[pdptcount] & 0xfffffffffffff000);
+				pdptr=signextend(((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) pml4count << 21) | ((uint64_t) pdptcount << 12)),47);
 
-				//DEBUG_PRINT_HEX_LONG(pagedirptr);
 				//asm("xchg %bx,%bx");
 
 				for(pdcount=0;pdcount<511;pdcount++) {			/* pdpts */     
 
-			  		if(pagedirptr[pdcount] == 0) {
+					//kprintf_direct("findfreevirtualaddress() pdptr=%lX\n",pdptr);
 
-						pagetableptr=KERNEL_HIGH+(pagedirptr[pdcount] & 0xfffffffffffff000);
+			  		if(pdptr[pdcount] != 0) {
+			
+//						kprintf_direct("pt offsets=%lX %lX %lX %lX\n",pml4count,pdptcount,pdcount,last);
 
-						for(countx=0;countx<1023;countx++) {   
+						ptptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) pml4count << 30) | ((uint64_t) pdptcount << 21) | ((uint64_t) pdcount << 12),47);
+
+						//kprintf_direct("findfreevirtualaddress() ptptr=%lX\n",ptptr);
+
+						s=0;
+
+						for(ptcount=0;ptcount != 511;ptcount++) {   
    
-							if(pagetableptr[countx] == 0) {
-	        						if(s == 0) last=countx;
+						//	kprintf_direct("ptptr[%lX]=%lX\n",ptcount,ptptr[ptcount]);
+
+							if(ptptr[ptcount] == 0) {
+
+	        						if(s == 0) last=ptcount;
 
 								if(s >= size) {
-									//kprintf_direct("free=%lX %lX %lX %lX\n",pml4count,pdptcount,pdcount,last);
+								//	kprintf_direct("pt free=%lX %lX %lX %lX\n",pml4count,pdptcount,pdcount,last);
 
-									address=(size_t) ((pml4count << 39)+(pdptcount << 30)+(pdcount << 21)+(last << 12));
+									address=signextend(((uint64_t) ((uint64_t) pml4count << 39)+((uint64_t) pdptcount << 30)+((uint64_t) pdcount << 21)+((uint64_t) last << 12)),47);
 								
-									address=signextend(address,47);		/* make address canonical */
+								//	kprintf_direct("find free virtual address=%lX\n",address);		
+								//	asm("xchg %bx,%bx");
 
-									//kprintf_direct("find free virtual address=%lX\n",address);		
-									//asm("xchg %bx,%bx");
-
-									return(address);
+									return((uint64_t) address);
 								}
 	 	  					
 								s += PAGE_SIZE;		
@@ -400,6 +427,8 @@ for(pml4count=start;pml4count<end;pml4count++) {
 	     							s=0;				/* must be contiguous */
 	    						}
 	  					}
+
+						//asm("xchg %bx,%bx");
 					}				
 		 		}
 			}
@@ -407,18 +436,22 @@ for(pml4count=start;pml4count<end;pml4count++) {
 	}
 }
 
-////kprintf_direct("NO FREE PAGE TABLE ENTRY FOUND\n");
+//kprintf_direct("NO FREE PAGE TABLE ENTRY FOUND\n");
 
 /* search through PDPTs */
 
 for(pml4count=start;pml4count<end;pml4count++) {
-	pdptptr=PDPT_LOCATION+(pml4count*8);
+	pdptptr=signextend(((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) pml4count << 12)),47);
 
 	for(pdptcount=0;pdptcount<511;pdptcount++) {
 		if(pdptptr[pdptcount] == 0) {
 			s += 0x8000000000;		/* + 512GB */
 	
-		       	if(s >= size) return(signextend(((pml4count << 39) | (pdptcount << 30)),47));	 /* found enough */	         
+			address=signextend((uint64_t) ((uint64_t) pml4count << 39) | ((uint64_t) pdptcount << 30),47);
+
+//			kprintf_direct("pdpt findfreevirtualaddress() address=%lX\n",address);
+
+		       	if(s >= size) return(address);	 /* found enough */	         
 	 	}
 	}
 }
@@ -427,16 +460,23 @@ for(pml4count=start;pml4count<end;pml4count++) {
 
 /* search through pml4s */
 
-pml4ptr=PML4_LOCATION;
+pml4ptr=signextend(((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) 0x1ff << 12)),47);
 
 for(pml4count=0;pml4count<511;pml4count++) {
 	if(pml4ptr[pml4count] == 0) {
-		s += 0x1000000000000;		/* + 256TB */
+		s += 0x1000000000000;
+	
+		address=signextend(((uint64_t) pml4count << 39),47);		/* + 256TB */
 
-	       	if(s >= size) return(signextend((pml4count << 39),47)); /* found enough */	         
+//		kprintf_direct("pml4 findfreevirtualaddress() address=%lX\n",address);
+
+	       	if(s >= size) return(address); /* found enough */	         
  	}
 	
 }
+
+//kprintf_direct("NO FREE PML4 ENTRY FOUND\n");
+
 setlasterror(NO_MEM);
 return(-1);
 }
@@ -457,7 +497,7 @@ size_t count;
 
 while(next != NULL) {
 	if(next->process == process) {
-		//DEBUG_PRINT_HEX_LONG(&next->pml4phys);
+//		 DEBUG_PRINT_HEX_LONG(&next->pml4phys);
 
 		asm volatile("mov %0, %%cr3":: "b"(next->pml4phys));		/* load cr3 with PML4 */
 		return(0);
@@ -490,19 +530,20 @@ uint64_t *v;
 next=processpaging;					/* find process page directory */
 
 do {
-	if(next->process == process) break;
+	if(next->process == process) {
+		pml4_of=((virtaddr & 0xFF8000000000) >> 39);
+		pdpt_of=((virtaddr & 0x7FC0000000) >> 30);
+		pd=((virtaddr & 0x3FE00000) >> 21);
+
+		v=signextend((0x1ff << 39) | (pml4_of << 30) | (pdpt_of << 21) | (pd << 12),47);
+
+		return(v[pt] & 0xfffffffffffff000);				/* return physical address */
+	}
 		
 	next=next->next;
 } while(next->next != NULL);
 
-pml4_of=((virtaddr & 0xFF8000000000) >> 39);
-pdpt_of=((virtaddr & 0x7FFFE00000) >> 30);
-pd=((virtaddr & 0x3FE00000) >> 21);
-pt=((virtaddr & 0x1FF000) >> 12);
-
-v=PAGETABLE_LOCATION+(pd*4096);
-
-return(v[pt] & 0xfffffffffffff000);				/* return physical address */
+return(-1);
 }
 
 /*

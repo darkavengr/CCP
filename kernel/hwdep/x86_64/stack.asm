@@ -28,6 +28,7 @@ extern irq_exit
 extern get_kernel_stack_top
 extern get_process_stack_size
 extern save_kernel_stack_pointer
+extern set_tss_rsp0
 
 section .text
 [BITS 64]
@@ -61,41 +62,54 @@ jmp	[r11]					; return without using stack
 ;
 ; Initialize kernel-mode stack
 ;
-; In:	Stack pointer address
+; In:	rdi=Stack pointer top
+;	rsi=Stack bottom
+;	rdx=Entry point
 ;
+
 ; Returns: Nothing
 ;
 initializekernelstack:
-mov	rsi,[rsp+4]				; kernel stack top
-mov	rdx,[rsp+8]				; entry point
-mov	rcx,[rsp+12]				; kernel stack bottom
-
-mov	rdi,rsi
-sub	rdi,12*8				; space for initial stack frame
+mov	r11,rdi
+sub	r11,17*8				; space for initial stack frame
 
 mov	rax,irq_exit
-mov	[rdi],rax
+mov	[r11],rax
 
+; fill in zeroes for rax,rbx,rcx ,rdx,rsi,rdi,r10,r11,r12,r13,r14,r15
+
+push	rdi
+
+mov	rdi,r11
 add	rdi,8
 
-xor	rax,rax					; zero register values
-mov	rcx,11
+mov	rcx,12
+
+xor	rax,rax
 rep	stosq
 
-mov	qword [rdi+104],rdx			; rip
-mov	qword [rdi+112],KERNEL_CODE_SELECTOR	; cs
-mov	qword [rdi+120],0x200			; rflags
-mov	qword [rdi+128],rbx			; rsp
+pop	rdi
+
+mov	[r11+104],rdx			; eip
+mov	qword [r11+112],KERNEL_CODE_SELECTOR	; cs
+mov	qword [r11+116],0x200			; rflags
+mov	[r11+124],rdi			; rsp
 
 ;
 ; Adjust kernel stack pointer
 ; so it points to intial values
 ;
 call	get_kernel_stack_top
-sub	rax,12*8
+sub	rax,17*4
 
 push	rax
 call	save_kernel_stack_pointer
+add	rsp,8
+
+; Set tss esp0 to ensure that the kernel stack is switched to next time the cpu switches to ring 0.
+
+push	rdi
+call	set_tss_rsp0
 add	rsp,8
 ret
 

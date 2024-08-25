@@ -77,14 +77,15 @@ char *regnames[] = { "EIP", "ESP", "EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EB
 char *flagsname[]= { "","Overflow", " Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
 
 extern void exception(uint32_t *regs,uint32_t e,uint32_t dummy) {
-uint32_t count;
+size_t count;
 uint32_t flagsmask;
 char *b;
 char *processname[MAX_PATH];
 uint32_t shiftcount;
+size_t rowcount;
 
 if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("Kernel panic [%s] at address %X\n",exp[e],regs[0]);
+	kprintf_direct("\nKernel panic [%s] at address %X\n",exp[e],regs[0]);
 }
 else
 {
@@ -94,11 +95,17 @@ else
 }
 
 count=0;
+rowcount=0;
 
 do {							/* dump registers */
 	if(regnames[count] == "") break;
 
-	kprintf_direct("%s=%X\n",regnames[count],regs[count]);
+	kprintf_direct("%s=%X ",regnames[count],regs[count]);
+
+	if(++rowcount == 4) {			/* at end of row */
+		kprintf_direct("\n");
+		rowcount=0;
+	}
 
 } while(regs[count++] != "");
 

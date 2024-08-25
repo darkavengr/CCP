@@ -9,7 +9,6 @@
 #define CRITICAL_ERROR_RETRY		2
 #define CRITICAL_ERROR_FAIL		0
 
-
 #define MAX_PATH	255
 
 #define ABORT 2
@@ -18,6 +17,8 @@
 
 #define _READ 0
 #define _WRITE 1
+
+#define MAX_IRQ		255
 
 typedef struct {
 	char *name[MAX_PATH];
