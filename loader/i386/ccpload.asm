@@ -352,6 +352,13 @@ je	is_endian
 jmp	bad_elf
 
 is_endian:
+mov	ah,[esi+ELF32_BITS]			; get 32 or 64-bit
+cmp	ah,ELF32_BIT
+je	load_elf32
+
+jmp	load_elf64
+
+load_elf32:
 mov	ax,[esi+ELF32_PHCOUNT]			; check program header count
 test	eax,eax
 jnz	is_phok
@@ -369,25 +376,15 @@ call	readkey
 int	19h
 
 is_phok:
-mov	ah,[esi+ELF32_BITS]			; get 32 or 64-bit
-cmp	ah,ELF32_BIT
-je	load_elf32
-
-jmp	load_elf64
-
 ;
 ; Copy kernel symbols before copying kernel, copying segments overwrites temporary buffer
 ;
 
 ; find size of program segments to calculate destination address
 
-load_elf32:
 mov	esi,[loadbuf]
-movsx	edx,word [esi+ELF64_SHCOUNT]			; number of program headers
-mov	[sectioncount],edx
-xor	ecx,ecx
+movsx	ecx,word [esi+ELF32_PHCOUNT]			; number of program headers
 
-mov	esi,[loadbuf]
 add	esi,[esi+ELF32_PHDR]				; point to program headers
 xor	edx,edx						; clear counter
 
@@ -405,10 +402,8 @@ mov	eax,LOAD_ADDRESS				; calculate destination address
 add	eax,edx
 
 mov	[symbols_start],eax
-mov	[BOOT_INFO_SYMBOL_START],eax
 
 ; Copy symbol names and addresses
-
 mov	esi,[loadbuf]
 movsx	ecx,word [esi+ELF32_SHCOUNT]			; number of section headers
 
@@ -433,6 +428,7 @@ mov	[symtab],eax
 
 mov	edx,[esi+SH32_SIZE]				; get size
 shr	edx,4						; divide by sixteen
+
 dec	edx
 
 mov	[number_of_symbols],edx
@@ -440,12 +436,6 @@ mov	[BOOT_INFO_NUM_SYMBOLS],edx
 jmp	not_section
 
 save_strtab:
-mov	ebx,[loadbuf]
-movsx	ebx,word [ebx+ELF64_SINDEX]			; get string header index
-
-cmp	ecx,ebx						; if is .shstrtab
-je	not_section
-
 mov	eax,[esi+SH32_OFFSET]				; get offset
 add	eax,[loadbuf]
 inc	eax
@@ -459,10 +449,7 @@ mov	edx,[loadbuf]					; point to elf header
 movsx	eax,word [edx+ELF32_SHDRSIZE]			; size of section header
 add	esi,eax						; point to next section header
 
-inc	ecx						; increment counter
-cmp	ecx,[sectioncount]
-jle	next_find_sections
-
+loop	next_find_sections
 
 ;
 ; copy the symbol names and addresses to symbol table
@@ -482,10 +469,14 @@ a32	movsb
 cmp	byte [edi-1],0
 jne	next_string
 
+mov	eax,[ebx+SYM32_NAME]
+
 mov	eax,[ebx+SYM32_VALUE]				; get value
+
 mov	[edi],eax
 
 add	edi,4						; point to next
+
 add	ebx,SYM32_ENTRY_SIZE
 
 mov	eax,[number_of_symbols]
@@ -533,7 +524,6 @@ pop	ecx
 pop	esi
 next_segment:
 loop	next_programheader
-
 jmp	load_initrd
 
 ;

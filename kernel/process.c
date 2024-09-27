@@ -191,15 +191,9 @@ if(saveenv != NULL) {
 	kernelfree(saveenv);
 }
 
-kprintf_direct("EXEC BREAK 1\n");
-asm("xchg %bx,%bx");
-
 /* allocate user mode stack below enviroment variables */
 
 stackp=alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,(END_OF_LOWER_HALF-PROCESS_STACK_SIZE-ENVIROMENT_SIZE));
-
-kprintf_direct("EXEC BREAK 2\n");
-asm("xchg %bx,%bx");
 
 if(stackp == NULL) {
 	currentprocess=oldprocess;	/* restore current process pointer */

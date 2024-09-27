@@ -1,3 +1,6 @@
+[BITS 32]
+use32
+
 %include "kernelselectors.inc"
 
 extern irq_handlers
@@ -24,7 +27,6 @@ global irq_exit
 ; IRQ handlers
 ;
 irq0:
-;xchg	bx,bx
 mov	dword [irqnumber],0
 jmp	irq
 
@@ -73,7 +75,6 @@ mov	dword [irqnumber],11
 jmp	irq
 
 irq12:
-;xchg	bx,bx
 mov	dword [irqnumber],12
 jmp	irq
 
@@ -115,7 +116,9 @@ mov	eax,[eax]				; get irq handler address
 test	eax,eax					; if no handler, return
 jz	irq_exit
 
+push	esp
 call	eax					; call irq handler
+add	esp,4
 
 irq_exit:
 nop

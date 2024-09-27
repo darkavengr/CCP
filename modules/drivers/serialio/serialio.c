@@ -386,7 +386,10 @@ size_t serial_ioctl(size_t handle,unsigned long request,char *buffer) {
 size_t param;
 FILERECORD serialdevice;
 char *b;
-int count;
+size_t count;
+uint32_t *bufptr;
+
+bufptr=buffer;		/* point to buffer */
 
 if(gethandle(handle,&serialdevice) == -1) {		/* get information about device */
 	setlasterror(INVALID_HANDLE);
@@ -406,30 +409,30 @@ b=buffer;
 switch(request) {
 
 	 case IOCTL_SERIAL_BAUD: 		/* set baud */
-	 	ports[count].baud=*buffer;
+	 	ports[count].baud=*bufptr;
 
-	 	outb(ports[count].port+1, 0x00);    			/* Disable all interrupts */
-	 	outb(ports[count].port+3, 0x80);    			/* Enable DLAB (set baud rate divisor) */
-	 	outb(ports[count].port+0, (115200/ports[count].baud)); /* set divisor  */
-	 	outb(ports[count].port+4, 0x0B);    				/* IRQs enabled, RTS/DSR set  */
+	 	outb(ports[count].port+1,0x00);    			/* Disable all interrupts */
+	 	outb(ports[count].port+3,0x80);    			/* Enable DLAB (set baud rate divisor) */
+	 	outb(ports[count].port+0,(115200/ports[count].baud)); /* set divisor  */
+	 	outb(ports[count].port+4,0x0B);    				/* IRQs enabled, RTS/DSR set  */
 	 	return(0);
 
 	 case IOCTL_SERIAL_DATABITS:
-	 	ports[count].databits=*buffer;
+	 	ports[count].databits=*bufptr;
 
 	 	return(0);
 
 	 case IOCTL_SERIAL_STOPBITS:
-	 	ports[count].stopbits=*buffer;
+	 	ports[count].stopbits=*bufptr;
 
 	 	return(0);
 
 	 case IOCTL_SERIAL_PARITY:
-	 	ports[count].parity=*buffer;
+	 	ports[count].parity=*bufptr;
 
-	 	outb(ports[count].port+1, 0x00);    			/* Disable all interrupts */
-	 	outb(ports[count].port+3, ports[count].parity);    	/* Parity  */
-	 	outb(ports[count].port+4, 0x0B);    				/* IRQs enabled, RTS/DSR set  */
+	 	outb(ports[count].port+1,0x00);    			/* Disable all interrupts */
+	 	outb(ports[count].port+3,ports[count].parity);    	/* Parity  */
+	 	outb(ports[count].port+4,0x0B);    				/* IRQs enabled, RTS/DSR set  */
 
 	 	return(0);
 

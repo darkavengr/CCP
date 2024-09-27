@@ -169,7 +169,7 @@ call	reset_process_ticks
 call	getpid
 
 cmp	eax,1
-jne	no_debug
+jl	no_debug
 
 xchg	bx,bx
 no_debug:

@@ -51,22 +51,22 @@ extern irq15;
 void pic_init(void) {
 disable_interrupts();
 
-set_interrupt(0x8e00,8,&irq0,0xf0);		/* set interrupts */
-set_interrupt(0x8e00,8,&irq1,0xf1);
-set_interrupt(0x8e00,8,&irq2,0xf2);
-set_interrupt(0x8e00,8,&irq3,0xf3);
-set_interrupt(0x8e00,8,&irq4,0xf4);
-set_interrupt(0x8e00,8,&irq5,0xf5);
-set_interrupt(0x8e00,8,&irq6,0xf6);
-set_interrupt(0x8e00,8,&irq7,0xf7);
-set_interrupt(0x8e00,8,&irq8,0xf8);
-set_interrupt(0x8e00,8,&irq9,0xf9);
-set_interrupt(0x8e00,8,&irq10,0xfa);
-set_interrupt(0x8e00,8,&irq11,0xfb);
-set_interrupt(0x8e00,8,&irq12,0xfc);
-set_interrupt(0x8e00,8,&irq13,0xfd);
-set_interrupt(0x8e00,8,&irq14,0xfe);
-set_interrupt(0x8e00,8,&irq15,0xff);
+set_interrupt(0x8e,8,&irq0,0xf0);		/* set interrupts */
+set_interrupt(0x8e,8,&irq1,0xf1);
+set_interrupt(0x8e,8,&irq2,0xf2);
+set_interrupt(0x8e,8,&irq3,0xf3);
+set_interrupt(0x8e,8,&irq4,0xf4);
+set_interrupt(0x8e,8,&irq5,0xf5);
+set_interrupt(0x8e,8,&irq6,0xf6);
+set_interrupt(0x8e,8,&irq7,0xf7);
+set_interrupt(0x8e,8,&irq8,0xf8);
+set_interrupt(0x8e,8,&irq9,0xf9);
+set_interrupt(0x8e,8,&irq10,0xfa);
+set_interrupt(0x8e,8,&irq11,0xfb);
+set_interrupt(0x8e,8,&irq12,0xfc);
+set_interrupt(0x8e,8,&irq13,0xfd);
+set_interrupt(0x8e,8,&irq14,0xfe);
+set_interrupt(0x8e,8,&irq15,0xff);
 
 /* remap irqs
  the default irq interrupts for the master pic conflict with interrupt 0-8 exceptions

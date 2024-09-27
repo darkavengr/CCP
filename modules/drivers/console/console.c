@@ -30,24 +30,18 @@
 
 #define MODULE_INIT console_init
 
-size_t outputconsole(char *s,size_t size);
-void movecursor(uint16_t row,uint16_t col);
-size_t getcursorpos(void);
-void console_init(char *init);
-void setconsolecolour(uint8_t c);
+uint8_t color=7;		/* text color */
 
-size_t ppos;
-
-/* bootinfo->cursor_colours are XY where X is background bootinfo->cursor_colour and Y is foreground bootinfo->cursor_colour
+/* color is in the format XY where X is background color and Y is foreground color
 
 0 	Black 			8 	Dark Grey (Light Black)
 1 	Blue 			9 	Light Blue
-2 	Green 			10 	Light Green
-3 	Cyan 			11 	Light Cyan
-4 	Red 			12 	Light Red
-5 	Purple 			13 	Light Purple
-6 	Brown/Orange 		14 	Yellow (Light Orange)
-7 	Light Grey (White) 	15 	White (Light White) */
+2 	Green 			A	Light Green
+3 	Cyan 			B	Light Cyan
+4 	Red 			C	Light Red
+5 	Purple 			D 	Light Purple
+6 	Brown/Orange 		E 	Yellow (Light Orange)
+7 	Light Grey (White) 	F 	White (Light White) */
 
 /*
  * Initialize screen
@@ -61,16 +55,18 @@ size_t ppos;
 void console_init(char *init) {
 CHARACTERDEVICE device;
 
+color=7;
+
 strncpy(&device.name,"CONOUT",MAX_PATH);
 
 device.charioread=NULL;
 device.chariowrite=&outputconsole;
-device.ioctl=NULL;
+device.ioctl=&console_ioctl;
 device.flags=0;
 device.data=NULL;
 device.next=NULL;
 
-add_character_device(&device);			/* con */
+add_character_device(&device);			/* add console device */
 
 init_console_device(_WRITE,1,&outputconsole);
 init_console_device(_WRITE,2,&outputconsole);
@@ -89,9 +85,7 @@ return(NULL);
  */
 size_t outputconsole(char *s,size_t size) {
 char *consolepos;
-size_t pos;
 char *scrollbuf[MAX_X*MAX_Y];
-size_t wch;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
 
 consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col)*2);	/* address to write to */
@@ -103,53 +97,36 @@ if((size_t) consolepos % 2 == 1) consolepos++;
 			bootinfo->cursor_col=0;						/* wrap round */
 			bootinfo->cursor_row++;
 		}
-
+	
 		if(*s == 0x0A || *s == 0x0D) {			/* newline */
 			bootinfo->cursor_row++;						/* wrap round */
 			bootinfo->cursor_col=0;
 			consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*80)+bootinfo->cursor_col)*2);
+
+			consolepos++;
+			s++;
 		}
 		else
 		{
-		 *consolepos++=*s++; 
-		 *consolepos++=7;
+			*consolepos++=*s++; 
+			*consolepos++=color;
+		}
 
-			if(bootinfo->cursor_row >= 24) {					/* scroll */
-				memcpy(scrollbuf,KERNEL_HIGH+0xB80a0,(MAX_X*2)*25);		/* to buffer */
-				memcpy(KERNEL_HIGH+0xB8000,scrollbuf,(MAX_X*2)*25);		/* to screen */
+		if(bootinfo->cursor_row >= 24) {					/* scroll */
+			memcpy(scrollbuf,KERNEL_HIGH+0xB80a0,(MAX_X*2)*25);		/* to buffer */
+			memcpy(KERNEL_HIGH+0xB8000,scrollbuf,(MAX_X*2)*25);		/* to screen */
 
-				bootinfo->cursor_col=1;						/* wrap round */
-				bootinfo->cursor_row=23;
-				movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
+			bootinfo->cursor_col=1;						/* wrap round */
+			bootinfo->cursor_row=23;
+			movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
 
-				consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col)*2);
-			}
+			consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col)*2);
+		}
 
-		 }
+		
 	}
 
-ppos=(bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col;
-asm(".intel_syntax noprefix");
-asm("mov dx,0x3d4");				/* set cursor position */
-asm("mov al,0x0f");
-asm("out dx,al");
-
-asm("mov dx,0x3d5");
-asm("movabs ax,[ppos]");
-asm("and ax,0xff");
-asm("out dx,al");
-
-asm("mov dx,0x3d4");				/* set cursor position */
-asm("mov al,0x0e");
-asm("out dx,al");
-			
-asm("mov  dx,0x3d5");
-asm("movabs ax,[ppos]");
-asm("mov cl,8");
-asm("shr ax,cl");
-asm("and ax,0xFF");
-asm("out dx,al");
-asm(".att_syntax");					/* ugggh */
+movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
 
 return(size);
 }
@@ -157,27 +134,83 @@ return(size);
 /*
  * Move cursor
  *
- * In:  r	Row move to
-	c	Column to move to
+ * In:  row	Row move to
+	col	Column to move to
  *
  *  Returns: nothing
  *
  */
 
-void movecursor(uint16_t r,uint16_t c) {
+void movecursor(uint16_t row,uint16_t col) {
 uint16_t newpos;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
-newpos=(r*MAX_X)+c;
+newpos=(row*MAX_X)+col;
 
-outb(0x3d4,0xf);							/* cursor high */
+outb(0x3d4,0xf);							/* cursor low byte */
 outb(0x3d5,(newpos  & 0xff));
-outb(0x3d4,0xe);							/* cursor bootinfo->cursor_row */
+outb(0x3d4,0xe);							/* cursor high byte */
 outb(0x3d5,(newpos >> 8) & 0xff);
 
-bootinfo->cursor_row=r;
-bootinfo->cursor_col=c;
-return;
+bootinfo->cursor_row=row;
+bootinfo->cursor_col=col;
+return(0);
 }
 
 
+/*
+ * Console ioctl handler
+ *
+ * In:  handle	Handle created by open() to reference device
+	       request Request number
+	       buffer  Buffer
+ *
+ *  Returns: -1 on error, 0 on success
+ *
+ */
+size_t console_ioctl(size_t handle,unsigned long request,void *buffer) {
+FILERECORD consoledevice;
+uint8_t *bufptr;
+size_t drive;
+BLOCKDEVICE bd;
+uint8_t pos;
+BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
+
+bufptr=buffer;
+
+switch(request) {
+	case IOCTL_CONSOLE_SET_CURSOR_ROW:		/* set cursor row position */
+		pos=*bufptr;
+
+		movecursor(pos,bootinfo->cursor_row);
+		return(0);
+
+	case IOCTL_CONSOLE_SET_CURSOR_COL:		/* set cursor row position */
+		pos=*bufptr;
+
+		movecursor(bootinfo->cursor_row,pos);
+		return(0);
+
+	case IOCTL_CONSOLE_GET_CURSOR_ROW:		/* get cursor row position */
+		*bufptr=bootinfo->cursor_row;
+		return(0);
+
+	case IOCTL_CONSOLE_GET_CURSOR_COL:		/* get cursor column position */
+		*bufptr=bootinfo->cursor_col;
+		return(0);
+
+	case IOCTL_CONSOLE_SET_COLOR:			/* set text color */
+		color=*bufptr;
+		return(0);
+
+	case IOCTL_CONSOLE_GET_COLOR:			/* get text color */
+		*bufptr=color;
+		return(0);
+
+	default:
+		setlasterror(INVALID_REQUEST);
+		return(-1);
+}
+
+return(-1);
+}

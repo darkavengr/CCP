@@ -46,8 +46,8 @@
 #define INVALID_ADDRESS		49
 #define MODULE_ALREADY_LOADED	50
 #define NOT_DEVICE		51
-
-#define LAST_ERROR_NUMBER	51
+#define INVALID_REQUEST		52
+#define LAST_ERROR_NUMBER	52
 
 #define TRUE	1
 #define FALSE	0

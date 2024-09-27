@@ -127,7 +127,7 @@ if(sb_dma_buffer == -1) {					/* can't alloc */
 	return(-1);
 }
 
-strncpy(bd.dname,"AUDIO",MAX_PATH);		/* add char device */
+strncpy(bd.name,"AUDIO",MAX_PATH);		/* add char device */
 bd.charioread=&sb16_io_read;
 bd.chariowrite=NULL;
 bd.flags=0;
@@ -251,6 +251,7 @@ size_t sb16_ioctl(size_t handle,unsigned long request,char *buffer) {
 size_t param;
 char *b;
 size_t count;
+uint32_t *bufptr=buffer;
 
 switch(request) {
 	case IOCTL_SB16_IRQ: 		/* set irq */
@@ -268,19 +269,19 @@ switch(request) {
 		return(0);
 
 	case IOCTL_SB16_SET_SAMPLE_RATE: 	/* set sample rate */
-		sb_sample_rate=*buffer;
+		sb_sample_rate=*bufptr;
 
 		return(0);
 
 	case IOCTL_SB16_SET_CHANNEL:	 	/* set channel */
-		param=*buffer;
+		param=*bufptr;
 
 		if((param == 0) || (param > 3)) return(-1); /* invalid channel */
 
 		return(0);
 
 	case IOCTL_SB16_SET_VOLUME:	 	/* set volume */
-		param=*buffer;
+		param=*bufptr;
 
 		if(param > 0xff) return(-1); /* invalid volume level */
 
@@ -290,7 +291,7 @@ switch(request) {
 		return(0);
 
 	case IOCTL_SB16_SET_TIME_CONSTANT:	/* set time constant */
-		param=*buffer;
+		param=*bufptr;
 
 		if(param > 0xff) return(-1); /* invalid time constant */
 
@@ -302,7 +303,7 @@ switch(request) {
 		return(0);
 	  
 	case IOCTL_SB16_SET_DATATYPE:	/* set data type */
-		sb_data_type=*buffer;
+		sb_data_type=*bufptr;
 
 		return(0);
 	

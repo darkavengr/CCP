@@ -119,7 +119,7 @@ do
 	  		;;
 	esac
 	  
-done < config-$compile_arch
+done < config/config-$compile_arch
 
 #
 # Select optional features

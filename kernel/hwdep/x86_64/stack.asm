@@ -20,9 +20,16 @@
 
 
 %include "kernelselectors.inc"
+
+KERNEL_STACK_SIZE equ  65536*3				; size of initial kernel stack
+INITIAL_KERNEL_STACK_ADDRESS equ 0x70000		; intial kernel stack address
+
 global initializestack
 global initializekernelstack
 global create_initial_stack_entries
+global get_initial_kernel_stack_base
+global get_initial_kernel_stack_top
+global get_kernel_stack_size
 
 extern irq_exit
 extern get_kernel_stack_top
@@ -111,6 +118,19 @@ add	rsp,8
 push	rdi
 call	set_tss_rsp0
 add	rsp,8
+ret
+
+get_initial_kernel_stack_base:
+mov	rax,INITIAL_KERNEL_STACK_ADDRESS
+ret
+
+get_initial_kernel_stack_top:
+mov	rax,INITIAL_KERNEL_STACK_ADDRESS
+add	rax,KERNEL_STACK_SIZE
+ret
+
+get_kernel_stack_size:
+mov	rax,KERNEL_STACK_SIZE
 ret
 
 section .data

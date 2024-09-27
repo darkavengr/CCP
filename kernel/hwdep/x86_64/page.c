@@ -87,8 +87,7 @@ if(next == NULL) {
 	return(-1);
 }
 
-kprintf_direct("**********************\n");
-
+//kprintf_direct("**********************\n");
 
 pml4_of=((page & 0xFF8000000000) >> 39);
 pdpt_of=((page & 0x7FC0000000) >> 30);
@@ -149,7 +148,7 @@ if(pdptr[pd] == 0) {				/* if page directory empty */
 		return(-1);
 	}
 	
-	kprintf_direct("page directory physical address=%lX\n",c);
+//	kprintf_direct("page directory physical address=%lX\n",c);
 
 	pdptr[pd]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;
 
@@ -534,6 +533,7 @@ do {
 		pml4_of=((virtaddr & 0xFF8000000000) >> 39);
 		pdpt_of=((virtaddr & 0x7FC0000000) >> 30);
 		pd=((virtaddr & 0x3FE00000) >> 21);
+		pt=((virtaddr & 0x1FF000) >> 12);
 
 		v=signextend((0x1ff << 39) | (pml4_of << 30) | (pdpt_of << 21) | (pd << 12),47);
 

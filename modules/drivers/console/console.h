@@ -26,7 +26,21 @@
 #define CONSOLE_LIGHT_GREEN	10
 #define CONSOLE_LIGHT_CYAN	11
 #define CONSOLE_LIGHT_RED	12
-#define CONSOLE_LIGHT_PURPLE	12
+#define CONSOLE_LIGHT_PURPLE	13
 #define CONSOLE_YELLOW		14
 #define CONSOLE_LIGHT_WHITE	15
+
+#define IOCTL_CONSOLE_SET_CURSOR_ROW 1
+#define IOCTL_CONSOLE_SET_CURSOR_COL 2
+#define IOCTL_CONSOLE_GET_CURSOR_ROW 3
+#define IOCTL_CONSOLE_GET_CURSOR_COL 4
+#define IOCTL_CONSOLE_SET_COLOR	 5
+#define IOCTL_CONSOLE_GET_COLOR  6
+
+size_t outputconsole(char *s,size_t size);
+void movecursor(uint16_t row,uint16_t col);
+size_t getcursorpos(void);
+void console_init(char *init);
+void setconsolecolour(uint8_t c);
+size_t console_ioctl(size_t handle,unsigned long request,void *buffer);
 

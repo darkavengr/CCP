@@ -390,22 +390,22 @@ return(readmouse());
  *
  */
 size_t mouse_ioctl(size_t handle,unsigned long request,char *buffer) {
-size_t param;
-char *b;
+uint32_t param;
+uint32_t *bufptr;
 
-b=buffer;
+bufptr=buffer;
 
 switch(request) {			/* ioctl request */
 
 	case MOUSE_IOCTL_SET_RESOLUTION:	/* set pointer resolution */
-		aram=*b++;
+		param=*bufptr++;
 
 		mouse_set_resolution(param);
 
 		return;
 
 	case MOUSE_IOCTL_SET_SAMPLE_RATE:	/* set sample rate */
-		param=*b++;
+		param=*bufptr++;
 
 		mouse_set_sample_rate(param);
 

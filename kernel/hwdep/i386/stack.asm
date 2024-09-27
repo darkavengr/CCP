@@ -17,20 +17,28 @@
 ;    You should have received a copy of the GNU General Public License
 ;    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 ;
-;
-; initialize stack
-;
 
+;
+; Stack functions
+;
+%include "init.inc"
 %include "kernelselectors.inc"
+
+KERNEL_STACK_SIZE equ  65536*2				; size of initial kernel stack
+INITIAL_KERNEL_STACK_ADDRESS equ 0x60000		; intial kernel stack address
+
 global initializestack
 global initializekernelstack
 global create_initial_stack_entries
+global get_initial_kernel_stack_base
+global get_initial_kernel_stack_top
+global get_kernel_stack_size
 
 extern set_tss_esp0
 extern irq_exit
-extern get_kernel_stack_top
 extern get_process_stack_size
 extern save_kernel_stack_pointer
+extern get_kernel_stack_top
 
 section .text
 [BITS 32]
@@ -112,6 +120,19 @@ call	set_tss_esp0
 add	esp,4
 ret
 
+
+get_initial_kernel_stack_base:
+mov	eax,INITIAL_KERNEL_STACK_ADDRESS
+ret
+
+get_initial_kernel_stack_top:
+mov	eax,INITIAL_KERNEL_STACK_ADDRESS
+add	eax,KERNEL_STACK_SIZE
+ret
+
+get_kernel_stack_size:
+mov	eax,KERNEL_STACK_SIZE
+ret
 
 section .data
 tempeip dd 0

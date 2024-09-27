@@ -178,7 +178,7 @@ ret
 legacy_paging:
 mov	edi,ROOT_PAGEDIR
 xor	eax,eax
-mov	ecx,1024
+mov	ecx,1024*2
 rep	stosd
 
 ; create page table

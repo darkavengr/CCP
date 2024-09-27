@@ -85,13 +85,13 @@ uint32_t shiftcount;
 size_t rowcount;
 
 if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("\nKernel panic [%s] at address %X\n",exp[e],regs[0]);
+	kprintf_direct("\nKernel panic [%s] at address %X\n\n",exp[e],regs[0]);
 }
 else
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %X in %s\n",exp[e],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %X in %s\n\n",exp[e],regs[0],processname);  /* exception */
 }
 
 count=0;
@@ -109,6 +109,10 @@ do {							/* dump registers */
 
 } while(regs[count++] != "");
 
+
+/* Dump CPU status flags */
+
+kprintf_direct("\n\n");
 
 flagsmask=4096;						/* mask to get flags */
 count=0;

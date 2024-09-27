@@ -49,6 +49,9 @@ extern unmap_lower_half						; unmap lower half
 extern initialize_tss						; initialize tss
 extern set_tss_esp0						; set kernel mode stack address in TSS
 extern load_modules_from_initrd					; load modules from initial RAM disk
+extern get_initial_kernel_stack_base				; get initial kernel stack base
+extern get_initial_kernel_stack_top				; get initial kernel stack top
+extern get_kernel_stack_size					; get kernel stack size
 
 ; globals
 ;
@@ -56,9 +59,6 @@ global _asm_init
 global MEMBUF_START
 global gdt
 global gdt_end
-
-KERNEL_STACK_SIZE equ  65536*2				; size of initial kernel stack
-INITIAL_KERNEL_STACK_ADDRESS equ 0x60000		; intial kernel stack address
 
 DMA_BUFFER_SIZE equ 32768	
 
@@ -191,9 +191,12 @@ mov	es,ax
 mov	fs,ax					
 mov	gs,ax					
 mov	ss,ax					
-	
-mov	esp,INITIAL_KERNEL_STACK_ADDRESS+KERNEL_STACK_SIZE	; temporary stack
-mov	ebp,INITIAL_KERNEL_STACK_ADDRESS
+
+call	get_initial_kernel_stack_top
+mov	esp,eax					; temporary stack
+
+call	get_initial_kernel_stack_base
+mov	ebp,eax
 
 ;
 ; place memory map after initrd and symbol table
@@ -219,8 +222,13 @@ mov	eax,higher_half
 jmp	eax				; jump to higher half
 
 higher_half:
-mov	esp,INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH+KERNEL_STACK_SIZE	; temporary stack
-mov	ebp,INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH
+call	get_initial_kernel_stack_top
+add	eax,KERNEL_HIGH
+mov	esp,eax					; temporary stack
+
+call	get_initial_kernel_stack_base
+add	eax,KERNEL_HIGH
+mov	ebp,eax
 ;
 ; from here, don't need to subtract KERNEL_HIGH
 ;
@@ -235,8 +243,8 @@ call	load_idt			; load interrupts
 call	processmanager_init		; intialize process manager
 call	devicemanager_init		; intialize device manager
 
-mov	eax,end				; calculate kernel size
-sub	eax,kernel_begin
+mov	edi,end				; calculate kernel size
+sub	edi,kernel_begin
 
 mov	ebx,BOOT_INFO_MEMORY_SIZE	; get memory size
 add	ebx,KERNEL_HIGH
@@ -245,9 +253,12 @@ mov	ebx,[ebx]
 mov	ecx,kernel_begin		; get kernel start address
 mov	edx,[MEMBUF_START]
 
-push	dword KERNEL_STACK_SIZE			; stack size
-push	dword INITIAL_KERNEL_STACK_ADDRESS	; stack address
-push	eax				; kernel size
+call	get_kernel_stack_size
+push	eax
+
+call	get_initial_kernel_stack_base
+push	eax				; stack address
+push	edi				; kernel size
 push	ecx				; kernel start address
 push	ebx				; memory size
 push	edx				; memory map start address
@@ -315,7 +326,10 @@ call	driver_init				; initialize built-in drivers and filesystems
 
 call	initrd_init
 
-mov	esp,(INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH)+KERNEL_STACK_SIZE	; temporary stack
+call	get_initial_kernel_stack_top
+add	eax,KERNEL_HIGH
+mov	esp,eax					; temporary stack
+
 push	esp
 call	set_tss_esp0
 

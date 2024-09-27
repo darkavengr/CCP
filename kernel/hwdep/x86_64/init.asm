@@ -32,11 +32,9 @@ ROOT_PDPT		equ	0x3000
 ROOT_PAGEDIR		equ	0x4000
 ROOT_PAGETABLE		equ	0x5000
 
-KERNEL_STACK_SIZE equ  65536*3				; size of initial kernel stack
-INITIAL_KERNEL_STACK_ADDRESS equ 0x70000		; intial kernel stack address
 DMA_BUFFER_SIZE equ 32768	
-GDT_LIMIT equ 10
 
+GDT_LIMIT equ 10
 
 PAGE_PRESENT equ 1
 PAGE_RW equ 2
@@ -72,6 +70,9 @@ global MEMBUF_START
 global gdt
 global gdt_end
 global gdtinfo_high_64
+global get_initial_kernel_stack_base
+global get_initial_kernel_stack_top
+global get_kernel_stack_size
 
 %include "init.inc"
 %include "kernelselectors.inc"
@@ -343,8 +344,11 @@ add	rdx,rax
 mov	rdi,MEMBUF_START
 add	[rdi],rdx
 
-mov	rsp,qword INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH+KERNEL_STACK_SIZE	; temporary 64-bit stack
-mov	rbp,qword INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH
+call	get_initial_kernel_stack_top
+mov	rsp,rax					; temporary stack
+
+call	get_initial_kernel_stack_base
+mov	rbp,rax
 
 ; Unmap lower half
 
@@ -435,7 +439,9 @@ call	driver_init				; initialize built-in drivers and filesystems
 
 call	initrd_init
 
-mov	rsp,(INITIAL_KERNEL_STACK_ADDRESS+KERNEL_HIGH)+KERNEL_STACK_SIZE	; temporary stack
+call	get_initial_kernel_stack_top
+mov	rsp,rax					; temporary stack
+
 push	rsp
 call	set_tss_rsp0
 

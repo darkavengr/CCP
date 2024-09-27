@@ -1,4 +1,0 @@
-Programmable interrupt controller.
-
-You need to include this or APIC to allow other device drivers to manage IRQs.
-

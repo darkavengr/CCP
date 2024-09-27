@@ -26,7 +26,7 @@
 #include "../pci/pci.h"
 #include "debug.h"
 
-//#define ATA_DEBUG 1
+#define ATA_DEBUG 1
 
 #define MODULE_INIT ata_init
 
@@ -78,17 +78,12 @@ for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk *
 	 		kprintf_direct("harddrive: Unable to intialize partitions for drive %X\n",physdiskcount);
 	 		continue;
 	  	}
-	 
-		if((physdiskcount == 0x80) || (physdiskcount == 0x81)) {
-			setirqhandler(14,&irq14_handler);		/* set irq handler for master */
-	  	}
-	  	else
-	  	{
-	       		setirqhandler(15,&irq15_handler);		/* set irq handler for slave */
-	  	}
-
 	 }
 }
+
+	 
+setirqhandler(14,&irq14_handler);		/* set irq handler for master */
+setirqhandler(15,&irq15_handler);		/* set irq handler for slave */
 
 return(0);
 }
@@ -434,7 +429,7 @@ uint16_t commandregister;
 uint32_t highblock;
 uint32_t lowblock;
 
-if(ata_ident(physdrive,&result) == -1) return(-1);	/* bad drive */
+//if(ata_ident(physdrive,&result) == -1) return(-1);	/* bad drive */
 
 barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
 if(barfour == -1) {
@@ -464,19 +459,24 @@ prdtptr->size=512;
 /* send information to ata barfour */
 
 if((physdrive == 0x80) || (physdrive == 0x81)) {			/* which barfour */
-	kprintf_direct("Primary ATA prdt\n");
+	kprintf_direct("Primary ATA PRDT\n");
+
+	p=prdt;
 
 	outb(barfour+PRDT_STATUS_PRIMARY,inb(barfour+PRDT_STATUS_PRIMARY) | 0x04 | 0x02);
 	outb(barfour+PRDT_COMMAND_PRIMARY,8); 		/* read/write */
-	outd(barfour+PRDT_ADDRESS1_PRIMARY,(uint8_t) ((size_t) prdt)); /* prdt address */
+	outd(barfour+PRDT_ADDRESS1_PRIMARY,(uint8_t) (p & 0xff)); /* prdt address */
+	outd(barfour+PRDT_ADDRESS2_PRIMARY,(uint8_t) ((p >> 8) & 0xff));
+	outd(barfour+PRDT_ADDRESS2_PRIMARY,(uint8_t) ((p >> 16) & 0xff));
+	outd(barfour+PRDT_ADDRESS2_PRIMARY,(uint8_t) ((p >> 24) & 0xff));
 }
 
 if((physdrive == 0x82) || (physdrive == 0x83)) {			/* which barfour */
-	kprintf_direct("Secondary ATA prdt\n");
+	kprintf_direct("Secondary ATA PRDT\n");
 
 	outb(barfour+PRDT_STATUS_SECONDARY,inb(barfour+PRDT_STATUS_SECONDARY) | 0x04 | 0x02);	/* enable bus mastering */
 
-	outd(barfour+PRDT_ADDRESS1_SECONDARY,(uint8_t) ((size_t) prdt)); /* prdt address */
+	outd(barfour+PRDT_ADDRESS1_SECONDARY,(uint8_t) ((size_t) prdt-KERNEL_HIGH)); /* prdt address */
 	outb(barfour+PRDT_COMMAND_SECONDARY,8+op); 		/* read/write and start bit*/
 }
 
@@ -525,7 +525,10 @@ else
 kprintf_direct("is_lba=%d\n",islba);
 
 if(islba == 28) {						/* use lba28 */
-	switch(blockdevice.physicaldrive) {					/* master or slave */
+
+	DEBUG_PRINT_HEX(lowblock);
+
+	switch(physdrive) {					/* master or slave */
 	
 		case 0x80:							/* master */
 			outb(controller+ATA_DRIVE_HEAD_PORT, 0xe0 | (0 << 4) | ((lowblock >> 24) & 0xf));
@@ -545,14 +548,14 @@ if(islba == 28) {						/* use lba28 */
 	}
 
 
-	outb(controller+ATA_ALT_STATUS_PORT,0);
+//	outb(controller+ATA_ALT_STATUS_PORT,0);
 
 	outb(controller+ATA_SECTOR_COUNT_PORT,1);					/* sector count */
 	outb(controller+ATA_FEATURES_PORT,0);
 
 	outb(controller+ATA_SECTOR_NUMBER_PORT,(uint8_t) (lowblock & 0xff));			/* bits 0-7 */
-	outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (lowblock >> 8));				/* lba 2 */
-	outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (lowblock >> 16));				/* lba 3 */
+	outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (lowblock >> 8) &  0xff);			/* lba 2 */
+	outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (lowblock >> 16) & 0xff);			/* lba 3 */
 	
 	commandregister=pci_get_command(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
 
@@ -667,6 +670,7 @@ size_t irq15_handler(void) {
 #ifdef ATA_DEBUG
 	kprintf_direct("received irq 15\n");
 #endif
+
 ata_irq15done=TRUE;
 return;
 }
@@ -696,7 +700,7 @@ if(gethandle(handle,&atadevice) == -1) {		/* get information about device */
 
 drive=(uint8_t) (*atadevice.filename-'A');	/* get drive number */
 
-getblockdevice(drive,&bd);		/* get device information */
+if(getblockdevice(drive,&bd) == -1) return(-1);		/* get device information */
 
 switch(request) {
 	case IOCTL_ATA_IDENTIFY: 		/* get information */

@@ -539,6 +539,8 @@ sti
 call	dispatchhandler
 cli
 
+call	enablemultitasking
+
 mov	[tempone],eax
 
 mov 	ax,USER_DATA_SELECTOR				; load the kernel data segment descriptor
@@ -546,8 +548,6 @@ mov 	ds,ax
 mov 	es,ax
 mov 	fs,ax
 mov 	gs,ax
-
-call	enablemultitasking
 
 pop	gs
 pop	fs

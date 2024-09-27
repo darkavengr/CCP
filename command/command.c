@@ -145,81 +145,82 @@ char *directories[26][MAX_PATH];
 void signalhandler(size_t signal) {
 char c;
 
-	switch(signal) {
-		case SIGHUP:
-			kprintf("command: Caught signal SIGHUP. Terminating\n");
-			exit(0);
-			break;	
+switch(signal) {
+	case SIGHUP:
+		kprintf("command: Caught signal SIGHUP. Terminating\n");
+		exit(0);
+		break;	
 
-		case SIGQUIT:
-			kprintf("command: Caught signal SIGQUIT. Terminating\n");
-			exit(0);
-			break;
+	case SIGQUIT:
+		kprintf("command: Caught signal SIGQUIT. Terminating\n");
+		exit(0);
+		break;
 
-		case SIGILL:
-			kprintf("command: Caught signal SIGILL. Terminating\n");
-			exit(0);
-			break;
+	case SIGILL:
+		kprintf("command: Caught signal SIGILL. Terminating\n");
+		exit(0);
+		break;
 
-		case SIGABRT:
-			kprintf("command: Caught signal SIGABRT. Terminating\n");
-			exit(0);
-			break;
+	case SIGABRT:
+		kprintf("command: Caught signal SIGABRT. Terminating\n");
+		exit(0);
+		break;
 
-		case SIGFPE:
-			kprintf("command: Caught signal SIGFPE. Terminating\n");
-			exit(0);
-			break;
+	case SIGFPE:
+		kprintf("command: Caught signal SIGFPE. Terminating\n");
+		exit(0);
+		break;
 
-		case SIGKILL:
-			kprintf("command: Caught signal SIGKILL. Terminating\n");
-			exit(0);
-			break;
+	case SIGKILL:
+		kprintf("command: Caught signal SIGKILL. Terminating\n");
+		exit(0);
+		break;
 
 	case SIGSEGV:
-			kprintf("command: Caught signal SIGHUP. Terminating\n");
-			exit(0);
-			break;
+		kprintf("command: Caught signal SIGHUP. Terminating\n");
+		exit(0);
+		break;
 
 	case SIGPIPE:
-			kprintf("command: Caught signal SIGPIPE.\n");
-			break;
+		kprintf("command: Caught signal SIGPIPE.\n");
+		break;
 
 	case SIGALRM:
-			kprintf("command: Caught signal SIGALRM.\n");
-			break;
+		kprintf("command: Caught signal SIGALRM.\n");
+		break;
+
+	case SIGTERM:
+		exit(0);
 
 	case SIGINT:
-		/* fall through to SIGTERM */
-	case SIGTERM:
-			if(get_batch_mode() == TRUE) {		/* running in batch mode */
-				/* ask user to terminate batch job */
+		if(get_batch_mode() == TRUE) {		/* running in batch mode */
+			/* ask user to terminate batch job */
 
-				while(1) {  
-					kprintf(terminatebatchjob);
+			while(1) {  
+				kprintf(terminatebatchjob);
 
-					read(stdin,&c,1);
+				read(stdin,&c,1);
 	
-		 			if(c == 'Y' || c == 'y') break;
-		 			if(c == 'N' || c == 'n') return;
-				}
+	 			if(c == 'Y' || c == 'y') break;
+	 			if(c == 'N' || c == 'n') return;
+			}
 		
-				/* set the batch mode to terminating. do_script checks for this flag and terminates if it is present */
+			/* set the batch mode to terminating. do_script checks for this flag and terminates if it is present */
 
-				set_batch_mode(TERMINATING);		/* set batch mode */
-				return;
-	    			}
-			
+			set_batch_mode(TERMINATING);		/* set batch mode */
+			return;
+		}
+		
 
-			break;
+		break;
 
 	case SIGCONT:
-			kprintf("command: Caught signal SIGCONT.\n");
-			break;
+		kprintf("command: Caught signal SIGCONT.\n");
+		break;
 
 	case SIGSTOP:
-			kprintf("command: Caught signal SIGSTOP.\n");
-			break;
+		kprintf("command: Caught signal SIGSTOP.\n");
+		break;
 	}	
 }
 
@@ -239,7 +240,7 @@ struct psp {
 	uint8_t slack[128];
 	uint8_t cmdlinesize;			/* command line size */
 	uint8_t commandline[127];			/* command line */
-} *psp=0;
+} *psp=NULL;
 
 /* get and parse command line arguments */
 
@@ -259,7 +260,7 @@ if(argcount >= 2) {
 	
 		}
 	
-		if(strncmpi(commandlinearguments[count],"/P",MAX_PATH) == 0) {		/* Make command interpreter pemenant */
+		if(strncmpi(commandlinearguments[count],"/P",MAX_PATH) == 0) {		/* Make command interpreter pemanent */
 			commandlineoptions |= COMMAND_PERMENANT;
 		}	
 		
@@ -274,7 +275,7 @@ if(argcount >= 2) {
 			kprintf("\n");
 			kprintf("/P make command interpreter permanent (no exit)\n");
 		
-			count++;
+			exit(0);
 		}
 	}
 }
@@ -306,12 +307,11 @@ while(1) {	/* forever */
 	getcwd(buffer); 
 
 	c=*buffer;
-	kprintf("%c>",c);
+	kprintf("%c>",c);		/* display prompt */
 
 	memset(buffer,0,MAX_PATH);
 
 	readline(commandconsolein,buffer,MAX_PATH);			/* get line */
-
 	if(*buffer) doline(buffer);
 }
 
@@ -553,7 +553,7 @@ if(tc > 1) {						/* copy args if any */
 
 /* run program or script in current directory */
 
-if(runcommand(parsebuf[0],temp,backg) != -1) return;	/* run ok */
+if(runcommand(parsebuf[0],temp,backg) != -1) return(0);	/* run ok */
 
 /* prepend each directory in PATH to filename in turn and execute */
 
@@ -571,7 +571,7 @@ if(getvar("PATH",d) != -1) {			/* get path */
    
   			memcpy(b,parsebuf[0],strlen(parsebuf[0]));		/* append filename */
 	   
-			if(runcommand(parsebuf[1],temp,backg) != -1) return;	/* run ok */
+			if(runcommand(parsebuf[1],temp,backg) != -1) return(0);	/* run ok */
 
    			b=temp;
   		}
@@ -1105,7 +1105,6 @@ do {
 
 	  memset(&direntry,sizeof(FILERECORD));
 
-//	  asm("xchg %bx,%bx");
 } while(findnext(parsebuf[1],&direntry) != -1);
 
 ksnprintf(temp,"%d",getlasterror(),MAX_PATH); 
