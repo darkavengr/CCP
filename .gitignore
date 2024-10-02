@@ -4,6 +4,5 @@ bx_enh_dbg.ini
 ccp.sym
 *.map
 Makefile
-Makefile.in
 modernize
 

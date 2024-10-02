@@ -3,6 +3,6 @@ CC=@cc@
 LD=@ld@
 FILES=elf32.c
 
-@buildroot@obj/@arch@/elf32.o:
-	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@kernel/hwdep/i386$(FILES) -o @buildroot@/obj/@arch@/elf32.o
+@buildroot@/obj/@arch@/elf32.o:
+	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/i386 $(FILES) -o @buildroot@/obj/@arch@/elf32.o
 

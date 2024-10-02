@@ -1,20 +1,20 @@
 /*  CCP Version 0.0.1
-	   (C) Matthew Boote 2020-2023
+(C) Matthew Boote 2020-2023
 
-	   This file is part of CCP.
+This file is part of CCP.
 
-	   CCP is free software: you can redistribute it and/or modify
-	   it under the terms of the GNU General Public License as published by
-	   the Free Software Foundation, either version 3 of the License, or
-	   (at your option) any later version.
+CCP is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	   CCP is distributed in the hope that it will be useful,
-	   but WITHOUT ANY WARRANTY; without even the implied warranty of
-	   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	   GNU General Public License for more details.
+CCP is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-	   You should have received a copy of the GNU General Public License
-	   along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License
+along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 /* memory manager */
@@ -45,6 +45,8 @@ void *alloc(size_t size);
 void *kernelalloc(size_t size);
 void *kernelalloc_nopaging(size_t size);
 void *dma_alloc(size_t size);
+void *realloc_kernel(void *address,size_t size);
+void *realloc_user(void *address,size_t size);
 
 void *dmabuf=NULL;
 void *dmaptr=NULL;
@@ -286,7 +288,7 @@ return(NO_ERROR);
 * 
 */
 void *alloc(size_t size) {
-	return(alloc_int(ALLOC_NORMAL,getpid(),size,-1));
+return(alloc_int(ALLOC_NORMAL,getpid(),size,-1));
 }
 
 /*
@@ -298,8 +300,8 @@ void *alloc(size_t size) {
 * 
 */
 size_t free(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-	free_internal(getpid(),b,0);
-	return(NO_ERROR);
+free_internal(getpid(),b,0);
+return(NO_ERROR);
 }
 
 /*
@@ -312,8 +314,8 @@ size_t free(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
 * 
 */
 size_t free_physical(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-	free_internal(getpid(),b,FREE_PHYSICAL);
-	return(NO_ERROR);
+free_internal(getpid(),b,FREE_PHYSICAL);
+return(NO_ERROR);
 }
 
 /*
@@ -325,7 +327,7 @@ size_t free_physical(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
 * 
 */
 void *kernelalloc(size_t size) {				/* allocate kernel memory (0 - 0x80000000) */
-	return(alloc_int(ALLOC_KERNEL,getpid(),size,-1));
+return(alloc_int(ALLOC_KERNEL,getpid(),size,-1));
 }
 
 /*
@@ -337,7 +339,7 @@ void *kernelalloc(size_t size) {				/* allocate kernel memory (0 - 0x80000000) *
 * 
 */
 size_t kernelfree(void *b) {
-	return(free_internal(getpid(),b,0));
+return(free_internal(getpid(),b,0));
 }
 
 /*
@@ -417,5 +419,64 @@ dmabufsize=dmasize;
 initialize_mutex(&memmanager_mutex);		/* intialize mutex */
 
 return;
+}
+
+
+/*
+* Resize memory for kernel
+*
+* In: b	Start address of memory area
+*
+* Returns 0 on success, -1 otherwise
+* 
+* TODO: find a better way to do this
+*/
+
+void *realloc_kernel(void *address,size_t size) {
+char *tempbuf;
+char *newbuf;
+
+tempbuf=kernelalloc(size);		/* allocate temporary buffer */
+if(tempbuf == NULL) return(NULL);
+
+memcpy(tempbuf,address,size);		/* copy data */
+
+newbuf=kernelalloc(size);		/* allocate new */
+if(newbuf == NULL) return(NULL);
+
+if(kernelfree(address) == -1) return(NULL);	/* free old address */
+
+memcpy(newbuf,tempbuf,size);		/* copy data */
+
+return(newbuf);
+}
+
+/*
+* Resize memory for user process
+*
+* In: b	Start address of memory area
+*
+* Returns 0 on success, -1 otherwise
+* 
+* TODO: find a better way to do this
+*/	
+
+void *realloc_user(void *address,size_t size) {
+char *tempbuf;
+char *newbuf;
+
+tempbuf=kernelalloc(size);		/* allocate temporary buffer */
+if(tempbuf == NULL) return(NULL);
+
+memcpy(tempbuf,address,size);		/* copy data */
+
+newbuf=alloc(size);		/* allocate new */
+if(newbuf == NULL) return(NULL);
+
+if(free(address) == -1) return(NULL);	/* free old address */
+
+memcpy(newbuf,tempbuf,size);		/* copy data */
+
+return(newbuf);
 }
 

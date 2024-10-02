@@ -58,7 +58,7 @@ global getenv
 global pipe
 
 exit:
-mov 	eax,0x4c
+mov 	ah,0x4c
 int	0x21
 ret
 
@@ -104,7 +104,7 @@ ret
 close:
 mov	ebx,[esp+4]
 
-mov 	eax,0x3e00
+mov 	ah,0x3e
 int	0x21
 ret
 
@@ -126,7 +126,7 @@ ret
 delete:
 mov	edx,[esp+4]
 
-mov	eax,0x4100
+mov	ah,0x41
 int	0x21
 ret
 
@@ -134,7 +134,7 @@ exec:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
-mov	eax,0x4b00
+mov	ah,0x4b
 int	0x21
 ret
 
@@ -142,7 +142,7 @@ findfirst:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
-mov	eax,0x4e00
+mov	ah,0x4e
 int	0x21
 ret
 
@@ -150,20 +150,20 @@ findnext:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
-mov	eax,0x4f00
+mov	ah,0x4f
 int	0x21
 ret
 
 getcwd:
 mov	edx,[esp+4]
 
-mov	eax,0x4700
+mov	ah,0x47
 int	0x21
 ret
 
 chdir:
 mov	edx,[esp+4]
-mov	eax,0x3b00
+mov	ah,0x3b
 int	0x21
 ret
 
@@ -171,7 +171,7 @@ rename:
 mov	esi,[esp+4]
 mov	edi,[esp+8]
 
-mov	eax,0x5600
+mov	ah,0x56
 int	0x21
 ret
 
@@ -189,57 +189,45 @@ mov	ebx,[esp+4]
 mov	edx,[esp+8]
 mov	ecx,[esp+12]
 
-mov	eax,0x3f00
+mov	ah,0x3f
 int	0x21
 ret
 
 mkdir:
 mov	edx,[esp+4]
 
-mov	eax,0x3900
+mov	ah,0x39
 int	0x21
 ret
 
 rmdir:
 mov	edx,[esp+4]
 
-mov	eax,0x3a00
+mov	ah,0x3a
 int	0x21
 ret
 
 getargs:
 mov	edx,[esp+4]
 
-mov	eax,0x6500
+mov	ah,0x65
 int	0x21
 ret
 
 getversion:
-mov	eax,0x3000
+mov	ah,0x30
 int	0x21
 ret
 
 alloc:
-mov	eax,0x4800
-mov	ebx,[esp+4]
-int	0x21
-ret
-
-localalloc:
-mov	eax,0x4801
+mov	ah,0x48
 mov	ebx,[esp+4]
 int	0x21
 ret
 
 free:
+mov	ah,0x49
 mov	edx,[esp+4]
-mov	eax,0x4900
-int	0x21
-ret
-
-localfree:
-mov	edx,[esp+4]
-mov	eax,0x4901
 int	0x21
 ret
 
@@ -254,7 +242,7 @@ int	0x21
 ret
 
 getlasterror:
-mov	eax,0x4d00
+mov	ah,0x4d
 int	0x21
 ret
 
@@ -307,28 +295,6 @@ mov	eax,0x7012
 int	0x21
 ret
 
-getconsolereadhandle:
-mov	eax,0x7014
-int 	0x21
-ret
-
-setconsolereadhandle:
-mov	ebx,[esp+4]
-mov	eax,0x7016
-int 	0x21
-ret
-
-getconsolewritehandle:
-mov	eax,0x7017
-int 	0x21
-ret
-
-setconsolewritehandle:
-mov	ebx,[esp+4]
-mov	eax,0x7018
-int	0x21
-ret
-
 getcurrentprocess:
 mov	eax,0x701A
 int	0x21
@@ -336,7 +302,7 @@ ret
 
 writeconsole:
 mov	edx,[esp+4]
-mov	eax,0x9
+mov	ah,0x9
 int	0x21
 ret
 
@@ -354,12 +320,6 @@ mov	eax,0x7019
 int	0x21
 ret
 
-setconsolecolour:
-mov	eax,0x7020
-mov	ebx,[esp+4]
-int	0x21
-ret
-
 load_kernel_module:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
@@ -369,14 +329,14 @@ ret
 
 dup:
 mov	ebx,[esp+4]
-mov 	eax,0x45
+mov 	ah,0x45
 int	0x21
 ret
 
 dup2:
 mov	ebx,[esp+4]
 mov	ecx,[esp+8]
-mov 	eax,0x46
+mov 	ah,0x46
 int	0x21
 ret
 
@@ -393,37 +353,37 @@ int	0x21
 ret
 
 set_signal_handler:
-mov	eax,0x8c00
+mov	ah,0x8c
 mov	edx,[esp+4]
 int	0x21
 ret
 
 signal:
-mov	eax,0x8d00
+mov	ah,0x8d
 mov	ebx,[esp+4]
 mov	edx,[esp+8]
 int	0x21
 ret
 
 waitpid:
-mov	eax,0x8a00
+mov	ah,0x8a
 mov	ebx,[esp+4]
 int	0x21
 ret
 
 getpid:
-mov	eax,0x5000
+mov	ah,0x50
 int	0x21
 ret
 
 getprocessinfomation:
-mov	eax,0x6500
+mov	ah,0x65
 mov	ebx,[esp+4]
 int	0x21
 ret
 
 blockread:
-mov	eax,0x9000
+mov	ah,0x90
 mov	ecx,[esp+4]
 mov	edx,[esp+8]
 int	0x21
@@ -436,14 +396,14 @@ ret
 
 
 blockwrite:
-mov	eax,0x9100
+mov	ah,0x91
 mov	ecx,[esp+4]
 mov	edx,[esp+8]
 int	0x21
 ret
 
 ioctl:
-mov	eax,0x4401
+mov	eax,0x4400
 mov	ebx,[esp+4]
 mov	ecx,[esp+8]
 mov	edx,[esp+12]

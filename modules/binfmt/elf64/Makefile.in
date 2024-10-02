@@ -1,0 +1,8 @@
+ASM=@asm@
+CC=@cc@
+LD=@ld@
+FILES=elf64.c
+
+@buildroot@/obj/@arch@/elf64.o:
+	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o @buildroot@/obj/@arch@/elf64.o
+

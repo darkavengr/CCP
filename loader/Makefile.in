@@ -1,0 +1,7 @@
+ASM=nasm
+
+all:
+	$(ASM) @arch@/ccpload.asm -o @buildroot@/bin/@arch@/CCPLOAD.SYS -i@buildroot@/kernel/@arch@/
+	$(ASM) @arch@/boot.asm -o @buildroot@/bin/@arch@/boot -i@buildroot@/kernel/@arch@/
+
+

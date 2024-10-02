@@ -143,7 +143,15 @@ jnz	multitasking_enabled
 jmp	end_switch
 
 multitasking_enabled:
-call	disablemultitasking
+;call	disablemultitasking
+
+;call	getpid
+
+;cmp	eax,1
+;jl	no_debug
+
+xchg	bx,bx
+no_debug:
 
 push	dword [save_esp]			; save current task's stack pointer
 call	save_kernel_stack_pointer
@@ -155,24 +163,24 @@ mov	eax,[save_descriptor]			; get descriptor
 test	eax,eax					; if switching to a specific process
 jnz	task_time_slice_finished		; don't check if process is ready to switch
 
-call	is_process_ready_to_switch
-test	eax,eax					; if process not ready to switch, return
-jnz	task_time_slice_finished
+;call	is_process_ready_to_switch
+;test	eax,eax					; if process not ready to switch, return
+;jnz	task_time_slice_finished
 
-call	enablemultitasking
+;call	enablemultitasking
 
-jmp	end_switch
+;jmp	end_switch
 
 task_time_slice_finished:
 call	reset_process_ticks
 
-call	getpid
+;call	getpid
 
-cmp	eax,1
-jl	no_debug
+;cmp	eax,1
+;jl	no_debug
 
-xchg	bx,bx
-no_debug:
+;xchg	bx,bx
+;no_debug:
 
 ;
 ; Switch to next process

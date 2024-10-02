@@ -6,6 +6,10 @@
 #define PROCESS_FLAG_BACKGROUND		1
 
 #define CCPVER 0x0100
+#define CCP_MAJOR_VERSION 1
+#define CCP_MINOR_VERSION 0
+#define CCP_RELEASE_VERSION 0
+
 #define _SHUTDOWN	 		0
 #define _RESET				1
 #define PROCESS_STACK_SIZE 65536
@@ -35,12 +39,11 @@ typedef struct {
 	size_t flags;
 	size_t kernelstackpointer;
 	size_t kernelstacktop;
+	size_t kernelstackbase;
 	size_t stackpointer;
 	size_t stackbase;
 	size_t lasterror;
 	char *envptr;	
-	HEAPENTRY *heapaddress;
-	HEAPENTRY *heapend;
 	struct PROCESS *next;
 }  __attribute__((packed)) PROCESS;
 
@@ -98,8 +101,4 @@ size_t load_executable(char *filename);
 void reset_process_ticks(void);
 size_t get_tick_count(void);
 void increment_tick_count(void);
-HEAPENTRY *GetUserHeapAddress(void);
-HEAPENTRY *GetUserHeapEnd(void);
-void SetUserHeapEnd(HEAPENTRY *end);
-void SetUserHeapAddress(HEAPENTRY *heap);
 

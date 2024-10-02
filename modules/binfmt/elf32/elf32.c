@@ -12,7 +12,7 @@
 
 #define MODULE_INIT elf32_init
 
-int elf32_init(char *init) {
+size_t elf32_init(char *init) {
 EXECUTABLEFORMAT exec;
 uint8_t magicnumber[] = { 0x7f,'E','L','F',1,1,1 };
 

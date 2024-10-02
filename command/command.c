@@ -48,7 +48,6 @@
 #include "process.h"
 #include "signal.h"
 
-FILERECORD direntry;
 extern char *errors[255];
 extern char *directories[26][MAX_PATH];
 
@@ -134,7 +133,6 @@ struct {
 		   {  NULL,NULL } };
 
 size_t errorlevel;
-uint32_t tohex(uint32_t hex,char *buf);
 size_t handle;
 size_t commandlineoptions=0;
 
@@ -197,7 +195,7 @@ switch(signal) {
 			/* ask user to terminate batch job */
 
 			while(1) {  
-				kprintf(terminatebatchjob);
+				kprintf("%s",terminatebatchjob);
 
 				read(stdin,&c,1);
 	
@@ -250,33 +248,37 @@ argcount=tokenize_line(psp->commandline,commandlinearguments," \t");		/* tokeniz
 
 if(argcount >= 2) {
 	for(count=1;count<argcount;count++) {
-		if(strncmpi(commandlinearguments[count],"/C",MAX_PATH) == 0) {		/* run command and exit */
-			doline(commandlinearguments[count+1]);
-			exit(0);
-		}
-
-		if(strncmpi(commandlinearguments[count],"/K",MAX_PATH) == 0) {		/* run command */
-			doline(commandlinearguments[count+1]);
-	
-		}
-	
-		if(strncmpi(commandlinearguments[count],"/P",MAX_PATH) == 0) {		/* Make command interpreter pemanent */
-			commandlineoptions |= COMMAND_PERMENANT;
-		}	
+		if((char) *commandlinearguments[count] == '/') {
 		
-		if(strncmpi(commandlinearguments[count],"/?",MAX_PATH) == 0) {		/* Show help */
-			kprintf("Command interpreter\n");
-			kprintf("\n");
-			kprintf("COMMAND [/C command] [/K command] /P\n");
-			kprintf("\n");
-			kprintf("/C run command and exit\n");
-			kprintf("\n");
-			kprintf("/K run command and continue running command interpreter\n");
-			kprintf("\n");
-			kprintf("/P make command interpreter permanent (no exit)\n");
+			if(((char) *commandlinearguments[count] == 'C') || ((char) *commandlinearguments[count] == 'c')) {
+				doline(commandlinearguments[count+1]);
+				exit(0);
+			}
+			else if(((char) *commandlinearguments[count] == 'K') || ((char) *commandlinearguments[count] == 'k')) {
+				doline(commandlinearguments[count+1]);
+			}
+			else if(((char) *commandlinearguments[count] == 'P') || ((char) *commandlinearguments[count] == 'p')) {
+				commandlineoptions |= COMMAND_PERMENANT;
+				count++;	
+			}			
+			else if((char) *commandlinearguments[count] == '?') {
+				kprintf("Command interpreter\n");
+				kprintf("\n");
+				kprintf("COMMAND [OPTIONS] {filename}\n");
+				kprintf("\n");
+				kprintf("/C run command and exit\n");
+				kprintf("\n");
+				kprintf("/K run command and continue running command interpreter\n");
+				kprintf("\n");
+				kprintf("/P make command interpreter permanent (no exit)\n");
 		
-			exit(0);
-		}
+				exit(0);
+			}
+			else
+			{
+				kprintf("command: Invalid option /%c\n",(char) *commandlinearguments[count]);
+				exit(1);
+			}
 	}
 }
 
@@ -325,11 +327,9 @@ unsigned long doline(char *command) {
 unsigned long count;
 char *buffer[MAX_PATH];
 char *temp[MAX_PATH];
-unsigned long xdir;
 unsigned long backg;
 unsigned char *b;
 unsigned char *d;
-char x;
 int savepos;
 int tc;
 char *parsebuf[COMMAND_TOKEN_COUNT][MAX_PATH];
@@ -458,7 +458,7 @@ for(count=0;count<tc;count++) {
 
 		/* command1 | command2 | command3 */
 		if((count == 0) || (count == tc)) {	/* no command before or after */
-			kprintf(syntaxerror);
+			kprintf("%s",syntaxerror);
 			return;
 		}
 
@@ -501,10 +501,12 @@ b++;
 if(*b == ':' && strlen(parsebuf[0]) == 2) {
 	drivenumber=(char) *parsebuf[0]-'A';		/* get drive number */
 
-	chdir(directories[drivenumber]);
+	if(chdir(directories[drivenumber]) == -1) {	/* change to directory for drive */
+		kprintf("%s\n",kstrerr(getlasterror()));
+		return;	
+	}
 
-	kprintf("%s\n",kstrerr(getlasterror()));
-	return;	
+	return;
 }
 
 
@@ -581,7 +583,7 @@ if(getvar("PATH",d) != -1) {			/* get path */
 
 /* bad command */
 
-kprintf(badcommand);
+kprintf("%s",badcommand);
 
 setvar("ERRORLEVEL","255");
 return(-1);
@@ -622,7 +624,7 @@ char *buffer[MAX_PATH];
 size_t count;
 
 if(tc == 1) {			/* not enough args */
-	kprintf(noparams);
+	kprintf("%s",noparams);
 	return;
 }
 
@@ -655,7 +657,7 @@ else
 	 }
 
 	 if(count >= tc) {	/* no == */
-	 	kprintf(syntaxerror); 
+	 	kprintf("%s",syntaxerror); 
 	 	return;
 	 }
 
@@ -719,12 +721,12 @@ char c;
 char *buffer[MAX_PATH];
 
 if(tc == 1) {			/* not enough args */
-	kprintf(noparams);
+	kprintf("%s",noparams);
 	return;
 }
 
 if(strlen(parsebuf[1]) == 0 || strlen(parsebuf[2]) == 0) { /* missing args */
-	 kprintf(noparams);
+	 kprintf("%s",noparams);
 	 return;
 }
 
@@ -753,7 +755,7 @@ do {
 	kprintf("%s\n",sourcedirentry.filename);
 	count++;
 
-	if(direntry.flags == FILE_DIRECTORY) {	/* copying to directory */
+	if(destdirentry.flags == FILE_DIRECTORY) {	/* copying to directory */
 		ksnprintf(buffer,"%s\\%s",parsebuf[2],&direntry.filename,MAX_PATH);
 	}
 
@@ -784,7 +786,7 @@ char c;
 //for %a in (*.*) do echo %a
 
 if(strncmpi(parsebuf[2],"IN",MAX_PATH) != 0) {
-	kprintf(syntaxerror);
+	kprintf("%s",syntaxerror);
 	return;
 }
 
@@ -806,7 +808,7 @@ for(start=3;start<tc;start++) {		/* find start */
 }
 
 if(start == tc) {
-	kprintf(syntaxerror);
+	kprintf("%s",syntaxerror);
 	return;
 }
 	
@@ -882,15 +884,15 @@ int runopts;
 char c;
 
 if(tc == 1) {			/* not enough args */
-	kprintf(noparams);
+	kprintf("%s",noparams);
 	return;
 }
 
 if(strncmp(parsebuf[1],"*",MAX_PATH) == 0 || strncmp(parsebuf[1],"*.*",MAX_PATH) == 0) {
-	kprintf(allfilesdeleted);
+	kprintf("%s",allfilesdeleted);
 
 	while(1) {  
-		kprintf(areyousure);
+		kprintf("%s",areyousure);
 		read(stdin,&c,1);
 	
 		if(c == 'Y' || c == 'y') break;
@@ -906,7 +908,7 @@ return;
 
 int mkdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* not enough args */
-	kprintf(noparams);
+	kprintf("%s",noparams);
 	return;
 }
 
@@ -921,7 +923,7 @@ return;
 
 int rmdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* not enough args */
-	kprintf(noparams);
+	kprintf("%s",noparams);
 	return;
 }
 
@@ -937,7 +939,7 @@ return;
 
 int rename_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* not enough args */
-	kprintf(noparams);
+	kprintf("%s",noparams);
 	return;
 }
 
@@ -1055,6 +1057,7 @@ char *buffer[MAX_PATH];
 size_t dircount;
 size_t fcount;
 char *temp[MAX_PATH];
+FILERECORD direntry;
 
 if(!*parsebuf[1]) strncpy(parsebuf[1],"*");	/* find all by default */
 
@@ -1107,11 +1110,10 @@ do {
 
 } while(findnext(parsebuf[1],&direntry) != -1);
 
-ksnprintf(temp,"%d",getlasterror(),MAX_PATH); 
-
+ksnprintf(temp,"%d",getlasterror(),MAX_PATH); 		/* set errorlevel */
 setvar("ERRORLEVEL",temp);
 
-if(getlasterror() != END_OF_DIRECTORY) {
+if(getlasterror() != END_OF_DIRECTORY) {		/* return error */
 	kprintf("%s\n",kstrerr(getlasterror()));
 	return;
 }
@@ -1143,7 +1145,7 @@ int kill_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 int findresult;
 
 if(tc == 1) {		/* missing argument */
-	kprintf(noparams);
+	kprintf("%s",noparams);
 	return;
 }
 	 
@@ -1200,11 +1202,7 @@ int rem_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 }
 
 int critical_error_handler(char *name,size_t drive,size_t flags,size_t error) {
-CHARACTERDEVICE *cd;
-BLOCKDEVICE *bd;
-char c;
 char *buf[10];
-char *b;
 
 if((flags & 0x80000000) == 0) {			/* from disk */
 	 flags &= 0x80000000;
@@ -1219,12 +1217,9 @@ while(1) {
 	  kprintf(abortretryfail);
 	  read(stdin,buf,1);
 
-	  b=buf;
-	  c=*buf;
-
-	  if(c == 'A' || c == 'a') return(CRITICAL_ERROR_ABORT);
-	  if(c == 'R' || c == 'r') return(CRITICAL_ERROR_RETRY);
-	  if(c == 'F' || c == 'f') return(CRITICAL_ERROR_FAIL);
+	  if(((char) *buf == 'A') || ((char) *buf == 'a')) return(CRITICAL_ERROR_ABORT);
+	  if(((char) *buf == 'R') || ((char) *buf == 'r')) return(CRITICAL_ERROR_RETRY);
+	  if(((char) *buf == 'F') || ((char) *buf == 'f')) return(CRITICAL_ERROR_FAIL);
 }
 
 }
