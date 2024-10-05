@@ -101,4 +101,5 @@ size_t load_executable(char *filename);
 void reset_process_ticks(void);
 size_t get_tick_count(void);
 void increment_tick_count(void);
+size_t GetVersion(void);
 

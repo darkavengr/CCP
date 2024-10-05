@@ -215,14 +215,14 @@ return((void *) firstpage);
 /*
 * Internal free memory function
 *
-* In: 	process		Process to free memory from
+* In: 	process		Process ID
 *	b		Start address of memory area
 *	flags		Flags (1=free physical address)
 *
 * Returns 0 on success, -1 otherwise
 * 
 */
-size_t free_internal(size_t process,void *b,size_t flags) {
+size_t free_internal(size_t process,void *address,size_t flags) {
 size_t pc;
 size_t count;
 size_t p;
@@ -234,11 +234,11 @@ lock_mutex(&memmanager_mutex);
 /* Get start of memory chain */
 
 if((flags & FREE_PHYSICAL)) {			/* freeing physical address */
-	c=(size_t) b;
+	c=(size_t) address;
 }
 else
 {
-	c=getphysicaladdress(process,b);
+	c=getphysicaladdress(process,address);
 	if(c == -1) {
 		unlock_mutex(&memmanager_mutex);
 		return(-1);					/* bad address */
@@ -248,7 +248,7 @@ else
 c=(c / PAGE_SIZE) * sizeof(size_t);
 z=MEMBUF_START+c;
 
-pc=b;
+pc=address;
 pc &= ((size_t) 0-1)-(PAGE_SIZE-1);
 
 /* follow chain, removing entries */
@@ -300,8 +300,7 @@ return(alloc_int(ALLOC_NORMAL,getpid(),size,-1));
 * 
 */
 size_t free(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-free_internal(getpid(),b,0);
-return(NO_ERROR);
+return(free_internal(getpid(),b,0));
 }
 
 /*
@@ -314,8 +313,7 @@ return(NO_ERROR);
 * 
 */
 size_t free_physical(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-free_internal(getpid(),b,FREE_PHYSICAL);
-return(NO_ERROR);
+return(free_internal(getpid(),b,FREE_PHYSICAL));
 }
 
 /*
@@ -421,7 +419,6 @@ initialize_mutex(&memmanager_mutex);		/* intialize mutex */
 return;
 }
 
-
 /*
 * Resize memory for kernel
 *
@@ -429,26 +426,10 @@ return;
 *
 * Returns 0 on success, -1 otherwise
 * 
-* TODO: find a better way to do this
 */
 
 void *realloc_kernel(void *address,size_t size) {
-char *tempbuf;
-char *newbuf;
-
-tempbuf=kernelalloc(size);		/* allocate temporary buffer */
-if(tempbuf == NULL) return(NULL);
-
-memcpy(tempbuf,address,size);		/* copy data */
-
-newbuf=kernelalloc(size);		/* allocate new */
-if(newbuf == NULL) return(NULL);
-
-if(kernelfree(address) == -1) return(NULL);	/* free old address */
-
-memcpy(newbuf,tempbuf,size);		/* copy data */
-
-return(newbuf);
+return(realloc_int(ALLOC_KERNEL,getpid(),address,size));
 }
 
 /*
@@ -458,25 +439,129 @@ return(newbuf);
 *
 * Returns 0 on success, -1 otherwise
 * 
-* TODO: find a better way to do this
-*/	
+*/
 
 void *realloc_user(void *address,size_t size) {
+return(realloc_int(ALLOC_NORMAL,getpid(),address,size));
+}
+
+
+/*
+* Resize memory internal function
+*
+* In: flags		Allocation flags(ALLOC_NORMAL or ALLOC_KERNEL)
+      process		Process ID
+      address		Address of previously allocated memory
+      size		Number of bytes to allocate
+* 
+* Returns: address or NULL on error.
+*
+*/	
+
+void *realloc_int(size_t flags,size_t process,void *address,size_t size) {
 char *tempbuf;
 char *newbuf;
+size_t pc;
+size_t count;
+size_t p=0;
+size_t c;
+size_t *z;
+size_t *saveptr;
+size_t extendcount;
 
-tempbuf=kernelalloc(size);		/* allocate temporary buffer */
-if(tempbuf == NULL) return(NULL);
+lock_mutex(&memmanager_mutex);
 
-memcpy(tempbuf,address,size);		/* copy data */
+/* Get start of memory chain */
 
-newbuf=alloc(size);		/* allocate new */
-if(newbuf == NULL) return(NULL);
+if((flags & ALLOC_NOPAGING) || (size == 0)) {
+	setlasterror(INVALID_ADDRESS);
+	return(NULL);
 
-if(free(address) == -1) return(NULL);	/* free old address */
-
-memcpy(newbuf,tempbuf,size);		/* copy data */
-
-return(newbuf);
 }
+else
+{
+	c=getphysicaladdress(process,address);
+	if(c == -1) {	
+		unlock_mutex(&memmanager_mutex);
+
+		setlasterror(INVALID_ADDRESS);
+		return(NULL);
+	 }
+}
+
+if(size < PAGE_SIZE) size=PAGE_SIZE;		/* if size is less than a page, round up to page size */
+
+if((size % PAGE_SIZE) != 0) {
+	size=(size & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round */
+}
+
+c=(c / PAGE_SIZE) * sizeof(size_t);
+z=MEMBUF_START+c;
+
+pc=address;
+pc &= ((size_t) 0-1)-(PAGE_SIZE-1);
+
+count=0;
+
+do {
+	p=*z;				/* get next */
+
+	if((count*PAGE_SIZE) == size) {		 /* shrinking memory */
+		if(free_internal(process,(address+size),0) == -1) return(NULL);
+
+		z=(address+count);
+		*z=-1;			/* put new end of chain marker */
+		
+		return(address);
+	}
+
+	DEBUG_PRINT_HEX(z);
+//	asm("xchg %bx,%bx");
+
+	if(p == -1) {			/* at end of chain */
+		z=p;			/* point to next in chain */
+
+		if(size > (count*PAGE_SIZE)) {		/* extending memory */
+			/* check for sufficient contiguous pages */
+			
+			for(extendcount=1;extendcount != (size-(count*PAGE_SIZE));extendcount++) {
+				if(getphysicaladdress(process,(address+(extendcount*PAGE_SIZE))) == -1) break;
+			}
+
+			if((extendcount*PAGE_SIZE) != (size-(count*PAGE_SIZE))) {		/* no contiguous address space found */
+				/* kludge */
+
+				tempbuf=kernelalloc(size);		/* allocate temporary buffer */
+				if(tempbuf == NULL) return(NULL);
+
+				memcpy(tempbuf,address,(count*PAGE_SIZE));		/* copy data */
+
+				newbuf=kernelalloc(size);		/* allocate new */
+				if(newbuf == NULL) return(NULL);
+
+				if(kernelfree(address) == -1) return(NULL);	/* free old address */
+
+				memcpy(newbuf,tempbuf,(count*PAGE_SIZE));	/* copy data */
+		
+				kernelfree(tempbuf);
+
+				setlasterror(NO_ERROR);
+				return(newbuf);
+			}
+
+			/* contiguous address space found */
+
+			if(alloc_int(flags,process,(count*PAGE_SIZE),address+(count*PAGE_SIZE)) == NULL) return(NULL);
+			return(address);
+		}				
+	}	
+
+	count++;		
+	z=p;				/* get next entry in chain */
+
+}  while(p != -1);
+
+return(NULL);
+}
+
 

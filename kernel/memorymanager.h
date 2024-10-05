@@ -13,7 +13,7 @@ void *kernelalloc_nopaging(size_t size);
 void *dma_alloc(size_t size);
 size_t kernelfree(void *address);
 size_t memorymanager_init(size_t dmasize);
-void *realloc_int(size_t flags,void *address,size_t size);
+void *realloc_int(size_t flags,size_t process,void *address,size_t size);
 void *realloc_kernel(void *address,size_t size);
 void *realloc_user(void *address,size_t size);
 

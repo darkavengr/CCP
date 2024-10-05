@@ -46,6 +46,8 @@ void halt(void);
 void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
+char *buf;
+char *bufx;
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);

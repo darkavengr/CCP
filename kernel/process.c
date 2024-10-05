@@ -1327,7 +1327,7 @@ return(currentprocess->kernelstacktop);
 *
 * In:  Nothing
 *
-* Returns: Address of top of kernel stack or NULL if there are no processes running
+* Returns: Bottom address of kernel stack or NULL if there are no processes running
 *
 */
 size_t get_kernel_stack_base(void) {
@@ -1384,7 +1384,7 @@ return(processes->next);
 * In: previousprocess	Pointer to previous process returned from call to get_processes_pointer() or findnextprocess()
 *     processbuf	Pointer to buffer to hold process information
 *
-* Returns -1 on error or 0 on success
+* Returns NULL on error or pointer to next process on success
 *
 */
 

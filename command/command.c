@@ -199,14 +199,14 @@ switch(signal) {
 
 				read(stdin,&c,1);
 	
-	 			if(c == 'Y' || c == 'y') break;
-	 			if(c == 'N' || c == 'n') return;
+	 			if((c == 'Y') || (c == 'y')) break;
+	 			if((c == 'N') || (c == 'n')) return(0);
 			}
 		
 			/* set the batch mode to terminating. do_script checks for this flag and terminates if it is present */
 
 			set_batch_mode(TERMINATING);		/* set batch mode */
-			return;
+			return(0);
 		}
 		
 
@@ -249,7 +249,7 @@ argcount=tokenize_line(psp->commandline,commandlinearguments," \t");		/* tokeniz
 if(argcount >= 2) {
 	for(count=1;count<argcount;count++) {
 		if((char) *commandlinearguments[count] == '/') {
-		
+	
 			if(((char) *commandlinearguments[count] == 'C') || ((char) *commandlinearguments[count] == 'c')) {
 				doline(commandlinearguments[count+1]);
 				exit(0);
@@ -279,6 +279,7 @@ if(argcount >= 2) {
 				kprintf("command: Invalid option /%c\n",(char) *commandlinearguments[count]);
 				exit(1);
 			}
+		}
 	}
 }
 
@@ -342,7 +343,7 @@ int pipecount;
 int inputpipehandle;
 int outputpipehandle;
 
-if(strncmp(command,"\n",MAX_PATH) == 0) return;	/* blank line */
+if(strncmp(command,"\n",MAX_PATH) == 0) return(0);	/* blank line */
 
 b=command+strlen(command)-1;
 if(*b == '\n') *b=0;		/* remove newline */
@@ -397,7 +398,7 @@ for(count=0;count<tc;count++) {
 	 	handle=open(parsebuf[count-1],O_RDONLY);
 	 	if(handle == -1) {			/* can't open */
 	 		kprintf("%s\n",kstrerr(getlasterror()));
-	 		return;
+	 		return(0);
 	   	}
 
 	  	dup2(handle,stdin);	 		/* redirect input */
@@ -410,7 +411,7 @@ for(count=0;count<tc;count++) {
 	  	handle=open(parsebuf[count+1],O_WRONLY | O_CREAT | O_TRUNC);		
 	  	if(handle == -1) {			/* can't open */
 	    		kprintf("%s\n",kstrerr(getlasterror()));
-	     		return;
+	     		return(0);
 	    	}
 	 
 		dup2(handle,stdout); 		/* redirect output */
@@ -423,12 +424,12 @@ for(count=0;count<tc;count++) {
 	  	handle=open(parsebuf[count+1],O_WRONLY);		
 	  	if(handle == -1) {			/* can't open */
 	    		kprintf("%s\n",kstrerr(getlasterror()));
-	     		return;
+	     		return(0);
 	    	}
 	 
 		if(seek(handle,0,SEEK_END) == -1) {	/* seek to end */
 	    		kprintf("%s\n",kstrerr(getlasterror()));
-	     		return;
+	     		return(0);
 	    	}
 		
 		dup2(handle,stdout); 		/* redirect output */
@@ -459,7 +460,7 @@ for(count=0;count<tc;count++) {
 		/* command1 | command2 | command3 */
 		if((count == 0) || (count == tc)) {	/* no command before or after */
 			kprintf("%s",syntaxerror);
-			return;
+			return(0);
 		}
 
 
@@ -480,7 +481,7 @@ for(count=0;count<tc;count++) {
 
 		if(runcommand(parsebuf[count],temp,FALSE) == -1) {		/* run command */
 			kprintf("%s\n",kstrerr(getlasterror()));
-			return;
+			return(0);
 		}
 
 		if(pipecount > 0) {		/* if it's not the first command */
@@ -503,10 +504,10 @@ if(*b == ':' && strlen(parsebuf[0]) == 2) {
 
 	if(chdir(directories[drivenumber]) == -1) {	/* change to directory for drive */
 		kprintf("%s\n",kstrerr(getlasterror()));
-		return;	
+		return(-1);	
 	}
 
-	return;
+	return(0);
 }
 
 
@@ -520,7 +521,7 @@ do {
 	if(strncmp(commands[commandcount].command,parsebuf[0],MAX_PATH) == 0) {  /* found command */
 		commands[commandcount].call_command(tc,parsebuf);	
 		commandcount=0;
-		return;
+		return(0);
 	}
 	
 	commandcount++;
@@ -607,12 +608,11 @@ if(tc == 1) {			/* display variables */
 		kprintf("%s\n",buffer);
 	}
 
-return;
+	return(0);
 }
 
-/* set variable */
-setvar(parsebuf[1],parsebuf[3]);
-return;
+setvar(parsebuf[1],parsebuf[3]);  /* set variable */
+return(0);
 }
 
 int if_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
@@ -623,9 +623,9 @@ char *buffer[MAX_PATH];
 
 size_t count;
 
-if(tc == 1) {			/* not enough args */
+if(tc == 1) {			/* insufficient parameters */
 	kprintf("%s",noparams);
-	return;
+	return(-1);
 }
 
 start=1;
@@ -658,7 +658,7 @@ else
 
 	 if(count >= tc) {	/* no == */
 	 	kprintf("%s",syntaxerror); 
-	 	return;
+	 	return(-1);
 	 }
 
 	 if(strncmp(parsebuf[count-1],parsebuf[count+1],MAX_PATH) == 0) condition=TRUE;
@@ -675,7 +675,7 @@ if(condition == TRUE) {
 	}
 
 	doline(buffer);
-	return;
+	return(0);
 }
 
 }
@@ -688,24 +688,24 @@ int cd_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *directoryname[MAX_PATH];
 size_t drivenumber;
 
-if(tc == 1) {			/* not enough args */
+if(tc == 1) {			/* insufficient parameters */
 	getcwd(directoryname);
 
 	kprintf("%s\n",directoryname);
-	return;
+	return(0);
 }
 
 getfullpath(parsebuf[1],directoryname);	/* get full path of directory */
 
 if(chdir(parsebuf[1]) == -1) {		/* set directory */
 	kprintf("%s\n",kstrerr(getlasterror()));
-	return;
+	return(-1);
 }
 
 drivenumber=(char) *directoryname-'A';	/* get drive number */
 
 strncpy(directories[drivenumber],directoryname);	/* save directory name */
-return;
+return(0);
 }
 
 
@@ -720,21 +720,21 @@ int findresult;
 char c;
 char *buffer[MAX_PATH];
 
-if(tc == 1) {			/* not enough args */
+if(tc == 1) {			/* insufficient parameters */
 	kprintf("%s",noparams);
-	return;
+	return(-1);
 }
 
 if(strlen(parsebuf[1]) == 0 || strlen(parsebuf[2]) == 0) { /* missing args */
 	 kprintf("%s",noparams);
-	 return;
+	 return(-1);
 }
 
 findresult=findfirst(parsebuf[1],&sourcedirentry);
 
 if(findresult == -1) {	/* no source file */
-	 kprintf("%s\n",errors[FILE_NOT_FOUND]);
-	 return;
+	kprintf("%s\n",kstrerr(getlasterror()));
+	 return(-1);
 }
 
 count=0;
@@ -747,8 +747,8 @@ do {
 			kprintf(overwrite,parsebuf[2]);
 			read(stdin,&c,1);
 
-			if(c == 'Y' || c == 'y') break;
-			if(c == 'N' || c == 'n') return;
+			if((c == 'Y') || (c == 'y')) break;
+			if((c == 'N') || (c == 'n')) return(0);
 		}
 	}
 	 
@@ -756,19 +756,19 @@ do {
 	count++;
 
 	if(destdirentry.flags == FILE_DIRECTORY) {	/* copying to directory */
-		ksnprintf(buffer,"%s\\%s",parsebuf[2],&direntry.filename,MAX_PATH);
+		ksnprintf(buffer,"%s\\%s",parsebuf[2],&sourcedirentry.filename,MAX_PATH);
 	}
 
 	if(copyfile(sourcedirentry.filename,parsebuf[2]) == -1) {
 		kprintf("%s\n",kstrerr(getlasterror()));
-		return;
+		return(-1);
 	}
 
 } while(findnext(parsebuf[1],&sourcedirentry) != -1);
 
 kprintf(filescopied,count);
 
-return;
+return(0);
 }
 
 
@@ -787,7 +787,7 @@ char c;
 
 if(strncmpi(parsebuf[2],"IN",MAX_PATH) != 0) {
 	kprintf("%s",syntaxerror);
-	return;
+	return(-1);
 }
 
 for(start=3;start<tc;start++) {		/* find start */
@@ -809,7 +809,7 @@ for(start=3;start<tc;start++) {		/* find start */
 
 if(start == tc) {
 	kprintf("%s",syntaxerror);
-	return;
+	return(-1);
 }
 	
 startvars=3;
@@ -826,7 +826,7 @@ else
 
 	if(c != '(') {
 		kprintf(missingleftbracket);
-		return;
+		return(-1);
 	}
 	else
 	{
@@ -852,24 +852,27 @@ else
 	c=*b;
 
 	if(c != ')') {
-		kprintf(missingrightbracket);
-		return;
-	 }
-	 else
-	 {
+		kprintf("%s",missingrightbracket);
+		return(-1);
+	}
+	else
+	{
 	 	/* end variable without ) */
 
-	  *b=0;
-	 }
+		*b=0;
+	}
 }
 
 for(count=startvars;count<endvars+1;count++) {
 	setvar(parsebuf[1],parsebuf[count]);
 
-	doline(buffer);
+	if(doline(buffer) == -1) {
+		kprintf("%s\n",kstrerr(getlasterror()));
+		return(-1);
+	}
 }
 
-return;
+return(0);
 }
 	
 
@@ -883,72 +886,75 @@ size_t inverse;
 int runopts;
 char c;
 
-if(tc == 1) {			/* not enough args */
+if(tc == 1) {			/* insufficient parameters */
 	kprintf("%s",noparams);
-	return;
+	return(-1);
 }
 
-if(strncmp(parsebuf[1],"*",MAX_PATH) == 0 || strncmp(parsebuf[1],"*.*",MAX_PATH) == 0) {
+if((strncmp(parsebuf[1],"*",MAX_PATH) == 0) || (strncmp(parsebuf[1],"*.*",MAX_PATH) == 0)) {
 	kprintf("%s",allfilesdeleted);
 
 	while(1) {  
 		kprintf("%s",areyousure);
 		read(stdin,&c,1);
 	
-		if(c == 'Y' || c == 'y') break;
-		if(c == 'N' || c == 'n') return;
+		if((c == 'Y') || (c == 'y')) break;
+		if((c == 'N') || (c == 'n')) return(0);
 	 }
 }
 
-if(delete(parsebuf[1]) == -1) kprintf("%s\n",kstrerr(getlasterror()));
+if(delete(parsebuf[1]) == -1) {
+	kprintf("%s\n",kstrerr(getlasterror()));
+	return(-1);
+}
 
-return;
+return(0);
 }
 
 
 int mkdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-if(tc < 2) {			/* not enough args */
+if(tc < 2) {			/* insufficient parameters */
 	kprintf("%s",noparams);
-	return;
+	return(-1);
 }
 
 if(mkdir(parsebuf[1]) == -1) {		/* set directory */
 	kprintf("%s\n",kstrerr(getlasterror()));
-	return;
+	return(-1);
 }
 
-return;
+return(0);
 }
 
 
 int rmdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-if(tc < 2) {			/* not enough args */
+if(tc < 2) {			/* insufficient parameters */
 	kprintf("%s",noparams);
-	return;
+	return(-1);
 }
 
 if(rmdir(parsebuf[1]) == -1) {		/* set directory */
 	kprintf("%s\n",kstrerr(getlasterror()));
-	return;
+	return(-1);
 }
 
-return;
+return(0);
 }
 
 
 
 int rename_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-if(tc < 2) {			/* not enough args */
+if(tc < 2) {			/* insufficient parameters */
 	kprintf("%s",noparams);
-	return;
+	return(-1);
 }
 
 if(rename(parsebuf[1],parsebuf[2]) == -1) {		/* set directory */
 	kprintf("%s\n",kstrerr(getlasterror()));
-	return;
+	return(-1);
 }
 
-return;
+return(0);
 }
 
 /*
@@ -960,9 +966,9 @@ size_t count;
 size_t isnewline=TRUE;
 size_t starttoken=1;
 
-if(tc == 1) {			/* not enough args */
-	kprintf("\n");
-	return;
+if(tc == 1) {
+	kprintf("%s\n",kstrerr(getlasterror()));
+	return(-1);
 }
 
 if(strncmp(parsebuf[1],"-n",MAX_PATH) == 0) {		/* no newline */
@@ -977,7 +983,7 @@ for(count=starttoken;count<tc;count++) {
 
 if(isnewline == TRUE) kprintf("\n");
 
-return;
+return(0);
 }
 
 /*
@@ -985,7 +991,7 @@ return;
  */
 
 int exit_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-	if((commandlineoptions & COMMAND_PERMENANT) == 0) exit(0);
+	if((commandlineoptions & COMMAND_PERMENANT) == 0) exit(atoi(parsebuf[1]));
 }
 
 /*
@@ -1001,23 +1007,22 @@ char *readbuf;
 size_t handle;
 int findresult;
 
-if(tc == 1) {			/* not enough args */
-	kprintf("\n");
-	return;
+if(tc == 1) {
+	kprintf("%s\n",kstrerr(getlasterror()));
+	return(-1);
 }
 
 readbuf=alloc(MAX_READ_SIZE);		/* allocate buffer */
 
 if(readbuf == NULL) {			/* can't allocate */
 	kprintf("%s\n",kstrerr(getlasterror()));
-	return;
+	return(-1);
 }
 
 handle=open(parsebuf[1],O_RDONLY);
-
 if(handle == -1) {				/* can't open */
 	kprintf("%s\n",kstrerr(getlasterror()));
-	return;
+	return(-1);
 }
 	
 /* read until end of file */
@@ -1034,14 +1039,13 @@ while(findresult != -1) {
 	 }
 
 	 kprintf(readbuf);
-
 }
 	
 
 free(readbuf);
 
 close(handle);
-return;
+return(0);
 }
 
 /*
@@ -1078,7 +1082,7 @@ memset(&direntry.filename,0,MAX_PATH);
 
 if(findfirst(parsebuf[1],&direntry) == -1) {
 	if(getlasterror() != END_OF_DIRECTORY) kprintf("%s\n",kstrerr(getlasterror()));
-	return;
+	return(-1);
 }
 
 
@@ -1101,7 +1105,7 @@ do {
 	  else
 	  {
 	  	kprintf(" %d ",direntry.filesize);
-	 }
+	  }
 
 	  kprintf("%s\n",direntry.filename);
 	  fcount++;
@@ -1115,12 +1119,12 @@ setvar("ERRORLEVEL",temp);
 
 if(getlasterror() != END_OF_DIRECTORY) {		/* return error */
 	kprintf("%s\n",kstrerr(getlasterror()));
-	return;
+	return(-1);
 }
 
 kprintf(filesdirectories,fcount,dircount);
 
-return;
+return(0);
 }
 
 int ps_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
@@ -1133,12 +1137,10 @@ handle=findfirstprocess(&pbuf);				/* find first process */
 do {
 	kprintf("%u\n",pbuf.pid);
 
-	
-
 	handle=findnextprocess(handle,&pbuf);		/* get next process */
 } while(handle != NULL);
 
-return;
+return(0);
 }
 
 int kill_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
@@ -1146,12 +1148,15 @@ int findresult;
 
 if(tc == 1) {		/* missing argument */
 	kprintf("%s",noparams);
-	return;
+	return(-1);
 }
 	 
-findresult=kill(atoi(parsebuf[1],10));
-if(findresult == -1) kprintf("%s\n",kstrerr(getlasterror()));
-return;
+if(kill(atoi(parsebuf[1],10)) == -1) {
+	kprintf("%s\n",kstrerr(getlasterror()));
+	return(-1);
+}
+
+return(0);
 }
 
 int goto_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
@@ -1160,13 +1165,13 @@ char *bufptr;
 char *b;
 
 if(tc == 1) {		/* missing label */
-	kprintf(nolabel);
-	return;
+	kprintf("%s",nolabel);
+	return(-1);
 }
 
 if(get_batch_mode() == FALSE) {			/* Not batch mode */
-	kprintf(notbatchmode);
-	return;
+	kprintf("%s",notbatchmode);
+	return(-1);
 }
 
 bufptr=get_buf_pointer();		/* get script buffer */
@@ -1184,7 +1189,7 @@ while(*bufptr != 0) {
 	
 			if(strncmp(b,parsebuf[1],MAX_PATH) == 0) {	/* found label */	
 				set_current_batchfile_pointer(b);
-	        		return;
+	        		return(0);
 	       		}
 	 	}
 	}
@@ -1222,5 +1227,6 @@ while(1) {
 	  if(((char) *buf == 'F') || ((char) *buf == 'f')) return(CRITICAL_ERROR_FAIL);
 }
 
+return(0);
 }
 
