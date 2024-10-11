@@ -222,7 +222,15 @@ for(whichport=0;whichport<5;whichport++) {
 /*  the data arriving at the COM port triggers an irq interrupt which reads the data to a buffer and increments comportrcount */
 
 if((inb(port+5) & 0x20) != 0) {		/* not ready */
-	setlasterror(DEVICE_IO_ERROR);
+
+	if(op == _READ) {
+		setlasterror(READ_FAULT);
+	}
+	else
+	{
+		setlasterror(WRITE_FAULT);
+	}
+
 	return(-1);
 }
 

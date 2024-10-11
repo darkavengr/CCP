@@ -36,7 +36,7 @@ void memset(void *buf,char i,size_t size);
 size_t itoa(size_t n, char s[]);
 void reverse(char s[]);
 size_t wildcard(char *mask,char *filename);
-size_t touppercase(char *string);
+size_t touppercase(char *string,char *out);
 size_t wildcard_rename(char *name,char *mask,char *out);
 int strtrunc(char *str,int c);
 int atoi(char *hex,int base);
@@ -252,11 +252,8 @@ char a,b;
 char *sourcetemp[MAX_PATH];
 char *desttemp[MAX_PATH];
 
-strncpy(sourcetemp,source,size);
-strncpy(desttemp,dest,size);
-
-touppercase(sourcetemp);
-touppercase(desttemp);
+touppercase(source,sourcetemp);
+touppercase(dest,desttemp);
 
 return(strncmp(sourcetemp,desttemp,size));
 }
@@ -353,11 +350,8 @@ char *d;
 char *mmask[MAX_PATH];
 char *nname[MAX_PATH];
 
-strncpy(mmask,mask,MAX_PATH);
-strncpy(nname,filename,MAX_PATH);
-
-touppercase(mmask);
-touppercase(nname);
+touppercase(mask,mmask);
+touppercase(filename,nname);
 
 memset(buf,0,MAX_PATH);				/* clear buffer */
  
@@ -371,6 +365,7 @@ for(count=0;count<strlen(mmask);count++) {
    
 		while(*x != 0) {					/* match multiple characters */
 			if(*x == '*' || *x == '?') break;
+
 			*b++=*x++;
 		}
 
@@ -401,18 +396,22 @@ return(0);
  * Returns nothing
  *
  */
-size_t touppercase(char *string) {
+size_t touppercase(char *string,char *out) {
 char *s;
+char *outptr=out;
 
 s=string;
 
 while(*s != 0) {			/* until end */
+	*outptr=*s;
 
-	if(*s >= 'a' && *s <= 'z') *s=*s-32;			/* to uppercase */
+	if((*outptr >= 'a') && (*outptr <= 'z')) *outptr = *outptr-32;			/* to uppercase */
+	
+	outptr++;
 	s++;
-
 }
 
+*outptr++=0;
 }
 
 /*
@@ -436,11 +435,8 @@ char *newmask[MAX_PATH];
 char *mmask[MAX_PATH];
 char *nname[MAX_PATH];
 
-strncpy(mmask,mask,MAX_PATH);
-strncpy(nname,name,MAX_PATH);
-
- touppercase(mmask);					/* convert to uppercase */
- touppercase(nname);
+touppercase(mask,mmask);					/* convert to uppercase */
+touppercase(name,nname);
 
 /*replace any * wild cards with ? */
 
@@ -576,7 +572,7 @@ return(num);
  *
  * In:  char *buf	Buffer to store output
 	char *format	Formatted string to print, uses same format placeholders as printf
-	   ...		Variable number of arguments to write to stringnt
+	   ...		Variable number of arguments to write to buf
  *
  * Returns nothing
  */
@@ -590,12 +586,15 @@ int num;
 double d;
 char *z[MAX_SIZE];
 char *bufptr;
-size_t paramsize=4;		/* default size of 4 bytes */
+size_t paramsize=4;		/* default size is 4 bytes */
 size_t count=0;
 
 bufptr=buf;
 
-va_start(args,format);			/* get start of variable args */
+//memset(bufptr,0,size);
+
+va_start(args,format);			/* get start of variable arguments */
+
 b=format;
 
 while(*b != 0) {
@@ -608,7 +607,7 @@ while(*b != 0) {
  
 		switch(c) {
 
-		case 'l':
+		case 'l':				/* long parameter */
 			paramsize=8;
 			b++;
 
@@ -617,10 +616,12 @@ while(*b != 0) {
 		case 's':				/* string */
 			s=va_arg(args,const char*);
 
-			strncat(bufptr,z,size-count);
-			count += size;
+			count += strlen(s);
+			if(count >= size) return;
 
-			bufptr=bufptr+strlen(s);
+			strncat(bufptr,s,MAX_PATH);
+
+			bufptr += strlen(s);
 
 			b++;
 			break;
@@ -696,7 +697,6 @@ while(*b != 0) {
  	else
  	{
 		*bufptr++=c;
-		*bufptr=0;
 		b++;
 	}
 

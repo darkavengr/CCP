@@ -134,7 +134,7 @@ exec:
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
-mov	ah,0x4b
+mov	ax,0x4b00
 int	0x21
 ret
 

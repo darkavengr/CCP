@@ -60,7 +60,7 @@ next=blockdevices;
 	
 while(next != NULL) {
 	 if(strncmpi(next->name,device->name,MAX_PATH) == 0) {		/* block device exists */
-	 	setlasterror(DEVICE_EXISTS);
+	 	setlasterror(FILE_EXISTS);
 		return(-1);
 	 }
 
@@ -83,6 +83,9 @@ else
 	last=last->next;
 	memset(last,0,sizeof(BLOCKDEVICE));
 }
+
+//DEBUG_PRINT_HEX(last);
+//asm("xchg %bx,%bx");
 
 /* at end here */
 memcpy(last,device,sizeof(BLOCKDEVICE));
@@ -112,7 +115,7 @@ charnext=characterdevs;
 /* find device */
 
 if(characterdevs == NULL) {				/* if empty allocate struct */
-	characterdevs=kernelalloc(0x1234);
+	characterdevs=kernelalloc(sizeof(CHARACTERDEVICE));
 	if(characterdevs == NULL) return(-1);
 
 	memset(characterdevs,0,sizeof(CHARACTERDEVICE));
@@ -124,7 +127,7 @@ else
 
 	do {
 		if(strncmpi(device->name,charnext->name,MAX_PATH) == 0) {		 		/* already loaded */
-			setlasterror(DEVICE_EXISTS);
+	 		setlasterror(FILE_EXISTS);
 			return(-1);
 		}
 
@@ -132,7 +135,7 @@ else
 	 	charnext=charnext->next;
 	} while(charnext != NULL);
 
-charlast->next=kernelalloc(0x1234); //sizeof(CHARACTERDEVICE)); /* add to struct */
+charlast->next=kernelalloc(sizeof(CHARACTERDEVICE)); /* add to struct */
 if(charlast->next == NULL) return(-1);
 
 charnext=charlast->next;
@@ -150,9 +153,9 @@ return(NO_ERROR);
 }
 
 /*
- * block i/o handler
+ * Block I/O handler
  *
- * calls a hardware-specific routine
+ * This calls a hardware-specific routine
  *
  * In: op		Operation (0=read, 1=write)
  *     block		Block number
@@ -191,7 +194,7 @@ b=buf;
 if(next->sectorsperblock == 0) next->sectorsperblock=1;
 
 if(next->blockio == NULL) {				/* no handler defined */
-	kprintf_direct("debug: No blockio handler defined\n");
+	kprintf_direct("debug: No blockio() handler defined\n");
 	asm("xchg %bx,%bx");
 
 	setlasterror(NOT_IMPLEMENTED);
@@ -204,8 +207,8 @@ for(count=0;count<next->sectorsperblock;count++) {
 	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {
 		lasterr=getlasterror();
 
-		if(lasterr == WRITE_PROTECT_ERROR || lasterr == DRIVE_NOT_READY || lasterr == INVALID_CRC \
-		|| lasterr == GENERAL_FAILURE || lasterr == DEVICE_IO_ERROR) { 
+		if((lasterr == WRITE_PROTECT_ERROR) || (lasterr == DRIVE_NOT_READY) || (lasterr == INVALID_CRC) \
+		|| (lasterr == GENERAL_FAILURE) || (lasterr == READ_FAULT) || (lasterr == WRITE_FAULT)) { 
 	
 	  		error=call_critical_error_handler(next->name,drive,(op & 0x80000000),lasterr);	/* call exception handler */
 
@@ -290,6 +293,8 @@ lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
 next=blockdevices;
 while(next != NULL) {
+
+//	kprintf_direct("getblockdevice=%d %d\n",next->drive,drive);
 
 	if(next->drive == drive) {		/* found device */
 

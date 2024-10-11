@@ -52,6 +52,10 @@ char *fullname[MAX_PATH];
 
 getfullpath(name,fullname);
 
+//DEBUG_PRINT_STRING(name);
+//DEBUG_PRINT_STRING(fullname);
+//asm("xchg %bx,%bx");
+
 splitname(fullname,&splitbuf);				/* split name */
 
 if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
@@ -614,7 +618,7 @@ if((next->flags & FILE_CHARACTER_DEVICE)) {		/* device i/o */
 }
 
 /*
- * if writing to block device, call device handler and return
+ * If writing to block device, call device handler and return
  */
 
 if((next->flags == FILE_BLOCK_DEVICE)) {
@@ -634,7 +638,7 @@ if((next->flags == FILE_BLOCK_DEVICE)) {
 }
 
 /* 
- * if writing to a pipe
+ * Writing to a pipe
  *
  */
 
@@ -642,7 +646,7 @@ if((next->flags & FILE_FIFO)) {			/* pipe I/O */
 	return(writepipe(next,addr,size));
 }
 
-/* writing to a regular file */
+/* Writing to a regular file */
 
 if((next->access & O_WRONLY) == 0) {		/* not opened for write access */
 	setlasterror(ACCESS_DENIED);
@@ -951,7 +955,7 @@ else
 
 		if(strncmp(newfs->name,next->name,MAX_PATH) == 0) {		/* already loaded */
 			unlock_mutex(&vfs_mutex);
-			setlasterror(INVALID_MODULE);
+			setlasterror(MODULE_ALREADY_LOADED);
 			return(-1);
 	}
 
@@ -1025,7 +1029,7 @@ while(next != NULL) {
 
 unlock_mutex(&vfs_mutex);
 
-setlasterror(INVALID_MODULE);
+setlasterror(MODULE_ALREADY_LOADED);
 return(-1);
 }
 
@@ -1072,15 +1076,13 @@ else if((d == ':') && (e != '\\')) {		/* drive and filename only */
 	strncat(buf,filename+3,MAX_PATH);                 /* get filename */
 }
 else if(d != ':') {               /* filename only */
-	c=(char) *cwd;
-
 	b=buf;
 
-	*b++=c;
+	*b++=*cwd;
 	*b++=':';
-	if(*filename != '\\') 	*b++='\\';
+	if(*filename != '\\') *b++='\\';
 
-	strncat(b,filename,MAX_PATH);	
+	strncat(b,filename,MAX_PATH);
 }
 
 tc=tokenize_line(cwd,token,"\\");		/* tokenize line */
@@ -1530,13 +1532,13 @@ if(gethandle(handle,&seek_file_record) == -1) {			/* bad handle */
 }
 
 if(seek_file_record.flags & FILE_FIFO) {	/* not file or block device */
-	setlasterror(INVALID_HANDLE_TYPE);
+	setlasterror(ACCESS_ERROR);
 	return(-1);
 }
 
 if((whence == SEEK_SET) || (whence == SEEK_CUR)) {		/* check new file position */
 	if((seek_file_record.currentpos+pos) > seek_file_record.filesize) {	/* invalid position */
-		setlasterror(SEEK_PAST_END);
+		setlasterror(SEEK_ERROR);
 		return(-1);
 	}
 }

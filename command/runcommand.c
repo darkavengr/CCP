@@ -18,18 +18,14 @@
 */
 
 #include <stdint.h>
+#include <stddef.h>
 #include "command.h"
 #include "errors.h"
 #include "mutex.h"
 #include "device.h"
 #include "vfs.h"
 
-unsigned long runcommand(char *filename,char *args,unsigned long backg);
-char *get_buf_pointer(void);
-size_t get_batch_mode(void);
-size_t set_batch_mode(size_t bm);
-void set_current_batchfile_pointer(char *b);
-char *parsebuf[9][MAX_PATH];
+char *parsebuf[MAX_PATH][MAX_PATH];
 char *batchfilebuf;
 char *batchfileptr;
 size_t batchmode;
@@ -51,7 +47,7 @@ char *b;
 char *buf[MAX_PATH];
 char *ext;
 
-touppercase(filename);				/* to upper case */
+touppercase(filename,filename);				/* to upper case */
 
 /* if it has extension */
 
@@ -63,9 +59,8 @@ while(*b != 0) {
 
 		if(*b++ == 'R' && *b++ == 'U' && *b++ == 'N') {
 			if(exec(filename,args,backg) == -1) {
-	    			errorlevel=getlasterror();
+	     			itoa(getlasterror(),buf);
 
-				itoa(errorlevel,buf);
 				setvar("ERRORLEVEL",buf);
 
 	    			return(-1);
@@ -78,9 +73,7 @@ while(*b != 0) {
 
 	  	if(*b++ == 'B' && *b++ == 'A' && *b++ == 'T') {
 	    		if(dobatchfile(filename,args,backg) == -1) {
-	     			errorlevel=getlasterror();
-
-	     			itoa(errorlevel,buf);
+	     			itoa(getlasterror(),buf);
 
 	     			setvar("ERRORLEVEL",buf);
 	     			return(-1);
@@ -99,8 +92,6 @@ b++;
 
 b=filename;
 b += strlen(filename);		/* point to next */
-
-ext=b;
 
 *b='.';
 *++b='R';

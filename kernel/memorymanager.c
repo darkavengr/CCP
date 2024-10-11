@@ -36,17 +36,7 @@ along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
 extern size_t kernel_begin(void);
 extern size_t PAGE_SIZE;
-
 extern size_t MEMBUF_START;
-
-void *alloc_int(size_t flags,size_t process,size_t size,size_t overrideaddress);
-size_t free_internal(size_t process,void *b,size_t flags);
-void *alloc(size_t size);
-void *kernelalloc(size_t size);
-void *kernelalloc_nopaging(size_t size);
-void *dma_alloc(size_t size);
-void *realloc_kernel(void *address,size_t size);
-void *realloc_user(void *address,size_t size);
 
 void *dmabuf=NULL;
 void *dmaptr=NULL;
@@ -388,17 +378,25 @@ return(newptr);
 * 
 */
 
-size_t memorymanager_init(size_t dmasize) {
+size_t memorymanager_init(void) {
+initialize_mutex(&memmanager_mutex);		/* intialize mutex */
+
+if(initialize_dma_buffer(DMA_BUFFER_SIZE) == -1) {		/* inititalize DMA buffer */
+	 kprintf_direct("kernel: Unable to allocate DMA buffer\n");
+	 return(-1);
+}
+ 
+return(0);
+}
+
+size_t initialize_dma_buffer(size_t dmasize) {
 size_t count;
 size_t dmap;
 
 /* allocate physical memory and map it to identical virtual addresses */
 
 dmabuf=kernelalloc_nopaging(dmasize);		/* allocate memory and return physical address */
-if(dmabuf == NULL) {
-	 kprintf_direct("kernel: Unable to allocate DMA buffer\n");
-	 return(-1);
-}
+if(dmabuf == NULL) return(-1);
 
 /* map physical addresses to virtual addresses */
 
@@ -413,10 +411,8 @@ for(count=0;count<dmasize/PAGE_SIZE;count++) {
 }
 
 dmabufsize=dmasize;
-	
-initialize_mutex(&memmanager_mutex);		/* intialize mutex */
 
-return;
+return(0);
 }
 
 /*
@@ -452,7 +448,7 @@ return(realloc_int(ALLOC_NORMAL,getpid(),address,size));
 * In: flags		Allocation flags(ALLOC_NORMAL or ALLOC_KERNEL)
       process		Process ID
       address		Address of previously allocated memory
-      size		Number of bytes to allocate
+      size		New allocation size
 * 
 * Returns: address or NULL on error.
 *
@@ -507,22 +503,23 @@ do {
 	p=*z;				/* get next */
 
 	if((count*PAGE_SIZE) == size) {		 /* shrinking memory */
-		if(free_internal(process,(address+size),0) == -1) return(NULL);
+		if(free_internal(process,(address+size),0) == -1) {
+			unlock_mutex(&memmanager_mutex);
+			return(NULL);
+		}
 
 		z=(address+count);
 		*z=-1;			/* put new end of chain marker */
 		
+		unlock_mutex(&memmanager_mutex);
 		return(address);
 	}
-
-	DEBUG_PRINT_HEX(z);
-//	asm("xchg %bx,%bx");
 
 	if(p == -1) {			/* at end of chain */
 		z=p;			/* point to next in chain */
 
 		if(size > (count*PAGE_SIZE)) {		/* extending memory */
-			/* check for sufficient contiguous pages */
+			/* check for sufficient contiguous virtual address pages */
 			
 			for(extendcount=1;extendcount != (size-(count*PAGE_SIZE));extendcount++) {
 				if(getphysicaladdress(process,(address+(extendcount*PAGE_SIZE))) == -1) break;
@@ -531,19 +528,19 @@ do {
 			if((extendcount*PAGE_SIZE) != (size-(count*PAGE_SIZE))) {		/* no contiguous address space found */
 				/* kludge */
 
-				tempbuf=kernelalloc(size);		/* allocate temporary buffer */
-				if(tempbuf == NULL) return(NULL);
+				newbuf=kernelalloc(size);		/* allocate new memory */
+				if(newbuf == NULL) {
+					unlock_mutex(&memmanager_mutex);
+					return(NULL);
+				}
 
-				memcpy(tempbuf,address,(count*PAGE_SIZE));		/* copy data */
-
-				newbuf=kernelalloc(size);		/* allocate new */
-				if(newbuf == NULL) return(NULL);
-
-				if(kernelfree(address) == -1) return(NULL);	/* free old address */
-
-				memcpy(newbuf,tempbuf,(count*PAGE_SIZE));	/* copy data */
-		
-				kernelfree(tempbuf);
+				memcpy(newbuf,address,(count*PAGE_SIZE));		/* copy data */
+			
+				if(free_internal(process,(address+size),0) == -1) {
+					kernelfree(newbuf);
+					unlock_mutex(&memmanager_mutex);
+					return(NULL);
+				}
 
 				setlasterror(NO_ERROR);
 				return(newbuf);
@@ -551,7 +548,12 @@ do {
 
 			/* contiguous address space found */
 
-			if(alloc_int(flags,process,(count*PAGE_SIZE),address+(count*PAGE_SIZE)) == NULL) return(NULL);
+			if(alloc_int(flags,process,(count*PAGE_SIZE),address+(count*PAGE_SIZE)) == NULL) {
+				unlock_mutex(&memmanager_mutex);
+				return(NULL);
+			}
+
+			unlock_mutex(&memmanager_mutex);
 			return(address);
 		}				
 	}	
@@ -561,6 +563,7 @@ do {
 
 }  while(p != -1);
 
+unlock_mutex(&memmanager_mutex);
 return(NULL);
 }
 

@@ -1,10 +1,10 @@
-#define MAX_PATH	255
+#include <stdint.h>
+#include <stddef.h>
 
 #define	DIR_COUNT	10
 
 #define RUN_FOREGROUND	0
 #define RUN_BACKGROUND	1
-
 
 #define MAX_READ_SIZE	512
 
@@ -19,6 +19,7 @@
 
 #define TERMINATING 			2
 
+#define MAX_PATH		255
 #define O_RDONLY 		1
 #define O_WRONLY 		2
 #define O_CREAT			4
@@ -28,15 +29,47 @@
 #define O_RDWR 			O_RDONLY | O_WRONLY
 
 #define MAX_PATH		255
+#define VFS_MAX 		1024
+
+#define	_READ 			0
+#define _WRITE 			1
 
 #define stdin			0
 #define stdout			1
 #define stderr			2
 
-#define EOF 		_ERROR
-
-#define SEEK_SET	0	/* Seek from beginning of file */
-#define SEEK_CUR	1	/* Seek from current position */
-#define SEEK_END	2	/* Seek from end of file */
-
+unsigned long doline(char *buf);
+unsigned long copyfile(char *source,char *destination);
+unsigned long getvar(char *name,char *buf);
+unsigned long runcommand(char *fname,char *args,unsigned long backg);
+unsigned long setvar(char *name,char *val);
+unsigned long readline(unsigned long handle,char *buf,int size);
+unsigned long doline(char *buf);
+int set_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int if_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int cd_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int copy_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int for_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int del_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int mkdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int rmdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int rename_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int echo_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int exit_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int type_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int dir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int ps_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int kill_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int goto_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+int critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
+int rem_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+void signal_handler(size_t signalno);
+int critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
+void write_error(void);
+uint32_t tohex(uint32_t hex,char *buf,size_t numberofbytes);
+unsigned long runcommand(char *filename,char *args,unsigned long backg);
+char *get_buf_pointer(void);
+size_t get_batch_mode(void);
+size_t set_batch_mode(size_t bm);
+void set_current_batchfile_pointer(char *b);
 

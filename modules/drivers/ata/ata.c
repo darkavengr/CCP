@@ -217,13 +217,20 @@ if(islba == 48) {				/* use lba48 */
 }
 
 do {
-	 atastatus=inb(controller+ATA_COMMAND_PORT);						/* get status */
+	atastatus=inb(controller+ATA_COMMAND_PORT);						/* get status */
 
-	 if((atastatus & ATA_DRIVE_FAULT) || (atastatus & ATA_ERROR)) {			/* controller returned error */
-	  kprintf_direct("kernel: drive returned error\n");
+	if((atastatus & ATA_DRIVE_FAULT) || (atastatus & ATA_ERROR)) {			/* controller returned error */
+		kprintf_direct("kernel: drive returned error\n");
 
-	  setlasterror(DEVICE_IO_ERROR);
-	  return(-1);
+		if(op == _READ) {
+			setlasterror(READ_FAULT);
+		}
+		else
+		{
+			setlasterror(WRITE_FAULT);
+		}
+
+		return(-1);
 	 }
 } while((atastatus & ATA_DATA_READY) == 0 || (atastatus & ATA_BUSY));
 
@@ -317,7 +324,15 @@ while(atastatus == ATA_BUSY) {					/* wait for data to be ready */
 
 	if((atastatus & ATA_DRIVE_FAULT) || (atastatus & ATA_ERROR) || (atastatus & ATA_RDY)) {			/* controller returned error */
 		kprintf_direct("kernel: drive returned error\n");
-		setlasterror(DEVICE_IO_ERROR);
+
+		if(op == _READ) {
+			setlasterror(READ_FAULT);
+		}
+		else
+		{
+			setlasterror(WRITE_FAULT);
+		}
+
 		return(-1);
 	}
 }
@@ -625,7 +640,13 @@ if((physdrive == 0x82) || (physdrive == 0x83)) {			/* which barfour */
 }
 
 if((inb(ATA_ERROR_PORT) & 1) == 1) {	/* error occurred */
-	setlasterror(DEVICE_IO_ERROR);
+	if(op == _READ) {
+		setlasterror(READ_FAULT);
+	}
+	else
+	{
+		setlasterror(WRITE_FAULT);
+	}
 	return(-1);
 }
 	

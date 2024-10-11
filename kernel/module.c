@@ -92,6 +92,9 @@ disablemultitasking();
 
 getfullpath(filename,fullname);
 
+DEBUG_PRINT_STRING(filename);
+DEBUG_PRINT_STRING(fullname);
+
 /* check if module is loaded */
 
 kernelmodulenext=kernelmodules;
@@ -140,7 +143,7 @@ if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_heade
 
 	kprintf_direct("kernel: Module is not valid ELF object file\n");
 
-	setlasterror(INVALID_MODULE);
+	setlasterror(INVALID_EXECUTABLE);
 	kernelfree(buf);
 
 	enablemultitasking();
@@ -150,7 +153,7 @@ if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_heade
 if((elf_header->e_type != ET_REL) || (elf_header->e_shnum == 0)) {	
 	kprintf_direct("kernel: Module is not relocatable ELF object file\n");
 
-	setlasterror(INVALID_MODULE);
+	setlasterror(INVALID_EXECUTABLE);
 	kernelfree(buf);
 
 	enablemultitasking();
@@ -194,7 +197,7 @@ for(count=0;count < elf_header->e_shnum;count++) {
 if(symtab == NULL) {
 	kprintf_direct("kernel: Module has no symbol section(s)\n");
 
-	setlasterror(INVALID_MODULE);
+	setlasterror(INVALID_EXECUTABLE);
 	kernelfree(buf);
 
 	enablemultitasking();
@@ -204,7 +207,7 @@ if(symtab == NULL) {
 if(strtab == NULL) {
 	kprintf_direct("kernel: Module has no string section(s)\n");
 
-	setlasterror(INVALID_MODULE);
+	setlasterror(INVALID_EXECUTABLE);
 	kernelfree(buf);
 
 	enablemultitasking();
@@ -274,7 +277,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 						if(symval == -1) symval=symptr->st_value;
 					}
 		
-					add_external_module_symbol(name,symval);		/* add external symbol to list */
+					add_external_module_symbol(name,symval)+KERNEL_HIGH;		/* add external symbol to list */
 				}
 				else
 				{								
@@ -317,9 +320,9 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				}				
 
 				/* update reference in section */
-
+			
 				if(symtype == R_386_NONE) {
-				;;
+				;
 				}
 				else if(symtype == R_386_32) {
 					*ref=DO_386_32(symval,*ref);
@@ -339,7 +342,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 			
 					enablemultitasking();
 
-					setlasterror(INVALID_MODULE);
+					setlasterror(INVALID_EXECUTABLE);
 					return(-1);
 				}
 
@@ -364,6 +367,7 @@ if(kernelmodules == NULL) {			/* first in list */
 	if(kernelmodules == NULL) {
 		close(handle);
 		kernelfree(buf);
+
 		enablemultitasking();	
 		return(-1);
 	}
@@ -376,6 +380,7 @@ else
 	if(kernelmodulelast->next == NULL) {
 		close(handle);
 		kernelfree(buf);
+
 		enablemultitasking();	
 		return(-1);
 	}
@@ -388,8 +393,8 @@ strncpy(kernelmodulelast->filename,fullname,MAX_PATH);
 kernelmodulelast->next=NULL;
 
 /* call module entry point */
-
 entry=codestart;
+
 enablemultitasking();
 return(entry(argsx));
 }
@@ -417,7 +422,7 @@ char *shptr;
 
 symptr=(size_t) symtab+(sizeof(Elf32_Sym)*which);		/* point to symbol table entry */
 
-strncpy(name,(strtab+symptr->st_name),MAX_PATH);
+strncpy(name,(strtab+symptr->st_name)-1,MAX_PATH);
 
 if(strncmp(name,"",MAX_PATH) == 0) {		/* not a symbol table entry */
 	shptr=sectionheader_strptr;
@@ -453,14 +458,13 @@ symptr += KERNEL_HIGH;		/* point to symbol table */
 
 for(count=0;count<bootinfo->number_of_symbols;count++) {
 	if(strncmp(symptr,name,MAX_PATH) == 0) {				/* symbol found */
-
-		symptr += strlen(name)+1;		/* skip over name */
+		symptr += (strlen(name)+1);		/* skip over name */
   
 		valptr=symptr;			/* cast pointer to size_t */
 		return(*valptr);			/* return value */
  	}
 
- symptr += strlen(symptr)+sizeof(size_t)+1;		/* skip over name and symbol */
+	symptr += strlen(symptr)+sizeof(size_t)+1;		/* skip over name and symbol */
 }
 
 return(-1);
@@ -561,9 +565,6 @@ while(kernelmodulenext != NULL) {
 		kernelmodulelast->next=kernelmodulenext->next;		/* remove from list */
 
 		kernelfree(kernelmodulenext);
-
-		enablemultitasking();
-
 		setlasterror(NO_ERROR);
 		return(0);
 	}
@@ -573,6 +574,6 @@ while(kernelmodulenext != NULL) {
 
 enablemultitasking();
 
-setlasterror(INVALID_MODULE);
+setlasterror(FILE_NOT_FOUND);
 return(-1);
 }

@@ -33,6 +33,6 @@ char *filesdirectories = { "%d files(s) %d directories\n" };
 char *pidheader = { "PID   Parent     Filename        Arguments\n" };
 char *abortretryfail = { "\nAbort, Retry, Fail?" };
 char *commandbanner = { "Command version %d.%d\n" };
-char *areyousure = { "Are you sure (y/n)?" };
-char *terminatebatchjob = { "\nTerminate batch job (y/n)?" };
+char *areyousure = { "Are you sure (Y/N)?" };
+char *terminatebatchjob = { "\nTerminate batch job (Y/N)?" };
 

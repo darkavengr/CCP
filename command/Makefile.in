@@ -42,3 +42,6 @@ error.o:
 call.o:
 	$(ASM) @asm_opts@ @arch@/call.asm -o call.o
 
+clean:
+	rm @buildroot@/bin/@arch@/COMMAND.RUN *.o
+

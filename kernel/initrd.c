@@ -54,7 +54,7 @@ size_t initrd_findfirst(char *filename,FILERECORD *buf) {
  * Find next file in INITRD
  *
  * In:  name	Filename or wildcard of file to find
-	       buffer	Buffer to hold information about files
+	buffer	Buffer
  *
  * Returns: -1 on error, 0 on success
  *
@@ -68,8 +68,8 @@ size_t initrd_findnext(char *filename,FILERECORD *buf) {
  *
  * In:  
 	op	0=First, 1=Next
-	name    Filename or wildcard of file to find
-        buffer	Buffer to hold information about files
+	name    Filename or wildcard
+	buffer	Buffer to hold file information
  *
  * Returns: -1 on error, 0 on success
  *
@@ -80,6 +80,7 @@ size_t newfindblock;
 char *fullpath[MAX_PATH];
 SPLITBUF split;
 size_t filefound=FALSE;
+char *tempname[MAX_PATH];
 
 getfullpath(filename,fullpath);
 
@@ -95,7 +96,7 @@ else
 	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findlastblock*TAR_BLOCK_SIZE);		/* first */
 }
 
-touppercase(split.filename);
+touppercase(split.filename,split.filename);
 
 /* search for file */
 
@@ -107,9 +108,13 @@ while(*tarptr->name != 0) {
 
 	filefound=FALSE;
 	
-	touppercase(tarptr->name);
+	touppercase(tarptr->name,tempname);			/* convert to uppercase */
 
-	if(wildcard(split.filename,tarptr->name) == 0) { 	/* if file found */      	
+	DEBUG_PRINT_STRING(tempname);
+
+	if(wildcard(split.filename,tempname) == 0) { 	/* if file found */      	
+		kprintf_direct("FOUND=%s\n",tarptr->name);
+
 		strncpy(buf->filename,tarptr->name,MAX_PATH);	/* copy information */
 
 		buf->filesize=atoi(tarptr->size,8);
@@ -118,16 +123,15 @@ while(*tarptr->name != 0) {
 		buf->startblock=buf->findlastblock+1;
 
 		filefound=TRUE;
+		break;
 	}
 
 	newfindblock=(atoi(tarptr->size,8) / TAR_BLOCK_SIZE)+1;		/* get number of blocks */
-	if(newfindblock % TAR_BLOCK_SIZE) newfindblock++;		/* round up */
+	if(atoi(tarptr->size,8) % TAR_BLOCK_SIZE) newfindblock++;		/* round up */
 
 	buf->findlastblock += newfindblock;
-
-	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findlastblock*TAR_BLOCK_SIZE);
-
-	if(filefound == TRUE) break;
+	
+	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findlastblock*TAR_BLOCK_SIZE);	/* point to next file */
 }
 
 if(filefound == FALSE) {
@@ -277,20 +281,20 @@ if(boot_info->initrd_size == 0) return(-1);			/* no initrd */
 
 if(findfirst("Z:\\*.o",&findmodule) == -1) return(FILE_NOT_FOUND);
 
-
 do {
+
 	kprintf_direct("Loading module Z:\\%s\n",findmodule.filename);
 
-	ksnprintf(filename,"Z:\\%s",findmodule.filename,MAX_PATH);
+	ksnprintf(filename,"Z:\\%s",MAX_PATH,findmodule.filename);
 
 	if(load_kernel_module(filename,NULL) == -1) {	/* load module */
-		kprintf_direct("kernel: Error loading kernel module %s from initrd\n",filename);			
+		DEBUG_PRINT_DEC(getlasterror());
+
+		kprintf_direct("kernel: Error loading kernel module %s from initrd (%s)\n",filename,kstrerr(getlasterror()));
+		return(-1);
 	}
 
 } while(findnext("Z:\\*.o",&findmodule) != -1);
-
-
-kprintf_direct("End of initrd load\n");
 
 setlasterror(NO_ERROR);
 return(0);

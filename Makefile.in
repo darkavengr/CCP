@@ -38,17 +38,17 @@ command:
 clean:
 	rm bin/@arch@/*
 	rm obj/@arch@/*
-	rm *.map
-	rm kernel/drive.c
 	rm command/*.o
+	rm kernel/drive.c
+	rm *.map
 	rm ccp.sym
 
 distclean:
 	rm `find -iname Makefile`
-	rm kernel/drive.c
+	rm bin/@arch@/*
 	rm obj/@arch@/*
 	rm command/*.o
 	rm mapfiles/*.map
 	rm mapfiles/ccp.sym
-	rm bin/@arch@/*
+	rm kernel/drive.c
 

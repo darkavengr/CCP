@@ -18,9 +18,10 @@
 */
 
 #include <stdint.h>
+#include <stddef.h>
 #include "errors.h"
 #include "command.h"
-#include <stddef.h>
+
 
 /*
 * Get full file path from partial name
@@ -74,11 +75,11 @@ if(d != ':' && e != '\\') {
 
 	c=*b;
 	if(c == '\\') {
-		ksnprintf(buf,"%s%s",cwd,filename,MAX_PATH);
+		ksnprintf(buf,"%s%s",MAX_PATH,cwd,filename);
 	}
 	else
 	{
-		ksnprintf(buf,"%s\\%s",cwd,filename,MAX_PATH);
+		ksnprintf(buf,"%s\\%s",MAX_PATH,cwd,filename);
 	}
 }
 

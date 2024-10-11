@@ -18,6 +18,7 @@
 */
 
 #include <stdint.h>
+#include <stddef.h>
 #include "command.h"
 #include "errors.h"
 

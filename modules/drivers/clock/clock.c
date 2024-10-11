@@ -162,7 +162,8 @@ if(op == _WRITE) {		/* write block */
 	return(NO_ERROR);
 }
 
-setlasterror(DEVICE_IO_ERROR);
+
+setlasterror(READ_FAULT);
 return(-1);
 }
 

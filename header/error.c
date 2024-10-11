@@ -14,7 +14,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+    along with CCP	  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <stdint.h>
@@ -22,57 +22,92 @@
 
 char *kstrerr(size_t error);
 
-char *errors[] = { "No error",\
-"Invalid function",\
+char *errors[] = {
+"No error",\
+"Invalid function number",\
 "File not found",\
 "Path not found",\
-"No handles",\
+"Too many open files",\
 "Access denied",\
 "Invalid handle",\
-"Heap header corrupt",\
-"Out of memory",\
-"Unknown drive format",\
-"Access error",\
-"Invalid file",\
-"Directory not empty",\
-"Invalid drive specification",\
+"Memory control blocks destroyed",\
+"Insufficient memory",\
+"Invalid parameter",\
+"Invalid address",\
+"Invalid drive format",\
+"Invalid access mode for open()",\
+"Invalid data",\
+"Invalid process",\
+"Invalid drive specified",\
+"Attempt to remove current directory",\
 "Can't rename across drives",\
 "End of directory",\
-"Write protect error",\
+"Write-protect error",\
 "Invalid device",\
 "Drive not ready",\
-"Invalid CRC",\
-"File already exists",\
-"Directory is full",\
-"Drive is full",\
-"Input past end of file",\
-"Device I/O error",\
-"Invalid file",\
+"Module function not implemented",\
+"CRC error",\
 "Invalid executable",\
-"Device already exists",\
-"Invalid process",\
-"Invalid device",\
-"Device is in use",\
-"Invalid kernel module",\
-"Kernel module already loaded",\
-"No processes",\
-"End of file reached",\
-"No drives",\
-"Seek past end",\
-"Can't close device",\
+"Seek error",\
+"End of file",\
 "Invalid block number",\
-"File already open",\
+"Kernel module already loaded",\
+"Device read fault",\
+"Device write fault",\
 "General failure",\
+"Sharing violation",\
+"Lock violation",\
+"Invalid disk change",\
 "Not a directory",\
-"Not implemented",\
-"File in use",\
-"Invalid executable format",\
-"Unknown filesystem",\
-"Directory not empty",\
-"Invalid address",\
-"Kernel module already loaded",
-"Not a device"
- };
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"File is open",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"",\
+"File already exists"
+"",\
+"Can't create directory entry",\
+};
+
 
 /*
  * Display error

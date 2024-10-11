@@ -94,7 +94,7 @@ for(partition_count=0;partition_count<3;partition_count++) {
 		 	hdstruct.flags=DEVICE_FIXED;
 		 	hdstruct.numberofsectors=partition[partition_count].numberofsectors;
 
-		 	ksnprintf(hdstruct.name,"HD%d",hdstruct.drive,MAX_PATH);
+		 	ksnprintf(hdstruct.name,"HD%d",MAX_PATH,hdstruct.drive);
 		 	hdcount++;
 
 		 	add_block_device(&hdstruct);
@@ -138,7 +138,7 @@ hdstruct.sectorsperblock=1;
 hdstruct.flags=DEVICE_FIXED;
 hdstruct.numberofsectors=partition[partition_count].numberofsectors;
 
-ksnprintf(hdstruct.name,"HD%d",hdstruct.drive,MAX_PATH);
+ksnprintf(hdstruct.name,"HD%d",MAX_PATH,hdstruct.drive);
 
 add_block_device(&hdstruct);
 
@@ -236,7 +236,7 @@ for(count=0;count<size;count++) {		/* for each sector */
 		hdstruct.flags=DEVICE_FIXED;
 		hdstruct.numberofsectors=guidptr->last_lba-guidptr->first_lba;
 		hdstruct.ioctl=NULL;
-		ksnprintf(hdstruct.name,"HD%d",hdstruct.drive,MAX_PATH);
+		ksnprintf(hdstruct.name,"HD%d",MAX_PATH,hdstruct.drive);
 
 		hdstruct.startblock=guidptr->first_lba;	
 

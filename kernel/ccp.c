@@ -48,6 +48,8 @@ FILERECORD commandrun;
 size_t returnvalue;
 char *buf;
 char *bufx;
+SPLITBUF splitbuf;
+char *fullname[MAX_PATH];
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);

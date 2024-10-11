@@ -158,7 +158,7 @@ if(splitbuf == NULL) {
 
 if(find_type == FALSE) {
 	getfullpath(filename,fp);			/* get full filename */
-	touppercase(fp);				/* convert to uppercase */
+	touppercase(fp,fp);				/* convert to uppercase */
 
 	splitname(fp,splitbuf);				/* split filename */
 
@@ -180,14 +180,12 @@ fattype=fat_detect_change(splitbuf->drive);
 if(fattype == -1) {
 	kernelfree(splitbuf);
 	kernelfree(lfnbuf);
-	setlasterror(INVALID_DISK);
 	return(-1);
 }
 
 if(getblockdevice(splitbuf->drive,&blockdevice) == -1) {
 	kernelfree(splitbuf);
 	kernelfree(lfnbuf);
-	setlasterror(INVALID_DISK);
 	return(-1);
 } 
 
@@ -569,15 +567,9 @@ if(findfirst(fullpath,&filecheck) == 0) {			/* file exists */
 splitname(fullpath,&splitbuf);
 
 fattype=fat_detect_change(splitbuf.drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-}
+if(fattype == -1) return(-1);
 
-if(getblockdevice(splitbuf.drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(getblockdevice(splitbuf.drive,&blockdevice) == -1) return(-1);
 
 bpb=blockdevice.superblock;				/* point to superblock data*/
 
@@ -645,7 +637,7 @@ while(1) {
 			if((strncmp(splitbuf.dirname,"\\",MAX_PATH) == 0) && (fattype == 12 || fattype == 16)) { 
 				kernelfree(blockbuf);
 
-				setlasterror(DIRECTORY_FULL);
+				setlasterror(DIR_ENTRY_CREATE_ERROR);
 				return(-1);
 			}
 		
@@ -807,10 +799,7 @@ parentdir_startblock=fat_get_start_block(dirname);		/* get start block of parent
 dirblockbuf=kernelalloc(MAX_BLOCK_SIZE);	/* allocate buffer for subdirectory block */
 if(dirblockbuf == NULL) return(-1);
 
-if(getblockdevice(drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(getblockdevice(drive,&blockdevice) == -1) return(-1);
 
 bpb=blockdevice.superblock;				/* point to superblock data*/
 
@@ -912,7 +901,7 @@ if(findfirst(filename,&buf) == -1) {		/* get file entry */
 }
 
 if(buf.attribs & FAT_ATTRIB_DIRECTORY) {	/* if deleting directory, check if empty */
-	ksnprintf(delete_dir_path,"%s\\*",subdirbuf.filename,MAX_PATH);
+	ksnprintf(delete_dir_path,"%s\\*",MAX_PATH,subdirbuf.filename);
 	
 	if(findfirst(delete_dir_path,&subdirbuf) == 0) {		/* directory not empty */
 		do {
@@ -985,15 +974,10 @@ if(gethandle(handle,&read_file_record) == -1) {		/* bad handle */
 }
 
 fattype=fat_detect_change(read_file_record.drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(fattype == -1) return(-1);
+ 
 
-if(getblockdevice(read_file_record.drive,&blockdevice) == -1) {
-	setlasterror(INVALID_HANDLE);
-	return(NULL);
-}
+if(getblockdevice(read_file_record.drive,&blockdevice) == -1) return(-1);
 
 bpb=blockdevice.superblock;		/* point to superblock */
 
@@ -1135,16 +1119,9 @@ if(gethandle(handle,&write_file_record) == -1) {	/* bad handle */
 }
 
 fattype=fat_detect_change(write_file_record.drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(fattype == -1) return(-1);
 
-if(getblockdevice(write_file_record.drive,&blockdevice) == -1) {
-	setlasterror(INVALID_HANDLE);
-	return(NULL);
-}
-
+if(getblockdevice(write_file_record.drive,&blockdevice) == -1) return(-1);
 
 bpb=blockdevice.superblock;		/* point to superblock */
 
@@ -1505,15 +1482,9 @@ size_t entrycount;
 size_t whichentry;
 
 fattype=fat_detect_change(drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(fattype == -1) return(-1);
 
-if(getblockdevice(drive,&blockdevice) == -1) {		/* get block device struct */
-	setlasterror(INVALID_DISK);
-	return(-1);
-}		
+if(getblockdevice(drive,&blockdevice) == -1) return(-1);		/* get block device information */
 
 bpb=blockdevice.superblock;		/* point to data */
 	
@@ -1682,14 +1653,10 @@ fattype=fat_detect_change(splitbuf->drive);
 if(fattype == -1) {
 	kernelfree(splitbuf);
 	kernelfree(lfnbuf);
-	setlasterror(INVALID_DISK);
 	return(-1);
 } 
 
-if(getblockdevice(splitbuf->drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
-	return(NULL);
-}
+if(getblockdevice(splitbuf->drive,&blockdevice) == -1) return(-1);
 
 bpb=blockdevice.superblock;		/* point to data */
 
@@ -1771,7 +1738,7 @@ while(c != -1) {
 
 			fat_entry_to_filename(directory_entry.filename,file);			/* convert filename */
 
-			touppercase(token_buffer);			/* convert to uppercase */
+			touppercase(token_buffer,token_buffer);			/* convert to uppercase */
 		
 			if(wildcard(token_buffer,file) == 0) { 		/* if short entry filename found */         
 				if(fattype == 12 || fattype == 16) rb=directory_entry.block_low_word;				/* get next block */
@@ -1841,15 +1808,9 @@ BLOCKDEVICE blockdevice;
 BPB *bpb;
 
 fattype=fat_detect_change(drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(fattype == -1) return(-1);
 
-if(getblockdevice(drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-}
+if(getblockdevice(drive,&blockdevice) == -1) return(-1);
 
 buf=kernelalloc(MAX_BLOCK_SIZE);
 if(buf == NULL) return(-1);
@@ -1951,15 +1912,9 @@ uint8_t thirdbyte;
 size_t fatstart;
 
 fattype=fat_detect_change(drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(fattype == -1) return(-1);
 
-if(getblockdevice(drive,&blockdevice) == -1) {
-		setlasterror(INVALID_DISK);
-		return(NULL);
-}
+if(getblockdevice(drive,&blockdevice) == -1) return(NULL);
 
 bpb=blockdevice.superblock;		/* point to data */
 
@@ -2163,15 +2118,9 @@ BLOCKDEVICE blockdevice;
 blockcount=block;
 
 fattype=fat_detect_change(drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(fattype == -1) return(-1);
 
-if(getblockdevice(drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
-	return(NULL);
-}
+if(getblockdevice(drive,&blockdevice) == -1) return(-1);
 
 bpb=blockdevice.superblock;		/* get bpb */
 
@@ -2370,15 +2319,9 @@ if(strlen(new->filename) <= strlen(lfn.filename)) {
 /* attempt to create free entries in free directory entries, if none could be found, create entries at end of directory */
 
 fattype=fat_detect_change(drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(fattype == -1) return(-1);
 
-if(getblockdevice(drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
-	return(NULL);
-}
+if(getblockdevice(drive,&blockdevice) == -1) return(-1);
 
 blockbuf=kernelalloc((bpb->sectorsperblock*bpb->sectorsize));		/* allocate block buffer */
 if(blockbuf == NULL) return(-1);
@@ -2450,7 +2393,7 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 
 if(fattype == 12 || fattype == 16) {
 	if(strncmp(splitbuf.dirname,"\\",MAX_PATH) == 0) {
-		setlasterror(DIRECTORY_FULL);
+		setlasterror(DIR_ENTRY_CREATE_ERROR);
 		return(-1);
 	}
 }
@@ -2627,15 +2570,9 @@ getfullpath(filename,fullpath);				/* get full path */
 splitname(fullpath,&splitbuf);				/* split filename */
 
 fattype=fat_detect_change(splitbuf.drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(fattype == -1) return(-1);
 
-if(getblockdevice(splitbuf.drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
-	return(NULL);
-}
+if(getblockdevice(splitbuf.drive,&blockdevice) == -1) return(-1);
 
 bpb=blockdevice.superblock;	/* point to data */
 
@@ -2741,16 +2678,9 @@ getfullpath(newname,fullpath);				/* get full path */
 splitname(fullpath,&splitbuf);				/* split filename */
 
 fattype=fat_detect_change(splitbuf.drive);
-if(fattype == -1) {
-	setlasterror(INVALID_DISK);
-	return(-1);
-} 
+if(fattype == -1) return(-1);
 
-if(getblockdevice(splitbuf.drive,&blockdevice) == -1) {
-	setlasterror(INVALID_DISK);
-	return(NULL);
-}
-
+if(getblockdevice(splitbuf.drive,&blockdevice) == -1) return(-1);
 bpb=blockdevice.superblock;				/* point to data */
 
 if(fattype == 12 || fattype == 16) {

@@ -24,8 +24,6 @@ exec.callexec=&load_elf32;
 
 if(register_executable_format(&exec) == -1) {
 	kprintf_direct("elf32: Can't register binary format\n");
-
-	setlasterror(INVALID_BINFMT);
 	return(-1);
 }
 

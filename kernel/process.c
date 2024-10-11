@@ -264,7 +264,8 @@ if(entrypoint == -1) {					/* can't load executable */
 initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE); /* initializes kernel stack */
 
 /* create psp */ 
-ksnprintf(psp->commandline,"%s %s",next->filename,next->args,MAX_PATH);
+
+ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
 
@@ -899,7 +900,10 @@ BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
  */
 
 if(currentprocess == NULL) {			/* no processes, so get from boot drive */
-	 if(getblockdevice(boot_info->drive,&blockdevice) == -1) return(-1);
+	 if(getblockdevice(boot_info->drive,&blockdevice) == -1) {
+		kprintf_direct("kernel: getcwd() can't get boot drive information\n");
+		return(-1);
+	 }
 
 	 b=dir;						/* create directory name */
 	 *b++=(uint8_t) blockdevice.drive+'A';
@@ -1463,7 +1467,7 @@ else
 	 last=next;
 
 	 if(strncmpi(next->name,format->name,MAX_PATH)) {		/* Return error if format exists */
-	  setlasterror(DRIVER_ALREADY_LOADED);
+	  setlasterror(MODULE_ALREADY_LOADED);
 	  return(-1);
 	 }
 
@@ -1523,7 +1527,7 @@ while(next != NULL) {
 	next=next->next;
 }
 
-setlasterror(INVALID_BINFMT);
+setlasterror(NOT_IMPLEMENTED);
 return(-1);
 }
 

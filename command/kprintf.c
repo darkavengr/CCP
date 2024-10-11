@@ -20,10 +20,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stddef.h>
-
-#define stdout 1
-
-void kprintf(char *format, ...);
+#include "command.h"
 
 /*
  * Print formatted string
@@ -34,103 +31,117 @@ void kprintf(char *format, ...);
  * Returns nothing
  *
  */
+
 void kprintf(char *format, ...) {
 va_list args;
-char *b;
+char *formatptr;
 char c;
 char *s;
-int num;
+char *ptr;
+size_t num;
 double d;
-char *z[10];
+char *tempbuffer[MAX_PATH];
+size_t paramsize;
 
 va_start(args,format);			/* get start of variable args */
 
-b=format;
+formatptr=format;
 
-while(*b != 0) {
-	 c=*b;
+while(*formatptr != 0) {
+	paramsize=4;				/* default size is 4 bytes */
 
-	 if(c == '%') {
-	 	c=*++b;
-	
-	 	switch(c) {
+ 	c=*formatptr;
 
-	 		case 's':				/* string */
-	 			s=va_arg(args,const char*);
-	 			write(stdout,s,strlen(s));
-	 			b++;
+	if(c == '%') {					/* format specifier */
+		c=*++formatptr;
 
-	 			break;
+		if(c == 'l') {			/* long number */
+			paramsize=8;
+			c=*++formatptr;		
+		}
 
-	 		case 'd':				/* signed decimal */
-				num=va_arg(args,int);
+		switch(c) {		
+			case 's':				/* string */
+				s=va_arg(args,const char*);	/* get variable argument */
 
-				if((num >> ((sizeof(int)*8)-1)) == 1)  write(stdout,"-",1);
-	 
-				itoa(num,z);
-				write(stdout,z,strlen(z));
-				b++;
+				write(stdout,s,strlen(s));
 
+				formatptr++;			/* point to next format character */
 				break;
 
-	  		case 'u':				/* unsigned decimal */
-	   			num=va_arg(args,size_t);
-	   			itoa(num,z);
+			case 'd':				/* decimal */
+				num=va_arg(args,int);		/* get variable integer argument */
 
-	   			if(num < 10) write(stdout,"0",1);
+				if(num & ( 1 << ((sizeof(size_t) * 8)-1))) write(stdout,"-",1); /* write minus sign if negative */			 
 
-	   			write(stdout,z,strlen(z));
-	   
-	   			b++;
-	   			break;
+				itoa(num,tempbuffer);		/* convert it to string */
 
-	  		case 'o':				/* octal */
-	   			num=va_arg(args,size_t);
-	   			itoa(num,z);
+				write(stdout,tempbuffer,strlen(tempbuffer));
 
-	   			if(num < 8) write(stdout,"0",1);
-	   			write(stdout,z,strlen(z));
+				formatptr++;			/* point to next format character */
+				break;
 
-	   			b++;
+			case 'u':				/* unsigned decimal */
+				num=va_arg(args,int);		/* get variable integer argument */
+  
+				itoa(num,tempbuffer);		/* convert it to string */
+
+				write(stdout,tempbuffer,strlen(tempbuffer));
+
+				formatptr++;			/* point to next format character */
+				break;
+
+			case 'o':		/* octal */
+				num=va_arg(args,size_t);
+
+			 	itoa(num,tempbuffer);
+
+				write(stdout,tempbuffer,strlen(tempbuffer));
+	
+				formatptr++;
+			 	break;
+
+			case 'p':				/* same as x */
+			case 'x':				/*  lowercase x */
+			case 'X':
+				num=va_arg(args,size_t);
+
+	 			tohex(num,tempbuffer,paramsize);
+
+				write(stdout,tempbuffer,strlen(tempbuffer));
+	
+				formatptr++;
+				break;
+   
+			case 'c':				/* character */
+	  			num=(unsigned char) va_arg(args, int);
+
+				ptr=tempbuffer;
+				*ptr++=(char)num;
+				*ptr++=0;
+
+				write(stdout,tempbuffer,strlen(tempbuffer));
+
+	  			formatptr++;
 	  			break;
 
-	  		case 'p':				/* same as x */
-	  		case 'x':				/*  lowercase x */
-	  		case 'X':
-	   			num=va_arg(args,size_t);
-
-	   			tohex(num,z);
-	   			write(stdout,z,strlen(z));
-
-	   			b++;
-	   			break;
-	  
-	  		case 'c':				/* character */
-	   			c=va_arg(args,int);
-	   			write(stdout,&c,1);  
-
-	   			b++;
-	   			break;
-
 	 		case '%':
-	  			write(stdout,"%",1);
+				write(stdout,"%",1);
 
-	 		case 'f':
-	  			d=va_arg(args,double);
-	  			itoa(num,z);
-	  			write(stdout,z,strlen(z));
-	  		}
+	  			formatptr++;
+	  			break;
+   			}
 
-	}
-	else
-	{
-	 write(stdout,&c,1);
-	 b++;
-}
+  }
+ else								/* output character */
+ {
+			write(stdout,&c,1);
+
+			formatptr++;
+ }
 
 }
 
 va_end(args);
-
 }
 

@@ -208,7 +208,7 @@ switch(request) {
 		return(0);
 
 	default:
-		setlasterror(INVALID_REQUEST);
+		setlasterror(INVALID_PARAMETER);
 		return(-1);
 }
 
