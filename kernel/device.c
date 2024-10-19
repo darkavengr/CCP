@@ -84,9 +84,6 @@ else
 	memset(last,0,sizeof(BLOCKDEVICE));
 }
 
-//DEBUG_PRINT_HEX(last);
-//asm("xchg %bx,%bx");
-
 /* at end here */
 memcpy(last,device,sizeof(BLOCKDEVICE));
 
@@ -177,8 +174,9 @@ lock_mutex(&blockdevice_mutex);			/* lock mutex */
 next=blockdevices;					/* find drive entry */
 	
 while(next != NULL) {
-	 if(next->drive == drive) break;
-	 next=next->next;
+	if(next->drive == drive) break;
+
+	next=next->next;
 }
 
 if(next == NULL) {					/* bad drive */

@@ -900,13 +900,8 @@ BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
  */
 
 if(currentprocess == NULL) {			/* no processes, so get from boot drive */
-	 if(getblockdevice(boot_info->drive,&blockdevice) == -1) {
-		kprintf_direct("kernel: getcwd() can't get boot drive information\n");
-		return(-1);
-	 }
-
 	 b=dir;						/* create directory name */
-	 *b++=(uint8_t) blockdevice.drive+'A';
+	 *b++=(uint8_t) boot_info->drive+'A';
 	 *b++=':';
 	 *b++='\\';
 	 *b++=0;

@@ -73,12 +73,11 @@ Elf32_Sym *symptr=NULL;
 char *strtab;
 char *strptr;
 char *entryptr;
-size_t addr;
 size_t *ref;
 void *(*entry)(char *);
 size_t numberofrelocentries;
 size_t symval;
-uint32_t codestart;
+char *codestart;
 char *sectionheader_strptr;
 size_t reloc_count;
 char *rodata;
@@ -91,9 +90,6 @@ KERNELMODULE *kernelmodulelast;
 disablemultitasking();
 
 getfullpath(filename,fullname);
-
-DEBUG_PRINT_STRING(filename);
-DEBUG_PRINT_STRING(fullname);
 
 /* check if module is loaded */
 
@@ -118,13 +114,15 @@ if(handle == -1) {
 	return(-1);		/* can't open */
 }
 
-buf=kernelalloc(getfilesize(handle));
+buf=kernelalloc(getfilesize(handle));		/* allocate memory for module */
 if(buf == NULL) {
 	close(handle);	
 
 	enablemultitasking();
 	return(-1);
 }
+
+/* The entire module file is read into memory to allow fast cross-referencing */
 
 if(read(handle,buf,getfilesize(handle)) == -1) {			/* read module into buffer */
 	close(handle);
@@ -182,11 +180,25 @@ for(count=0;count < elf_header->e_shnum;count++) {
 
 	if(strncmp(bufptr,"text",MAX_PATH) == 0) {		/* found code section */ 
 		codestart=buf+shptr->sh_offset;
+
+		if(strncmpi(filename,"Z:\\FLOPPY.O",MAX_PATH) == 0) kprintf_direct("codestart=%X\n",codestart);
+
 	}
 
-	if(strncmp(bufptr,"rodata",MAX_PATH) == 0) rodata=buf+shptr->sh_offset;	/* found rodata section */ 
+	if(strncmp(bufptr,"rodata",MAX_PATH) == 0) {
+		rodata=buf+shptr->sh_offset;	/* found rodata section */ 
 
-	if(strncmp(bufptr,"data",MAX_PATH) == 0) data=buf+shptr->sh_offset;	/* found data section */ 
+		if(strncmpi(filename,"Z:\\FLOPPY.O",MAX_PATH) == 0) {
+			kprintf_direct("rodata=%X\n",rodata);
+			asm("xchg %bx,%bx");
+		}
+	}
+
+	if(strncmp(bufptr,"data",MAX_PATH) == 0) {
+		data=buf+shptr->sh_offset;	/* found data section */ 
+
+		if(strncmpi(filename,"Z:\\FLOPPY.O",MAX_PATH) == 0) kprintf_direct("data=%X\n",data);
+	}
 		
 	shptr++;
 }
@@ -241,6 +253,8 @@ for(count=0;count<elf_header->e_shnum;count++) {
 			relptra=buf+shptr->sh_offset;
 		}
 
+		/* perform relocations for each entry */
+
 		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
 
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
@@ -258,7 +272,8 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 		  			ref=(buf+rel_shptr->sh_offset)+relptra->r_offset;
   				}
-					
+										
+
 				/* Get the value to place at the location ref into symval */
 
 				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
@@ -267,7 +282,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 
 				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,\
 					       (buf+elf_header->e_shoff)+(symptr->st_shndx*sizeof(Elf32_Shdr)),whichsym,name);	/* get name of symbol */				
-
 
 				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */							
 					symval=getkernelsymbol(name);
@@ -282,17 +296,28 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				else
 				{								
 				
-					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC)) {	/* code symbol */						
-						symval=codestart+symptr->st_value;							
+					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC) || (strncmpi(name,"text",MAX_PATH) == 0)) {	/* code symbol */						
+						if(strncmp(name,"rodata",MAX_PATH) == 0) {
+							symval=rodata+symptr->st_value;			
+						}
+						else if(strncmp(name,"data",MAX_PATH) == 0) {
+							symval=data+symptr->st_value;			
+						}
+						else
+						{
+							symval=codestart+symptr->st_value;							
+						}
 					}
 					else if((symtype == STT_OBJECT) || (symtype == STT_COMMON) || ((symptr->st_info  & 0xf) == STT_FUNC)) {		/* data symbol */
 						if(strncmp(name,"rodata",MAX_PATH) == 0) {
-							
 							if(symptr->st_value == 0) {
 								next_free_address_rodata += symptr->st_size;
 								symval=next_free_address_rodata;
 
 								if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
+
+								next_free_address_rodata += symptr->st_size;
+
 							}
 							else
 							{
@@ -302,11 +327,16 @@ for(count=0;count<elf_header->e_shnum;count++) {
 							next_free_address_data += symptr->st_size;
 						}
 						else
-						{	
+						{
 							if(symptr->st_value == 0) {
-								symval=next_free_address_data;
+								symval=get_external_module_symbol(name);
 
-								if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
+								if(symval == -1) {
+									symval=next_free_address_data;
+	
+									add_external_module_symbol(name,symval);
+									next_free_address_data += symptr->st_size;
+								}
 							}
 							else
 							{

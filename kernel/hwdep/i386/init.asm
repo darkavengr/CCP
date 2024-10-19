@@ -321,9 +321,8 @@ xor	al,al
 mov	dx,0A1h
 out	dx,al
 
-call	init_multitasking
+;call	init_multitasking
 call	driver_init				; initialize built-in drivers and filesystems
-
 call	initrd_init
 
 call	get_initial_kernel_stack_top

@@ -591,8 +591,6 @@ size_t count=0;
 
 bufptr=buf;
 
-//memset(bufptr,0,size);
-
 va_start(args,format);			/* get start of variable arguments */
 
 b=format;

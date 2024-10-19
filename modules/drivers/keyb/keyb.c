@@ -159,7 +159,7 @@ if((keycode & 128) == 128) {
 
 if(readcount++ == KEYB_BUFFERSIZE) return;
 
-//DEBUG_PRINT_HEX(readcount);
+asm("xchg %bx,%bx");
 
 switch(keycode) {								/* control characters */
 
