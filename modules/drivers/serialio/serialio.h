@@ -19,23 +19,23 @@ extern setirqhandler();
 
 typedef struct _port {
 	char *name;
-	int port;
-	int baud;
-	int databits;
-	int stopbits;
-	int parity;
-	int interrupts;
-	void (*readhandler)(int,int,int,int,void *);
-	void (*writehandler)(int,int,int,int,void *);
+	size_t port;
+	size_t baud;
+	size_t databits;
+	size_t stopbits;
+	size_t parity;
+	size_t size_terrupts;
+	void (*readhandler)(size_t,size_t,size_t,size_t,void *);
+	void (*writehandler)(size_t,size_t,size_t,size_t,void *);
 	char *buffer;
 	char *bufptr;
-	int portrcount;
-	int buffersize;
+	size_t portrcount;
+	size_t buffersize;
 } port;
 
 typedef struct _parity {
 	char *name;
-	int val;
+	size_t val;
 } parity;
 
 

@@ -136,10 +136,10 @@ while [ "$optcount" != 0 ]; do		# until all optional features done
 	if [ ${#yesno} == 0 ] || [ $yesno == "y" ]; then		# include feature
 		CC_OPT_FILES="$CC_OPT_FILES $BUILDROOT/$cc_yes"
 
-		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES $BUILDROOT/obj/$compile_arch/`echo $(basename $cc_yes) | sed s:.c:.o:`"	# get path of object file 
+		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES $BUILDROOT/obj/$compile_arch/`echo $(basename $cc_yes) | sed s:.c:-hwdep.o:`"	# get path of object file 
 	else
 		CC_OPT_FILES="$CC_OPT_FILES $BUILDROOT/$cc_no"
-		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES $BUILDROOT/obj/$compile_arch/`echo $(basename $cc_no) | sed s:.c:.o:`"
+		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES $BUILDROOT/obj/$compile_arch/`echo $(basename $cc_no) | sed s:.c:-hwdep.o:`"
 	fi
 
 	
@@ -217,8 +217,8 @@ for f in $SEARCH;do
 
 			if [ "$COMPILE_OPT" == "y" ] || [ "$COMPILE_OPT" == "Y" ]; then	# prompt if module is built-in
 				echo -n " (Y/n)?"
-			elif [ "$COMPILE_OPT" == "m" ] || [ "$COMPILE_OPT" == "M" ]; then	# initrd modult
-				echo -n " (y/n/M)?"		# not by default
+			elif [ "$COMPILE_OPT" == "m" ] || [ "$COMPILE_OPT" == "M" ]; then	# initrd module
+				echo -n " (y/n/M)?"
 			elif [ "$COMPILE_OPT" == "n" ] || [ "$COMPILE_OPT" == "N" ]; then	# not used by default
 				echo -n " (y/N/m)?"
 			fi
@@ -232,8 +232,9 @@ for f in $SEARCH;do
 				
 						response="y"
 
-					elif [ "$COMPILE_OPT" == "m" ] || [ "$COMPILE_OPT" == "M" ]; then	# initrd modult
+					elif [ "$COMPILE_OPT" == "m" ] || [ "$COMPILE_OPT" == "M" ]; then	# initrd module
 						initrd_module_list="$initrd_module_list $BUILDROOT/$f"	# add to list
+						initrd_obj_list="$initrd_obj_list $BUILDROOT/$f.o"
 						module_names="$module_names $DRIVERNAME"	# add to list     
 
 						response="m"
@@ -248,6 +249,7 @@ for f in $SEARCH;do
 
 				if  [ "$response" == "m" ] || [ "$response" == "M" ]; then		# initrd module
 					initrd_module_list="$initrd_module_list $BUILDROOT/$f"	# add to list
+					initrd_obj_list="$initrd_obj_list $BUILDROOT/$f.o"
 					module_names="$module_names $DRIVERNAME"	# add to list     
 				fi		
 

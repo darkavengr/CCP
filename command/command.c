@@ -466,7 +466,7 @@ for(count=0;count<tc;count++) {
 b=parsebuf[0];
 b++;
 
-if(*b == ':' && strlen(parsebuf[0]) == 2) {
+if((char) *b == ':' && strlen(parsebuf[0]) == 2) {
 	drivenumber=(char) *parsebuf[0]-'A';		/* get drive number */
 
 	if(chdir(directories[drivenumber]) == -1) {	/* change to directory for drive */

@@ -10,6 +10,7 @@ typedef struct {
 
 typedef struct {
 	uint8_t filename[MAX_PATH];
+	char *commondata;
 	struct KERNELMODULE *next;
 } KERNELMODULE;
 

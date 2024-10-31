@@ -194,7 +194,7 @@ for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
 
 *mb=(size_t *) -1;							/* mark end of chain */
 
-//if(flags != ALLOC_NOPAGING) memset(firstpage,0,size-1);
+if(flags != ALLOC_NOPAGING) memset(firstpage,0,size-1);
 
 unlock_mutex(&memmanager_mutex);
 

@@ -31,26 +31,13 @@
 
 #define MODULE_INIT floppy_init
 
-size_t floppy_init(char *init);
-void motor_on(size_t drive);
-void motor_off(size_t drive);
-void initialize_floppy(size_t drive);
-size_t getstatus(size_t drive);
-size_t sector_io(size_t op,uint8_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf);
-size_t fd_io(size_t op,size_t drive,uint64_t block,char *buf);
-void irq6_handler(void);
-void reset_controller(size_t drive);
-void floppy_writecommand(size_t drive,uint8_t c);
-void waitforirq6(void); 
-size_t checkstatus(void);
-
+extern setirqhandler();
+extern tickcount;
 extern setirqhandler();
 
-size_t floppybuf;
-extern tickcount;
 volatile size_t irq6done=FALSE;
 void wait_for_irq6(void);
-extern setirqhandler();
+size_t floppybuf;
 uint8_t st0;
 uint8_t cyl;
 uint8_t st[7];
@@ -71,18 +58,18 @@ struct {
 	uint8_t head_settle_time;
 } *floppy_parameters=KERNEL_HIGH+0x000fefc7;
 
-char *floppytype[] = { "None","5.25\" 360k","5.25\" 1.2M","3.5\" 720K","3.5\" 1.44M","3.5\" 2.88M" };
 struct {
+	char *name;
 	size_t sectorspertrack;
 	size_t numberofheads;
 	size_t numberofsectors;
-} fdparams[] = { {0,0,0},\
-		 { 8,2,720 },\
-	   { 15,2,2400 },\
-	   { 9,2,1400 },\
-	   { 18,2,2880 },\
-	   { 15,2,2400 },\
-	   { 36,2,5760 } };
+} fdparams[] = { {"None",0,0,0},\
+		{"5.25\" 360k",8,2,720 },\
+		{"5.25\" 1.2M",15,2,2400 },\
+		{"3.5\" 720K",9,2,1400 },\
+		{"3.5\" 1.44M",18,2,2880 },\
+		{"3.5\" 2.88M",15,2,2400 },\
+		{"3.5\" 1.70M",36,2,5760 } };
 
 size_t floppy_init(char *init) {
 BLOCKDEVICE fdstruct;
@@ -95,6 +82,9 @@ if(floppybuf == -1) {					/* can't alloc */
 	kprintf_direct("floppy: can't allocate dma buffer\n");
 	return(-1);
 }
+
+//DEBUG_PRINT_HEX(&floppybuf);
+//DEBUG_PRINT_HEX(&irq6done);
 
 #ifdef FLOPPY_DEBUG
 kprintf_direct("dma buf=%X\n",floppybuf);
@@ -127,31 +117,25 @@ for(count=0;count<floppycount;count++) {
 	fdstruct.sectorspertrack=fdparams[ftype].sectorspertrack;
 	fdstruct.numberofheads=fdparams[ftype].numberofheads;
 	fdstruct.numberofsectors=fdparams[ftype].numberofsectors;
+ 	fdstruct.ioctl=NULL;
+ 	fdstruct.blockio=&fd_io;
+	fdstruct.flags=0;
+ 	fdstruct.startblock=0;
+ 	fdstruct.sectorsperblock=1;
 	
-	 if(count == 0) {
+	if(count == 0) {
 	 	strncpy(fdstruct.name,"FD0",MAX_PATH);
-	 	fdstruct.blockio=&fd_io;		/*setup struct */
-	 	fdstruct.ioctl=NULL;
 	 	fdstruct.physicaldrive=0;
 	 	fdstruct.drive=0;
-	 	fdstruct.flags=0;
-	 	fdstruct.startblock=0;
-	 	fdstruct.sectorsperblock=1;
 	 }
 	 else
 	 {
 	 	strncpy(fdstruct.name,"FD1",MAX_PATH);
-	 	fdstruct.blockio=&fd_io;
-	 	fdstruct.ioctl=NULL;
 	 	fdstruct.physicaldrive=1;
 	 	fdstruct.drive=1;
-	 	fdstruct.flags=0;
-	 	fdstruct.startblock=0;
-	 	fdstruct.sectorsize=512;
-	 	fdstruct.sectorsperblock=1;
 	 }
 
-	 add_block_device(&fdstruct);	 /* drive a */
+	 add_block_device(&fdstruct);
 }
 
 setirqhandler(6,&irq6_handler);		/* set irq handler */
@@ -244,6 +228,8 @@ floppy_writecommand(drive,0);
 #ifdef FLOPPY_DEBUG
 kprintf_direct("fd debug: initialize floppy: specify\n");
 #endif
+
+//asm("xchg %bx,%bx");
 	
 floppy_writecommand(drive,SPECIFY);			/* config/specify command */
 floppy_writecommand(drive,8 << 4 | floppy_parameters->steprate_headunload);
@@ -336,7 +322,7 @@ return;
  * In:  op  		Operation (0=read,1=write)
 	drive		Drive
 	head		Head
-	    cyl		Cylinder
+	cyl		Cylinder
 	sector		Sector
 	blocksize 	block size
 	buf		buffer
@@ -347,7 +333,7 @@ return;
  *
  */
 
-size_t sector_io(size_t op,uint8_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf) {
+size_t sector_io(size_t op,size_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf) {
 size_t count;
 size_t result;
 size_t retrycount;
@@ -458,11 +444,14 @@ motor_off(drive);
 kprintf_direct("fd debug: sector io: copy from buffer for read\n"); 
 #endif
 
-#ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: sector io: copied ok\n"); 
-#endif
 
-if(op == _READ) memcpy((void *) buf,(char *) floppybuf+KERNEL_HIGH,blocksize); 		/* copy to from sector buffer to buffer */
+if(op == _READ) {
+	memcpy((void *) buf,(char *) floppybuf+KERNEL_HIGH,blocksize); 		/* copy to from sector buffer to buffer */
+
+	#ifdef FLOPPY_DEBUG
+		kprintf_direct("fd debug: sector io: copied ok\n"); 
+	#endif
+}
 
 setlasterror(NO_ERROR);
 return(NO_ERROR);
@@ -490,12 +479,8 @@ uint16_t head;
 uint16_t sector;
 char *b;
 uint8_t floppytype;
-void *bootbuf;
 b=buf;
 size_t rv;
-
-bootbuf=kernelalloc(1024);			/* allocate temporary buffer */
-if(bootbuf == NULL) return(-1);
 
 getblockdevice(drive,&blockdevice);
 
@@ -520,7 +505,7 @@ while(count++ < blockdevice.sectorsperblock) {
 	kprintf_direct("fd debug: sector i/o\n");
 #endif
 
-	if(sector_io(op,(uint8_t) drive,head,cylinder,sector,512,b) == -1) {
+	if(sector_io(op,drive,head,cylinder,sector,512,b) == -1) {
 		if(floppytype == 2 || floppytype == 4) {		/* double density disk in high density drive */
 			outb(CONFIGURATION_CONTROL_REGISTER,2);
 			outb(DATARATE_SELECT_REGISTER,2);
@@ -539,9 +524,9 @@ while(count++ < blockdevice.sectorsperblock) {
 			{
 	 			floppy_writecommand(drive,1 << 3);
 			}
-	  }
-
-	  if(sector_io(op,(uint8_t) drive,head,cylinder,sector,512,b) == -1) return(-1);
+	}
+	
+	if(sector_io(op,(uint8_t) drive,head,cylinder,sector,512,b) == -1) return(-1);
 }
 
 block++;
@@ -563,9 +548,9 @@ return(NO_ERROR);
  */
 
 void irq6_handler(void) {
-//#ifdef FLOPPY_DEBUG
-// kprintf_direct("fd debug: IRQ6 received\n");
-//#endif
+#ifdef FLOPPY_DEBUG
+ kprintf_direct("fd debug: IRQ6 received\n");
+#endif
 
 irq6done=TRUE;
 return;
@@ -586,10 +571,10 @@ kprintf_direct("fd_debug: controller reset\n");
 #endif
 
 irq6done=FALSE;
+
 outb(DIGITAL_OUTPUT_REGISTER,0);			/* reset controller */
 outb(DIGITAL_OUTPUT_REGISTER,0x0c);
 
-irq6done=FALSE;
 waitforirq6();	/* until ready */
 
 getstatus(drive);						/* get return values */

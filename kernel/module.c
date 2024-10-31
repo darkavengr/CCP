@@ -42,6 +42,7 @@ size_t get_external_module_symbol(char *name);
 
 SYMBOL_TABLE_ENTRY *externalmodulesymbols=NULL;
 KERNELMODULE *kernelmodules=NULL;
+KERNELMODULE *kernel_module_end=NULL;
 
 /*
  * Load and execute kernel module
@@ -57,13 +58,13 @@ size_t load_kernel_module(char *filename,char *argsx) {
 size_t handle;
 char *fullname[MAX_PATH];
 char *name[MAX_PATH];
-char c;
 size_t count;
 char *buf;
 char *bufptr;
 Elf32_Ehdr *elf_header;
 Elf32_Shdr *shptr;
 Elf32_Shdr *rel_shptr;
+Elf32_Shdr *symsection;
 Elf32_Rel *relptr;
 Elf32_Rela *relptra;
 size_t whichsym;
@@ -72,20 +73,20 @@ Elf32_Sym *symtab=NULL;
 Elf32_Sym *symptr=NULL;
 char *strtab;
 char *strptr;
-char *entryptr;
 size_t *ref;
 void *(*entry)(char *);
-size_t numberofrelocentries;
 size_t symval;
 char *codestart;
 char *sectionheader_strptr;
 size_t reloc_count;
 char *rodata;
 char *data;
-char *next_free_address_data;
 char *next_free_address_rodata;
+char *next_free_address_data;
 KERNELMODULE *kernelmodulenext;
 KERNELMODULE *kernelmodulelast;
+char *commondataptr;
+size_t common_data_section_size;
 
 disablemultitasking();
 
@@ -96,7 +97,6 @@ getfullpath(filename,fullname);
 kernelmodulenext=kernelmodules;
 
 while(kernelmodulenext != NULL) {
-	kernelmodulelast=kernelmodulenext;
 
 	if(strncmpi(kernelmodulenext->filename,fullname,MAX_PATH) == 0) {		/* found module name */
 		enablemultitasking();
@@ -178,31 +178,24 @@ for(count=0;count < elf_header->e_shnum;count++) {
 
 	bufptr=sectionheader_strptr+shptr->sh_name;	/* point to section header string table */
 
-	if(strncmp(bufptr,"text",MAX_PATH) == 0) {		/* found code section */ 
-		codestart=buf+shptr->sh_offset;
-
-		if(strncmpi(filename,"Z:\\FLOPPY.O",MAX_PATH) == 0) kprintf_direct("codestart=%X\n",codestart);
-
-	}
+	if(strncmp(bufptr,"text",MAX_PATH) == 0) codestart=buf+shptr->sh_offset;	/* found code section */ 	
 
 	if(strncmp(bufptr,"rodata",MAX_PATH) == 0) {
-		rodata=buf+shptr->sh_offset;	/* found rodata section */ 
+		rodata=buf+shptr->sh_offset;	/* found rodata section */ 		
+		next_free_address_rodata=rodata;
 
-		if(strncmpi(filename,"Z:\\FLOPPY.O",MAX_PATH) == 0) {
-			kprintf_direct("rodata=%X\n",rodata);
-			asm("xchg %bx,%bx");
-		}
+		if(shptr->sh_size > common_data_section_size) common_data_section_size=shptr->sh_size;
 	}
 
 	if(strncmp(bufptr,"data",MAX_PATH) == 0) {
-		data=buf+shptr->sh_offset;	/* found data section */ 
+		data=buf+shptr->sh_offset;		/* found data section */ 
+		next_free_address_data=data;		/* get next free pointers */
 
-		if(strncmpi(filename,"Z:\\FLOPPY.O",MAX_PATH) == 0) kprintf_direct("data=%X\n",data);
+		if(shptr->sh_size > common_data_section_size) common_data_section_size=shptr->sh_size;
 	}
-		
+
 	shptr++;
 }
-
 
 /* check if symbol and string table present */
 
@@ -211,6 +204,7 @@ if(symtab == NULL) {
 
 	setlasterror(INVALID_EXECUTABLE);
 	kernelfree(buf);
+	kernelfree(kernel_module_end->commondata);
 
 	enablemultitasking();
 	return(-1); 
@@ -218,16 +212,58 @@ if(symtab == NULL) {
 
 if(strtab == NULL) {
 	kprintf_direct("kernel: Module has no string section(s)\n");
+	kernelfree(buf);
+	kernelfree(kernel_module_end->commondata);
 
 	setlasterror(INVALID_EXECUTABLE);
-	kernelfree(buf);
 
 	enablemultitasking();
 	return(-1); 
 }
 
-next_free_address_data=data;			/* get next free pointers */
-next_free_address_rodata=rodata;
+/* add new module */
+
+if(kernelmodules == NULL) {			/* first in list */
+	kernelmodules=kernelalloc(sizeof(KERNELMODULE));
+	if(kernelmodules == NULL) {
+		kernelfree(buf);
+		kernelfree(kernel_module_end->commondata);
+
+		enablemultitasking();	
+		return(-1);
+	}
+
+	kernel_module_end=kernelmodules;
+}
+else
+{
+	kernel_module_end->next=kernelalloc(sizeof(KERNELMODULE));
+	if(kernel_module_end->next == NULL) {
+		kernelfree(buf);
+		kernelfree(kernel_module_end->commondata);
+
+		enablemultitasking();	
+		return(-1);
+	}
+
+	kernel_module_end=kernel_module_end->next;
+}
+
+strncpy(kernel_module_end->filename,fullname,MAX_PATH);
+kernel_module_end->next=NULL;
+
+kernel_module_end->commondata=kernelalloc(common_data_section_size);
+if(kernel_module_end->commondata == NULL) {
+	kernelfree(buf);
+	kernelfree(kernel_module_end->commondata);
+	kernelfree(kernelmodulelast->next);
+	
+	setlasterror(INVALID_EXECUTABLE);
+	enablemultitasking();
+	return(-1);
+}
+
+commondataptr=kernel_module_end->commondata;
 
 shptr=buf+elf_header->e_shoff;
 
@@ -244,18 +280,16 @@ for(count=0;count<elf_header->e_shnum;count++) {
 	if((shptr->sh_type == SHT_REL) || (shptr->sh_type == SHT_RELA)) {					/* found section */
 		/* perform relocations using relocation table in section */
  
-		numberofrelocentries=shptr->sh_size/sizeof(Elf32_Rel);
-
 		if(shptr->sh_type == SHT_REL) {
 			relptr=buf+shptr->sh_offset;
 		}
 		else if(shptr->sh_type == SHT_RELA) {
 			relptra=buf+shptr->sh_offset;
 		}
-
+		
 		/* perform relocations for each entry */
 
-		for(reloc_count=0;reloc_count<numberofrelocentries;reloc_count++) {
+		for(reloc_count=0;reloc_count < (shptr->sh_size/sizeof(Elf32_Rel));reloc_count++) {
 
 				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
 				
@@ -291,11 +325,10 @@ for(count=0;count<elf_header->e_shnum;count++) {
 						if(symval == -1) symval=symptr->st_value;
 					}
 		
-					add_external_module_symbol(name,symval)+KERNEL_HIGH;		/* add external symbol to list */
+					add_external_module_symbol(name,symval+KERNEL_HIGH);		/* add external symbol to list */
 				}
 				else
 				{								
-				
 					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC) || (strncmpi(name,"text",MAX_PATH) == 0)) {	/* code symbol */						
 						if(strncmp(name,"rodata",MAX_PATH) == 0) {
 							symval=rodata+symptr->st_value;			
@@ -308,7 +341,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 							symval=codestart+symptr->st_value;							
 						}
 					}
-					else if((symtype == STT_OBJECT) || (symtype == STT_COMMON) || ((symptr->st_info  & 0xf) == STT_FUNC)) {		/* data symbol */
+					else if((symtype == STT_OBJECT) || (symptr->st_shndx == SHN_COMMON) || ((symptr->st_info  & 0xf) == STT_FUNC)) {		/* data symbol */
 						if(strncmp(name,"rodata",MAX_PATH) == 0) {
 							if(symptr->st_value == 0) {
 								next_free_address_rodata += symptr->st_size;
@@ -324,30 +357,49 @@ for(count=0;count<elf_header->e_shnum;count++) {
 								symval=rodata+symptr->st_value;			
 							}
 						
-							next_free_address_data += symptr->st_size;
 						}
 						else
-						{
-							if(symptr->st_value == 0) {
+						{	
+							if(symptr->st_shndx == SHN_COMMON) {
 								symval=get_external_module_symbol(name);
-
 								if(symval == -1) {
-									symval=next_free_address_data;
-	
-									add_external_module_symbol(name,symval);
 									next_free_address_data += symptr->st_size;
+									symval=next_free_address_data;
+		
+									add_external_module_symbol(name,symval);
 								}
 							}
 							else
 							{
-								symval=data+symptr->st_value;			
+								/* point to section name for symbol */
+								symsection=(buf+elf_header->e_shoff)+(symptr->st_shndx*sizeof(Elf32_Shdr));
+
+								bufptr=sectionheader_strptr+symsection->sh_name;			
+
+								if(strncmp(bufptr,"data",MAX_PATH) == 0) {									
+									symval=get_external_module_symbol(name);
+
+									if(symval == -1) {
+										symval=data+symptr->st_value;			
+											
+										add_external_module_symbol(name,symval);	
+									}
+								}
+								else if(strncmp(bufptr,"bss",MAX_PATH) == 0) {
+									symval=get_external_module_symbol(name);
+									if(symval == -1) {
+										symval=commondataptr+symptr->st_value;
+
+										add_external_module_symbol(name,symval);
+									}	
+								}
 							}
 						}
-
+				
+					
 					}	
-
-					if(shptr->sh_type == SHT_RELA) symval += relptra->r_addend;
-				}				
+							
+				}
 
 				/* update reference in section */
 			
@@ -370,6 +422,10 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				{
 					kprintf_direct("kernel: unknown relocation type %d in module %s\n",symtype,filename);
 			
+					kernelfree(buf);
+					kernelfree(kernel_module_end->commondata);
+					kernelfree(kernelmodulelast->next);
+
 					enablemultitasking();
 
 					setlasterror(INVALID_EXECUTABLE);
@@ -379,7 +435,6 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				if(shptr->sh_type == SHT_REL) {	  				
 					relptr++;
 				}
-
 				else if(shptr->sh_type == SHT_RELA) {
 					relptra++;
 				}
@@ -390,37 +445,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 	shptr++;
 }
 
-/* add new module */
-
-if(kernelmodules == NULL) {			/* first in list */
-	kernelmodules=kernelalloc(sizeof(KERNELMODULE));
-	if(kernelmodules == NULL) {
-		close(handle);
-		kernelfree(buf);
-
-		enablemultitasking();	
-		return(-1);
-	}
-
-	kernelmodulelast=kernelmodules;
-}
-else
-{
-	kernelmodulelast->next=kernelalloc(sizeof(KERNELMODULE));
-	if(kernelmodulelast->next == NULL) {
-		close(handle);
-		kernelfree(buf);
-
-		enablemultitasking();	
-		return(-1);
-	}
-
-	kernelmodulelast=kernelmodulelast->next;
-}
-
-strncpy(kernelmodulelast->filename,fullname,MAX_PATH);
-
-kernelmodulelast->next=NULL;
+//if(strncmpi(filename,"Z:\\SERIALIO.O",MAX_PATH) == 0) asm("xchg %bx,%bx");
 
 /* call module entry point */
 entry=codestart;
@@ -592,6 +617,7 @@ while(kernelmodulenext != NULL) {
 	kernelmodulelast=kernelmodulenext;
 
 	if(strncmpi(kernelmodulenext->filename,fullname,MAX_PATH) == 0) {		/* found module name */
+		kernelfree(kernel_module_end->commondata);
 		kernelmodulelast->next=kernelmodulenext->next;		/* remove from list */
 
 		kernelfree(kernelmodulenext);

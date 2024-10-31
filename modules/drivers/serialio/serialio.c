@@ -25,6 +25,7 @@
 #include "device.h"
 #include "vfs.h"
 #include "memorymanager.h"
+#include "debug.h"
 
 #define MODULE_INIT serialio_init
 
@@ -154,7 +155,7 @@ setirqhandler(3,&com4_irq_handler);		/* set irq handler */
 
 /* configure ports */
 
-for(count=0;count<4;count++) {
+for(count=0;count<4;count++) {	
 	ports[count].buffer=kernelalloc(ports[count].buffersize);		/* allocate buffer */
 	if(ports[count].buffer == NULL) return(-1);
 

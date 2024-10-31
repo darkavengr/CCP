@@ -76,4 +76,16 @@
 #define _READ  0
 #define _WRITE 1
 
+size_t floppy_init(char *init);
+void motor_on(size_t drive);
+void motor_off(size_t drive);
+void initialize_floppy(size_t drive);
+size_t getstatus(size_t drive);
+size_t sector_io(size_t op,size_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf);
+size_t fd_io(size_t op,size_t drive,uint64_t block,char *buf);
+void irq6_handler(void);
+void reset_controller(size_t drive);
+void floppy_writecommand(size_t drive,uint8_t c);
+void waitforirq6(void); 
+size_t checkstatus(void);
 

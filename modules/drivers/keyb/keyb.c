@@ -159,8 +159,6 @@ if((keycode & 128) == 128) {
 
 if(readcount++ == KEYB_BUFFERSIZE) return;
 
-asm("xchg %bx,%bx");
-
 switch(keycode) {								/* control characters */
 
 	case KEY_TAB:
