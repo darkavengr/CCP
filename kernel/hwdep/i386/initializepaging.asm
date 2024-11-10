@@ -24,8 +24,8 @@ global unmap_lower_half
 extern paging_type
 extern processpaging
 extern processpaging_end
+extern PAGE_SIZE
 
-%define offset
 %include "init.inc"
 %include "bootinfo.inc"
 
@@ -53,32 +53,32 @@ initializepaging:
 ; subtract KERNEL_HIGH from addresses
 
 mov	eax,[esp+4]			; get kernel size
-mov	esi,offset kernel_size
+mov	esi,kernel_size
 sub	esi,KERNEL_HIGH
 mov	[esi],eax
 
 mov	eax,[esp+8]			; get initrd size
-mov	esi,offset initrd_size
+mov	esi,initrd_size
 sub	esi,KERNEL_HIGH
 mov	[esi],eax
 
 mov	eax,[esp+12]			; get symbol table size
-mov	esi,offset symtab_size
+mov	esi,symtab_size
 sub	esi,KERNEL_HIGH
 mov	[esi],eax
 
 mov	eax,[esp+16]			; get memory size
-mov	esi,offset memory_size
+mov	esi,memory_size
 sub	esi,KERNEL_HIGH
 mov	[esi],eax
 
 ; set end of page table list
 
-mov	esi,offset processpaging
+mov	esi,processpaging
 sub	esi,KERNEL_HIGH
 
 mov	eax,[esi]
-mov	esi,offset processpaging_end
+mov	esi,processpaging_end
 sub	esi,KERNEL_HIGH
 
 mov	[esi],eax
@@ -189,28 +189,31 @@ mov	ecx,(1024*1024)				; map first 1mb
 
 ;xchg	bx,bx
 
-mov	esi,offset kernel_size
+mov	esi,kernel_size
 sub	esi,KERNEL_HIGH
 add	ecx,[esi]
 
-mov	esi,offset initrd_size
+mov	esi,initrd_size
 sub	esi,KERNEL_HIGH
 add	ecx,[esi]
 
-mov	esi,offset symtab_size
+mov	esi,symtab_size
 sub	esi,KERNEL_HIGH
 add	ecx,[esi]
 
-mov	esi,offset memory_size			; memory map size
+mov	esi,memory_size			; memory map size
 sub	esi,KERNEL_HIGH
 
 mov	eax,[esi]
-shr	eax,12					; number of pages
-shl	eax,2					; number if 4-byte entries
+;shr	eax,12					; number of pages
+;shl	eax,2					; number of 4-byte entries
 add	ecx,eax
 
 and	ecx,0fffff000h
-add	ecx,PAGE_SIZE
+
+mov	ebx,PAGE_SIZE			; page_size
+sub	ebx,KERNEL_HIGH
+add	ecx,[ebx]
 
 shr	ecx,12					; number of page table entries
 mov	edi,ROOT_PAGETABLE
@@ -226,7 +229,11 @@ mov	edi,ROOT_PAGEDIR
 mov	eax,ROOT_PAGETABLE+PAGE_RW+PAGE_PRESENT
 mov	[edi],eax			; map lower half
 mov	[edi+(512*4)],eax			; map higher half
-mov	[edi+PAGE_SIZE],edi		; pagedirphys
+
+mov	ebx,PAGE_SIZE			; page_size
+sub	ebx,KERNEL_HIGH
+mov	ebx,[ebx]
+mov	[edi+ebx],edi		; pagedirphys
 
 mov	edi,ROOT_PAGEDIR+(1023*4)	; map last entry to page directory - page tables will be present at 0xfc000000 - 0xfffff000
 mov	eax,ROOT_PAGEDIR+PAGE_RW+PAGE_PRESENT

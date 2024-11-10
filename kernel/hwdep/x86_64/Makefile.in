@@ -2,46 +2,46 @@ ASM=@asm@
 CC=@cc@
 LD=@cc@
 
-all: @buildroot@/obj/@arch@/ex.o @buildroot@/obj/@arch@/partition.o @buildroot@/obj/@arch@/port.o @buildroot@/obj/@arch@/sched.o @buildroot@/obj/@arch@/mutex.o @buildroot@/obj/@arch@/interrupts.o @buildroot@/obj/@arch@/stack.o  @buildroot@/obj/@arch@/aainit.o @buildroot@/obj/@arch@/aamemorymap.o @buildroot@/obj/@arch@/usermode.o  @buildroot@/obj/@arch@/cpustate.o @buildroot@/obj/@arch@/tss.o @buildroot@/obj/@arch@/gdt.o @buildroot@/obj/@arch@/page.o
- @buildroot@/obj/@arch@/ex.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header ex.c -o @buildroot@/obj/@arch@/ex.o
+all: @buildroot@/obj/@arch@/ex-hwdep.o @buildroot@/obj/@arch@/partition-hwdep.o @buildroot@/obj/@arch@/port-hwdep.o @buildroot@/obj/@arch@/sched-hwdep.o @buildroot@/obj/@arch@/mutex-hwdep.o @buildroot@/obj/@arch@/interrupts-hwdep.o @buildroot@/obj/@arch@/stack-hwdep.o  @buildroot@/obj/@arch@/aainit-hwdep.o @buildroot@/obj/@arch@/aamemorymap-hwdep.o @buildroot@/obj/@arch@/usermode-hwdep.o  @buildroot@/obj/@arch@/cpustate-hwdep.o @buildroot@/obj/@arch@/tss-hwdep.o @buildroot@/obj/@arch@/gdt-hwdep.o @buildroot@/obj/@arch@/page-hwdep.o
+ @buildroot@/obj/@arch@/ex-hwdep.o:
+		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header ex.c -o @buildroot@/obj/@arch@/ex-hwdep.o
 
- @buildroot@/obj/@arch@/partition.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header partition.c -o @buildroot@/obj/@arch@/partition.o
+ @buildroot@/obj/@arch@/partition-hwdep.o:
+		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header partition.c -o @buildroot@/obj/@arch@/partition-hwdep.o
 
- @buildroot@/obj/@arch@/port.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header port.c -o @buildroot@/obj/@arch@/port.o
+ @buildroot@/obj/@arch@/port-hwdep.o:
+		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header port.c -o @buildroot@/obj/@arch@/port-hwdep.o
 
- @buildroot@/obj/@arch@/sched.o:
-		$(ASM) @asm_opts@ sched.asm -o @buildroot@/obj/@arch@/sched.o
+ @buildroot@/obj/@arch@/sched-hwdep.o:
+		$(ASM) @asm_opts@ sched.asm -o @buildroot@/obj/@arch@/sched-hwdep.o
 
- @buildroot@/obj/@arch@/mutex.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header mutex.c -o @buildroot@/obj/@arch@/mutex.o
+` @buildroot@/obj/@arch@/mutex-hwdep.o:
+		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header mutex.c -o @buildroot@/obj/@arch@/mutex-hwdep.o
 
- @buildroot@/obj/@arch@/aamemorymap.o:
-		$(ASM) @asm_opts@ memorymap.asm -o @buildroot@/obj/@arch@/aamemorymap.o
+ @buildroot@/obj/@arch@/aamemorymap-hwdep.o:
+		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header ../i386/memorymap.c -o @buildroot@/obj/@arch@/aamemorymap-hwdep.o
 
- @buildroot@/obj/@arch@/aainit.o:
-		$(ASM) @asm_opts@ init.asm -o @buildroot@/obj/@arch@/aainit.o
+ @buildroot@/obj/@arch@/aainit-hwdep.o:
+		$(ASM) @asm_opts@ init.asm -o @buildroot@/obj/@arch@/aainit-hwdep.o
 
- @buildroot@/obj/@arch@/stack.o:
-		$(ASM) @asm_opts@ stack.asm -o @buildroot@/obj/@arch@/stack.o
+ @buildroot@/obj/@arch@/stack-hwdep.o:
+		$(ASM) @asm_opts@ stack.asm -o @buildroot@/obj/@arch@/stack-hwdep.o
 
- @buildroot@/obj/@arch@/tss.o:
-		$(ASM) @asm_opts@ tss.asm -o @buildroot@/obj/@arch@/tss.o
+ @buildroot@/obj/@arch@/tss-hwdep.o:
+		$(ASM) @asm_opts@ tss.asm -o @buildroot@/obj/@arch@/tss-hwdep.o
 
- @buildroot@/obj/@arch@/cpustate.o:
-		$(ASM) @asm_opts@ cpustate.asm -o @buildroot@/obj/@arch@/cpustate.o
+ @buildroot@/obj/@arch@/cpustate-hwdep.o:
+		$(ASM) @asm_opts@ cpustate.asm -o @buildroot@/obj/@arch@/cpustate-hwdep.o
 
- @buildroot@/obj/@arch@/interrupts.o:
-		$(ASM) @asm_opts@ interrupts.asm -o @buildroot@/obj/@arch@/interrupts.o
+ @buildroot@/obj/@arch@/interrupts-hwdep.o:
+		$(ASM) @asm_opts@ interrupts.asm -o @buildroot@/obj/@arch@/interrupts-hwdep.o
 
- @buildroot@/obj/@arch@/gdt.o:
-		$(ASM) @asm_opts@ gdt.asm -o @buildroot@/obj/@arch@/gdt.o
+ @buildroot@/obj/@arch@/gdt-hwdep.o:
+		$(ASM) @asm_opts@ gdt.asm -o @buildroot@/obj/@arch@/gdt-hwdep.o
 
- @buildroot@/obj/@arch@/usermode.o:
-		$(ASM) @asm_opts@ usermode.asm -o @buildroot@/obj/@arch@/usermode.o
+ @buildroot@/obj/@arch@/usermode-hwdep.o:
+		$(ASM) @asm_opts@ usermode.asm -o @buildroot@/obj/@arch@/usermode-hwdep.o
 
- @buildroot@/obj/@arch@/page.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header page.c -o @buildroot@/obj/@arch@/page.o
+ @buildroot@/obj/@arch@/page-hwdep.o:
+		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header page.c -o @buildroot@/obj/@arch@/page-hwdep.o
 

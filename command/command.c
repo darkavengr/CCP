@@ -282,6 +282,7 @@ while(1) {	/* forever */
 	memset(buffer,0,MAX_PATH);
 
 	readline(commandconsolein,buffer,MAX_PATH);			/* get line */
+
 	if(*buffer) doline(buffer);
 }
 
@@ -477,7 +478,6 @@ if((char) *b == ':' && strlen(parsebuf[0]) == 2) {
 	return(0);
 }
 
-
 /* check if it's an internal command */
 
 commandcount=0;
@@ -556,6 +556,8 @@ if((getlasterror() == FILE_NOT_FOUND) || (getlasterror() == END_OF_DIRECTORY)) {
 }
 else
 {
+	kprintf("error=%X\n",getlasterror());
+
 	setvar("ERRORLEVEL",getlasterror());
 	kprintf("%s\n",kstrerr(getlasterror()));
 }
@@ -1048,6 +1050,8 @@ while(*b-- != '\\') ;;
 
 b=b+2;
 *b=0;
+
+//kprintf("Directory of %s\n",buffer);
 
 kprintf(directoryof,buffer);
 	

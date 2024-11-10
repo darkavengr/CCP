@@ -92,14 +92,14 @@ cli
 
 push	eax
 mov	eax,[esp+4]				; get eip
-mov	[saveeip],eax				; save it
+mov	[save_eip],eax				; save it
 pop	eax
 
 sub	esp,4
 
 pushf
 push	cs
-push	dword [saveeip]
+push	dword [save_eip]
 
 pusha						; save registers
 
@@ -143,44 +143,38 @@ jnz	multitasking_enabled
 jmp	end_switch
 
 multitasking_enabled:
-;call	disablemultitasking
+call	disablemultitasking
 
 ;call	getpid
 
-;cmp	eax,1
-;jl	no_debug
+;test	eax,eax
+;jnz	no_debug2
 
-xchg	bx,bx
-no_debug:
+;xchg	bx,bx
+;no_debug2:
 
 push	dword [save_esp]			; save current task's stack pointer
 call	save_kernel_stack_pointer
 add	esp,4
 
-call	increment_process_ticks
+call	is_process_ready_to_switch
+test	eax,eax					; if process not ready to switch, return
+jnz	task_time_slice_finished
 
-mov	eax,[save_descriptor]			; get descriptor
-test	eax,eax					; if switching to a specific process
-jnz	task_time_slice_finished		; don't check if process is ready to switch
+call	enablemultitasking
 
-;call	is_process_ready_to_switch
-;test	eax,eax					; if process not ready to switch, return
-;jnz	task_time_slice_finished
-
-;call	enablemultitasking
-
-;jmp	end_switch
+jmp	end_switch
 
 task_time_slice_finished:
 call	reset_process_ticks
 
-;call	getpid
+call	getpid
 
-;cmp	eax,1
-;jl	no_debug
+cmp	eax,1
+jl	no_debug
 
-;xchg	bx,bx
-;no_debug:
+xchg	bx,bx
+no_debug:
 
 ;
 ; Switch to next process
@@ -190,7 +184,7 @@ mov	eax,[save_descriptor]				; get descriptor
 test	eax,eax						; if not switching to a specific process
 jnz	have_descriptor					; update process now
 
-call	find_next_process_to_switch_to			; get pointer to next process to switch to
+call	find_next_process_to_switch_to			; get pointer to next process
 
 have_descriptor:
 push	eax						; update current process pointer
@@ -225,5 +219,5 @@ ret
 save_esp dd 0
 save_eax dd 0
 save_descriptor dd 0
-saveeip dd 0
+save_eip dd 0
 

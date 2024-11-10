@@ -19,7 +19,7 @@ all: @buildroot@/obj/@arch@/ex-hwdep.o @buildroot@/obj/@arch@/partition-hwdep.o 
 		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header mutex.c -o @buildroot@/obj/@arch@/mutex-hwdep.o
 
  @buildroot@/obj/@arch@/aamemorymap-hwdep.o:
-		$(ASM) @asm_opts@ memorymap.asm -o @buildroot@/obj/@arch@/aamemorymap-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header memorymap.c -o @buildroot@/obj/@arch@/aamemorymap-hwdep.o
 
  @buildroot@/obj/@arch@/aainit-hwdep.o:
 		$(ASM) @asm_opts@ init.asm -o @buildroot@/obj/@arch@/aainit-hwdep.o

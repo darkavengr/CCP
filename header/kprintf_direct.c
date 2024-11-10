@@ -113,14 +113,13 @@ while(*formatptr != 0) {
 	  			break;
    			}
 
-  }
- else								/* output character */
- {
+	}
+	else								/* output character */
+	{
 			outputconsole(&c,1);
 
 			formatptr++;
- }
-
+	}
 }
 
 va_end(args);

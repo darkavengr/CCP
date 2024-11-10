@@ -18,11 +18,6 @@ along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 /* memory manager */
-	
-#define ALLOC_NORMAL	0
-#define ALLOC_KERNEL	1
-#define ALLOC_NOPAGING 	2
-#define ALLOC_GLOBAL	4
 
 #include <stdint.h>
 #include <stddef.h>
@@ -34,7 +29,6 @@ along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 #include "debug.h"
 #include "page.h"
 
-extern size_t kernel_begin(void);
 extern size_t PAGE_SIZE;
 extern size_t MEMBUF_START;
 
@@ -56,52 +50,46 @@ MUTEX memmanager_mutex;
 */
 void *alloc_int(size_t flags,size_t process,size_t size,size_t overrideaddress) {
 size_t count;
-size_t r;
-size_t *next;
-size_t *mb=(size_t *) -1;
-size_t pcount;
-size_t startpage;
-size_t physpage;
-size_t firstpage;
-size_t *m;
-size_t countx;
+size_t *memory_map_entry_ptr=NULL;
+size_t page_count;
+size_t virtual_address=0;
+size_t physical_address=0;
+size_t first_virtual_address=0;
+size_t *start_of_chain=NULL;
+size_t next_free_entry_count;
+size_t *next_memory_map_ptr=NULL;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
-size_t oldsize=size;
 
-if(size >= bootinfo->memorysize) {							/* sanity check */
+if(size >= bootinfo->memorysize) {				/* sanity check */
 	setlasterror(NO_MEM);
 	return(NULL);
 }
 
-if(size < PAGE_SIZE) size=PAGE_SIZE;		/* if size is less than a page, round up to page size */
+if(size < PAGE_SIZE) size=PAGE_SIZE;				/* if size is less than a page, round up to page size */
 
 if((size % PAGE_SIZE) != 0) {
-	size=(size & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round */
+	size=(size & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round up size to PAGE_SIZE */
 }
 
 lock_mutex(&memmanager_mutex);
 
-m=(size_t *) MEMBUF_START;
+page_count=0;
+memory_map_entry_ptr=MEMBUF_START;
 
-pcount=0;
-mb=m; 
-startpage=0;
+/* check if enough free memory, find start of free chain and starting physical address */
 
-/* check if enough free memory */
+for(count=0;count<(bootinfo->memorysize/PAGE_SIZE);count++) {	
+	if(*memory_map_entry_ptr == 0) {
+		if(start_of_chain == NULL) start_of_chain=memory_map_entry_ptr;		/* save start of chain */
 
-for(count=0;count<(bootinfo->memorysize/PAGE_SIZE);count++) {
-	if(*mb == 0) {
-		if(startpage == 0) startpage=count;
-
-		if(pcount == (size / PAGE_SIZE)) break;			/* found enough */
-
-		pcount++;
+		if(++page_count == (size / PAGE_SIZE)) break;			/* found enough */
 	}
 
-	 mb++;
+	physical_address += PAGE_SIZE;
+	memory_map_entry_ptr++;
 }
 
-if((pcount < (size/PAGE_SIZE)) || (count == (bootinfo->memorysize/PAGE_SIZE)-1)) {					/* out of memory */
+if((page_count < (size/PAGE_SIZE)) || (count == (bootinfo->memorysize/PAGE_SIZE)-1)) {					/* out of memory */
 	unlock_mutex(&memmanager_mutex);
 
 	 setlasterror(NO_MEM);
@@ -110,98 +98,101 @@ if((pcount < (size/PAGE_SIZE)) || (count == (bootinfo->memorysize/PAGE_SIZE)-1))
 
 /* first start virtual address */
 
-if(flags != ALLOC_NOPAGING) {						/* find first page */
+if(flags != ALLOC_NOPAGING) {
 
-	if(overrideaddress == -1) { 
-		firstpage=findfreevirtualpage(size,flags,process); 
+	if(overrideaddress == -1) { 					/* find first free virtual address */
+		first_virtual_address=findfreevirtualpage(size,flags,process); 
 
-		if(firstpage == -1) {
+		if(first_virtual_address == -1) {
 			unlock_mutex(&memmanager_mutex);
+
 	   		setlasterror(NO_MEM);
 	   		return(NULL);
 	  	}
 	 
-	  	startpage=firstpage;
+	  	virtual_address=first_virtual_address;
 	}
 	else
-	{
-		startpage=overrideaddress;
-		firstpage=overrideaddress;
+	{					/* use override address */
+		virtual_address=overrideaddress;
+		first_virtual_address=overrideaddress;
 	 }
 
 }
 else
 {
-	firstpage=(startpage*PAGE_SIZE);
+	first_virtual_address=physical_address;		/* use physical address */
 }
 
 /* create new chain in buffer */
 
-physpage=0;
-mb=(size_t *) MEMBUF_START;
-pcount=0;
-	
-for(count=0;count != (bootinfo->memorysize/PAGE_SIZE)+1;count++) {
+memory_map_entry_ptr=start_of_chain;			/* point to start of new chain */
 
-	if(*mb == 0) {
-		pcount++;
+page_count=0;
+	
+while(count != (bootinfo->memorysize/PAGE_SIZE)+1) {
+
+	if(*memory_map_entry_ptr == 0) {
+		page_count++;
 
 	/* find next in memory map */
 
-		next=mb;
-		next++;
+		next_memory_map_ptr=memory_map_entry_ptr;
+		next_memory_map_ptr++;
 
-		for(countx=count+1;countx<(bootinfo->memorysize/PAGE_SIZE)+1;countx++) {
-	  		if(*next == 0) break;
-	  		next++;
+		for(next_free_entry_count=count+1;next_free_entry_count<(bootinfo->memorysize/PAGE_SIZE)+1;next_free_entry_count++) {
+	  		if(*next_memory_map_ptr == 0) break;
+
+			next_memory_map_ptr++;
 	     	}
-	  
-	     	*mb=(size_t *) next;
+
+	     	*memory_map_entry_ptr=(size_t *) next_memory_map_ptr;
 	  
 /* link physical addresses to virtual addresses */
-	 
-	     	if(flags != ALLOC_NOPAGING) {	
 
+	     	if(flags != ALLOC_NOPAGING) {	
+	
 	     		switch(flags) {
-	     			case ALLOC_NORMAL:				/* add normal page */
-	 				addpage_user(startpage,process,physpage);
+	     			case ALLOC_NORMAL:				/* add user-mode page */
+	 				addpage_user(virtual_address,process,physical_address);
 	        			if(process == getpid()) loadpagetable(process);
-	 			
 					break;
 
-				case ALLOC_KERNEL:	
-	 				addpage_system(startpage,process,physpage); /* add kernel page */
+				case ALLOC_KERNEL:
+	 				addpage_system(virtual_address,process,physical_address); /* add kernel page */
 
 	        			if(process == getpid()) loadpagetable(process);
 	        			break;
 
 				case ALLOC_GLOBAL:
-	 				addpage_user(startpage,process,physpage); /* add global page */
+	 				addpage_user(virtual_address,process,physical_address); /* add global page */
 
 	        			if(process == getpid()) loadpagetable(process);
 	       				break;	    
-	       			}
+	       		}
 
-				startpage=startpage+PAGE_SIZE;  
-	     		}
-
-		if(pcount == (size/PAGE_SIZE)+1) break;			/* found enough */
+			virtual_address += PAGE_SIZE;
+	     	}
 	}
 
-	mb++;
-	physpage=physpage+PAGE_SIZE;
+	memory_map_entry_ptr++;
+	physical_address += PAGE_SIZE;
+	
+	if(page_count > (size/PAGE_SIZE)) break;			/* found enough */
+
+	count++;
 }
 
-*mb=(size_t *) -1;							/* mark end of chain */
+*memory_map_entry_ptr=(size_t *) -1;							/* mark end of chain */
 
-if(flags != ALLOC_NOPAGING) memset(firstpage,0,size-1);
+if(flags != ALLOC_NOPAGING) memset(first_virtual_address,0,size-1);
 
 unlock_mutex(&memmanager_mutex);
 
 setlasterror(NO_ERROR);
-return((void *) firstpage);
-}
 
+return((void *) first_virtual_address);
+}
 /*
 * Internal free memory function
 *
@@ -251,7 +242,7 @@ do {
 	*z=0;							/* remove from allocation table */
 	z=p;
 
-	removepage(pc,process);				/* remove page from page table */
+	if((p != -1) || (p == 0)) removepage(pc,process);				/* remove page from page table */
 	pc=pc+PAGE_SIZE;
 }  while(p != -1);
 
@@ -454,6 +445,7 @@ return(realloc_int(ALLOC_NORMAL,getpid(),address,size));
 *
 */	
 
+
 void *realloc_int(size_t flags,size_t process,void *address,size_t size) {
 char *tempbuf;
 char *newbuf;
@@ -566,5 +558,3 @@ do {
 unlock_mutex(&memmanager_mutex);
 return(NULL);
 }
-
-

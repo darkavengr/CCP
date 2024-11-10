@@ -18,7 +18,6 @@
 ; along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
 KERNEL_HIGH	equ 0x80000000
-PAGE_SIZE equ 4096					; size of page  DON'T CHANGE	
 BASE_OF_SECTION equ 0x80100000
 
 

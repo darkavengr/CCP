@@ -31,10 +31,6 @@
 
 #define MODULE_INIT floppy_init
 
-extern setirqhandler();
-extern tickcount;
-extern setirqhandler();
-
 volatile size_t irq6done=FALSE;
 void wait_for_irq6(void);
 size_t floppybuf;

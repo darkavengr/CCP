@@ -63,9 +63,10 @@
  * 
  */
 
-extern void exception(uint32_t *regs,uint32_t e,uint32_t dummy);
+void exception(uint32_t *regs,uint32_t e,uint32_t dummy);
 uint32_t tohex(uint32_t hex,char *buf);
 uint32_t flags;
+
 char *exp[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception", \
 		"Into detected overflow","Out of bounds exception","Invalid opcode exception","No coprocessor exception", \
 		 "Double Fault","Coprocessor segment overrun","Bad TSS","Segment not present","Stack fault", \
@@ -76,7 +77,7 @@ char *regnames[] = { "EIP", "ESP", "EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EB
 
 char *flagsname[]= { "","Overflow", " Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
 
-extern void exception(uint32_t *regs,uint32_t e,uint32_t dummy) {
+void exception(uint32_t *regs,uint32_t e,uint32_t dummy) {
 size_t count;
 uint32_t flagsmask;
 char *b;

@@ -79,4 +79,3 @@ mov	[edi+GDT_ACCESS],bl		; put access
 xor	eax,eax			; return success
 ret
 
-ret

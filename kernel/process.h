@@ -13,7 +13,7 @@
 #define _SHUTDOWN	 		0
 #define _RESET				1
 #define PROCESS_STACK_SIZE 65536
-#define DEFAULT_QUANTUM_COUNT 10
+#define DEFAULT_QUANTUM_COUNT 10000
 
 #define SHUTDOWN_WAIT 10
 #define SIGNAL_COUNT 256
@@ -100,6 +100,6 @@ size_t register_executable_format(EXECUTABLEFORMAT *format);
 size_t load_executable(char *filename);
 void reset_process_ticks(void);
 size_t get_tick_count(void);
-void increment_tick_count(void);
+size_t increment_tick_count(void);
 size_t GetVersion(void);
 

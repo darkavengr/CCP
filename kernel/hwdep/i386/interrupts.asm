@@ -527,8 +527,6 @@ push	es
 push	fs
 push	gs
 
-call	disablemultitasking
-
 mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
 mov 	ds,ax
 mov 	es,ax
@@ -538,8 +536,6 @@ mov 	gs,ax
 sti
 call	dispatchhandler
 cli
-
-call	enablemultitasking
 
 mov	[tempone],eax
 

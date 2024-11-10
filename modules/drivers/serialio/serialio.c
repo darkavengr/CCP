@@ -29,8 +29,6 @@
 
 #define MODULE_INIT serialio_init
 
-extern setirqhandler();
-
 uint8_t comport(size_t op,uint16_t port,char *buf,size_t size);
 void read_com1(char *buf,size_t size);
 void read_com2(char *buf,size_t size);
@@ -239,7 +237,7 @@ count=0;
 
 while(count < size) {			/* wait until all data received */
 	
-/* read data in PAGE_SIZE chunks */
+/* read data in chunks */
 
 	 while(ports[whichport].portrcount < ports[2].buffersize || ports[whichport].portrcount < size) ;;	/* wait for buffer to fill up */
 	 

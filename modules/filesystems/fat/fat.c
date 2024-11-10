@@ -31,8 +31,6 @@
 
 #define MODULE_INIT fat_init
 
-extern old;
-
 size_t b;
 
 size_t fat_findfirst(char *filename,FILERECORD *buf);							// TESTED
@@ -1684,8 +1682,6 @@ if(blockbuf == NULL) {
  */
 
 c=0;
-	
-old=NULL;
 
 c=get_filename_token(fullpath,token_buffer);					/* skip first token*/
 tc=get_filename_token_count(fullpath);

@@ -22,9 +22,6 @@
 #include "memorymanager.h"
 #include "process.h"
 
-extern PROCESS *currentprocess;
-extern PROCESS *processes;
-
 size_t multitaskingenabled=FALSE;
 
 void disablemultitasking(void);
@@ -72,6 +69,7 @@ return;
 
 void init_multitasking(void) {
 multitaskingenabled=FALSE;
+
 setirqhandler(0,switch_task);		/* Register timer */
 return;
 }
@@ -101,14 +99,14 @@ size_t is_multitasking_enabled(void) {
 PROCESS *find_next_process_to_switch_to(void) { 
 PROCESS *newprocess;
 
-newprocess=currentprocess;
+newprocess=get_current_process_pointer();
 
 /* find next process */
 
 do {
 	newprocess=newprocess->next;
 
-	if((newprocess == NULL) || (newprocess->next == NULL)) newprocess=processes;		/* if at end, loop back to start */
+	if((newprocess == NULL) || (newprocess->next == NULL)) newprocess=get_processes_pointer();	/* if at end, loop back to start */
 
 	if((newprocess->flags & PROCESS_BLOCKED) == 0) return(newprocess);		/* found process */
 
@@ -127,9 +125,9 @@ return(NULL);
  */
 
 size_t is_process_ready_to_switch(void) { 
- if(currentprocess == NULL) return(FALSE);
+ if(get_current_process_pointer() == NULL) return(FALSE);
 
- if(++currentprocess->ticks <= currentprocess->maxticks) return(FALSE);
+ if(increment_tick_count() < get_max_tick_count()) return(FALSE);
 
  return(TRUE);
 }

@@ -31,11 +31,6 @@
 #include "bootinfo.h"
 #include "debug.h"
 
-extern initializestack(void *ptr,size_t size);
-extern get_stack_top(void);
-extern get_stack_pointer(void);
-extern irq_exit;
-
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
 PROCESS *processes_end=NULL;
@@ -147,7 +142,6 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	freepages(highest_pid_used);
 
 	enablemultitasking();
-
 	kernelfree(lastprocess->next);	/* remove process from list */
 
 	lastprocess->next=NULL;		/* remove process */
@@ -160,6 +154,8 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 next->kernelstackbase=next->kernelstacktop;
 next->kernelstacktop += PROCESS_STACK_SIZE;			/* top of kernel stack */
 next->kernelstackpointer=next->kernelstacktop;			/* intial kernel stack address */
+
+//DEBUG_PRINT_HEX(next->kernelstacktop);
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -178,8 +174,7 @@ if(currentprocess != NULL) {
 		freepages(highest_pid_used);
 
 		enablemultitasking();
-
-		kernelfree(lastprocess->next);	/* remove process from list */
+		if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
 
 		lastprocess->next=NULL;		/* remove process */
 		processes_end=lastprocess;
@@ -215,10 +210,9 @@ stackp=alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,(END_OF_LOWER_HALF-PRO
 
 if(stackp == NULL) {
 	currentprocess=oldprocess;	/* restore current process pointer */
-
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
 
-	kernelfree(lastprocess->next);	/* remove process from list */
+	if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
 
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
@@ -249,7 +243,8 @@ disable_interrupts();
 
 if(entrypoint == -1) {					/* can't load executable */
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
-	kernelfree(lastprocess->next);	/* remove process from list */
+
+	if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
 
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
@@ -273,7 +268,8 @@ if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
 
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
-	kernelfree(lastprocess->next);	/* remove process from list */
+
+	if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
 
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
@@ -1435,7 +1431,7 @@ return(currentprocess->next);
 }
 
 /*
-* Register executable format.
+* Register executable format
 *
 * In:  format	Pointer to executable format struct
 *
@@ -1556,11 +1552,15 @@ size_t get_tick_count(void) {
 *
 * In:  Nothing
 *
-* Returns: Nothing
+* Returns: New tick count
 *
 */
-void increment_tick_count(void) {
-tickcount++;
+size_t increment_tick_count(void) {
+return(++tickcount);
+}
+
+size_t get_max_tick_count(void) {
+return(currentprocess->maxticks);
 }
 
 /*
