@@ -47,32 +47,31 @@ size_t ata_irq15done=FALSE;
 size_t ata_init(char *initstring) {
 ATA_IDENTIFY ident;
 size_t physdiskcount;
-prdt_struct *prdtptr;
-size_t p;
+prdt_struct *prdt_virtual;
 
-prdt=dma_alloc(sizeof(prdt_struct));	/* allocate dma buffer */
+char *memory_alloc_err = "\nhd: Error allocating memory for ATA module initialization\n";
+
+prdt=dma_alloc(sizeof(prdt_struct));	/* allocate DMA buffer */
 if(prdt == -1) {
-	kprintf_direct("\nhd: Error allocating memory for hd initialization\n");
+	kprintf_direct("%s\n",memory_alloc_err);
 	return(-1);
 }
 
-p=prdt;
-p += KERNEL_HIGH;
-prdtptr=p;
+prdt_virtual=(size_t) prdt+KERNEL_HIGH;			/* get virtual address */
 
-prdtptr->address=dma_alloc(ATA_DMA_BUFFER_SIZE);	/* allocate dma buffer */
+prdt_virtual->address=dma_alloc(ATA_DMA_BUFFER_SIZE);	/* allocate dma buffer */
 
-if(prdtptr->address == -1) {
-	kprintf_direct("\nhardddrive: Error allocating memory for initialization\n");
+if(prdt_virtual->address == NULL) {
+	kprintf_direct("%s\n",memory_alloc_err);
 	return(-1);
 }
 
 
-	/* Add hard disk partitions */
+/* Add hard disk partitions */
 
-for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk */
+for(physdiskcount=0x80;physdiskcount < 0x82;physdiskcount++) {  /* for each disk */
 
-	 if(ata_ident(physdiskcount,&ident) == 0) {	/* get ata identify */
+	 if(ata_ident(physdiskcount,&ident) == 0) {	/* get ata information */
 
 	 	if(partitions_init(physdiskcount,&ata_io) == -1) {	/* can't initalize partitions */
 	 		kprintf_direct("harddrive: Unable to intialize partitions for drive %X\n",physdiskcount);
@@ -427,24 +426,19 @@ return(NO_ERROR);
  *
  */	
 size_t ata_io_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
-uint32_t prdt_phys;
 ATA_IDENTIFY result;
 size_t count;
 BLOCKDEVICE blockdevice;
 uint16_t barfour;
 size_t islba;
-size_t rw=0;
-prdt_struct *prdtptr;
-size_t size;
-size_t p;
+prdt_struct *prdt_virtual;
 uint32_t status=0;
 uint16_t controller;
-uint16_t control_base;
-uint16_t commandregister;
 uint32_t highblock;
 uint32_t lowblock;
+uint32_t commandregister;
 
-//if(ata_ident(physdrive,&result) == -1) return(-1);	/* bad drive */
+if(ata_ident(physdrive,&result) == -1) return(-1);	/* invalid drive */
 
 barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
 if(barfour == -1) {
@@ -458,71 +452,59 @@ lowblock=((uint64_t) block & 0x000000000ffffffff);	/* get low block */
 
 barfour &= 0xFFFFFFFC;			/* clear bottom two bits */
 
-kprintf_direct("bar4=%X\n",barfour);
+DEBUG_PRINT_HEX(barfour);
 
 /* create prdt */
 
 kprintf_direct("ata_debug: setup prdt\n");
 
-p=prdt;
-p += KERNEL_HIGH;
-prdtptr=p;
+prdt_virtual=(size_t) prdt+KERNEL_HIGH;			/* get virtual address */
 
-prdtptr->last=0x8000;
-prdtptr->size=512;
+/* address was initialized on module init */
+prdt_virtual->last=0x8000;
+prdt_virtual->size=512;
 
 /* send information to ata barfour */
 
-if((physdrive == 0x80) || (physdrive == 0x81)) {			/* which barfour */
+if((physdrive == 0x80) || (physdrive == 0x81)) {			/* primary controller */
 	kprintf_direct("Primary ATA PRDT\n");
 
-	p=prdt;
-
-	outb(barfour+PRDT_STATUS_PRIMARY,inb(barfour+PRDT_STATUS_PRIMARY) | 0x04 | 0x02);
-	outb(barfour+PRDT_COMMAND_PRIMARY,8); 		/* read/write */
-	outd(barfour+PRDT_ADDRESS1_PRIMARY,(uint8_t) (p & 0xff)); /* prdt address */
-	outd(barfour+PRDT_ADDRESS2_PRIMARY,(uint8_t) ((p >> 8) & 0xff));
-	outd(barfour+PRDT_ADDRESS2_PRIMARY,(uint8_t) ((p >> 16) & 0xff));
-	outd(barfour+PRDT_ADDRESS2_PRIMARY,(uint8_t) ((p >> 24) & 0xff));
+	outb(barfour+PRDT_STATUS_PRIMARY,0);
+	outb(barfour+PRDT_COMMAND_PRIMARY,8); 			/* read/write */
+	outd(barfour+PRDT_ADDRESS_PRIMARY,(uint32_t) prdt); 	/* prdt address */
 }
-
-if((physdrive == 0x82) || (physdrive == 0x83)) {			/* which barfour */
+else if((physdrive == 0x82) || (physdrive == 0x83)) {			/* secondary controller */
 	kprintf_direct("Secondary ATA PRDT\n");
 
-	outb(barfour+PRDT_STATUS_SECONDARY,inb(barfour+PRDT_STATUS_SECONDARY) | 0x04 | 0x02);	/* enable bus mastering */
-
-	outd(barfour+PRDT_ADDRESS1_SECONDARY,(uint8_t) ((size_t) prdt-KERNEL_HIGH)); /* prdt address */
-	outb(barfour+PRDT_COMMAND_SECONDARY,8+op); 		/* read/write and start bit*/
+	outb(barfour+PRDT_STATUS_SECONDARY,0);
+	outb(barfour+PRDT_COMMAND_SECONDARY,8); 		/* read/write */
+	outd(barfour+PRDT_ADDRESS_PRIMARY,(uint32_t) prdt); 	/* prdt address */
 }
 
 
-switch(physdrive) {					/* which controller */
+switch(physdrive) {
 	case 0x80:
 		controller=0x1f0;					/* primary controller, master */
-		control_base=0x3f6;
 		outb(controller+ATA_DRIVE_HEAD_PORT,(uint8_t) 0xA0);	
 		break;
 
 	case 0x81:
 		controller=0x1f0;					/* primary controller, slave */
-		control_base=0x3f6;
 		outb(controller+ATA_DRIVE_HEAD_PORT,(uint8_t) 0xB0);
 		break;
 
 	 case 0x82:
 		controller=0x170;					/* secondary controller, master */
-		control_base=0x376;
 		outb(controller+ATA_DRIVE_HEAD_PORT,(uint8_t) 0xA0);	
 		break;
 
 	 case 0x83:
 		controller=0x170;					/* secondary controller, slave */
-		control_base=0x376;
-
 		outb(controller+ATA_DRIVE_HEAD_PORT,(uint8_t) 0xB0);
 		break;
 	}
 
+outb(controller+ATA_FEATURES_PORT,0);
 
 islba=0;
 
@@ -563,7 +545,7 @@ if(islba == 28) {						/* use lba28 */
 	}
 
 
-//	outb(controller+ATA_ALT_STATUS_PORT,0);
+	outb(controller+ATA_ALT_STATUS_PORT,0);
 
 	outb(controller+ATA_SECTOR_COUNT_PORT,1);					/* sector count */
 	outb(controller+ATA_FEATURES_PORT,0);
@@ -650,12 +632,10 @@ if((inb(ATA_ERROR_PORT) & 1) == 1) {	/* error occurred */
 	return(-1);
 }
 	
-prdtptr += KERNEL_HIGH;
-
-kprintf_direct("dma buf=%X\n",prdtptr->address+KERNEL_HIGH);	
+kprintf_direct("dma buf=%X\n",prdt_virtual->address+KERNEL_HIGH);	
 kprintf_direct("buf=%X\n",buf);
 
-memcpy(buf,prdtptr->address+KERNEL_HIGH,prdtptr->size);
+memcpy(buf,prdt_virtual->address+KERNEL_HIGH,prdt_virtual->size);
 asm("xchg %bx,%bx");
 
 return(NO_ERROR);
@@ -729,6 +709,7 @@ switch(request) {
 		return;
 	  
 	default:
+		setlasterror(INVALID_PARAMETER);
 		return(-1);
 }
 

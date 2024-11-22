@@ -81,10 +81,11 @@ if(processes == NULL) {  					/* first process */
 
 	if(processes == NULL) {					/* return if can't allocate */
 		loadpagetable(getppid());
-		freepages(highest_pid_used);
-		enablemultitasking();	
+		freepages(highest_pid_used);	
 
 		close(handle);
+
+		enablemultitasking();
 		return(-1);
 	}
 
@@ -99,10 +100,11 @@ else								/* not first process */
 	if(processes_end->next == NULL) {			/* return error if can't allocate */
 		loadpagetable(getppid());
 		freepages(highest_pid_used);
-		enablemultitasking();	
 
 		close(handle);
 		setlasterror(NO_MEM);
+
+		enablemultitasking();
 		return(-1);
 	}
 
@@ -141,21 +143,20 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	loadpagetable(getpid());
 	freepages(highest_pid_used);
 
-	enablemultitasking();
 	kernelfree(lastprocess->next);	/* remove process from list */
 
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
 
 	close(handle);
+
+	enablemultitasking();
 	return(-1);
 }
 
 next->kernelstackbase=next->kernelstacktop;
 next->kernelstacktop += PROCESS_STACK_SIZE;			/* top of kernel stack */
 next->kernelstackpointer=next->kernelstacktop;			/* intial kernel stack address */
-
-//DEBUG_PRINT_HEX(next->kernelstacktop);
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -173,13 +174,14 @@ if(currentprocess != NULL) {
 		loadpagetable(getpid());
 		freepages(highest_pid_used);
 
-		enablemultitasking();
 		if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
 
 		lastprocess->next=NULL;		/* remove process */
 		processes_end=lastprocess;
 
 		close(handle);
+
+		enablemultitasking();
 		return(-1);
 	}
 
@@ -190,6 +192,8 @@ page_init(highest_pid_used);				/* intialize page directory */
 loadpagetable(highest_pid_used);			/* load page table */
 
 currentprocess=next;					/* use new process */
+
+currentprocess->lasterror=last_error_no_process;	/* get last error */
 
 highest_pid_used++;
 
@@ -256,7 +260,7 @@ if(entrypoint == -1) {					/* can't load executable */
 	return(-1);
 }
 
-initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE); /* initializes kernel stack */
+initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
 /* create psp */ 
 
@@ -275,6 +279,7 @@ if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 	processes_end=lastprocess;
 
 	loadpagetable(getpid());
+
 	enablemultitasking();
 	enable_interrupts();
 
@@ -285,7 +290,6 @@ else
 	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize user mode stack */
 
 	enablemultitasking();
-	enable_interrupts();
 
 	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
 }
@@ -480,9 +484,6 @@ return(-1);
 */
 
 size_t dispatchhandler(size_t ignored1,size_t ignored2,size_t ignored3,size_t ignored4,void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone) {
-char *b;
-char x;
-size_t count;
 FILERECORD findbuf;
 size_t highbyte;
 size_t lowbyte;
@@ -597,6 +598,9 @@ switch(highbyte) {
 
 	case 0x4c:			/* terminate process */
 		return(exit(lowbyte));
+		
+	case 0x4d:			/* get last error */
+		return(getlasterror());
 
 	case 0x4e:			/* find first file */
 		if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
@@ -604,10 +608,7 @@ switch(highbyte) {
 			return(-1);
 		}
 
-		return(findfirst(argfour,argtwo));	
-		
-	case 0x4d:			/* get last error */
-		return(getlasterror());
+		return(findfirst(argfour,argtwo));
 
 	case 0x4f:			/* find next file */
 		if((argfour >= KERNEL_HIGH) || (argtwo >= KERNEL_HIGH)) {		/* invalid argument */
@@ -844,7 +845,8 @@ switch(argone) {
 			return(-1);
 		}
 
-	 	return(lock_mutex(argfour));
+	 	lock_mutex(argfour);
+		return(0);
 
 	case 0x702f:				/* unlock mutex */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
@@ -852,7 +854,9 @@ switch(argone) {
 			return(-1);
 		}
 
-		return(unlock_mutex(argfour));
+		unlock_mutex(argfour);
+		return(0);
+
 
 	case 0x7030:				/* get enviroment address */
 		return(getenv());
@@ -982,9 +986,12 @@ return(currentprocess->pid);
 */
 
 void setlasterror(size_t err) {
+
+if(err == 0x1c) asm("xchg %bx,%bx");
+
 if(currentprocess == NULL) {
-		last_error_no_process=err;
-		return;
+	last_error_no_process=err;
+	return;
 }
 
 currentprocess->lasterror=err;
@@ -1465,7 +1472,7 @@ else
 	 next=next->next;
 	}
 
-/* add new format entry to end */
+	/* add new format entry to end */
 
 	last->next=kernelalloc(sizeof(EXECUTABLEFORMAT));
 	if(last->next == NULL) return(-1);
@@ -1511,10 +1518,8 @@ close(handle);
 next=executableformats;
 
 while(next != NULL) {
-	if(memcmp(next->magic,buffer,next->magicsize) == 0) {		/* found format */
-		return(next->callexec(filename));				/* call via function pointer */
-	}
-
+	if(memcmp(next->magic,buffer,next->magicsize) == 0) return(next->callexec(filename));				/* call via function pointer */
+	
 	next=next->next;
 }
 

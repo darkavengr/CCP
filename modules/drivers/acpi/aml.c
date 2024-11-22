@@ -10,8 +10,8 @@ size_t parse_aml(void *buf) {
 		case 0:			/* nop */
 			break;
 
-		case 1:
+		case AML_DEVICE:
 			break;
 	}
 }
-
+. 

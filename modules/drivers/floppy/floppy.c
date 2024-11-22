@@ -32,7 +32,7 @@
 #define MODULE_INIT floppy_init
 
 volatile size_t irq6done=FALSE;
-void wait_for_irq6(void);
+
 size_t floppybuf;
 uint8_t st0;
 uint8_t cyl;
@@ -64,8 +64,8 @@ struct {
 		{"5.25\" 1.2M",15,2,2400 },\
 		{"3.5\" 720K",9,2,1400 },\
 		{"3.5\" 1.44M",18,2,2880 },\
-		{"3.5\" 2.88M",15,2,2400 },\
-		{"3.5\" 1.70M",36,2,5760 } };
+		{"3.5\" 2.88M",15,2,2400 }
+	       };
 
 size_t floppy_init(char *init) {
 BLOCKDEVICE fdstruct;
@@ -74,16 +74,13 @@ uint8_t ftype;
 size_t count;				 
 
 floppybuf=dma_alloc(512);					/* allocate dma buffer */
-if(floppybuf == -1) {					/* can't alloc */
-	kprintf_direct("floppy: can't allocate dma buffer\n");
+if(floppybuf == NULL) {					/* can't alloc */
+	kprintf_direct("floppy: Can't allocate DMA buffer\n");
 	return(-1);
 }
 
-//DEBUG_PRINT_HEX(&floppybuf);
-//DEBUG_PRINT_HEX(&irq6done);
-
 #ifdef FLOPPY_DEBUG
-kprintf_direct("dma buf=%X\n",floppybuf);
+kprintf_direct("DMA buffer addresss=0x%X\n",floppybuf);
 #endif
 
 outb(0x70,0x10);					/* check floppy disk presense */
@@ -114,7 +111,7 @@ for(count=0;count<floppycount;count++) {
 	fdstruct.numberofheads=fdparams[ftype].numberofheads;
 	fdstruct.numberofsectors=fdparams[ftype].numberofsectors;
  	fdstruct.ioctl=NULL;
- 	fdstruct.blockio=&fd_io;
+ 	fdstruct.blockio=&floppy_io;
 	fdstruct.flags=0;
  	fdstruct.startblock=0;
  	fdstruct.sectorsperblock=1;
@@ -146,10 +143,10 @@ setirqhandler(6,&irq6_handler);		/* set irq handler */
  *
  */
 
-void motor_on(size_t drive) {
+void floppy_motor_on(size_t drive) {
 
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: enable motor\n");
+kprintf_direct("floppy debug: Enable motor\n");
 #endif
 
 if(drive == 0) {
@@ -169,15 +166,15 @@ else
 /*
  * Switch floppy motor off
  *
- * In: size_t drive	Drive
+ * In: drive	Drive
  *
  *  Returns: nothing
  *
  */
 
-void motor_off(size_t drive) {
+void floppy_motor_off(size_t drive) {
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: disable motor\n");
+kprintf_direct("floppy debug: Disable motor\n");
 #endif
 
 	switch(drive) {
@@ -201,35 +198,31 @@ kprintf_direct("fd debug: disable motor\n");
  *
  */
 	
-void initialize_floppy(size_t drive) {
+size_t initialize_floppy(size_t drive) {
 uint8_t floppytype;
-char *z[10];
-uint8_t dir;
 
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: initialize floppy: reset\n");
+kprintf_direct("floppy debug: Initialize floppy: Reset\n");
 #endif
 
-reset_controller(drive);	
+floppy_reset_controller(drive);	
 
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: initialize floppy: configure\n");
+kprintf_direct("floppy debug: Initialize floppy: Configure\n");
 #endif
 
-floppy_writecommand(drive,CONFIGURE);			/* configure drive */
-floppy_writecommand(drive,0);
-floppy_writecommand(drive,(IMPLIED_SEEK << 6) | (FIFO_DISABLED << 5) | (DRIVE_POLLING_DISABLE << 4) | (THRESHOLD-1));
-floppy_writecommand(drive,0);
+floppy_send_command(drive,CONFIGURE);			/* configure drive */
+floppy_send_command(drive,0);
+floppy_send_command(drive,(FIFO_DISABLED << 5) | (DRIVE_POLLING_DISABLE << 4) | (THRESHOLD-1));
+floppy_send_command(drive,0);
 
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: initialize floppy: specify\n");
+kprintf_direct("floppy debug: initialize floppy: specify\n");
 #endif
-
-//asm("xchg %bx,%bx");
 	
-floppy_writecommand(drive,SPECIFY);			/* config/specify command */
-floppy_writecommand(drive,8 << 4 | floppy_parameters->steprate_headunload);
-floppy_writecommand(drive,floppy_parameters->headload_ndma << 1 | 0 );
+floppy_send_command(drive,SPECIFY);			/* config/specify command */
+floppy_send_command(drive,8 << 4 | floppy_parameters->steprate_headunload);
+floppy_send_command(drive,floppy_parameters->headload_ndma << 1 | 0 );
 
 outb(0x70,0x10);					/* get floppy disk type */
 floppytype=inb(0x71);
@@ -270,31 +263,31 @@ switch(floppytype) {					/* select type */
 		break;
 
 	default:
-		kprintf_direct("kernel: Unknown floppy type\n");
+		kprintf_direct("floppy: Unknown floppy type\n");
 		return(-1);
 	 }
 	
-motor_on(drive);					/* enable motor */ 
+floppy_motor_on(drive);					/* enable motor */ 
 	
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: initialize floppy: recalibrate\n");
+kprintf_direct("floppy debug: Initialize floppy: Recalibrate\n");
 #endif
 
-floppy_writecommand(drive,RECALIBRATE);			/* recalibrate */
-floppy_writecommand(drive,drive);
-
-if(checkstatus() == -1) return(-1);
-
 irq6done=FALSE;
-waitforirq6();	/* until ready */
 
-motor_off(drive);					/* disable motor */ 
+floppy_send_command(drive,RECALIBRATE);			/* recalibrate */
+floppy_send_command(drive,drive);
 
-return;
+wait_for_irq6();	/* until ready */
+
+floppy_motor_off(drive);					/* disable motor */ 
+
+setlasterror(NO_ERROR);
+return(0);
 }
 
 /*
- * Switch floppy drive status
+ * Get floppy drive status
  *
  * In: size_t drive	Drive
  *
@@ -302,10 +295,10 @@ return;
  *
  */
 
-size_t getstatus(size_t drive) {
+size_t floppy_get_status(size_t drive) {
 while(inb(MAIN_STATUS_REG) & RQM == RQM) ;;
 
-floppy_writecommand(drive,SENSE_INTERRUPT);		/* get status */
+floppy_send_command(drive,SENSE_INTERRUPT);		/* get status */
 
 st0=inb(DATA_REGISTER);
 cyl=inb(DATA_REGISTER);
@@ -325,62 +318,70 @@ return;
  *
  *  Returns: -1 on error, 0 on success
  *
- * This is a low-level function called by fd_io
+ * This is a low-level function called by floppy_io()
  *
  */
 
-size_t sector_io(size_t op,size_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf) {
+size_t floppy_sector_io(size_t op,size_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf) {
 size_t count;
 size_t result;
 size_t retrycount;
-size_t dir;
+uint8_t dir;
 
 initialize_floppy(drive);
 
-motor_on(drive);					/* enable motor */ 
+irq6done=FALSE;
+
+floppy_motor_on(drive);					/* enable motor */ 
 
 dir=inb(DIGITAL_INPUT_REGISTER);		/* check if disk in drive */
 
 if((dir & 0x80)) {
+
 	dir &= 0x80;
 	 
 	outb(DIGITAL_INPUT_REGISTER,dir);
+
+	floppy_motor_off(drive);
+
 	setlasterror(DRIVE_NOT_READY);
 	return(-1);
 }
 
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: sector io: seek\n");
+	kprintf_direct("floppy debug: Sector I/O: Seek\n");
 #endif
 
-floppy_writecommand(drive,SEEK);				/* seek track */
-floppy_writecommand(drive,head << 2 | drive);
-floppy_writecommand(drive,cyl);
+floppy_send_command(drive,SEEK);				/* seek track */
+floppy_send_command(drive,(head << 2) | drive);
+floppy_send_command(drive,cyl);
 
-irq6done=FALSE;
-waitforirq6();	/* until ready */
+kprintf_direct("seek irq6done=%X\n",irq6done);
+
+wait_for_irq6();	/* until ready */
 
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: sector io: seek sense interrupt\n"); 
+	kprintf_direct("floppy debug: Sector I/O: Seek sense interrupt\n"); 
 #endif
 
-floppy_writecommand(drive,SENSE_INTERRUPT);		/* get status but don't get result bytes */
+floppy_send_command(drive,SENSE_INTERRUPT);		/* get status but don't get result bytes */
 
 st[0]=inb(DATA_REGISTER);		/* get result  */
 
+if(op == _WRITE) {
+	#ifdef FLOPPY_DEBUG
+		kprintf_direct("floppy debug: Sector I/O: copy to buffer for write\n"); 
+	#endif
 
-#ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: sector io: copy to buffer for write\n"); 
-#endif
-
-if(op == _WRITE) memcpy((char *) floppybuf+KERNEL_HIGH,buf,blocksize); 		/* copy to from sector buffer to buffer */
+	memcpy((char *) floppybuf+KERNEL_HIGH,buf,blocksize); 		/* copy to from sector buffer to buffer */
+}
 
 /* taken from http://wiki.osdev.org/ISA_DMA#Floppy_Disk_DMA_Initialization
 	  initialize floppy DMA */
 
-for(retrycount=0;retrycount < RETRY_COUNT;retrycount++) {
+for(retrycount=0;retrycount < FLOPPY_RETRY_COUNT;retrycount++) {
 	#ifdef FLOPPY_DEBUG
-	 kprintf_direct("fd debug: sector io: enable dma\n"); 
+	 kprintf_direct("floppy debug: Sector I/O: Enable DMA\n"); 
 	#endif
 
 	outb(0xa,6);					/* mask DMA channel 2 and 0 (assuming 0 is already masked) */
@@ -397,6 +398,8 @@ for(retrycount=0;retrycount < RETRY_COUNT;retrycount++) {
 	
 	//delay_loop((size_t) floppy_parameters->head_settle_time);			/* wait for floppy head to settle */
 
+	irq6done=FALSE; 	
+
 	outb(0x0a,0x06);					/* mask DMA channel 2 and 0 (assuming 0 is already masked) */
 	if(op == _READ) outb(0x0b,0x56);		     /* 01011010 single transfer, address increment, autoinit, read, channel 2 */
 	if(op == _WRITE) outb(0x0b,0x5A);		     /* 01010110 single transfer, address increment, autoinit, write, channel 2 */
@@ -404,40 +407,48 @@ for(retrycount=0;retrycount < RETRY_COUNT;retrycount++) {
 
 
 #ifdef FLOPPY_DEBUG
-	kprintf_direct("fd debug: sector io: send command for i/o\n"); 
+	kprintf_direct("floppy debug: Sector I/O: Send command for I/O\n"); 
 #endif
 
 	irq6done=FALSE;
-	if(op == _READ) floppy_writecommand(drive, BIT_MF | READ_DATA);	/* read or write */
-	if(op == _WRITE) floppy_writecommand(drive,BIT_MF | WRITE_DATA);
 
-	floppy_writecommand(drive,(head << 2) | drive);
-	floppy_writecommand(drive,cyl);
-	floppy_writecommand(drive,head);
-	floppy_writecommand(drive,sector);
-	floppy_writecommand(drive,2); 				/* sector size = 128*2^size */
-	floppy_writecommand(drive,1);				 /* number of sectors to transfer */
-	floppy_writecommand(drive,27);			     /* default gap value */
-	floppy_writecommand(drive,0xff);		   /* default value for data length */
+	if(op == _READ) floppy_send_command(drive, BIT_MF | READ_DATA);	/* read or write */
+	if(op == _WRITE) floppy_send_command(drive,BIT_MF | WRITE_DATA);
+
+	floppy_send_command(drive,(head << 2) | drive);
+	floppy_send_command(drive,cyl);
+	floppy_send_command(drive,head);
+	floppy_send_command(drive,sector);
+	floppy_send_command(drive,2); 				/* sector size = 128*2^size */
+	floppy_send_command(drive,1);				 /* number of sectors to transfer */
+	floppy_send_command(drive,27);			     /* default gap value */
+	floppy_send_command(drive,0xff);		   /* default value for data length */
 
 #ifdef FLOPPY_DEBUG
-	kprintf_direct("fd debug: sector io: wait for io irq6\n"); 
+	kprintf_direct("floppy debug: Sector I/O: Wait for I/O IRQ 6\n"); 
 #endif
+
 	irq6done=FALSE;
-	waitforirq6();	/* until ready */
+	wait_for_irq6();	/* until ready */
 
 #ifdef FLOPPY_DEBUG
-	kprintf_direct("fd debug: sector io: read io status\n"); 
+	kprintf_direct("floppy debug: Sector I/O: Read I/O status\n"); 
 #endif
 
-	if(checkstatus() == -1) return(-1);
-	break;
+	if(floppy_check_status() == -1) {
+		floppy_motor_off(drive);
+		return(-1);
+	}
+	else
+	{
+		 break;
+	}
 }
 
-motor_off(drive);
+floppy_motor_off(drive);
 
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd debug: sector io: copy from buffer for read\n"); 
+kprintf_direct("floppy debug: Sector I/O: Copy from buffer for read\n"); 
 #endif
 
 
@@ -445,7 +456,10 @@ if(op == _READ) {
 	memcpy((void *) buf,(char *) floppybuf+KERNEL_HIGH,blocksize); 		/* copy to from sector buffer to buffer */
 
 	#ifdef FLOPPY_DEBUG
-		kprintf_direct("fd debug: sector io: copied ok\n"); 
+		kprintf_direct("floppy debug: Sector I/O: copied ok\n");
+		kprintf_direct("DMA buffer=%X\n",floppybuf+KERNEL_HIGH);
+		kprintf_direct("buffer=%X\n",buf);
+		asm("xchg %bx,%bx");
 	#endif
 }
 
@@ -464,7 +478,7 @@ return(NO_ERROR);
  *
  */
 
-size_t fd_io(size_t op,size_t drive,uint64_t block,char *buf) {
+size_t floppy_io(size_t op,size_t drive,uint64_t block,char *buf) {
 BLOCKDEVICE blockdevice;
 BLOCKDEVICE *old;
 size_t count;
@@ -480,8 +494,11 @@ size_t rv;
 
 getblockdevice(drive,&blockdevice);
 
-//if(block > (blockdevice.numberofsectors/blockdevice.sectorsperblock)) return(-1); /* bad block */
-	
+if(block > (blockdevice.numberofsectors/blockdevice.sectorsperblock))  {
+	setlasterror(INVALID_BLOCK_NUMBER);
+	return(-1);
+}
+
 count=0;
 while(count++ < blockdevice.sectorsperblock) {
 	if(block == 0) {
@@ -498,10 +515,10 @@ while(count++ < blockdevice.sectorsperblock) {
 	}
 	
 #ifdef FLOPPY_DEBUG
-	kprintf_direct("fd debug: sector i/o\n");
+	kprintf_direct("floppy debug: Sector I/O\n");
 #endif
 
-	if(sector_io(op,drive,head,cylinder,sector,512,b) == -1) {
+	if(floppy_sector_io(op,drive,head,cylinder,sector,512,b) == -1) {
 		if(floppytype == 2 || floppytype == 4) {		/* double density disk in high density drive */
 			outb(CONFIGURATION_CONTROL_REGISTER,2);
 			outb(DATARATE_SELECT_REGISTER,2);
@@ -511,18 +528,18 @@ while(count++ < blockdevice.sectorsperblock) {
 			outb(CONFIGURATION_CONTROL_REGISTER,3);
 			outb(DATARATE_SELECT_REGISTER,3);
 	
-			floppy_writecommand(drive,PERPENDICULAR_MODE);				/* enable perpendicular mode */
+			floppy_send_command(drive,PERPENDICULAR_MODE);				/* enable perpendicular mode */
 
 			if(drive == 0)  {
-	 			floppy_writecommand(drive,1 << 2);
+	 			floppy_send_command(drive,1 << 2);
 			}
 			else
 			{
-	 			floppy_writecommand(drive,1 << 3);
+	 			floppy_send_command(drive,1 << 3);
 			}
 	}
 	
-	if(sector_io(op,(uint8_t) drive,head,cylinder,sector,512,b) == -1) return(-1);
+	if(floppy_sector_io(op,(uint8_t) drive,head,cylinder,sector,512,b) == -1) return(-1);
 }
 
 block++;
@@ -545,7 +562,7 @@ return(NO_ERROR);
 
 void irq6_handler(void) {
 #ifdef FLOPPY_DEBUG
- kprintf_direct("fd debug: IRQ6 received\n");
+ kprintf_direct("floppy debug: IRQ6 received\n");
 #endif
 
 irq6done=TRUE;
@@ -561,9 +578,9 @@ return;
  *
  */
 
-void reset_controller(size_t drive) {
+void floppy_reset_controller(size_t drive) {
 #ifdef FLOPPY_DEBUG
-kprintf_direct("fd_debug: controller reset\n");
+kprintf_direct("floppy debug: Controller reset\n");
 #endif
 
 irq6done=FALSE;
@@ -571,9 +588,9 @@ irq6done=FALSE;
 outb(DIGITAL_OUTPUT_REGISTER,0);			/* reset controller */
 outb(DIGITAL_OUTPUT_REGISTER,0x0c);
 
-waitforirq6();	/* until ready */
+wait_for_irq6();	/* until ready */
 
-getstatus(drive);						/* get return values */
+floppy_get_status(drive);						/* get return values */
 }
 
 /*
@@ -585,10 +602,10 @@ getstatus(drive);						/* get return values */
  *
  */
 
-void floppy_writecommand(size_t drive,uint8_t c) {
+void floppy_send_command(size_t drive,uint8_t c) {
 if((inb(MAIN_STATUS_REG) & 0xc0) != 0x80) {	/* need to reset */
-	 reset_controller(drive);	
-	 motor_on(drive);					/* enable motor */ 
+	 floppy_reset_controller(drive);	
+	 floppy_motor_on(drive);					/* enable motor */ 
 }
 
 outb(DATA_REGISTER,c);				/* write data */
@@ -603,24 +620,33 @@ outb(DATA_REGISTER,c);				/* write data */
  *
  */
 
-void waitforirq6(void) { 
+void wait_for_irq6(void) {
+
+#ifdef FLOPPY_DEBUG
+	kprintf_direct("floppy debug: Waiting for IRQ 6\n");
+#endif
+
 while(irq6done == FALSE) ;;
 
-return;	/* wait for interrupt */
+#ifdef FLOPPY_DEBUG
+	kprintf_direct("floppy debug: Received IRQ 6\n");
+#endif
+
+return;
 	
 }
 
 /*
  * Check status
- *
+ *	
  * In:  nothing
  *
  *  Returns: -1 on error, 0 on success
  *
  */
 
-size_t checkstatus(void) {
-uint8_t st[2];
+size_t floppy_check_status(void) {
+uint8_t st[3];
 
 st[0]=inb(DATA_REGISTER);		/* get results  */
 st[1]=inb(DATA_REGISTER);
@@ -632,7 +658,7 @@ st[2]=inb(DATA_REGISTER);
 
 if((st[0] & 8)) {
 	#ifdef FLOPPY_DEBUG
-		kprintf_direct("Drive not ready\n");
+		kprintf_direct("floppy: Drive not ready\n");
 	#endif
 
 	setlasterror(DRIVE_NOT_READY);
@@ -642,19 +668,22 @@ if((st[0] & 8)) {
 if((st[1] & 0x80) || (st[1] & 0x20) || (st[1] & 0x10) || (st[1] & 0x10) || (st[1] & 0x4) || (st[1] & 0x1)) {
 #ifdef FLOPPY_DEBUG
 	if(st[1] & 0x80) {
-		kprintf_direct("End of cylinder\n");
+		kprintf_direct("floppy: End of cylinder\n");
+
+		kprintf_direct("DMA buffer=%X\n",floppybuf+KERNEL_HIGH);		
+		asm("xchg %bx,%bx");
 	}
 	else if(st[1] & 0x20) {
-		kprintf_direct("CRC error\n");
+		kprintf_direct("floppy: CRC error\n");
 	}
 	else if(st[1] & 0x10) {
-		kprintf_direct("Controller timeout\n");
+		kprintf_direct("floppy: Controller timeout\n");
 	}
 	else if(st[1] & 0x4) {
-		kprintf_direct("No data found\n");
+		kprintf_direct("floppy: No data found\n");
 	}
 	else if(st[1] & 0x1) {
-		kprintf_direct("No address mark found\n");
+		kprintf_direct("floppy: No address mark found\n");
 	}
 #endif
 
@@ -665,22 +694,22 @@ if((st[1] & 0x80) || (st[1] & 0x20) || (st[1] & 0x10) || (st[1] & 0x10) || (st[1
 if((st[2] & 0x40) || (st[2] & 0x20) || (st[2] & 0x10) || (st[2] & 0x4) || (st[2] & 0x1)) {
 #ifdef FLOPPY_DEBUG
 	if(st[2] & 0x1) {
-		kprintf_direct("No address mark found\n");
+		kprintf_direct("floppy: No address mark found\n");
 	}
 	else if(st[2] & 0x40) {
-		kprintf_direct("Deleted address mark\n");
+		kprintf_direct("floppy: Deleted address mark\n");
 	}
 	else if(st[2] & 0x20) {
-		kprintf_direct("CRC error in data\n");
+		kprintf_direct("floppy: CRC error in data\n");
 	}
 	else if(st[2] & 0x10) {
-		kprintf_direct("Incorrect cylinder\n");
+		kprintf_direct("floppy: Incorrect cylinder\n");
 	}
 	else if(st[2] & 0x4) {
-		kprintf_direct("uPD765 sector not found\n");
+		kprintf_direct("floppy: uPD765 sector not found\n");
 	}
 	else if(st[2] & 0x2) {
-		kprintf_direct("Bad cylinder\n");
+		kprintf_direct("floppy: Bad cylinder\n");
 	}
 #endif
 
@@ -689,12 +718,15 @@ if((st[2] & 0x40) || (st[2] & 0x20) || (st[2] & 0x10) || (st[2] & 0x4) || (st[2]
 }
 
 if((st[2] & 0x2)) {
-//	kprintf_direct("Write protect error\n");
+#ifdef FLOPPY_DEBUG
+	kprintf_direct("floppy: Write protect error\n");
+#endif
 
 	setlasterror(WRITE_PROTECT_ERROR);
 	return(-1);
 }
 
+setlasterror(NO_ERROR);
 return(0);
 }
 

@@ -135,6 +135,7 @@ mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
 mov	ax,0x4b00
+xchg	bx,bx
 int	0x21
 ret
 

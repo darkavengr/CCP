@@ -1,15 +1,15 @@
-#define	  RETRY_COUNT		      3
+#define	  FLOPPY_RETRY_COUNT	      3
 #define	  FD_DELAY	     	20*6000
-//#define FLOPPY_DEBUG
-#define   READ_TRACK                  2	     /* generates IRQ6 */
+
+#define   READ_TRACK                  2	     /* generates IRQ 6 */
 #define   SPECIFY                     3      /* set drive parameters */
 #define   SENSE_DRIVE_STATUS          4
 #define   WRITE_DATA                  5      /* write to disk */
 #define   READ_DATA                   6      /* read from disk */
 #define   RECALIBRATE                 7      /* seek to cylinder 0 */
-#define   SENSE_INTERRUPT             8      /* acknowledge IRQ6 get status of last command */
+#define   SENSE_INTERRUPT             8      /* acknowledge IRQ 6 get status of last command */
 #define   WRITE_DELETED_DATA          9
-#define   READ_ID                     10     /* generates IRQ6 */
+#define   READ_ID                     10     /* generates IRQ 6 */
 #define   READ_DELETED_DATA           12
 #define   FORMAT_TRACK                13     /* fomat track */
 #define   SEEK                        15     /* seek both heads to cylinder X */
@@ -77,15 +77,15 @@
 #define _WRITE 1
 
 size_t floppy_init(char *init);
-void motor_on(size_t drive);
-void motor_off(size_t drive);
-void initialize_floppy(size_t drive);
-size_t getstatus(size_t drive);
-size_t sector_io(size_t op,size_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf);
-size_t fd_io(size_t op,size_t drive,uint64_t block,char *buf);
+void floppy_motor_on(size_t drive);
+void floppy_motor_off(size_t drive);
+size_t initialize_floppy(size_t drive);
+size_t floppy_getstatus(size_t drive);
+size_t floppy_sector_io(size_t op,size_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf);
+size_t floppy_io(size_t op,size_t drive,uint64_t block,char *buf);
 void irq6_handler(void);
-void reset_controller(size_t drive);
-void floppy_writecommand(size_t drive,uint8_t c);
-void waitforirq6(void); 
-size_t checkstatus(void);
+void floppy_reset_controller(size_t drive);
+void floppy_send_command(size_t drive,uint8_t c);
+void wait_for_irq6(void); 
+size_t floppy_check_status(void);
 

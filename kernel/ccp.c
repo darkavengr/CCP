@@ -33,6 +33,7 @@
 #include "debug.h"
 #include "string.h"
 
+size_t ata_io_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
 void halt(void);
 
 /*
@@ -46,10 +47,6 @@ void halt(void);
 void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
-char *buf;
-char *bufx;
-SPLITBUF splitbuf;
-char *fullname[MAX_PATH];
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);
@@ -60,7 +57,7 @@ else
 }
 
 if(returnvalue ==  -1) {
-	kprintf_direct("Missing or corrupt command interpreter, system halted (error %d)",getlasterror());
+	kprintf_direct("Missing or corrupt command interpreter, system halted (error 0x%X:%s)",getlasterror(),kstrerr(getlasterror()));
 
 	asm("xchg %bx,%bx");
 	halt();

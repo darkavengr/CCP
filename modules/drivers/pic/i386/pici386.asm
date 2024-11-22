@@ -83,6 +83,7 @@ mov	dword [irqnumber],13
 jmp	irq
 
 irq14:
+xchg	bx,bx
 mov	dword [irqnumber],14
 jmp	irq
 
@@ -121,18 +122,17 @@ call	eax					; call irq handler
 add	esp,4
 
 irq_exit:
-nop
-mov	al,20h				        ; reset master
-out	020h,al
-
 mov	ebx,[irqnumber]			        ; get interrupt number
 cmp	ebx,7			     	        ; if slave irq
 jle	nslave				        ; continue if not
 
-mov	al,20h				        ; reset slave			     
-out	0a0h,al
+mov	al,0x20				        ; reset slave			     
+out	0xA0,al
 
 nslave:
+mov	al,0x20				        ; reset master
+out	0x20,al
+
 pop	gs					; restore segments
 pop	fs
 pop	es

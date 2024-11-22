@@ -54,10 +54,6 @@ global d_lowlevel
 extern exception					; exception handler
 extern exit
 extern dispatchhandler					; high-level dispatcher
-extern disablemultitasking
-extern enablemultitasking
-extern enableirq
-extern disableirq
 
 [BITS 64]
 use64
@@ -334,16 +330,12 @@ mov	rsi,rbx
 mov	r8,rcx
 mov	r9,rdx
 
-call	disablemultitasking
-
 sti
 call	dispatchhandler
 cli
 
 mov	r11,tempone
 mov	[r11],rax
-
-call	enablemultitasking
 
 cmp	rdx,qword 0xffffffffffffffff					; if error ocurred
 je	iretq_error

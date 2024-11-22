@@ -162,7 +162,11 @@ if(find_type == FALSE) {
 
 	buf->findentry=0;
 	buf->findlastblock=fat_get_start_block(splitbuf->dirname);
-	if(buf->findlastblock == -1) return(-1);
+	if(buf->findlastblock == -1) {
+		kernelfree(splitbuf);
+		kernelfree(lfnbuf);
+		return(-1);
+	}
 
 	strncpy(buf->searchfilename,fp,MAX_PATH); 
 }
@@ -903,7 +907,7 @@ if(buf.attribs & FAT_ATTRIB_DIRECTORY) {	/* if deleting directory, check if empt
 	
 	if(findfirst(delete_dir_path,&subdirbuf) == 0) {		/* directory not empty */
 		do {
-			DEBUG_PRINT_HEX(subdirbuf.filename);
+
 			if( (strncmp(subdirbuf.filename,".",MAX_PATH) != 0) && (strncmp(subdirbuf.filename,"..",MAX_PATH) != 0)) { /* non empty directorys have files other than */
 				setlasterror(DIRECTORY_NOT_EMPTY);				 /* . and .. */
 				return(-1);
@@ -1227,9 +1231,6 @@ if(fattype == 32) {
 }
 
 while(write_size > 0) {
-	DEBUG_PRINT_HEX(write_file_record.currentpos);	
-	DEBUG_PRINT_HEX(blockoffset);
-
 	blockoffset=write_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
 	
@@ -1651,6 +1652,7 @@ fattype=fat_detect_change(splitbuf->drive);
 if(fattype == -1) {
 	kernelfree(splitbuf);
 	kernelfree(lfnbuf);
+
 	return(-1);
 } 
 
@@ -1697,6 +1699,7 @@ if(strncmp(splitbuf->dirname,"\\",MAX_PATH) == 0) {						           /* root dire
 		kernelfree(lfnbuf);
 		kernelfree(blockbuf);
 		kernelfree(splitbuf);
+
 		return(rb);
 	}
 }
@@ -1724,6 +1727,7 @@ while(c != -1) {
 			kernelfree(splitbuf);
 			kernelfree(blockbuf);
 		     	kernelfree(lfnbuf);
+
 			return(-1);
 		}
 
@@ -2347,8 +2351,6 @@ while((fattype == 12 && block != 0xfff) || (fattype == 16 && block !=0xffff) || 
 	blockptr=blockbuf;
 
 	for(entry_count=0;entry_count<((bpb->sectorsperblock*bpb->sectorsize)/FAT_ENTRY_SIZE);entry_count++) {
-
-		DEBUG_PRINT_HEX(blockptr);
 
 		if(((uint8_t) *blockptr == 0) || ((uint8_t)  *blockptr == 0xE5)) { /* deleted file or end of directory */
 			free_entry_count++;

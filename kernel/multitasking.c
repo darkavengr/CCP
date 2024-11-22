@@ -28,7 +28,8 @@ void disablemultitasking(void);
 void enablemultitasking(void);
 void init_multitasking(void);
 PROCESS *find_next_process_to_switch_to(void);
-void sched(void);
+size_t is_multitasking_enabled(void);
+size_t is_process_ready_to_switch(void);
 
 extern *switch_task();
 
@@ -71,6 +72,8 @@ void init_multitasking(void) {
 multitaskingenabled=FALSE;
 
 setirqhandler(0,switch_task);		/* Register timer */
+
+multitaskingenabled=TRUE;
 return;
 }
 
@@ -84,7 +87,7 @@ return;
  */
 
 size_t is_multitasking_enabled(void) {
- return(multitaskingenabled);
+return(multitaskingenabled);
 }
 
 /*
@@ -103,14 +106,14 @@ newprocess=get_current_process_pointer();
 
 /* find next process */
 
-do {
+while(newprocess != NULL) {
 	newprocess=newprocess->next;
 
-	if((newprocess == NULL) || (newprocess->next == NULL)) newprocess=get_processes_pointer();	/* if at end, loop back to start */
+	if(newprocess == NULL) newprocess=get_processes_pointer();	/* if at end, loop back to start */
 
 	if((newprocess->flags & PROCESS_BLOCKED) == 0) return(newprocess);		/* found process */
 
-} while(newprocess != NULL);
+}
 
 return(NULL);
 }
@@ -125,11 +128,10 @@ return(NULL);
  */
 
 size_t is_process_ready_to_switch(void) { 
- if(get_current_process_pointer() == NULL) return(FALSE);
+if(get_current_process_pointer() == NULL) return(FALSE);
 
- if(increment_tick_count() < get_max_tick_count()) return(FALSE);
+if(increment_tick_count() < get_max_tick_count()) return(FALSE);
 
- return(TRUE);
+return(TRUE);
 }
-
 

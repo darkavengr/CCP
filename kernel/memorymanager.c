@@ -256,7 +256,9 @@ if(c == NULL) {
 
 unlock_mutex(&memmanager_mutex);
 
-setlasterror(NO_ERROR);
+/* Note: don't set last error here, this function is called to free memory if any error occurs
+and setting an error number here may interfere with returning error numbers */
+
 return(NO_ERROR);
 }
 
@@ -338,22 +340,15 @@ void *kernelalloc_nopaging(size_t size) {
 *
 * In: size	Number of bytes to allocate
 *
-* Returns start address on success, -1 otherwise
+* Returns start address on success, NULL otherwise
 * 
 */
 void *dma_alloc(size_t size) {
 void *newptr=dmaptr;
 
-if(dmaptr+size > dmabuf+dmabufsize) {		/* out of memory */
+if((dmaptr+size) > (dmabuf+dmabufsize)) {		/* out of memory */
 	 setlasterror(NO_MEM);
-	 return(-1);
-}
-
-if(size < PAGE_SIZE) size=PAGE_SIZE;
-
-if(size % PAGE_SIZE != 0) {
-	 size += PAGE_SIZE;				/* round up */
-	 size -= (size % PAGE_SIZE);
+	 return(NULL);
 }
 
 dmaptr += size;
@@ -363,9 +358,9 @@ return(newptr);
 /*
 * Initialize memory manager
 *
-* In: dmasize	Number of bytes to allocate for DMA buffers
+* In: Nothing
 *
-* Returns start address on success, NULL otherwise
+* Returns 0 on success, -1 otherwise
 * 
 */
 
@@ -379,6 +374,17 @@ if(initialize_dma_buffer(DMA_BUFFER_SIZE) == -1) {		/* inititalize DMA buffer */
  
 return(0);
 }
+
+/*
+* Initialize DMA buffer
+*
+* In: b	Start address of memory area
+*
+*     size	DMA buffer size
+* 
+* Returns: 0 on success, -1 on error
+*
+*/
 
 size_t initialize_dma_buffer(size_t dmasize) {
 size_t count;
@@ -411,7 +417,8 @@ return(0);
 *
 * In: b	Start address of memory area
 *
-* Returns 0 on success, -1 otherwise
+* In: address	Start address of memory area
+*     size	New size
 * 
 */
 
@@ -422,7 +429,8 @@ return(realloc_int(ALLOC_KERNEL,getpid(),address,size));
 /*
 * Resize memory for user process
 *
-* In: b	Start address of memory area
+* In: address	Start address of memory area
+*     size	New size
 *
 * Returns 0 on success, -1 otherwise
 * 

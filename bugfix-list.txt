@@ -1,6 +1,4 @@
-Errors in module references after loading.
 ATA DMA I/O doesn't work.
-Error in heap allocator free.
 Error where IRQ 6 doesn't arrive on some emulators. in floppy driver.
 Doesn't work after task switching from terminated process.
 

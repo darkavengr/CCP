@@ -122,8 +122,8 @@ if(init != NULL) {			/* args found */
 
 
 sb_dma_buffer=dma_alloc(sb_dma_buffer_size);		/* allocate dma buffer */
-if(sb_dma_buffer == -1) {					/* can't alloc */
-	kprintf_direct("sb16: can't allocate dma buffer\n");
+if(sb_dma_buffer == NULL) {					/* can't alloc */
+	kprintf_direct("sb16: can't allocate DMA buffer\n");
 	return(-1);
 }
 

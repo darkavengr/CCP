@@ -52,13 +52,9 @@ char *fullname[MAX_PATH];
 
 getfullpath(name,fullname);
 
-//DEBUG_PRINT_STRING(name);
-//DEBUG_PRINT_STRING(fullname);
-//asm("xchg %bx,%bx");
-
 splitname(fullname,&splitbuf);				/* split name */
 
-if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
+if(detect_filesystem(splitbuf.drive,&fs) == -1)	return(-1);	/* detect filesystem */
 
 if(fs.findfirst == NULL) {			/* not implemented */
 	setlasterror(NOT_IMPLEMENTED);
@@ -227,7 +223,6 @@ if(access & O_TRUNC) {			/* truncate file */
 }
 
 if(findfirst(fullname,&dirent) == -1) {			/* check if file exists */
-	
 	if(access & O_CREAT) {		/* if O_CREAT is set, create file if it does not exist */
 		if(create(fullname) == -1) return(-1);
 
@@ -778,20 +773,25 @@ if(next == openfiles) {			/* first entry */
 	last=openfiles;			/* save pointer to start */
 
 	openfiles=last->next;		/* set new beginning of list */
-	kernelfree(last);		/* free old beginning */
+	
+	if(last != NULL) kernelfree(last);		/* free old beginning */
+
+	if(last->next == NULL) openfiles_last=next;		/* save last */
 }
 else if(next->next == NULL) {		/* last entry */	
 	kernelfree(last->next);		/* free last */
 	last->next=NULL;		/* remove from end of list */
+
+	openfiles_last=next;		/* save last */
 }
 else
 {
 	last->next=next->next;		/* remove from list */
 
+	if(next->next == NULL) openfiles_last=next;		/* save last */
+
 	kernelfree(next);
 }
-
-if(next->next == NULL) openfiles_last=next;		/* save last */
 
 unlock_mutex(&vfs_mutex);
 
@@ -1029,7 +1029,7 @@ while(next != NULL) {
 
 unlock_mutex(&vfs_mutex);
 
-setlasterror(MODULE_ALREADY_LOADED);
+setlasterror(UNKNOWN_FILESYSTEM);
 return(-1);
 }
 

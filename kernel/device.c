@@ -214,19 +214,23 @@ for(count=0;count<next->sectorsperblock;count++) {
 	   			unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 	   			exit(0);	/* abort */
 	  		}
-
-	  		if(error == CRITICAL_ERROR_RETRY) {		/* RETRY */
+	  		else if(error == CRITICAL_ERROR_RETRY) {		/* RETRY */
 	   			count--;
 	   			continue;
 	  		}
-
-	  		if(error == CRITICAL_ERROR_FAIL) {
+	  		else if((error == CRITICAL_ERROR_FAIL) || (error == -1)) {
 	   			next->flags ^= DEVICE_LOCKED;				/* unlock drive */
 
 	   			unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+
 	   			return(-1);	/* FAIL */
 	  		}
 	 	}
+		else
+		{
+	   		unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+	   		return(-1);	/* FAIL */
+		}
 	}
 
 b=b+next->sectorsize;
