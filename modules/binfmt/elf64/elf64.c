@@ -23,9 +23,9 @@ exec.magicsize=ELF_MAGIC_SIZE;
 exec.callexec=&load_elf64;
 
 if(register_executable_format(&exec) == -1) {
-	kprintf_direct("elf64: Can't register binary format\n");
+	kprintf_direct("elf64: Can't register binary format: %s\n",kstrerr(getlasterror()));
 
-	setlasterror(INVALID_BINFMT);
+	setlasterror(INVALID_EXECUTABLE);
 	return(-1);
 }
 

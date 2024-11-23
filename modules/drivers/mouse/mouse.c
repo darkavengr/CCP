@@ -18,26 +18,12 @@
 */
 
 #include <stdint.h>
-
 #include "mouse.h"
 #include "mutex.h"
 #include "device.h"
 #include "vfs.h"
 
 #define MODULE_INIT mouse_init
-
-int mouse_init(char *init);
-uint8_t readmouse(void);
-void mouse_handler(void);
-void wait_for_mouse_read(void);
-void wait_for_mouse_write(void);
-size_t mouseio_read(void *buf,size_t size);
-size_t wait_for_ack(void);
-void mouse_send_command(uint8_t command);
-void wait_for_mouse_ack(void);
-size_t mouse_set_sample_rate(size_t resolution);
-size_t mouse_enable_scrollwheel(void);
-size_t mouse_set_resolution(size_t resolution);
 
 struct {
 	size_t mousex;
@@ -58,14 +44,14 @@ size_t mouse_click_timestamp=0;
  *
  */
 
-int mouse_init(char *init) {
+size_t mouse_init(char *init) {
 CHARACTERDEVICE device;
 uint8_t mousestatus;
 char *tokens[10][MAX_PATH];
 char *op[10][MAX_PATH];
 uint32_t mr;
-int tc;
-int count;
+size_t tc;
+size_t count;
 
 mouseinfo.mousex=0;
 mouseinfo.mousey=0;
@@ -107,7 +93,10 @@ device.flags=0;
 device.data=NULL;
 device.next=NULL;
 
-add_char_device(&device);
+if(add_character_device(&device) == -1) {	/* add character device */
+	kprintf_direct("mouse: Can't register character device %s: %s\n",device.name,kstrerr(getlasterror()));
+	return(-1);
+}
 
 mouse_click_timestamp=get_tick_count();		/* get first timestamp for doubleclick */
 
@@ -424,5 +413,4 @@ switch(request) {			/* ioctl request */
 		return(-1);
 	}
 }
-
 

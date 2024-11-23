@@ -19,19 +19,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "header/errors.h"
-#include "processmanager/mutex.h"
-#include "devicemanager/device.h"
+#include "errors.h"
+#include "mutex.h"
+#include "device.h"
 #include "atapi.h"
-#include "../ata/ata.h"
+#include "ata.h"
 
 #define MODULE_INIT atapi_init
-
-size_t atapi_send_command(size_t physdrive,atapipacket *atapi_packet);
-size_t atapi_io(size_t op,size_t physdrive,size_t block,uint16_t *buf);
-size_t atapi_ident(size_t physdrive,ATA_IDENTIFY *buf);
-size_t atapi_init(char *initstring);
-
 
 /*
  * Initialize ATAPI
@@ -53,7 +47,7 @@ for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk *
 	if(atapi_ident(physdiskcount,&ident) == -1) continue;		/* get ata identify */
 
 	if(partitions_init(physdiskcount,&atapi_io) == -1) {	/* can't initalize partitions */
-		kprintf_direct("atapi: Unable to intialize partitions for drive %X\n",physdiskcount);
+		kprintf_direct("atapi: Unable to intialize partitions for physical drive %X: %s\n",physdiskcount,kstrerr(getlasterror()));
 		return(-1);
 	}
 }
@@ -195,5 +189,4 @@ for(count=0;count<127;count++) {			/* read result words */
 
 return(0);
 }
-
 

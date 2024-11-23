@@ -49,10 +49,10 @@ ATA_IDENTIFY ident;
 size_t physdiskcount;
 prdt_struct *prdt_virtual;
 
-char *memory_alloc_err = "\nhd: Error allocating memory for ATA module initialization\n";
+char *memory_alloc_err = "\nata: Error allocating memory for ATA module initialization\n";
 
 prdt=dma_alloc(sizeof(prdt_struct));	/* allocate DMA buffer */
-if(prdt == -1) {
+if(prdt == NULL) {
 	kprintf_direct("%s\n",memory_alloc_err);
 	return(-1);
 }
@@ -71,10 +71,10 @@ if(prdt_virtual->address == NULL) {
 
 for(physdiskcount=0x80;physdiskcount < 0x82;physdiskcount++) {  /* for each disk */
 
-	 if(ata_ident(physdiskcount,&ident) == 0) {	/* get ata information */
+	 if(ata_ident(physdiskcount,&ident) == 0) {	/* get ATA information */
 
 	 	if(partitions_init(physdiskcount,&ata_io) == -1) {	/* can't initalize partitions */
-	 		kprintf_direct("harddrive: Unable to intialize partitions for drive %X\n",physdiskcount);
+	 		kprintf_direct("ata: Unable to intialize partitions for physical drive %X: %s\n",physdiskcount,kstrerr(getlasterror()));
 	 		continue;
 	  	}
 	 }
@@ -173,8 +173,8 @@ if(islba == 28) {						/* use lba28 */
 	outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) ((uint64_t) lowblock >> 8));		/* bits 8-15 */
 	outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) ((uint64_t) lowblock >> 16));		/* bits 16-23 */
 
-	if(op == _READ)  outb(controller+ATA_COMMAND_PORT,READ_SECTORS);			/* operation */
-	if(op == _WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS);
+	if(op == DEVICE_READ)  outb(controller+ATA_COMMAND_PORT,READ_SECTORS);			/* operation */
+	if(op == DEVICE_WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS);
 }
 
 if(islba == 48) {				/* use lba48 */
@@ -211,8 +211,8 @@ if(islba == 48) {				/* use lba48 */
 	 outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (lowblock >> 8));		/* lba 2 */
 	 outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (lowblock >> 16));	/* lba 3 */
 
-	if(op == _READ) outb(controller+ATA_COMMAND_PORT,READ_SECTORS_EXT);
-	if(op == _WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS_EXT);
+	if(op == DEVICE_READ) outb(controller+ATA_COMMAND_PORT,READ_SECTORS_EXT);
+	if(op == DEVICE_WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS_EXT);
 }
 
 do {
@@ -221,7 +221,7 @@ do {
 	if((atastatus & ATA_DRIVE_FAULT) || (atastatus & ATA_ERROR)) {			/* controller returned error */
 		kprintf_direct("kernel: drive returned error\n");
 
-		if(op == _READ) {
+		if(op == DEVICE_READ) {
 			setlasterror(READ_FAULT);
 		}
 		else
@@ -237,8 +237,8 @@ count=0;
 bb=buf;
 
 while(count++ < 512/2) { 
-	if(op == _READ) *bb++=inw(controller+ATA_DATA_PORT);			/* read data from harddisk */
-	if(op == _WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data to harddisk */
+	if(op == DEVICE_READ) *bb++=inw(controller+ATA_DATA_PORT);			/* read data from harddisk */
+	if(op == DEVICE_WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data to harddisk */
 }
 
 return(NO_ERROR);
@@ -312,8 +312,8 @@ outb(controller+ATA_CYLINDER_LOW_PORT,(uint8_t) (cylinder & 0xff));		/* cylinder
 outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (cylinder >> 8));			/* cylinder high byte */
 
 
-if(op == _READ)  outb(controller+ATA_COMMAND_PORT,READ_SECTORS);		/* operation */
-if(op == _WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS);
+if(op == DEVICE_READ)  outb(controller+ATA_COMMAND_PORT,READ_SECTORS);		/* operation */
+if(op == DEVICE_WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS);
 
 
 atastatus=(inb(controller+ATA_COMMAND_PORT) & ATA_BUSY);
@@ -324,7 +324,7 @@ while(atastatus == ATA_BUSY) {					/* wait for data to be ready */
 	if((atastatus & ATA_DRIVE_FAULT) || (atastatus & ATA_ERROR) || (atastatus & ATA_RDY)) {			/* controller returned error */
 		kprintf_direct("kernel: drive returned error\n");
 
-		if(op == _READ) {
+		if(op == DEVICE_READ) {
 			setlasterror(READ_FAULT);
 		}
 		else
@@ -340,8 +340,8 @@ count=0;
 bb=buf;
 
 while(count++ < 512/2) {
-	 if(op == _READ)  *bb++=inw(controller+ATA_DATA_PORT);			/* read data from harddisk */
-	 if(op == _WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data to harddisk */
+	 if(op == DEVICE_READ)  *bb++=inw(controller+ATA_DATA_PORT);			/* read data from harddisk */
+	 if(op == DEVICE_WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data to harddisk */
 }
 
 outb(controller+ATA_COMMAND_PORT,FLUSH);						/* flush buffer */
@@ -438,7 +438,10 @@ uint32_t highblock;
 uint32_t lowblock;
 uint32_t commandregister;
 
-if(ata_ident(physdrive,&result) == -1) return(-1);	/* invalid drive */
+if(ata_ident(physdrive,&result) == -1) {	/* invalid drive */
+	setlasterror(INVALID_DRIVE);
+	return(-1);
+}
 
 barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
 if(barfour == -1) {
@@ -560,8 +563,8 @@ if(islba == 28) {						/* use lba28 */
 
 	pci_put_command(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER,commandregister);
 
-	if(op == _READ) outb(controller+ATA_COMMAND_PORT,READ_SECTORS_DMA);			/* operation */
-	if(op == _WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS_DMA);
+	if(op == DEVICE_READ) outb(controller+ATA_COMMAND_PORT,READ_SECTORS_DMA);			/* operation */
+	if(op == DEVICE_WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS_DMA);
 }
 
 if(islba == 48) {						/* use lba48 */
@@ -597,8 +600,8 @@ if(islba == 48) {						/* use lba48 */
 	commandregister |= 0x04;		/* enable bus mastering */
 	commandregister=pci_put_command(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER,commandregister);
 
-	if(op == _READ)  outb(controller+ATA_COMMAND_PORT,READ_SECTORS_EXT_DMA);			/* operation */
-	if(op == _WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS_EXT_DMA);
+	if(op == DEVICE_READ)  outb(controller+ATA_COMMAND_PORT,READ_SECTORS_EXT_DMA);			/* operation */
+	if(op == DEVICE_WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS_EXT_DMA);
 }
 
 if(controller == 0x1f0) {			/* wait for irq */
@@ -622,7 +625,7 @@ if((physdrive == 0x82) || (physdrive == 0x83)) {			/* which barfour */
 }
 
 if((inb(ATA_ERROR_PORT) & 1) == 1) {	/* error occurred */
-	if(op == _READ) {
+	if(op == DEVICE_READ) {
 		setlasterror(READ_FAULT);
 	}
 	else

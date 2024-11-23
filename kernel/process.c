@@ -986,9 +986,6 @@ return(currentprocess->pid);
 */
 
 void setlasterror(size_t err) {
-
-if(err == 0x1c) asm("xchg %bx,%bx");
-
 if(currentprocess == NULL) {
 	last_error_no_process=err;
 	return;
@@ -1462,14 +1459,14 @@ else
 	next=executableformats;
 
 	while(next != NULL) {
-	 last=next;
+		last=next;
 
-	 if(strncmpi(next->name,format->name,MAX_PATH)) {		/* Return error if format exists */
-	  setlasterror(MODULE_ALREADY_LOADED);
-	  return(-1);
-	 }
+		if(strncmpi(next->name,format->name,MAX_PATH) == 0) {		/* Return error if format exists */
+			setlasterror(MODULE_ALREADY_LOADED);
+			return(-1);
+		}
 
-	 next=next->next;
+		next=next->next;
 	}
 
 	/* add new format entry to end */
@@ -1518,7 +1515,7 @@ close(handle);
 next=executableformats;
 
 while(next != NULL) {
-	if(memcmp(next->magic,buffer,next->magicsize) == 0) return(next->callexec(filename));				/* call via function pointer */
+	if(memcmp(next->magic,buffer,next->magicsize) == 0) return(next->callexec(filename));		/* call via function pointer */
 	
 	next=next->next;
 }
@@ -1584,6 +1581,14 @@ newticks=get_tick_count()+ticks;			/* Get last tick */
 while(get_tick_count() < newticks) ;;			/* until tickcount is at last tick */
 }
 
+/*
+* Get version number
+*
+* In:  Nothing
+*
+* Returns: Version number
+*
+*/
 size_t GetVersion(void) {
 return((CCP_MAJOR_VERSION << 24) | (CCP_MINOR_VERSION << 16) | (CCP_RELEASE_VERSION << 8));
 }

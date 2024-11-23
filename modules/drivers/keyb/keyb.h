@@ -1,6 +1,3 @@
-#define	_READ	0
-#define _WRITE	1	
-
 #define TRUE		1
 #define	FALSE		0
 
@@ -142,5 +139,7 @@
 #define CTRL_PRESSED		4
 #define CAPSLOCK_PRESSED	8
 
-
+void readconsole(char *buf,size_t size);
+size_t keyb_init(void);
+size_t readkey(void);
 

@@ -81,4 +81,34 @@ typedef struct {
 } __attribute__((packed)) BPB;
 
 
+size_t fat_findfirst(char *filename,FILERECORD *buf);							// TESTED
+size_t fat_findnext(char *filename,FILERECORD *buf);							// TESTED
+size_t fat_find(size_t find_type,char *filename,FILERECORD *buf);					// TESTED
+size_t fat_rename(char *filename,char *newname);							// TESTED - MORE
+size_t fat_rmdir(char *dirname);									// TESTED
+size_t fat_mkdir(char *dirname);									// TESTED
+size_t fat_create(char *filename);									// TESTED - MORE						
+size_t fat_unlink(char *filename);									// TESTED
+size_t fat_read(size_t handle,void *addr,size_t size);							// TESTED
+size_t fat_write(size_t handle,void *addr,size_t size);							// TESTED
+size_t fat_chmod(char *filename,size_t attribs);							// TESTED
+size_t fat_set_file_time_date(char *filename,TIME *create_time_date,TIME *last_modified_time_date,TIME *last_accessed_time_date); // TESTED
+size_t fat_find_free_block(size_t drive);								// TESTED
+size_t fat_get_start_block(char *name);									// TESTED
+size_t fat_get_next_block(size_t drive,uint64_t block);							// TESTED
+size_t fat_update_fat(size_t drive,uint64_t block,uint16_t block_high_word,uint16_t block_low_word);	// TESTED - MORE
+size_t fat_detect_change(size_t drive);									// TESTED
+size_t fat_convert_filename(char *filename,char *outname);						// TESTED
+size_t fat_read_long_filename(size_t drive,uint64_t block,size_t entryno,FILERECORD *n);		// TESTED
+size_t fat_update_long_filename(size_t type,size_t drive,uint64_t block,size_t entryno,FILERECORD *new);// TESTED
+size_t fat_create_short_name(char *filename,char *out);							// TESTED
+uint8_t fat_create_long_filename_checksum(char *filename);						// TESTED
+size_t fat_unlink_long_filename(char *filename,uint64_t block,size_t entry);				// TESTED
+size_t fat_create_long_filename(size_t type,FILERECORD *newname,uint64_t block,size_t entry);		// TESTED
+void fat_entry_to_filename(char *filename,char *out);							// TESTED
+size_t fat_init(char *i);										// TESTED
+size_t fat_create_int(size_t entrytype,char *filename);							// TESTED
+size_t fat_create_entry(size_t type,size_t drive,uint64_t rb,size_t entryno,size_t datastart,char *filename,char *blockbuf); // TESTED
+size_t fat_is_long_filename(char *filename);								// TESTED
+size_t fat_create_subdirectory_entries(char *dirname,size_t datastart,size_t startblock,TIME *time,TIME *date,size_t fattype,size_t drive); // TESTED
 

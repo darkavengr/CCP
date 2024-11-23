@@ -46,19 +46,18 @@ uint8_t color=7;		/* text color */
 /*
  * Initialize screen
  *
- * In:  char *init	Initialization string
+ * In:  init	Initialization string
  *
  * Returns: nothing
  *
  */
 
-void console_init(char *init) {
+size_t console_init(char *init) {
 CHARACTERDEVICE device;
 
-color=7;
+color=(CONSOLE_BLACK << 4) | CONSOLE_WHITE;			/* set default text color to white on black */
 
 strncpy(&device.name,"CONOUT",MAX_PATH);
-
 device.charioread=NULL;
 device.chariowrite=&outputconsole;
 device.ioctl=&console_ioctl;
@@ -66,11 +65,14 @@ device.flags=0;
 device.data=NULL;
 device.next=NULL;
 
-add_character_device(&device);			/* add console device */
+if(add_character_device(&device) == -1) {	/* add character device */
+	kprintf_direct("console: Can't register character device %s: %s\n",device.name,kstrerr(getlasterror()));
+	return(-1);
+}
 
-init_console_device(_WRITE,1,&outputconsole);
-init_console_device(_WRITE,2,&outputconsole);
-return(NULL);
+init_console_device(DEVICE_WRITE,1,&outputconsole);
+init_console_device(DEVICE_WRITE,2,&outputconsole);
+return(0);
 }
 
 /*
@@ -85,15 +87,15 @@ return(NULL);
  */
 size_t outputconsole(char *s,size_t size) {
 char *consolepos;
-char *scrollbuf[MAX_X*MAX_Y];
+char *scrollbuf[CONSOLE_MAX_X*CONSOLE_MAX_Y];
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
 
-consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col)*2);	/* address to write to */
+consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*CONSOLE_MAX_X)+bootinfo->cursor_col)*2);	/* address to write to */
 
 if((size_t) consolepos % 2 == 1) consolepos++;
 	 
 	while(size-- > 0) {
-		if(bootinfo->cursor_col++ >= MAX_X) {
+		if(bootinfo->cursor_col++ >= CONSOLE_MAX_X) {
 			bootinfo->cursor_col=0;						/* wrap round */
 			bootinfo->cursor_row++;
 		}
@@ -113,14 +115,14 @@ if((size_t) consolepos % 2 == 1) consolepos++;
 		}
 
 		if(bootinfo->cursor_row >= 24) {					/* scroll */
-			memcpy(scrollbuf,KERNEL_HIGH+0xB80a0,(MAX_X*2)*25);		/* to buffer */
-			memcpy(KERNEL_HIGH+0xB8000,scrollbuf,(MAX_X*2)*25);		/* to screen */
+			memcpy(scrollbuf,KERNEL_HIGH+0xB80a0,(CONSOLE_MAX_X*2)*25);		/* to buffer */
+			memcpy(KERNEL_HIGH+0xB8000,scrollbuf,(CONSOLE_MAX_X*2)*25);		/* to screen */
 
 			bootinfo->cursor_col=1;						/* wrap round */
 			bootinfo->cursor_row=23;
 			movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
 
-			consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*MAX_X)+bootinfo->cursor_col)*2);
+			consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*CONSOLE_MAX_X)+bootinfo->cursor_col)*2);
 		}
 
 		
@@ -145,7 +147,7 @@ void movecursor(uint16_t row,uint16_t col) {
 uint16_t newpos;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
-newpos=(row*MAX_X)+col;
+newpos=(row*CONSOLE_MAX_X)+col;
 
 outb(0x3d4,0xf);							/* cursor low byte */
 outb(0x3d5,(newpos  & 0xff));

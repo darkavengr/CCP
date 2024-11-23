@@ -32,12 +32,6 @@
 
 #define MODULE_INIT keyb_init
 
-void readconsole(char *buf,size_t size);
-void keyb_init(void);
-
-size_t readkey(void);
-void keyb_init(void);
-
 /* characters from scan codes */
 char *scancodes_unshifted[] = { "`",0x22,"1","2","3","4","5","6","7","8","9","0","-","="," ","\t","q","w","e","r","t","y","u", \
 			    "i","o","p","[","]","\n"," ","a","s","d","f","g","h","j","k","l",";","@","#"," ","\\","z","x","c", \
@@ -63,7 +57,7 @@ uint8_t keyboardflags;		/* for caps lock, shift, control and alt keys */
  * Returns nothing
  *
  */
-void keyb_init(void) {
+size_t keyb_init(void) {
 CHARACTERDEVICE device;
 
 keyboardflags=0;
@@ -78,12 +72,15 @@ device.flags=0;
 device.data=NULL;
 device.next=NULL;
 
-add_character_device(&device);
+if(add_character_device(&device) == -1) {	/* add character device */
+	kprintf_direct("keyb: Can't register character device %s: %s\n",device.name,kstrerr(getlasterror()));
+	return(-1);
+}
 
 setirqhandler(1,&readkey);		/* set irq handler */
 	
-init_console_device(_READ,0,&readconsole);
-return;
+init_console_device(DEVICE_READ,0,&readconsole);
+return(0);
 }
 
 /*

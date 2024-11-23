@@ -23,7 +23,7 @@ exec.magicsize=ELF32_MAGIC_SIZE;
 exec.callexec=&load_elf32;
 
 if(register_executable_format(&exec) == -1) {
-	kprintf_direct("elf32: Can't register binary format\n");
+	kprintf_direct("elf64: Can't register binary format: %s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 

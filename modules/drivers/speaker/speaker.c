@@ -23,7 +23,7 @@
 
 #define MODULE_INIT speaker_io
 
-void speaker_init(char *initstring);
+size_t speaker_init(char *initstring);
 size_t speaker_io_write(size_t *buf,size_t len);
 
 /*
@@ -34,7 +34,7 @@ size_t speaker_io_write(size_t *buf,size_t len);
  * Returns nothing
  *
  */
-void speaker_init(char *initstring) {
+size_t speaker_init(char *initstring) {
 CHARACTERDEVICE bd;
 
 strncpy(bd.dname,"SPEAKER",MAX_PATH);		/* add char device */
@@ -45,9 +45,12 @@ bd.flags=0;
 bd.data=NULL;
 bd.next=NULL;
 
-add_char_device(&bd); 
+if(add_char_device(&bd) == -1) {
+	kprintf_direct("speaker: Can't register character device %s: %s\n",bd.name,kstrerr(getlasterror()));
+	return(-1);
+}
 
-return;
+return(0);
 }
 
 /*

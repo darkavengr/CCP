@@ -7,9 +7,6 @@
 #define LPT1 0x3bc
 #define LPT2 0x378
 
-#define	_READ	0
-#define _WRITE	1	
-
 #define IOCTL_SERIAL_BAUD 0
 #define IOCTL_SERIAL_DATABITS 1
 #define IOCTL_SERIAL_STOPBITS 2

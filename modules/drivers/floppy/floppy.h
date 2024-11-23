@@ -56,7 +56,6 @@
 #define	DSEL1				0x1
 #define	DSEL0				0x0
 
-
 #define NO_ERROR 			0
 #define GENERIC_ERROR			1
 #define BAD_COMMAND 			2
@@ -72,9 +71,6 @@
 #define INVALID_TRACK 			13
 #define INVALID_TRACK 			14
 #define NO_ADDRESS_MARK 		15
-
-#define _READ  0
-#define _WRITE 1
 
 size_t floppy_init(char *init);
 void floppy_motor_on(size_t drive);

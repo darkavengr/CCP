@@ -40,9 +40,6 @@
 #define MOUSE_STATUS 0x64
 #define MOUSE_COMMAND 0x64
 
-#define _MOUSE_READ 0
-#define _MOUSE_WRITE 1
-
 #define MOUSE_ENABLE_IRQ12 0x2
 #define MOUSE_DISABLE_CLOCK 0x20
 
@@ -50,4 +47,17 @@
 #define MOUSE_IOCTL_ENABLE_SCROLL_WHEEL 1
 #define MOUSE_IOCTL_ENABLE_EXTRA_BUTTONS 2
 #define MOUSE_IOCTL_SET_SAMPLE_RATE 3
+
+size_t mouse_init(char *init);
+uint8_t readmouse(void);
+void mouse_handler(void);
+void wait_for_mouse_read(void);
+void wait_for_mouse_write(void);
+size_t mouseio_read(void *buf,size_t size);
+size_t wait_for_ack(void);
+void mouse_send_command(uint8_t command);
+void wait_for_mouse_ack(void);
+size_t mouse_set_sample_rate(size_t resolution);
+size_t mouse_enable_scrollwheel(void);
+size_t mouse_set_resolution(size_t resolution);
 

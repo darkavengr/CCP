@@ -13,8 +13,8 @@
 #define RETRY 1
 #define FAIL 4
 
-#define _READ 0
-#define _WRITE 1
+#define DEVICE_READ 0
+#define DEVICE_WRITE 1
 
 #define MAX_PATH	255
 #define MAX_IRQ		255

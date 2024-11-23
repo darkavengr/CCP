@@ -200,7 +200,7 @@ size_t comportrcount;
 size_t whichport;
 char c;
 
-if(op == _WRITE) {				/* write com port */
+if(op == DEVICE_WRITE) {				/* write com port */
 	while((inb(port+5) & 0x20) == 0) ;;		/* not ready */
 
 	b=buf;
@@ -222,7 +222,7 @@ for(whichport=0;whichport<5;whichport++) {
 
 if((inb(port+5) & 0x20) != 0) {		/* not ready */
 
-	if(op == _READ) {
+	if(op == DEVICE_READ) {
 		setlasterror(READ_FAULT);
 	}
 	else
@@ -260,19 +260,19 @@ return(size);
  *
  */
 void read_com1(char *buf,size_t size) {
-	return(comport(_READ,COM1,buf,size));
+	return(comport(DEVICE_READ,COM1,buf,size));
 }
 
 void write_com1(char *buf,size_t size) {
-	return(comport(_WRITE,COM1,buf,size));
+	return(comport(DEVICE_WRITE,COM1,buf,size));
 }
 
 void read_com2(char *buf,size_t size) {
-	return(comport(_READ,COM2,buf,size));
+	return(comport(DEVICE_READ,COM2,buf,size));
 }
 
 void write_com2(char *buf,size_t size) {
-	return(comport(_WRITE,COM2,buf,size));
+	return(comport(DEVICE_WRITE,COM2,buf,size));
 }
 
 /*
@@ -287,11 +287,11 @@ void write_com2(char *buf,size_t size) {
  */
 
 void read_com3(char *buf,size_t size) {
-	return(comport(_READ,COM3,buf,size));
+	return(comport(DEVICE_READ,COM3,buf,size));
 }
 
 void write_com3(char *buf,size_t size) {
-	return(comport(_WRITE,COM3,buf,size));
+	return(comport(DEVICE_WRITE,COM3,buf,size));
 }
 
 /*
@@ -306,11 +306,11 @@ void write_com3(char *buf,size_t size) {
  */
 
 void read_com4(char *buf,size_t size) {
-	return(comport(_READ,COM4,buf,size));
+	return(comport(DEVICE_READ,COM4,buf,size));
 }
 
 void write_com4(char *buf,size_t size) {
-	return(comport(_WRITE,COM4,buf,size));
+	return(comport(DEVICE_WRITE,COM4,buf,size));
 }
 
 /*

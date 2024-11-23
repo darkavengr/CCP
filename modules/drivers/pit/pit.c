@@ -17,17 +17,14 @@
     along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <stdint.h>
+#include <stddef.h>
 #include "pit.h"
 #include "mutex.h"
 #include "device.h"
 #include "vfs.h"
 
 #define MODULE_INIT pit_init
-
-void pit_init(char *init);
-size_t pit_io(size_t op,size_t *buf,size_t ignored);
-size_t pit_read(size_t size,size_t *buf);
-size_t pit_write(size_t size,size_t *buf);
 
 /*
  * Initialize PIT (Programmable Interval Timer)
@@ -37,25 +34,27 @@ size_t pit_write(size_t size,size_t *buf);
  * Returns: nothing
  *
  */
-void pit_init(char *init) {
-CHARACTERDEVICE bd;
-uint32_t pit_val=PIT_VAL;
+size_t pit_init(char *init) {
+CHARACTERDEVICE device;
 
-outb(0x43,0x34);
+outb(0x43,0x34);				/* set PIT timer interval */
 outb(0x40,PIT_VAL & 0xFF);
 outb(0x40,((PIT_VAL >> 8) & 0xFF));
 
-strncpy(bd.name,"TIMER",MAX_PATH);		/* add char device */
+strncpy(device.name,"TIMER",MAX_PATH);
+device.charioread=&pit_read;
+device.chariowrite=&pit_write;
+device.ioctl=NULL;
+device.flags=0;
+device.data=NULL;
+device.next=NULL;
 
-bd.charioread=&pit_read;
-bd.chariowrite=&pit_write;
-bd.ioctl=NULL;
-bd.flags=0;
-bd.data=NULL;
-bd.next=NULL;
+if(add_character_device(&device) == -1) {	/* add character device */
+	kprintf_direct("pit: Can't register character device %s: %s\n",device.name,kstrerr(getlasterror()));
+	return(-1);
+}
 
-add_character_device(&bd); 
-return;
+return(0);
 }
 
 /*
@@ -72,7 +71,7 @@ return;
 size_t pit_io(size_t op,size_t *buf,size_t ignored) {
 size_t val;
 
-if(op == PIT_READ) {
+if(op == DEVICE_READ) {
 	outb(0x43,0x34);
 
 	val=(inb(0x40) << 8)+inb(0x40);		/* read pit */ 
@@ -81,7 +80,7 @@ if(op == PIT_READ) {
 	return(0);
 }
 
-if(op == PIT_WRITE) {
+if(op == DEVICE_WRITE) {
 	val=*buf;
 
 	outb(0x43,0x34);
@@ -95,10 +94,10 @@ return(-1);
 }
 
 size_t pit_read(size_t size,size_t *buf) {
- return(_READ,buf,size);
+ return(pit_io(DEVICE_READ,buf,size));
 }
 
 size_t pit_write(size_t size,size_t *buf) {
- return(_READ,buf,size);
+ return(pit_io(DEVICE_WRITE,buf,size));
 }
 

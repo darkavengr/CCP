@@ -23,11 +23,6 @@
 
 #define MODULE_INIT sb16_init
 
-void sb16_init(char *initstring);
-size_t sb16_io_read(char *buf,size_t len);
-size_t sb16_ioctl(size_t handle,unsigned long request,char *buffer);
-void sb_irq_handler(void);
-
 uint8_t *sb_dma_buffer;
 size_t sb_dma_buffer_size=SB_DMA_BUFFER_DEFAULT_SIZE;
 size_t sb_irq_number=SB_DEFAULT_IRQ;
@@ -66,7 +61,7 @@ struct {
  *
  */
 
-void sb16_init(char *init) {
+size_t sb16_init(char *init) {
 CHARACTERDEVICE bd;
 size_t tc;
 char *tokens[10][255];
@@ -101,7 +96,7 @@ if(init != NULL) {			/* args found */
 
 			if((sb_channel == 0) || (sb_channel > 3)) {
 				kprintf_direct("sb16: Invalid channel\n");
-				return;
+				return(-1);
 	  		}
 	 	}
 
@@ -109,7 +104,7 @@ if(init != NULL) {			/* args found */
 
 	  		if(atoi(op[1]) > 0xff) {
 				kprintf_direct("sb16: Invalid volume value\n");
-	   			return;
+	   			return(-1);
 			}
 
 			outb(DSP_MIXER_PORT,SB_SET_VOLUME);
@@ -133,7 +128,11 @@ bd.chariowrite=NULL;
 bd.flags=0;
 bd.data=NULL;
 bd.next=NULL;
-add_char_device(&bd); 
+
+if(add_char_device(&bd) == -1) {
+	kprintf_direct("sb16: Can't register character device %s: %s\n",bd.name,kstrerr(getlasterror()));
+	return(-1);
+}
 
 setirqhandler(sb_irq_number,&sb_irq_handler);		/* set irq handler */
 

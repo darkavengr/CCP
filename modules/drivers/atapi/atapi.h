@@ -66,3 +66,8 @@ typedef struct {
 	uint32_t blocklength;
 } CAPACITY_DATA;
 
+size_t atapi_send_command(size_t physdrive,atapipacket *atapi_packet);
+size_t atapi_io(size_t op,size_t physdrive,size_t block,uint16_t *buf);
+size_t atapi_ident(size_t physdrive,ATA_IDENTIFY *buf);
+size_t atapi_init(char *initstring);
+

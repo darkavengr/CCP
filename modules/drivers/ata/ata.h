@@ -14,9 +14,6 @@
 #define READ_SECTORS_EXT_DMA	0xCA
 #define WRITE_SECTORS_EXT_DMA	0x35
 
-#define _READ 0
-#define _WRITE 1
-
 #define ATA_ALT_STATUS_PORT	0
 #define ATA_FEATURES_PORT	1
 #define ATA_DATA_PORT		0

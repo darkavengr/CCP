@@ -493,6 +493,12 @@ for(count=0;count<(256/4);count++) {
 }
 
 chardevice.next=NULL;
-add_character_device(&chardevice);
+
+if(add_character_device(&chardevice) == -1) {	/* add character device */
+	kprintf_direct("pci: Can't register character device %s: %s\n",chardevice.name,kstrerr(getlasterror()));
+	return(-1);
+}
+
+return(0);
 }
 

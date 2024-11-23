@@ -26,24 +26,16 @@
 
 #define MODULE_INIT clock_init
 
-
-size_t gettime(TIMEBUF *timebuf);
-void settime(TIMEBUF *timebuf);
-size_t delay_loop(size_t delaycount);
-size_t clockio(size_t op,void *buf,size_t size);
-void clock_init(char *init);
-
-
 /*
  * Initialize RTC
  *
- * In:  char *init	Initialization string
+ * In:  init	Initialization string
  *
  * Returns: nothing
  *
  */
 
-void clock_init(char *init) {
+size_t clock_init(char *init) {
 CHARACTERDEVICE device;
 
 strncpy(&device.name,"CLOCK$",MAX_PATH);
@@ -53,9 +45,9 @@ device.flags=0;
 device.data=NULL;
 device.next=NULL;
 
-if(add_character_device(&device) == -1) { /* can't intialize */
-	 kprintf_direct("kernel: can't intialize clock device\n");
-	 return(-1);
+if(add_character_device(&device) == -1) { 	/* add character device */
+	kprintf_direct("clock: Can't register character device %s: %s\n",device.name,kstrerr(getlasterror()));
+	return(-1);
 }
 
 setlasterror(NO_ERROR);
@@ -146,7 +138,7 @@ return;
 size_t clockio(size_t op,void *buf,size_t size) {
 TIMEBUF time;
 
-if(op == _READ) {		/* read time */
+if(op == DEVICE_READ) {		/* read time */
 	gettime(&time);	
 
 	memcpy(buf,&time,size); 
@@ -155,7 +147,7 @@ if(op == _READ) {		/* read time */
 	 return(NO_ERROR);
 }
 
-if(op == _WRITE) {		/* write block */
+if(op == DEVICE_WRITE) {		/* write time */
 	memcpy(&time,buf,size);  
 	settime(&time);
 	setlasterror(NO_ERROR);
@@ -166,5 +158,4 @@ if(op == _WRITE) {		/* write block */
 setlasterror(READ_FAULT);
 return(-1);
 }
-
 

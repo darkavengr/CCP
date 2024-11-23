@@ -39,3 +39,8 @@
 #define SB_COUNT 2
 #define SB_PAGE 3
 
+size_t sb16_init(char *initstring);
+size_t sb16_io_read(char *buf,size_t len);
+size_t sb16_ioctl(size_t handle,unsigned long request,char *buffer);
+void sb_irq_handler(void);
+

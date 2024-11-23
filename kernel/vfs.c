@@ -527,7 +527,7 @@ if((next->flags & FILE_CHARACTER_DEVICE)) {		/* character device I/O */
  */
 
 if((next->flags & FILE_BLOCK_DEVICE)) {		/* block device I/O */			
-	if(next->blockdevice.blockio(_READ,next->drive,(next->currentblock/(next->blockdevice.sectorsize*next->blockdevice.sectorsperblock)),addr) == -1) {
+	if(next->blockdevice.blockio(DEVICE_READ,next->drive,(next->currentblock/(next->blockdevice.sectorsize*next->blockdevice.sectorsperblock)),addr) == -1) {
 		unlock_mutex(&vfs_mutex);
 		return(-1);
 	}
@@ -618,7 +618,7 @@ if((next->flags & FILE_CHARACTER_DEVICE)) {		/* device i/o */
 
 if((next->flags == FILE_BLOCK_DEVICE)) {
 
-	if(next->blockdevice.blockio(_WRITE,next->drive,(next->currentblock/(next->blockdevice.sectorsize*next->blockdevice.sectorsperblock)),addr) == -1) {
+	if(next->blockdevice.blockio(DEVICE_WRITE,next->drive,(next->currentblock/(next->blockdevice.sectorsize*next->blockdevice.sectorsperblock)),addr) == -1) {
 		unlock_mutex(&vfs_mutex);
 		return(-1);
 	}
@@ -1208,10 +1208,10 @@ while(next != NULL) {
 
 	if(next->handle == handle) {
 
-		if(type == _READ) {
+		if(type == DEVICE_READ) {
 			next->charioread=cptr;
 		}
-		else if(type == _WRITE) {
+		else if(type == DEVICE_WRITE) {
 			next->chariowrite=cptr;
 		}
 

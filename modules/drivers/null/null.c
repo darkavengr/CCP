@@ -48,7 +48,12 @@ device.flags=0;
 device.data=NULL;
 device.next=NULL;
 
-add_character_device(&device);			
+if(add_character_device(&device) == -1) {	/* add character device */
+	kprintf_direct("pci: Can't register character device %s: %s\n",device.name,kstrerr(getlasterror()));
+	return(-1);
+}
+
+return(0);		
 }
 
 /*

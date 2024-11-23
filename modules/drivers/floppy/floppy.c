@@ -128,7 +128,10 @@ for(count=0;count<floppycount;count++) {
 	 	fdstruct.drive=1;
 	 }
 
-	 add_block_device(&fdstruct);
+	if(add_block_device(&fdstruct) == -1) {	/* add block device */
+		kprintf_direct("floppy: Can't register block device %s: %s\n",fdstruct.name,kstrerr(getlasterror()));
+		return(-1);
+	}
 }
 
 setirqhandler(6,&irq6_handler);		/* set irq handler */
@@ -356,8 +359,6 @@ floppy_send_command(drive,SEEK);				/* seek track */
 floppy_send_command(drive,(head << 2) | drive);
 floppy_send_command(drive,cyl);
 
-kprintf_direct("seek irq6done=%X\n",irq6done);
-
 wait_for_irq6();	/* until ready */
 
 #ifdef FLOPPY_DEBUG
@@ -368,7 +369,7 @@ floppy_send_command(drive,SENSE_INTERRUPT);		/* get status but don't get result 
 
 st[0]=inb(DATA_REGISTER);		/* get result  */
 
-if(op == _WRITE) {
+if(op == DEVICE_WRITE) {
 	#ifdef FLOPPY_DEBUG
 		kprintf_direct("floppy debug: Sector I/O: copy to buffer for write\n"); 
 	#endif
@@ -401,8 +402,8 @@ for(retrycount=0;retrycount < FLOPPY_RETRY_COUNT;retrycount++) {
 	irq6done=FALSE; 	
 
 	outb(0x0a,0x06);					/* mask DMA channel 2 and 0 (assuming 0 is already masked) */
-	if(op == _READ) outb(0x0b,0x56);		     /* 01011010 single transfer, address increment, autoinit, read, channel 2 */
-	if(op == _WRITE) outb(0x0b,0x5A);		     /* 01010110 single transfer, address increment, autoinit, write, channel 2 */
+	if(op == DEVICE_READ) outb(0x0b,0x56);		     /* 01011010 single transfer, address increment, autoinit, read, channel 2 */
+	if(op == DEVICE_WRITE) outb(0x0b,0x5A);		     /* 01010110 single transfer, address increment, autoinit, write, channel 2 */
 	outb(0x0a,0x02);				   	/* unmask DMA channel 2 */
 
 
@@ -412,8 +413,8 @@ for(retrycount=0;retrycount < FLOPPY_RETRY_COUNT;retrycount++) {
 
 	irq6done=FALSE;
 
-	if(op == _READ) floppy_send_command(drive, BIT_MF | READ_DATA);	/* read or write */
-	if(op == _WRITE) floppy_send_command(drive,BIT_MF | WRITE_DATA);
+	if(op == DEVICE_READ) floppy_send_command(drive, BIT_MF | READ_DATA);	/* read or write */
+	if(op == DEVICE_WRITE) floppy_send_command(drive,BIT_MF | WRITE_DATA);
 
 	floppy_send_command(drive,(head << 2) | drive);
 	floppy_send_command(drive,cyl);
@@ -452,7 +453,7 @@ kprintf_direct("floppy debug: Sector I/O: Copy from buffer for read\n");
 #endif
 
 
-if(op == _READ) {
+if(op == DEVICE_READ) {
 	memcpy((void *) buf,(char *) floppybuf+KERNEL_HIGH,blocksize); 		/* copy to from sector buffer to buffer */
 
 	#ifdef FLOPPY_DEBUG

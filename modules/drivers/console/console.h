@@ -1,8 +1,8 @@
-#define MAX_X	80
-#define MAX_Y	25
+#define CONSOLE_MAX_X	80
+#define CONSOLE_MAX_Y	25
 
 #define NULL 0
-/* colours are XY where X is background colour and Y is foreground colour
+/* colours are stored as a byte XY where X is four bits for the background colour and Y is four bits for the foreground colour
 
 0 	Black 			8 	Dark Grey (Light Black)
 1 	Blue 			9 	Light Blue
@@ -40,7 +40,7 @@
 size_t outputconsole(char *s,size_t size);
 void movecursor(uint16_t row,uint16_t col);
 size_t getcursorpos(void);
-void console_init(char *init);
+size_t console_init(char *init);
 void setconsolecolour(uint8_t c);
 size_t console_ioctl(size_t handle,unsigned long request,void *buffer);
 

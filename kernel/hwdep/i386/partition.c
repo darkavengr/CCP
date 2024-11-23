@@ -62,7 +62,7 @@ struct partitions partition[3];
 size_t relstart;
 size_t hdcount;
 
-if(handler(_READ,physdrive,(uint64_t) 0,buf) == -1) return(-1);	/* read boot sector */
+if(handler(DEVICE_READ,physdrive,(uint64_t) 0,buf) == -1) return(-1);	/* read boot sector */
 
 memcpy((void *) partition,(void *) buf+0x1be,64);  				/* copy partition table to struct */
 
@@ -80,7 +80,7 @@ for(partition_count=0;partition_count<3;partition_count++) {
 		relstart=partition[0].firstsector;			/* for lba addressing */
 
 		while(partition[1].firstsector != 0) {			/* until end of chain */
-			handler(_READ,relstart,partition[partition_count].firstsector,bootbuf); 
+			handler(DEVICE_READ,relstart,partition[partition_count].firstsector,bootbuf); 
 
 			/* the rest is updated later */
 
@@ -104,7 +104,7 @@ for(partition_count=0;partition_count<3;partition_count++) {
 		 	head=partition[1].starthead;
 
 			/* find next in chain */
-			handler(_READ,physdrive,partition[1].firstsector,bootbuf);
+			handler(DEVICE_READ,physdrive,partition[1].firstsector,bootbuf);
 
 			memcpy((void *) partition,(void *) bootbuf+0x1be,64);  				/* copy partition table to struct */
 	 	
@@ -123,7 +123,7 @@ sector=(partition[partition_count].startsectorcylinder);
 cyl=((partition[partition_count].startsectorcylinder & 0xc0) << 2)+partition[partition_count].startcylinder;
 head=partition[partition_count].starthead;
 
-handler(_READ,physdrive,(uint64_t) partition[partition_count].firstsector,bootbuf);
+handler(DEVICE_READ,physdrive,(uint64_t) partition[partition_count].firstsector,bootbuf);
 
 
 hdstruct.sectorspertrack=(partition[partition_count].endsectorcylinder & 0x3f);
@@ -205,7 +205,7 @@ struct guidpart *guidbuf;
 guidbuf=kernelalloc(GPT_BLOCK_SIZE);
 if(guidbuf == NULL) return(-1);			/* no memory */
 
-handler(_READ,physdrive,(uint64_t) 1,guidbuf);		/* read guid header */
+handler(DEVICE_READ,physdrive,(uint64_t) 1,guidbuf);		/* read guid header */
 memcpy(&guid_header,guidbuf,sizeof(struct guidhead));
 
 size=(guid_header.partition_count*128)/512;		/* size of partition list */
@@ -215,7 +215,7 @@ guidptr=guidbuf;					/* point to buffer */
 sector=guid_header.partition_arraystart;
 
 for(count=0;count<size;count++) {		/* for each sector */
-	handler(_READ,physdrive,sector,guidbuf);
+	handler(DEVICE_READ,physdrive,sector,guidbuf);
 	sector++;
 
 	guidptr=guidbuf;

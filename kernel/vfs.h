@@ -27,9 +27,6 @@
 #define MAX_PATH		255
 #define VFS_MAX 		1024
 
-#define	_READ 			0
-#define _WRITE 			1
-
 #define stdin			0
 #define stdout			1
 #define stderr			2
