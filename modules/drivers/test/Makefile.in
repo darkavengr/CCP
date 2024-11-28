@@ -4,5 +4,5 @@ LD=@ld@
 FILES=test.c
 
 @buildroot@obj/@arch@/test.o:
-	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o @buildroot@/obj/@arch@/test.o
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o @buildroot@/obj/@arch@/test.o
 

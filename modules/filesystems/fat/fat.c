@@ -303,7 +303,9 @@ while(1) {
 
 		}
 		else
-		{		
+		{	
+			//kprintf_direct("%s %s\n",splitbuf->filename,file);
+	
 			if(wildcard(splitbuf->filename,file) == 0) { 				/* if file found */     
 				memset(buf->filename,0,MAX_PATH);
 

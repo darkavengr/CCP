@@ -33,7 +33,6 @@
 #include "debug.h"
 #include "string.h"
 
-size_t ata_io_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
 void halt(void);
 
 /*

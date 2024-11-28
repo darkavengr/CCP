@@ -30,6 +30,7 @@
 #include "signal.h"
 #include "bootinfo.h"
 #include "debug.h"
+#include "version.h"
 
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
@@ -37,8 +38,8 @@ PROCESS *processes_end=NULL;
 PROCESS *currentprocess=NULL;
 EXECUTABLEFORMAT *executableformats=NULL;
 size_t highest_pid_used=0;
-MUTEX process_mutex;
 size_t signalno;
+MUTEX process_mutex;
 size_t thisprocess;
 char *saveenv=NULL;
 size_t tickcount;
@@ -66,7 +67,6 @@ PROCESS *oldprocess;
 size_t stackp;
 PROCESS *lastprocess;
 PSP *psp=NULL;
-size_t *stackinit;
 char *fullpath[MAX_PATH];
 
 disablemultitasking(); 
@@ -287,7 +287,7 @@ if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 }
 else
 {
-	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize user mode stack */
+	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
 
 	enablemultitasking();
 
@@ -1534,7 +1534,9 @@ return(-1);
 *
 */
 void reset_process_ticks(void) {
- currentprocess->ticks=0;
+if(currentprocess == NULL) return;
+
+currentprocess->ticks=0;
 }
 
 /*
@@ -1561,7 +1563,17 @@ size_t increment_tick_count(void) {
 return(++tickcount);
 }
 
+/*
+* Get process quantum
+*
+* In:  Nothing
+*
+* Returns: Process quantum
+*
+*/
 size_t get_max_tick_count(void) {
+if(currentprocess == NULL) return(0);
+
 return(currentprocess->maxticks);
 }
 

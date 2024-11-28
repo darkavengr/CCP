@@ -107,7 +107,7 @@
 #define KEY_F11			133
 #define KEY_F12			134
 #define KEY_NUMLOCK		69
-#define KEY_SCROLLLOCK		70
+#define KEY_SCROLL_LOCK		70
 #define KEY_HOME_7		71
 #define KEY_UP_8		72
 #define KEY_PAGEUP9		73
@@ -137,9 +137,37 @@
 #define SHIFT_PRESSED 		1
 #define ALT_PRESSED		2
 #define CTRL_PRESSED		4
-#define CAPSLOCK_PRESSED	8
+#define CAPS_LOCK_PRESSED	8
+#define NUM_LOCK_PRESSED	16
+#define SCROLL_LOCK_PRESSED	32
+
+#define SCROLL_LOCK_LED		1		/* LED status bits */
+#define NUM_LOCK_LED		2
+#define CAPS_LOCK_LED		4
+
+#define KEYBOARD_DATA_PORT	0x60
+#define KEYBOARD_STATUS_PORT	0x64
+#define KEYBOARD_COMMAND_PORT	0x64		/* same as status port */
+
+#define KEYB_STATUS_OUTPUT_BUFFER_FULL	1	/* PS/2 status byte */
+#define KEYB_STATUS_INPUT_BUFFER_FULL	2
+#define KEYB_STATUS_SYSTEM_FLAG		4
+#define KEYB_STATUS_COMMAND_OR_DATA	8
+#define KEYB_STATUS_LOCKED		16
+#define KEYB_STATUS_AUX_BUFFER_FULL	32
+#define KEYB_STATUS_TIMED_OUT		64
+#define KEYB_STATUS_PARITY_ERROR	128
+
+#define BIOS_DATA_AREA_ADDRESS	0x417
+
+#define KEYB_BDA_SCROLL_LOCK	16
+#define KEYB_BDA_NUM_LOCK	32
+#define KEYB_BDA_CAPS_LOCK	64
+
+#define SET_KEYBOARD_LEDS	0xED
 
 void readconsole(char *buf,size_t size);
 size_t keyb_init(void);
-size_t readkey(void);
+void readkey(void);
+
 

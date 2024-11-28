@@ -91,7 +91,7 @@ mov	dword [edi+12],KERNEL_DATA_SELECTOR	; fs
 mov	dword [edi+16],KERNEL_DATA_SELECTOR	; gs
 mov	dword [edi+20],0xAAAAAAAA		; edi
 mov	dword [edi+24],0xBBBBBBBB		; esi
-mov	[edi+28],edx				; ebp
+mov	[edi+28],ecx				; ebp
 mov	[edi+32],esi				; esp
 mov	dword [edi+36],0xCCCCCCCC		; ebx
 mov	dword [edi+40],0xDDDDDDDD		; edx
@@ -119,7 +119,6 @@ push	edi
 call	set_tss_esp0
 add	esp,4
 ret
-
 
 get_initial_kernel_stack_base:
 mov	eax,INITIAL_KERNEL_STACK_ADDRESS

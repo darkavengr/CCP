@@ -5,5 +5,5 @@ FILES=speaker.c
 OBJFILE=speaker.o
 
 @buildroot@obj/@arch@/speaker.o:
-	$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o @buildroot@obj/@arch@/speaker.o
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o @buildroot@obj/@arch@/speaker.o
 

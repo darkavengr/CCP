@@ -2,7 +2,7 @@ ASM=nasm
 CC=@arch@-elf-gcc
 LD=@arch@-elf-gcc
 FILES=@buildroot@/kernel/drive.c @buildroot@/kernel/memorymanager.c @buildroot@/kernel/ccp.c @buildroot@/kernel/device.c @buildroot@/kernel/vfs.c @buildroot@/kernel/initrd.c @buildroot@/kernel/process.c @buildroot@/kernel/multitasking.c @buildroot@/kernel/module.c @buildroot@/header/kprintf_direct.c @buildroot@/header/error.c @buildroot@/header/string.c
-CCOPTS=-c -w -lgcc -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
+CCOPTS=-c -w -lgcc -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 LDOPTS=-lgcc -ffreestanding -nostdlib -Wl,-Map -Wl,@buildroot@/mapfiles/ccp.map
 OBJFILES=@buildroot@/obj/@arch@/drive.o @buildroot@/obj/@arch@/memorymanager.o @buildroot@/obj/@arch@/ccp.o @buildroot@/obj/@arch@/device.o @buildroot@/obj/@arch@/vfs.o @buildroot@/obj/@arch@/initrd.o @buildroot@/obj/@arch@/process.o @buildroot@/obj/@arch@/multitasking.o @buildroot@/obj/@arch@/kprintf_direct.o @buildroot@/obj/@arch@/module.o @buildroot@/obj/@arch@/error.o @buildroot@/obj/@arch@/string.o 
 

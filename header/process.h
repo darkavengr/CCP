@@ -5,15 +5,10 @@
 
 #define PROCESS_FLAG_BACKGROUND		1
 
-#define CCPVER 0x0100
-#define CCP_MAJOR_VERSION 1
-#define CCP_MINOR_VERSION 0
-#define CCP_RELEASE_VERSION 0
-
 #define _SHUTDOWN	 		0
 #define _RESET				1
 #define PROCESS_STACK_SIZE 65536
-#define DEFAULT_QUANTUM_COUNT 1000
+#define DEFAULT_QUANTUM_COUNT 100
 
 #define SHUTDOWN_WAIT 10
 #define SIGNAL_COUNT 256
@@ -21,8 +16,6 @@
 #define MAX_REGS 256
 
 #define ENVIROMENT_SIZE 32768
-
-extern tss_esp0;
 
 typedef struct { 
 	size_t pid;

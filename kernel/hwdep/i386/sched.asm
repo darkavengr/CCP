@@ -132,21 +132,14 @@ iret						; jump to cs:eip and restore interrupts
 ;
 ; You are not expected to understand this
 ;
-
+; Assumes that interrupts have already been disabled, either because it was called from an interrupt gate or the caller disabled interrupts
+;
 switch_task:
 mov	[save_esp],esp
 
 push	dword [save_esp]			; save current task's stack pointer
 call	save_kernel_stack_pointer
 add	esp,4
-
-;call	getpid
-
-;test	eax,eax
-;jz	no_debug2
-
-;xchg	bx,bx
-;no_debug2:
 
 call	is_multitasking_enabled		
 test	eax,eax 				; return if multitasking is disabled
@@ -157,8 +150,6 @@ jmp	end_switch
 multitasking_enabled:
 inc	byte [0x800b8000]
 
-call	disablemultitasking
-
 call	is_process_ready_to_switch
 test	eax,eax					; if process not ready to switch, return
 jnz	task_time_slice_finished
@@ -166,16 +157,14 @@ jnz	task_time_slice_finished
 jmp	end_switch
 
 task_time_slice_finished:
-
-call	reset_process_ticks
-
 call	getpid
 
-cmp	eax,1
-jl	no_debug
+test	eax,eax
+jz	no_debug2
 
 xchg	bx,bx
-no_debug:
+no_debug2:
+call	reset_process_ticks
 
 ;
 ; Switch to next process
@@ -213,8 +202,6 @@ add	esp,4
 end_switch:
 xor	eax,eax
 mov	[save_descriptor],eax				; clear descriptor
-
-call	enablemultitasking
 ret
 
 save_esp dd 0

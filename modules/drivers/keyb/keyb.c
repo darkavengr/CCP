@@ -47,7 +47,8 @@ char *keybbuf[KEYB_BUFFERSIZE];
 char *keybuf=keybbuf;
 size_t readcount=0;
 char *keylast=keybbuf;
-uint8_t keyboardflags;		/* for caps lock, shift, control and alt keys */
+uint8_t keyboardflags=0;		/* for caps lock, shift, control and alt keys */
+uint8_t keyboardledflags=0;
 
 /*
  * Initialize keyboard
@@ -59,8 +60,16 @@ uint8_t keyboardflags;		/* for caps lock, shift, control and alt keys */
  */
 size_t keyb_init(void) {
 CHARACTERDEVICE device;
+uint8_t *keyflagsptr=KERNEL_HIGH+BIOS_DATA_AREA_ADDRESS;
 
 keyboardflags=0;
+
+if(((uint8_t) *keyflagsptr & KEYB_BDA_CAPS_LOCK)) {
+	keyboardflags |= CAPS_LOCK_PRESSED;
+	keyboardledflags |= CAPS_LOCK_LED;
+}	
+
+
 readcount=0;
 
 /* create console device */
@@ -77,7 +86,7 @@ if(add_character_device(&device) == -1) {	/* add character device */
 	return(-1);
 }
 
-setirqhandler(1,&readkey);		/* set irq handler */
+setirqhandler(1,&readkey);		/* set IRQ handler */
 	
 init_console_device(DEVICE_READ,0,&readconsole);
 return(0);
@@ -86,9 +95,8 @@ return(0);
 /*
  * Read from console
  *
- * In: ignore		Ignored value
-       buf		Buffer
-       size_t size	Number of character to read
+ * In: buf	Buffer
+       size	Number of character to read
  *
  *  Returns nothing
  *
@@ -119,32 +127,31 @@ return;
  *
  * called by irq1 handler see init.asm  */
 
-size_t readkey(void) {
+void readkey(void) {
 uint8_t keycode;
-char c;
-size_t row,col;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
+uint8_t keychar;
 
-if((inb(0x64) & 1) == 0) return;					/* not ready */
+if((inb(KEYBOARD_STATUS_PORT) & KEYB_STATUS_OUTPUT_BUFFER_FULL) == 0) return;		/* not ready */
 
-keycode=inb(0x60);
+keycode=inb(KEYBOARD_DATA_PORT);			/* read scan code */
 
 /* if it's a break code, then do various keys */
 
 if((keycode & 128) == 128) {
 /* clear keyboard flags if key is up */
 
-	if(keycode == LEFT_SHIFT_UP || keycode == RIGHT_SHIFT_UP) {
+	if((keycode == LEFT_SHIFT_UP) ||(keycode == RIGHT_SHIFT_UP)) {
 		keyboardflags &= !SHIFT_PRESSED;
 		return;
 	}
 
-	if(keycode == LEFT_ALT_UP || keycode == RIGHT_ALT_UP) {
+	if((keycode == LEFT_ALT_UP) || (keycode == RIGHT_ALT_UP)) {
 		keyboardflags &= !ALT_PRESSED;
 		return;
 	}
 
-	if(keycode == LEFT_CTRL_UP || keycode == RIGHT_CTRL_UP) {
+	if((keycode == LEFT_CTRL_UP) || (keycode == RIGHT_CTRL_UP)) {
 		keyboardflags &= !CTRL_PRESSED;
 		return;
 	}
@@ -167,7 +174,7 @@ switch(keycode) {								/* control characters */
 		return;
 
 	case KEY_END1:								/* move cursor to end of line */
-		col=strlen(keybbuf);
+		bootinfo->cursor_col=strlen(keybbuf);
 
 		bootinfo->cursor_row=25;
 		return;
@@ -194,20 +201,59 @@ switch(keycode) {								/* control characters */
 		*keybuf=8;
 		return;							
 	
-	case KEY_CAPSLOCK:
-		if((keyboardflags & CAPSLOCK_PRESSED)) {	/* toggle capslock */
-			keyboardflags &= !CAPSLOCK_PRESSED;
+	case KEY_SCROLL_LOCK:
+		if((keyboardflags & SCROLL_LOCK_PRESSED)) {		/* toggle scroll lock */
+			keyboardflags &= !SCROLL_LOCK_PRESSED;
+			keyboardledflags &= !SCROLL_LOCK_LED;
 	 	}
 	 	else
 	 	{
-			keyboardflags |= CAPSLOCK_PRESSED;
+			keyboardflags |= SCROLL_LOCK_PRESSED;
+			keyboardledflags |= SCROLL_LOCK_LED;
 		}
+
+		outb(KEYBOARD_DATA_PORT,SET_KEYBOARD_LEDS);		/* set keyboard LEDs */
+		outb(KEYBOARD_DATA_PORT,keyboardledflags);
+
+		if((readcount-1) > 0) readcount--;				/* see above comment */
+	 	return;
+
+	case KEY_NUMLOCK:
+		if((keyboardflags & NUM_LOCK_PRESSED)) {		/* toggle num lock */
+			keyboardflags &= !NUM_LOCK_PRESSED;
+			keyboardledflags &= !NUM_LOCK_LED;
+	 	}
+	 	else
+	 	{
+			keyboardflags |= NUM_LOCK_PRESSED;
+			keyboardledflags |= NUM_LOCK_LED;
+		}
+
+		outb(KEYBOARD_DATA_PORT,0xED);		/* set keyboard LEDs */
+		outb(KEYBOARD_DATA_PORT,keyboardledflags);
+
+		if((readcount-1) > 0) readcount--;				/* see above comment */
+	 	return;
+
+	case KEY_CAPSLOCK:
+		if((keyboardflags & CAPS_LOCK_PRESSED)) {	/* toggle caps lock */
+			keyboardflags &= !CAPS_LOCK_PRESSED;
+			keyboardledflags &= !CAPS_LOCK_LED;
+	 	}
+	 	else
+	 	{
+			keyboardflags |= CAPS_LOCK_PRESSED;
+			keyboardledflags |= CAPS_LOCK_LED;
+		}
+
+		outb(KEYBOARD_DATA_PORT,0xED);		/* set keyboard LEDs */
+		outb(KEYBOARD_DATA_PORT,keyboardledflags);
 
 		if((readcount-1) > 0) readcount--;				/* see above comment */
 	 	return;
 
 	case KEY_CTRL:					/* ctrl characters and ctrl alt del */
-		keycode=inb(0x60);
+		keycode=inb(KEYBOARD_DATA_PORT);
 
 		keyboardflags |= CTRL_PRESSED;
 
@@ -359,20 +405,22 @@ if((keyboardflags & CTRL_PRESSED) && (keyboardflags & ALT_PRESSED) && keycode ==
 	shutdown(1);
 }
 
-/* if caps lock in on only shift letters */
+/* if caps lock is on only shift letters */
 
-if((keyboardflags & CAPSLOCK_PRESSED)) {
-	c=*scancodes_shifted[keycode];		/* get character */
+if((keyboardflags & CAPS_LOCK_PRESSED)) {
+	keychar=*scancodes_shifted[keycode];		/* get character */
 
- 	if((c >= 'A' && c <= 'Z') && ((keyboardflags & SHIFT_PRESSED) == 0)) {
-		c=c+32;				/* to lowercase */
-		*keybuf++=c;
+ 	if(((keychar >= 'A') && (keychar <= 'Z')) && ((keyboardflags & SHIFT_PRESSED) == 0)) {
+		keychar += 32;				/* to lowercase */
+
+		*keybuf++=keychar;
+
 		write(stdout,scancodes_shifted[keycode],1);
 		return;
 	}
 
-	if((c >= 'A' && c <= 'Z') && (keyboardflags & SHIFT_PRESSED)) {
-		*keybuf++=c;
+	if(((keychar >= 'A') && (keychar <= 'Z')) && (keyboardflags & SHIFT_PRESSED)) {
+		*keybuf++=keychar;
 
 		write(stdout,scancodes_unshifted[keycode],1);
 		return;
@@ -396,5 +444,4 @@ else
 
 return;
 }
-
 
