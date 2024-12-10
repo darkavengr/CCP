@@ -1,0 +1,9 @@
+ASM=@asm@
+CC=@cc@
+LD=@ld@
+FILES=fat.c
+
+../../../obj/@arch@/fat.o:
+
+	$(CC) @cc_opts@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
+

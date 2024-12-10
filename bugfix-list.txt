@@ -1,4 +1,4 @@
-ATA DMA I/O doesn't work.
-Error where IRQ 6 doesn't arrive on some emulators. in floppy driver.
+Error where IRQ 6 doesn't arrive on some emulators, in floppy driver.
 Doesn't work after task switching from terminated process.
+ATAPI DMA I/O is missing.
 

@@ -29,8 +29,8 @@
 #define ATAPI_CLOSE_TRACK_SESSION	0x5B
 #define ATAPI_READ_BUFFER_CAPACITY	0x5C
 #define ATAPI_SEND_CUE_SHEET	0x5D
-#define ATAPI_PACKET	0xA0
-#define ATAPI_BLANK	0xA1
+#define ATAPI_PACKET_COMMAND	0xA0
+#define ATAPI_IDENTIFY_PACKET_DEVICE	0xA1
 #define ATAPI_SECURITY_PROTOCOL_IN	0xA2
 #define ATAPI_SEND_KEY	0xA3
 #define ATAPI_REPORT_KEY	0xA4
@@ -49,6 +49,8 @@
 #define ATAPI_READ_CD	0xBE
 #define ATAPI_SEND_DISC_STRUCTURE	0xBF
 
+#define ATAPI_SECTOR_SIZE	2048
+
 typedef struct {
 	uint8_t opcode;
 	uint8_t lun;
@@ -59,15 +61,15 @@ typedef struct {
 	uint8_t control;
 	uint8_t reserved3;
 	uint8_t reserved4;
-} atapipacket;
+} ATAPI_PACKET;
 
 typedef struct {
 	uint32_t lba;
 	uint32_t blocklength;
 } CAPACITY_DATA;
 
-size_t atapi_send_command(size_t physdrive,atapipacket *atapi_packet);
-size_t atapi_io(size_t op,size_t physdrive,size_t block,uint16_t *buf);
+size_t atapi_io_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
 size_t atapi_ident(size_t physdrive,ATA_IDENTIFY *buf);
-size_t atapi_init(char *initstring);
+size_t xatapi_init(char *initstring);
+void atapi_wait_for_irq(size_t controller);
 

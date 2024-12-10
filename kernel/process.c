@@ -70,7 +70,6 @@ PSP *psp=NULL;
 char *fullpath[MAX_PATH];
 
 disablemultitasking(); 
-disable_interrupts();
 
 oldprocess=currentprocess;					/* save current process pointer */
 
@@ -239,8 +238,6 @@ if(getpid() != 0) {
 }
 
 processes_end=next;						/* save last process address */
-
-enable_interrupts();
 
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
@@ -1416,6 +1413,8 @@ currentprocess=ptr;
 * Returns: current process pointer
 *
 */
+
+
 PROCESS *get_current_process_pointer(void) {
 return(currentprocess);
 }

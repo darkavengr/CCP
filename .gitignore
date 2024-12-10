@@ -5,4 +5,6 @@ ccp.sym
 *.map
 Makefile
 modernize
+runemu
+installccp
 

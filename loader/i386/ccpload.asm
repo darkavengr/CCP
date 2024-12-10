@@ -1429,12 +1429,12 @@ pop	ecx
 pop	ebx
 ret	
 
-ccpsys_notfound db "CCP.SYS not found",0
-initrd_notfound db 10,13,"No initrd found (INITRD.SYS), skipping it.",0
-noa20_error db "Can't enable A20 line",0
+ccpsys_notfound db "loader: CCP.SYS not found",0
+initrd_notfound db 10,13,"loader: No initrd found (INITRD.SYS), skipping it.",0
+noa20_error db "loader: Can't enable A20 line",0
 loading_ccp db "Loading CCP.SYS...",0
 loading_initrd db 10,13,"Loading INITRD.SYS...",0
-ELF32_invalid db 10,13,"CCP.SYS is not a valid ELF executable",10,13,0
+ELF32_invalid db 10,13,"loader: CCP.SYS is not a valid ELF executable",10,13,0
 pressanykey db " Press any key to reboot",10,13,0
 ccp_name db    "CCP     SYS",0
 initrd_name db "INITRD  SYS",0

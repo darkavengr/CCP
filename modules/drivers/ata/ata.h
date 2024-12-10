@@ -24,6 +24,7 @@
 #define	ATA_CYLINDER_HIGH_PORT	5
 #define	ATA_DRIVE_HEAD_PORT  	6
 #define	ATA_COMMAND_PORT  	7
+#define ATA_STATUS_PORT		7
 
 #define	ATA_ERROR		1
 #define ATA_DATA_READY		8
@@ -117,7 +118,7 @@ typedef struct {
 } prdt_struct;
 
 size_t ata_init(char *initstring);
-size_t ata_io(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
+size_t ata_io_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
 size_t ata_io_chs (size_t op,size_t physdrive,size_t blocksize,size_t head,size_t cylinder,size_t sector,uint16_t *buf);
 size_t ata_ident(size_t physdrive,ATA_IDENTIFY *buf);
 size_t ata_io_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);

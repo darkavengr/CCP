@@ -139,7 +139,7 @@ elf_header=buf;
 
 if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_header->e_ident[2] != 0x4C && elf_header->e_ident[3] != 0x46) {	/* not elf */
 
-	kprintf_direct("kernel: Module is not valid ELF object file\n");
+	kprintf_direct("module loader: Module %s is not a valid ELF object file\n",fullname);
 
 	setlasterror(INVALID_EXECUTABLE);
 	kernelfree(buf);
@@ -148,8 +148,18 @@ if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_heade
 	return(-1);
 }
 
-if((elf_header->e_type != ET_REL) || (elf_header->e_shnum == 0)) {	
-	kprintf_direct("kernel: Module is not relocatable ELF object file\n");
+if(elf_header->e_type != ET_REL) {	
+	kprintf_direct("module loader: Module %s is not relocatable an ELF object file\n",fullname);
+
+	setlasterror(INVALID_EXECUTABLE);
+	kernelfree(buf);
+
+	enablemultitasking();
+	return(-1);
+}
+
+if(elf_header->e_shnum == 0) {	
+	kprintf_direct("module loader: No section headers found in module %s\n",fullname);
 
 	setlasterror(INVALID_EXECUTABLE);
 	kernelfree(buf);
@@ -200,7 +210,7 @@ for(count=0;count < elf_header->e_shnum;count++) {
 /* check if symbol and string table present */
 
 if(symtab == NULL) {
-	kprintf_direct("kernel: Module has no symbol section(s)\n");
+	kprintf_direct("module loader: Module has no symbol section(s)\n");
 
 	setlasterror(INVALID_EXECUTABLE);
 	kernelfree(buf);
@@ -211,7 +221,7 @@ if(symtab == NULL) {
 }
 
 if(strtab == NULL) {
-	kprintf_direct("kernel: Module has no string section(s)\n");
+	kprintf_direct("module loader: Module has no string section(s)\n");
 	kernelfree(buf);
 	kernelfree(kernel_module_end->commondata);
 
@@ -420,7 +430,7 @@ for(count=0;count<elf_header->e_shnum;count++) {
 				}
 				else
 				{
-					kprintf_direct("kernel: unknown relocation type %d in module %s\n",symtype,filename);
+					kprintf_direct("module loader: unknown relocation type %d in module %s\n",symtype,filename);
 			
 					kernelfree(buf);
 					kernelfree(kernel_module_end->commondata);

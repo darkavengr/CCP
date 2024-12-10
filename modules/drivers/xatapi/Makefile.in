@@ -1,8 +1,8 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-FILES=atapi.c
+FILES=xatapi.c
 
-@buildroot@/obj/@arch@/atapi.o:
+@buildroot@/obj/@arch@/xatapi.o:
 	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
 

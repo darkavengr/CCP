@@ -73,7 +73,7 @@ for(physdiskcount=0x80;physdiskcount < 0x82;physdiskcount++) {  /* for each disk
 
 	 if(ata_ident(physdiskcount,&ident) == 0) {	/* get ATA information */
 
-	 	if(partitions_init(physdiskcount,&ata_io) == -1) {	/* can't initalize partitions */
+	 	if(partitions_init(physdiskcount,&ata_io_pio) == -1) {	/* initalize partitions */
 	 		kprintf_direct("ata: Unable to intialize partitions for physical drive %X: %s\n",physdiskcount,kstrerr(getlasterror()));
 	 		continue;
 	  	}
@@ -98,7 +98,7 @@ return(0);
  *  Returns: 0 on success, -1 on error
  *
  */	
-size_t ata_io(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
+size_t ata_io_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
 size_t count;
 size_t cylinder;
 size_t b;
@@ -109,7 +109,7 @@ uint16_t controller;
 size_t temp;
 uint32_t highblock;
 uint32_t lowblock;
-ATA_IDENTIFY result;
+ATA_IDENTIFY ident;
 uint16_t *bb;
 uint8_t atastatus;
 
@@ -135,15 +135,15 @@ switch(physdrive) {			/* which controller */
 		break;
 }
 
-if(ata_ident(physdrive,&result) == -1) return(-1);	/* get information */
+if(ata_ident(physdrive,&ident) == -1) return(-1);	/* get information */
 
 islba=0;
 
-if(result.lba28_size != 0) islba=28;	/* is 28bit lba */
-if(result.commands_and_feature_sets_supported2 & 1024) islba=48; /* is 48bit lba */
+if(ident.lba28_size != 0) islba=28;	/* is 28bit lba */
+if(ident.commands_and_feature_sets_supported2 & 1024) islba=48; /* is 48bit lba */
 
 if(islba == 28) {						/* use lba28 */
-	if(block > result.lba28_size) {			/* invalid block number */
+	if(block > ident.lba28_size) {			/* invalid block number */
 		setlasterror(INVALID_BLOCK_NUMBER);
 		return(-1);
 	}
@@ -178,7 +178,7 @@ if(islba == 28) {						/* use lba28 */
 }
 
 if(islba == 48) {				/* use lba48 */
-	if(block > result.lba48_size) {			/* invalid block number */
+	if(block > ident.lba48_size) {			/* invalid block number */
 		setlasterror(INVALID_BLOCK_NUMBER);
 		return(-1);
 	}
@@ -237,15 +237,15 @@ count=0;
 bb=buf;
 
 while(count++ < 512/2) { 
-	if(op == DEVICE_READ) *bb++=inw(controller+ATA_DATA_PORT);			/* read data from harddisk */
-	if(op == DEVICE_WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data to harddisk */
+	if(op == DEVICE_READ) *bb++=inw(controller+ATA_DATA_PORT);			/* read data */
+	if(op == DEVICE_WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data */
 }
 
 return(NO_ERROR);
 }
 
 /*
- * ATA I/O function using Cylinder, Head, Sector addressing
+ * PIO ATA I/O function using Cylinder, Head, Sector addressing
  *
  * In:  op		Operation (0=read,1=write)
 	physdrive	Physical drive number
@@ -255,16 +255,17 @@ return(NO_ERROR);
 	Sector		Sector number
 	buf		Buffer
  *
- *  Returns: nothing
+ *  Returns: 0 on success, -1 on failure
  *
  */
-/* chs routine is seperated for use in hd_init */
+
+/* Cylinder/head/sector routine is seperated for use in ata_init */
+
 size_t ata_io_chs (size_t op,size_t physdrive,size_t blocksize,size_t head,size_t cylinder,size_t sector,uint16_t *buf) {
 size_t controller;
 size_t count;
 uint16_t *bb;
 ATA_IDENTIFY result;
-uint8_t c;
 uint8_t atastatus;
 	
 switch(physdrive) {
@@ -363,6 +364,8 @@ size_t ata_ident(size_t physdrive,ATA_IDENTIFY *buf) {
 uint16_t controller;
 size_t count;
 uint16_t *b;
+uint8_t lowbyte;
+uint8_t highbyte;
 
 switch(physdrive) {					/* which controller */
 	case 0x80:
@@ -398,20 +401,24 @@ if(inb(controller+ATA_COMMAND_PORT) == 0) {		/* drive doesn't exist */
 	return(-1);
 }
 
-while((inb(controller+ATA_COMMAND_PORT) & 0x80) != 0) {		/* wait until ready */
+while((inb(controller+ATA_COMMAND_PORT) & ATA_BUSY) != 0) ;;		/* wait until ready */
 
-/* check if not	ata */
+lowbyte=inb(controller+ATA_CYLINDER_LOW_PORT);
+highbyte=inb(controller+ATA_CYLINDER_HIGH_PORT);
 
-	if((inb(ATA_CYLINDER_LOW_PORT) == 0) || (inb(ATA_CYLINDER_HIGH_PORT) == 0)) return(-1);
+if((highbyte == 0) && (lowbyte == 0)) {
+	b=buf;
+
+	for(count=0;count<127;count++) {			/* read result words */
+		*b++=inw(controller+ATA_DATA_PORT);
+	}
+
+	setlasterror(NO_ERROR);
+	return(0);
 }
 
-b=buf;
-
-for(count=0;count<127;count++) {			/* read result words */
-	*b++=inw(controller+ATA_DATA_PORT);
-}
-
-return(NO_ERROR);
+setlasterror(INVALID_DEVICE);
+return(-1);
 }
 
 
@@ -426,7 +433,7 @@ return(NO_ERROR);
  *
  */	
 size_t ata_io_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
-ATA_IDENTIFY result;
+ATA_IDENTIFY ident;
 size_t count;
 BLOCKDEVICE blockdevice;
 uint16_t barfour;
@@ -438,14 +445,14 @@ uint32_t highblock;
 uint32_t lowblock;
 uint32_t commandregister;
 
-if(ata_ident(physdrive,&result) == -1) {	/* invalid drive */
+if(ata_ident(physdrive,&ident) == -1) {	/* invalid drive */
 	setlasterror(INVALID_DRIVE);
 	return(-1);
 }
 
 barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
 if(barfour == -1) {
-	kprintf_direct("ata: can't get PCI configuration for barfour\n");
+	kprintf_direct("ata: Unable to get PCI configuration for BAR #4\n");
 
 	return(-1);
 }
@@ -459,7 +466,7 @@ DEBUG_PRINT_HEX(barfour);
 
 /* create prdt */
 
-kprintf_direct("ata_debug: setup prdt\n");
+kprintf_direct("ata_debug: setup PRDT\n");
 
 prdt_virtual=(size_t) prdt+KERNEL_HIGH;			/* get virtual address */
 
@@ -470,18 +477,23 @@ prdt_virtual->size=512;
 /* send information to ata barfour */
 
 if((physdrive == 0x80) || (physdrive == 0x81)) {			/* primary controller */
+	ata_irq14done=FALSE;
+
 	kprintf_direct("Primary ATA PRDT\n");
 
-	outb(barfour+PRDT_STATUS_PRIMARY,0);
-	outb(barfour+PRDT_COMMAND_PRIMARY,8); 			/* read/write */
-	outd(barfour+PRDT_ADDRESS_PRIMARY,(uint32_t) prdt); 	/* prdt address */
+	outb(barfour+PRDT_STATUS_PRIMARY,4);
+
+	outd(barfour+PRDT_ADDRESS_PRIMARY,(uint32_t) prdt); 	/* PRDT physical address */
+	outb(barfour+PRDT_COMMAND_PRIMARY,8 | 1); 			/* read/write */
 }
 else if((physdrive == 0x82) || (physdrive == 0x83)) {			/* secondary controller */
+	ata_irq15done=FALSE;
+
 	kprintf_direct("Secondary ATA PRDT\n");
 
 	outb(barfour+PRDT_STATUS_SECONDARY,0);
-	outb(barfour+PRDT_COMMAND_SECONDARY,8); 		/* read/write */
-	outd(barfour+PRDT_ADDRESS_PRIMARY,(uint32_t) prdt); 	/* prdt address */
+	outb(barfour+PRDT_COMMAND_SECONDARY,8 | 1); 		/* read/write */
+	outd(barfour+PRDT_ADDRESS_PRIMARY,(uint32_t) prdt); 	/* PRDT address */
 }
 
 
@@ -507,12 +519,10 @@ switch(physdrive) {
 		break;
 	}
 
-outb(controller+ATA_FEATURES_PORT,0);
-
 islba=0;
 
-if(result.lba28_size != 0) islba=28;	/* is 28bit lba */
-if(result.commands_and_feature_sets_supported2 & 1024) islba=48; /* is 48bit lba */
+if(ident.lba28_size != 0) islba=28;	/* is 28bit lba */
+if(ident.commands_and_feature_sets_supported2 & 1024) islba=48; /* is 48bit lba */
 
 if((physdrive == 0x80) || (physdrive == 0x81)) {
 	ata_irq14done=FALSE;
@@ -548,7 +558,6 @@ if(islba == 28) {						/* use lba28 */
 	}
 
 
-	outb(controller+ATA_ALT_STATUS_PORT,0);
 
 	outb(controller+ATA_SECTOR_COUNT_PORT,1);					/* sector count */
 	outb(controller+ATA_FEATURES_PORT,0);
@@ -558,9 +567,7 @@ if(islba == 28) {						/* use lba28 */
 	outb(controller+ATA_CYLINDER_HIGH_PORT,(uint8_t) (lowblock >> 16) & 0xff);			/* lba 3 */
 	
 	commandregister=pci_get_command(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
-
 	commandregister |= 0x04;		/* enable bus mastering */
-
 	pci_put_command(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER,commandregister);
 
 	if(op == DEVICE_READ) outb(controller+ATA_COMMAND_PORT,READ_SECTORS_DMA);			/* operation */
@@ -604,19 +611,19 @@ if(islba == 48) {						/* use lba48 */
 	if(op == DEVICE_WRITE) outb(controller+ATA_COMMAND_PORT,WRITE_SECTORS_EXT_DMA);
 }
 
-if(controller == 0x1f0) {			/* wait for irq */
+if(controller == 0x1f0) {			/* wait for IRQ 14 */
 	kprintf_direct("waiting for irq 14\n");
 	while(ata_irq14done == FALSE) ;;
 }
 
-if(controller == 0x370) {			/* wait for irq */
+if(controller == 0x370) {			/* wait for IRQ 15 */
 	kprintf_direct("waiting for irq 15\n");
 
 	while(ata_irq15done == FALSE) ;;
 }
 
 count=0;				/*clear start bit */
-if((physdrive == 0x80) || (physdrive == 0x81)) {			/* which controller */
+if((physdrive == 0x80) || (physdrive == 0x81)) {
 	outb(barfour+PRDT_COMMAND_PRIMARY,count);
 }
 
@@ -653,9 +660,16 @@ return(NO_ERROR);
  *
  */	
 size_t irq14_handler(void) {
+uint16_t barfour;
+
 #ifdef ATA_DEBUG
 	kprintf_direct("received irq 14\n");
 #endif
+
+//asm("xchg %bx,%bx");
+
+barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
+outb(barfour+PRDT_COMMAND_PRIMARY,0); 			/* clear read/write bit */
 
 ata_irq14done=TRUE;
 return;
@@ -670,10 +684,14 @@ return;
  *
  */	
 size_t irq15_handler(void) {
+uint16_t barfour;
 
 #ifdef ATA_DEBUG
 	kprintf_direct("received irq 15\n");
 #endif
+
+barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
+outb(barfour+PRDT_COMMAND_PRIMARY,0); 			/* clear read/write bit */
 
 ata_irq15done=TRUE;
 return;

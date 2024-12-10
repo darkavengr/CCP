@@ -170,31 +170,32 @@ switch(keycode) {								/* control characters */
 	 	return;
 
 	case KEY_HOME_7:							/* move cursor to start of line */  
-		bootinfo->cursor_row=0;
+		bootinfo->cursor_col=0;
+		keybuf=keybbuf;			/* point to start of buffer */
 		return;
 
 	case KEY_END1:								/* move cursor to end of line */
 		bootinfo->cursor_col=strlen(keybbuf);
-
-		bootinfo->cursor_row=25;
+	
+		keybuf=(keybbuf+strlen(keybbuf));	/* point to end of buffer */
 		return;
 
 	case LEFT_SHIFT:
 		keyboardflags |= SHIFT_PRESSED;
 
-		if((readcount-1) > 0) readcount--;				/* decrement readcount because shift shouldn't count this as a character on it's own */
+		if((readcount-1) > 0) readcount--;	/* decrement readcount because shift shouldn't count this as a character on it's own */
 		return;
 	
 	case RIGHT_SHIFT:
 		keyboardflags |= SHIFT_PRESSED;
 
-	 	if((readcount-1) > 0) readcount--;				/* see above comment */
+	 	if((readcount-1) > 0) readcount--;
 	 	return;
 
 	case KEY_ALT:
 		keyboardflags |= ALT_PRESSED;
 	
-		if((readcount-1) > 0) readcount--;				/* see above comment */
+		if((readcount-1) > 0) readcount--;
 		return;
 
 	case KEY_BACK:
@@ -215,7 +216,7 @@ switch(keycode) {								/* control characters */
 		outb(KEYBOARD_DATA_PORT,SET_KEYBOARD_LEDS);		/* set keyboard LEDs */
 		outb(KEYBOARD_DATA_PORT,keyboardledflags);
 
-		if((readcount-1) > 0) readcount--;				/* see above comment */
+		if((readcount-1) > 0) readcount--;
 	 	return;
 
 	case KEY_NUMLOCK:
@@ -229,10 +230,10 @@ switch(keycode) {								/* control characters */
 			keyboardledflags |= NUM_LOCK_LED;
 		}
 
-		outb(KEYBOARD_DATA_PORT,0xED);		/* set keyboard LEDs */
+		outb(KEYBOARD_DATA_PORT,SET_KEYBOARD_LEDS);		/* set keyboard LEDs */
 		outb(KEYBOARD_DATA_PORT,keyboardledflags);
 
-		if((readcount-1) > 0) readcount--;				/* see above comment */
+		if((readcount-1) > 0) readcount--;
 	 	return;
 
 	case KEY_CAPSLOCK:
@@ -246,10 +247,10 @@ switch(keycode) {								/* control characters */
 			keyboardledflags |= CAPS_LOCK_LED;
 		}
 
-		outb(KEYBOARD_DATA_PORT,0xED);		/* set keyboard LEDs */
+		outb(KEYBOARD_DATA_PORT,SET_KEYBOARD_LEDS);		/* set keyboard LEDs */
 		outb(KEYBOARD_DATA_PORT,keyboardledflags);
 
-		if((readcount-1) > 0) readcount--;				/* see above comment */
+		if((readcount-1) > 0) readcount--;
 	 	return;
 
 	case KEY_CTRL:					/* ctrl characters and ctrl alt del */
@@ -428,7 +429,7 @@ if((keyboardflags & CAPS_LOCK_PRESSED)) {
 
 }
 	
-/* If capslock is not on, use uppercase letters if shift pressed. Use lowercase letters otherwise */
+/* If capslock is off, use uppercase letters if shift pressed. Use lowercase letters otherwise */
 
 if((keyboardflags & SHIFT_PRESSED)) {
 	write(stdout,scancodes_shifted[keycode],1);
