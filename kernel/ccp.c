@@ -46,12 +46,6 @@ void halt(void);
 void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
-//char *buf[512];
-
-//atapi_io_pio(DEVICE_READ,0x81,0,buf);
-
-//DEBUG_PRINT_HEX(buf);
-//asm("xchg %bx,%bx");
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);

@@ -22,8 +22,8 @@ ASM_OPTS=-felf64
 #   opt_question:opt_yes:opt_no
 
 
-# directories to search for Makefile.in files
+# directories to search for Makefile.in files other than the modules
 # either specify a directory by itself or directory/* to search subdirs
 
-SEARCH=. kernel kernel/hwdep/x86_64 loader modules/drivers/* modules/filesystems/* modules/binfmt/* command
+SEARCH=. kernel kernel/hwdep/x86_64 loader
 

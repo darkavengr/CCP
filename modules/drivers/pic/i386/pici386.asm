@@ -3,7 +3,7 @@ use32
 
 %include "kernelselectors.inc"
 
-extern irq_handlers
+extern callirqhandlers
 
 global irq0
 global irq1
@@ -108,17 +108,10 @@ mov	es,ax
 mov	fs,ax
 mov	gs,ax
 
-mov	eax,[irqnumber]
-shl	eax,2					; multiply by four
-add	eax,irq_handlers			; add start of irq handlers
-mov	eax,[eax]				; get irq handler address
-
-test	eax,eax					; if no handler, return
-jz	irq_exit
-
-push	esp
-call	eax					; call irq handler
-add	esp,4
+push	esp					; stack parameter pointer
+push	dword [irqnumber]			; irq number
+call	callirqhandlers				; call irq handler
+add	esp,8
 
 irq_exit:
 mov	ebx,[irqnumber]			        ; get interrupt number

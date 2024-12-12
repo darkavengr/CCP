@@ -12,8 +12,6 @@
 #define IOCTL_SERIAL_STOPBITS 2
 #define IOCTL_SERIAL_PARITY 3
 
-extern setirqhandler();
-
 typedef struct _port {
 	char *name;
 	size_t port;

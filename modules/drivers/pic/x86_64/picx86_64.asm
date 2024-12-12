@@ -1,6 +1,6 @@
 %include "kernelselectors.inc"
 
-extern irq_handlers
+extern callirqhandlers
 
 global irq0
 global irq1
@@ -102,18 +102,10 @@ push	r13
 push	r14
 push	r15
 
-mov	rdx,[rel irqnumber]
-shl	rdx,3					; multiply by eight
-
-mov	rax,qword irq_handlers			; add start of irq handlers
-add	rdx,rax
-
-mov	rdx,[rdx]				; get handler
-
-test	rdx,rdx					; if no handler, return
-jz	irq_exit
-
-call	rdx					; call IRQ handler
+push	esp					; stack parameter pointer
+push	qword [irqnumber]			; irq number
+call	callirqhandlers				; call irq handler
+add	esp,16
 
 irq_exit:
 nop

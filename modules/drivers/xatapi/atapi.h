@@ -51,6 +51,9 @@
 
 #define ATAPI_SECTOR_SIZE	2048
 
+#define IOCTL_ATAPI_IDENTIFY 0
+#define IOCTL_ATAPI_EJECT 1
+
 typedef struct {
 	uint8_t opcode;
 	uint8_t lun;
@@ -72,4 +75,8 @@ size_t atapi_io_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
 size_t atapi_ident(size_t physdrive,ATA_IDENTIFY *buf);
 size_t xatapi_init(char *initstring);
 void atapi_wait_for_irq(size_t controller);
+size_t atapi_wait_for_controller_ready(uint16_t controller);
+void atapi_wait(uint16_t controller);
+size_t atapi_ioctl(size_t handle,unsigned long request,char *buffer);
+size_t atapi_send_packet(size_t physdrive,ATAPI_PACKET *packet);
 

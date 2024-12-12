@@ -134,7 +134,8 @@ iret						; jump to cs:eip and restore interrupts
 ;
 
 switch_task:
-mov	[save_esp],esp
+mov	eax,[esp+4]				; get pointer to registers
+mov	[save_esp],eax
 
 push	dword [save_esp]			; save current task's stack pointer
 call	save_kernel_stack_pointer
@@ -160,8 +161,6 @@ inc	byte [0x800b8000]
 call	is_process_ready_to_switch
 test	eax,eax					; if process not ready to switch, return
 jnz	task_time_slice_finished
-
-call	enablemultitasking
 
 jmp	end_switch
 

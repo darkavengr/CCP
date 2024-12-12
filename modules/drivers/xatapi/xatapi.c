@@ -22,6 +22,7 @@
 #include "errors.h"
 #include "mutex.h"
 #include "device.h"
+#include "vfs.h"
 #include "../ata/ata.h"
 #include "atapi.h"
 #include "debug.h"
@@ -53,19 +54,14 @@ for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk *
 	if(atapi_ident(physdiskcount,&ident) == 0) {		/* get atapi drive information */
 		logicaldrive=allocatedrive();	/* get drive number */
 
-		//DEBUG_PRINT_HEX(physdiskcount);
-		//DEBUG_PRINT_HEX(logicaldrive);
-		//asm("xchg %bx,%bx");
-
 		ksnprintf(blockdevice.name,"ATAPI%d",MAX_PATH,logicaldrive);
 		blockdevice.blockio=&atapi_io_pio;
-		blockdevice.ioctl=NULL;
+		blockdevice.ioctl=&atapi_ioctl;
 		blockdevice.physicaldrive=physdiskcount;
 		blockdevice.drive=logicaldrive;
 		blockdevice.sectorsperblock=1;
-		blockdevice.sectorsize=2048;
+		blockdevice.sectorsize=ATAPI_SECTOR_SIZE;
 
-	
 		if(add_block_device(&blockdevice) == -1) {	/* add block device */
 			kprintf_direct("atapi: Can't register block device %s: %s\n",blockdevice.name,kstrerr(getlasterror()));
 			return(-1);
@@ -77,7 +73,7 @@ return(0);
 }
 
 /*
- * ATAPI I/O function
+ * ATAPI PIO function
  *
  * In:  op	Operation (0=read,1=write)
         buf	Buffer
@@ -95,8 +91,10 @@ size_t count;
 ATAPI_PACKET packet;
 ATA_IDENTIFY ident;
 
+DEBUG_PRINT_HEX(buf);
+
 if(atapi_ident(physdrive,&ident) == -1) {		/* get atapi drive information */
-	kprintf_direct("atapi: Can't get drive %X information\n",physdrive);
+	kprintf_direct("atapi: Can't get physical drive %X information\n",physdrive);
 	return(-1);
 }
 
@@ -123,53 +121,65 @@ switch(physdrive) {
 		break;
 }
 
-DEBUG_PRINT_HEX(controller);
+outb(controller+ATA_DRIVE_HEAD_PORT,0xA0 | (slavebit << 4));	/* select master or slave */
 
-packet.opcode=ATAPI_READ12;			/* ATAPI packet */
-packet.lba=((uint64_t) block & 0x000000000ffffffff);
-
-outb(controller+ATA_DRIVE_HEAD_PORT,0xA0 & (slavebit << 4));
-
-atapi_wait(controller);		/* wait for drive */
-
-atapi_wait_for_controller_ready(controller);	/* wait for controller */
+if(atapi_wait_for_controller_ready(controller) == -1) {	/* wait for controller */
+	setlasterror(READ_FAULT);
+	return(-1);
+}
 
 outb(controller+ATA_FEATURES_PORT,0);		/* use PIO */
 		
-outb(controller+ATA_SECTOR_COUNT_PORT,(ATAPI_SECTOR_SIZE & 0xff));
-outb(controller+ATA_SECTOR_COUNT_PORT,(ATAPI_SECTOR_SIZE >> 8));
+outb(controller+ATA_CYLINDER_LOW_PORT,(ATAPI_SECTOR_SIZE & 0xff));
+outb(controller+ATA_CYLINDER_HIGH_PORT,(ATAPI_SECTOR_SIZE >> 8));
 
-outb(controller+ATA_COMMAND_PORT,ATAPI_PACKET_COMMAND);
-atapi_wait(controller);		/* wait for drive */
-atapi_wait_for_controller_ready(controller);	/* wait for controller */
+outb(controller+ATA_COMMAND_PORT,ATAPI_PACKET_COMMAND);	/* send ATAPI PACKET command */
+
+if(atapi_wait_for_controller_ready(controller) == -1) {	/* wait for controller */
+	setlasterror(READ_FAULT);
+	return(-1);
+}
 
 /* send packet */
+
+if(op == DEVICE_READ) {				/* read or write */
+	packet.opcode=ATAPI_READ12;
+}
+else
+{
+	packet.opcode=ATAPI_WRITE12;
+}
+
+packet.lba=((uint64_t) block & 0x000000000ffffffff);	/* block number */
 
 bb=&packet;
 count=0;
 
-atapi_wait_for_controller_ready(controller);	/* wait for controller */
-
-while(count++ < sizeof(ATAPI_PACKET)/2) { 
+while(count < (sizeof(ATAPI_PACKET)/2)-2) {
 	outw(controller+ATA_DATA_PORT,*bb++);			/* send packet data */
+
+	count++;
 }
 
-if(controller == 0x1f0) {			/* wait for IRQ 14 */
-	atapi_irq14_done=FALSE;
-}
-
-if(controller == 0x370) {			/* wait for IRQ 15 */
-	atapi_irq15_done=FALSE;
-}
-
+atapi_clear_irq_flag(controller);		/* clear IRQ flag */
 atapi_wait_for_irq(controller);		/* wait for IRQ even though it's a PIO command. An IRQ will be received */
 
-count=0;
+count=((inb(controller+ATA_CYLINDER_HIGH_PORT) << 8) | inb(controller+ATA_CYLINDER_LOW_PORT))/2;	/* number of words to read */
+
 bb=buf;
 
-while(count++ < 512/2) { 
+while(count > 0) { 
+	if(atapi_wait_for_controller_ready(controller) == -1) {	/* wait for controller */
+		if(op == DEVICE_READ) setlasterror(READ_FAULT);
+		if(op == DEVICE_WRITE) setlasterror(WRITE_FAULT);
+
+		return(-1);
+	}
+
 	if(op == DEVICE_READ) *bb++=inw(controller+ATA_DATA_PORT);			/* read data */
 	if(op == DEVICE_WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data */
+
+	count--;
 }
 
 setlasterror(NO_ERROR);
@@ -223,7 +233,7 @@ outb(controller+ATA_COMMAND_PORT,ATAPI_IDENTIFY_PACKET_DEVICE);
 
 while((inb(controller+ATA_COMMAND_PORT) & 0x80) != 0) ;;		/* wait until ready */
 
-/* check if not atapi */
+/* check if not ATAPI drive */
 for(count=2;count<6;count++) {
 	atapibytes[count]=inb(controller+count);
 }
@@ -233,7 +243,7 @@ if(zerocount == 4) {		/* drive doesn't exist */
 	return(-1);
 }
 
-if( (atapibytes[5] == 0xEB && atapibytes[4] == 0x14) || (atapibytes[5] == 0x96 && atapibytes[4] == 0x69) ) {
+if((atapibytes[5] == 0xEB && atapibytes[4] == 0x14) || (atapibytes[5] == 0x96 && atapibytes[4] == 0x69)) {
 	b=buf;
 
 	for(count=0;count<127;count++) {			/* read result words */
@@ -271,18 +281,104 @@ if(controller == 0x370) {			/* wait for IRQ 15 */
 return;
 }
 
-void atapi_wait(uint16_t controller) {
-inw(controller+ATA_ALT_STATUS_PORT);
-inb(controller+ATA_ALT_STATUS_PORT);
-inb(controller+ATA_ALT_STATUS_PORT);
-inb(controller+ATA_ALT_STATUS_PORT);
+/*
+ * Wait for ATAPI drive 
+ *
+ * In:  controller	Base IO port (0x1f0=master, 0x370=slave)
+ *
+ *
+ *
+ *  Returns: 0 on success, -1 on error
+ *
+ */	
+size_t atapi_wait_for_controller_ready(uint16_t controller) {
+uint8_t atastatus=0;
+
+while(1) {
+	atastatus=inb(controller+ATA_STATUS_PORT);
+
+	if(atastatus & ATA_ERROR) return(-1);
+
+	if(((atastatus & ATA_BUSY) == 0) && (atastatus & ATA_DATA_READY)) break;		/* controller is ready */
+
+	atapi_wait(controller);
 }
 
-void atapi_wait_for_controller_ready(size_t controller) {
-uint8_t atastatus;
+return(0);
+}
 
-do {
-	atastatus=inb(controller+ATA_STATUS_PORT);
-} while((atastatus & ATA_DATA_READY) == 0 || (atastatus & ATA_BUSY));
+
+/*
+ * Clear IRQ done flag
+ *
+ * In:  controller	Base IO port (0x1f0=master, 0x370=slave)
+ *
+ *  Returns: Nothing
+ *
+ */
+void atapi_clear_irq_flag(uint16_t controller) {
+if(controller == 0x1f0) {			/* wait for IRQ 14 */
+	atapi_irq14_done=TRUE;
+}
+
+if(controller == 0x370) {			/* wait for IRQ 15 */
+	atapi_irq15_done=TRUE;
+}
+
+
+}
+
+/*
+ * ATAPI delay
+ *
+ * In:  controller	Base IO port (0x1f0=master, 0x370=slave)
+ *
+ *  Returns: Nothing
+ *
+ */
+void atapi_wait(uint16_t controller) {
+inb(controller+ATA_CONTROL_PORT+ATA_ALT_STATUS_PORT);
+inb(controller+ATA_CONTROL_PORT+ATA_ALT_STATUS_PORT);
+inb(controller+ATA_CONTROL_PORT+ATA_ALT_STATUS_PORT);
+inb(controller+ATA_CONTROL_PORT+ATA_ALT_STATUS_PORT);
+return;
+}
+
+/*
+ * ATAPI ioctl handler
+ *
+ * In:  handle	Handle created by open() to reference device
+	       request Request number
+	       buffer  Buffer
+ *
+ *  Returns: -1 on error, 0 on success
+ *
+ */
+size_t atapi_ioctl(size_t handle,unsigned long request,char *buffer) {
+FILERECORD atapidevice;
+size_t drive;
+BLOCKDEVICE bd;
+
+if(gethandle(handle,&atapidevice) == -1) {		/* get information about device */
+	setlasterror(INVALID_HANDLE);
+	return(-1);
+}
+
+drive=(uint8_t) (*atapidevice.filename-'A');	/* get drive number */
+
+if(getblockdevice(drive,&bd) == -1) return(-1);		/* get device information */
+
+switch(request) {
+	case IOCTL_ATAPI_IDENTIFY: 		/* get information */
+		return(atapi_ident(bd.physicaldrive,buffer));
+
+	case IOCTL_ATAPI_EJECT:			/* eject drive */
+		return(0);
+
+	//	return(atapi_eject(bd.physdrive));
+}
+
+setlasterror(INVALID_PARAMETER);
+return(-1);
 }
 

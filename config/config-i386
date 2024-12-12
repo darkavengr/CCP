@@ -21,10 +21,3 @@ ASM_OPTS=-felf32
 #   opt_question:opt_yes:opt_no
 CC_OPT_FILE=Include support for PAE paging:hwdep/i386/paepage.c:hwdep/i386/page.c
 
-
-# directories to search for Makefile.in files
-# either specify a directory by itself or directory/* to search subdirs
-
-SEARCH=. kernel kernel/hwdep/i386 loader modules/drivers/* modules/filesystems/* modules/binfmt/* command
-
-

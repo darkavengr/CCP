@@ -41,7 +41,7 @@ size_t ata_irq15done=FALSE;
  *
  * In:  char *init	Initialization string
  *
- * Returns: nothing
+ * Returns: 0 on success, -1 on failure
  *
  */
 size_t ata_init(char *initstring) {
@@ -81,8 +81,8 @@ for(physdiskcount=0x80;physdiskcount < 0x82;physdiskcount++) {  /* for each disk
 }
 
 	 
-setirqhandler(14,&irq14_handler);		/* set irq handler for master */
-setirqhandler(15,&irq15_handler);		/* set irq handler for slave */
+setirqhandler(14,'ATA$',&irq14_handler);		/* set irq handler for master */
+setirqhandler(15,'ATA$',&irq15_handler);		/* set irq handler for slave */
 
 return(0);
 }
@@ -697,7 +697,6 @@ ata_irq15done=TRUE;
 return;
 }
 
-
 /*
  * ATA ioctl handler
  *
@@ -709,9 +708,7 @@ return;
  *
  */
 size_t ata_ioctl(size_t handle,unsigned long request,char *buffer) {
-size_t param;
 FILERECORD atadevice;
-char *b;
 size_t drive;
 BLOCKDEVICE bd;
 

@@ -134,7 +134,7 @@ for(count=0;count<floppycount;count++) {
 	}
 }
 
-setirqhandler(6,&irq6_handler);		/* set irq handler */
+setirqhandler(6,0,&irq6_handler);		/* set irq handler */
 }
 
 /*

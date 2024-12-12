@@ -37,8 +37,9 @@ CHARACTERDEVICE *characterdevs=NULL;
 MUTEX blockdevice_mutex;
 MUTEX characterdevice_mutex;
 uint32_t drive_bitmap=0;
+IRQ_HANDLER *irq_handlers=NULL;
+IRQ_HANDLER *irq_handlers_end=NULL;
 
-void *irq_handlers[MAX_IRQ];
 	
 /*
  * Add block device
@@ -571,20 +572,59 @@ initialize_mutex(&blockdevice_mutex);		/* intialize mutex */
 initialize_mutex(&characterdevice_mutex);	/* intialize mutex */
 
 drive_bitmap=0;
-
-memset(irq_handlers,0,MAX_IRQ*sizeof(void *));
 }
 
 /*
  * Set IRQ handler
  *
  * In: irqnumber	IRQ number
+ *     refnumber	Unique reference number to distinguish between multiple entries for same IRQs
  *     handler		IRQ handler
  *
- *  Returns: nothing
+ *  Returns: 0 on success, -1 on failure
  *
  */
-void setirqhandler(size_t irqnumber,void *handler) {
-irq_handlers[irqnumber]=handler;
+size_t setirqhandler(size_t irqnumber,size_t refnumber,void *handler) {
+if(irq_handlers == NULL) {		/* first entry */
+	irq_handlers=kernelalloc(sizeof(IRQ_HANDLER));
+	if(irq_handlers == NULL) return(-1);
+
+	irq_handlers_end=irq_handlers;	/* save end */
+}
+else
+{
+	irq_handlers_end->next=kernelalloc(sizeof(IRQ_HANDLER));
+	if(irq_handlers_end->next == NULL) return(-1);
+
+	irq_handlers_end=irq_handlers_end->next;	/* point to end */
+}
+
+irq_handlers_end->handler=handler;		/* set entry */
+irq_handlers_end->refnumber=refnumber;
+irq_handlers_end->irqnumber=irqnumber;
+
+setlasterror(NO_ERROR);
+return(0);
+}
+
+/*
+ * Call IRQ handlers
+ *
+ * In: irqnumber	IRQ number
+ *     stackparams	Pointer to registers pushed onto stack
+ *
+ *  Returns: Nothing
+ *
+ */
+void callirqhandlers(size_t irqnumber,void *stackparams) {
+IRQ_HANDLER *next=irq_handlers;
+
+while(next != NULL) {
+	if(next->irqnumber == irqnumber) next->handler(stackparams);		/* call handler */
+
+	next=next->next;
+}
+
 return;
 }
+

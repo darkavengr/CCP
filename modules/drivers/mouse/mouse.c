@@ -58,7 +58,7 @@ mouseinfo.mousey=0;
 mouseinfo.mousebuttons=0;
 mreadcount=0;
 
-setirqhandler(12,&mouse_handler);		/* set irq handler */
+setirqhandler(12,'MSE$',&mouse_handler);		/* set irq handler */
 
 wait_for_mouse_write();
 outb(MOUSE_STATUS,MOUSE_ENABLE_AUXILARY_DEVICE);	/* get status */

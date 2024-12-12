@@ -17,7 +17,6 @@
 #define DEVICE_WRITE 1
 
 #define MAX_PATH	255
-#define MAX_IRQ		255
 
 typedef struct {
 	char *name[MAX_PATH];
@@ -48,6 +47,13 @@ typedef struct {
 	struct BLOCKDEVICE *next;
 }  BLOCKDEVICE;
 
+typedef struct {
+	size_t (*handler)(size_t *);
+	size_t irqnumber;	/* can have multiple entries for the same IRQ number */
+	size_t refnumber;		/* to distinguish between IRQs */
+	struct IRQ_HANDLER *next;
+} IRQ_HANDLER;
+
 size_t add_block_device(BLOCKDEVICE *driver);
 size_t add_char_device(CHARACTERDEVICE *device);
 size_t blockio(size_t op,size_t drive,uint64_t block,void *buf);
@@ -59,4 +65,6 @@ size_t remove_block_device(char *name);
 size_t remove_char_device(char *name);
 size_t allocatedrive(void);
 void devicemanager_init(void);
+size_t setirqhandler(size_t irqnumber,size_t refnumber,void *handler);
+void callirqhandlers(size_t irqnumber,void *stackparams);
 

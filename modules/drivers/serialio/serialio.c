@@ -146,10 +146,10 @@ if(init != NULL) {			/* args found */
 	}
 }
 
-setirqhandler(3,&com2_irq_handler);		/* set irq handler */
-setirqhandler(4,&com1_irq_handler);		/* set irq handler */
-setirqhandler(4,&com3_irq_handler);		/* set irq handler */
-setirqhandler(3,&com4_irq_handler);		/* set irq handler */
+setirqhandler(3,0,&com2_irq_handler);		/* set irq handler */
+setirqhandler(4,0,&com1_irq_handler);		/* set irq handler */
+setirqhandler(4,0,&com3_irq_handler);		/* set irq handler */
+setirqhandler(3,0,&com4_irq_handler);		/* set irq handler */
 
 /* configure ports */
 
