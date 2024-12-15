@@ -71,12 +71,13 @@ typedef struct {
 	uint32_t blocklength;
 } CAPACITY_DATA;
 
-size_t atapi_io_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
+size_t atapi_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
+size_t atapi_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
 size_t atapi_ident(size_t physdrive,ATA_IDENTIFY *buf);
 size_t xatapi_init(char *initstring);
 void atapi_wait_for_irq(size_t controller);
 size_t atapi_wait_for_controller_ready(uint16_t controller);
 void atapi_wait(uint16_t controller);
 size_t atapi_ioctl(size_t handle,unsigned long request,char *buffer);
-size_t atapi_send_packet(size_t physdrive,ATAPI_PACKET *packet);
+size_t atapi_io_internal(size_t op,size_t physdrive,uint64_t block,uint16_t *buf,size_t isdma);
 

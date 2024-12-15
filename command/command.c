@@ -194,7 +194,7 @@ char c;
 unsigned char *b;
 unsigned char *d;
 char *commandlinearguments[10][MAX_PATH];
-int argcount;
+size_t argcount;
 
 commandlineoptions=0;
 
@@ -299,17 +299,17 @@ char *temp[MAX_PATH];
 unsigned long backg;
 unsigned char *b;
 unsigned char *d;
-int savepos;
-int tc;
+size_t savepos;
+size_t tc;
 char *parsebuf[COMMAND_TOKEN_COUNT][MAX_PATH];
-int commandcount;
+size_t commandcount;
 char c;
 char firstchar;
 char lastchar;
-int drivenumber;
-int pipecount;
-int inputpipehandle;
-int outputpipehandle;
+size_t drivenumber;
+size_t pipecount;
+size_t inputpipehandle;
+size_t outputpipehandle;
 
 if(strncmp(command,"\n",MAX_PATH) == 0) return(0);	/* blank line */
 
@@ -565,7 +565,7 @@ else
 return(-1);
 }
 
-int set_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t set_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *varptr=getenv();
 char *buffer[MAX_PATH];
 char *b;
@@ -590,7 +590,7 @@ setvar(parsebuf[1],parsebuf[3]);  /* set variable */
 return(0);
 }
 
-int if_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t if_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t start;
 size_t inverse;
 size_t condition;
@@ -659,7 +659,7 @@ if(condition == TRUE) {
  * cd: set current directory
  */
 
-int cd_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t cd_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *directoryname[MAX_PATH];
 size_t drivenumber;
 
@@ -684,14 +684,14 @@ return(0);
 }
 
 
-int copy_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t copy_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t count;
 size_t runopts;
 size_t inverse;
 char *b;
 FILERECORD sourcedirentry;
 FILERECORD destdirentry;
-int findresult;
+size_t findresult;
 char c;
 char *buffer[MAX_PATH];
 
@@ -747,7 +747,7 @@ return(0);
 }
 
 
-int for_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t for_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t start;
 size_t count;
 size_t startvars;
@@ -856,9 +856,9 @@ return(0);
  *
 */
 
-int del_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t del_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t inverse;
-int runopts;
+size_t runopts;
 char c;
 
 if(tc == 1) {			/* insufficient parameters */
@@ -887,7 +887,7 @@ return(0);
 }
 
 
-int mkdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t mkdir_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* insufficient parameters */
 	kprintf("%s",noparams);
 	return(-1);
@@ -902,7 +902,7 @@ return(0);
 }
 
 
-int rmdir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t rmdir_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* insufficient parameters */
 	kprintf("%s",noparams);
 	return(-1);
@@ -918,7 +918,7 @@ return(0);
 
 
 
-int rename_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t rename_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* insufficient parameters */
 	kprintf("%s",noparams);
 	return(-1);
@@ -936,7 +936,7 @@ return(0);
  * echo: display text
  */
 
-int echo_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t echo_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t count;
 size_t isnewline=TRUE;
 size_t starttoken=1;
@@ -965,7 +965,7 @@ return(0);
  * exit: terminate command
  */
 
-int exit_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t exit_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 	if((commandlineoptions & COMMAND_PERMENANT) == 0) exit(atoi(parsebuf[1]));
 }
 
@@ -977,10 +977,10 @@ int exit_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
  */
 
 
-int type_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t type_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *readbuf;
 size_t handle;
-int findresult;
+size_t findresult;
 
 if(tc == 1) {
 	kprintf("%s\n",kstrerr(getlasterror()));
@@ -1030,7 +1030,7 @@ return(0);
  *
  */
 
-int dir_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t dir_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *b;
 char *buffer[MAX_PATH];
 size_t dircount;
@@ -1104,7 +1104,7 @@ kprintf(filesdirectories,fcount,dircount);
 return(0);
 }
 
-int ps_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t ps_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t findresult;
 PROCESS pbuf;
 PROCESS *handle;
@@ -1120,8 +1120,8 @@ do {
 return(0);
 }
 
-int kill_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-int findresult;
+size_t kill_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t findresult;
 
 if(tc == 1) {		/* missing argument */
 	kprintf("%s",noparams);
@@ -1136,7 +1136,7 @@ if(kill(atoi(parsebuf[1],10)) == -1) {
 return(0);
 }
 
-int goto_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t goto_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *buffer[MAX_PATH];
 char *bufptr;
 char *b;
@@ -1180,19 +1180,19 @@ kprintf(nolabel);
 return(-1);
 }
 
-int rem_command(int tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+size_t rem_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
+return(0);
 }
 
-int critical_error_handler(char *name,size_t drive,size_t flags,size_t error) {
+size_t critical_error_handler(char *name,size_t drive,size_t flags,size_t error) {
 char *buf[10];
 
-if((flags & 0x80000000) == 0) {			/* from disk */
-	 flags &= 0x80000000;
-	 kprintf("\n%s %s Drive %c\n",errors[error],errty[flags],drive+'A');
+if(flags & 0x80000000) {			/* from disk */
+	kprintf("%s %s Drive %c\n",errors[error],errty[flags & 0x80000000],drive+'A');
 }
 else
 {
-	 kprintf("\n%s %s %s\n",errors[error],errty[flags],name);
+	 kprintf("%s %s %s\n",errors[error],errty[flags],name);
 }
 
 while(1) {

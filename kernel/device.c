@@ -99,7 +99,7 @@ return(NO_ERROR);
 /*
  * Register character device
  *
- * In: CHARACTERKDEVICE *device		Character device to register
+ * In: device		Character device to register
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -203,27 +203,30 @@ if(next->blockio == NULL) {				/* no handler defined */
 
 for(count=0;count<next->sectorsperblock;count++) {
 
+	//if(drive == 2) {
+	//	DEBUG_PRINT_HEX(next->startblock+block);
+	//	asm("xchg %bx,%bx");
+	//}
+
 	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {
 		lasterr=getlasterror();
 
 		if((lasterr == WRITE_PROTECT_ERROR) || (lasterr == DRIVE_NOT_READY) || (lasterr == INVALID_CRC) \
 		|| (lasterr == GENERAL_FAILURE) || (lasterr == READ_FAULT) || (lasterr == WRITE_FAULT)) { 
 	
-	  		error=call_critical_error_handler(next->name,drive,(op & 0x80000000),lasterr);	/* call exception handler */
+	  		error=call_critical_error_handler(next->name,drive,(op | 0x80000000),lasterr);	/* call exception handler */
 
 	  		if(error == CRITICAL_ERROR_ABORT) {
 	   			unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 	   			exit(0);	/* abort */
 	  		}
 	  		else if(error == CRITICAL_ERROR_RETRY) {		/* RETRY */
-	   			count--;
-	   			continue;
+				continue;
 	  		}
 	  		else if((error == CRITICAL_ERROR_FAIL) || (error == -1)) {
 	   			next->flags ^= DEVICE_LOCKED;				/* unlock drive */
 
 	   			unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
-
 	   			return(-1);	/* FAIL */
 	  		}
 	 	}
@@ -620,7 +623,7 @@ void callirqhandlers(size_t irqnumber,void *stackparams) {
 IRQ_HANDLER *next=irq_handlers;
 
 while(next != NULL) {
-	if(next->irqnumber == irqnumber) next->handler(stackparams);		/* call handler */
+	if((next->irqnumber == irqnumber) && (next->handler != NULL)) next->handler(stackparams);		/* call handler */
 
 	next=next->next;
 }

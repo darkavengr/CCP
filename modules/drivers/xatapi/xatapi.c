@@ -26,11 +26,14 @@
 #include "../ata/ata.h"
 #include "atapi.h"
 #include "debug.h"
+#include "../pci/pci.h"
+#include "kernelhigh.h"
 
 #define MODULE_INIT xatapi_init
 
 size_t atapi_irq14_done=FALSE;
 size_t atapi_irq15_done=FALSE;
+prdt_struct *prdt;
 
 /*
  * Initialize ATAPI
@@ -46,6 +49,23 @@ int physdiskcount;
 ATA_IDENTIFY ident;
 BLOCKDEVICE blockdevice;
 size_t logicaldrive;
+prdt_struct *prdt_virtual;
+char *memory_alloc_err = "\natapi: Error allocating DMA buffer for ATAPI module initialization\n";
+
+prdt=dma_alloc(sizeof(prdt_struct));	/* allocate DMA buffer */
+if(prdt == NULL) {
+	kprintf_direct("%s\n",memory_alloc_err);
+	return(-1);
+}
+
+prdt_virtual=(size_t) prdt+KERNEL_HIGH;			/* get virtual address */
+
+prdt_virtual->address=dma_alloc(ATA_DMA_BUFFER_SIZE);	/* allocate dma buffer */
+
+if(prdt_virtual->address == NULL) {
+	kprintf_direct("%s\n",memory_alloc_err);
+	return(-1);
+}
 
 /* Add atapi partitions */
 
@@ -55,7 +75,7 @@ for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk *
 		logicaldrive=allocatedrive();	/* get drive number */
 
 		ksnprintf(blockdevice.name,"ATAPI%d",MAX_PATH,logicaldrive);
-		blockdevice.blockio=&atapi_io_pio;
+		blockdevice.blockio=&atapi_pio;
 		blockdevice.ioctl=&atapi_ioctl;
 		blockdevice.physicaldrive=physdiskcount;
 		blockdevice.drive=logicaldrive;
@@ -69,6 +89,7 @@ for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk *
 	}
 }
 
+
 return(0);	
 }
 
@@ -79,19 +100,57 @@ return(0);
         buf	Buffer
 	len	Number of bytes to read/write
  *
+ *
  *  Returns: 0 on success, -1 on error
  *
  */	
 
-size_t atapi_io_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
+size_t atapi_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
+return(atapi_io_internal(op,physdrive,block,buf,FALSE));
+}
+
+/*
+ * ATAPI DMA function
+ *
+ * In:  op	Operation (0=read,1=write)
+        buf	Buffer
+	len	Number of bytes to read/write
+ *
+ *
+ *  Returns: 0 on success, -1 on error
+ *
+ */	
+
+size_t atapi_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
+return(atapi_io_internal(op,physdrive,block,buf,TRUE));
+}
+
+/*
+ * ATAPI internal function
+ *
+ * In:  op	Operation (0=read,1=write)
+        buf	Buffer
+	len	Number of bytes to read/write
+ *	isdma	PIO or DMA (0=PIO, 1=DMA)
+ *
+ *  Returns: 0 on success, -1 on error
+ *
+ */	
+
+size_t atapi_io_internal(size_t op,size_t physdrive,uint64_t block,uint16_t *buf,size_t isdma) {
 uint16_t controller;
 uint8_t slavebit;
 uint16_t *bb;
+ATA_IDENTIFY ident;
+uint16_t barfour;
+prdt_struct *prdt_virtual;
 size_t count;
 ATAPI_PACKET packet;
-ATA_IDENTIFY ident;
 
-DEBUG_PRINT_HEX(buf);
+if((op != DEVICE_READ) && (op != DEVICE_WRITE)) {	/* invalid operation */
+	setlasterror(INVALID_PARAMETER);
+	return(-1);
+}
 
 if(atapi_ident(physdrive,&ident) == -1) {		/* get atapi drive information */
 	kprintf_direct("atapi: Can't get physical drive %X information\n",physdrive);
@@ -121,14 +180,20 @@ switch(physdrive) {
 		break;
 }
 
+DEBUG_PRINT_HEX(slavebit);
+
 outb(controller+ATA_DRIVE_HEAD_PORT,0xA0 | (slavebit << 4));	/* select master or slave */
 
 if(atapi_wait_for_controller_ready(controller) == -1) {	/* wait for controller */
+	kprintf_direct("atapi_debug: Read fault\n");
+
 	setlasterror(READ_FAULT);
 	return(-1);
 }
 
-outb(controller+ATA_FEATURES_PORT,0);		/* use PIO */
+DEBUG_PRINT_HEX(isdma);
+
+outb(controller+ATA_FEATURES_PORT,((uint8_t) isdma));		/* use PIO or DMA */
 		
 outb(controller+ATA_CYLINDER_LOW_PORT,(ATAPI_SECTOR_SIZE & 0xff));
 outb(controller+ATA_CYLINDER_HIGH_PORT,(ATAPI_SECTOR_SIZE >> 8));
@@ -139,6 +204,51 @@ if(atapi_wait_for_controller_ready(controller) == -1) {	/* wait for controller *
 	setlasterror(READ_FAULT);
 	return(-1);
 }
+
+if(isdma == TRUE) {			/* for DMA transfers */
+	barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
+	if(barfour == -1) {
+		kprintf_direct("atapi: Unable to get PCI configuration for BAR #4\n");
+		return(-1);
+	}
+
+	barfour &= 0xFFFFFFFC;			/* clear bottom two bits */
+
+	DEBUG_PRINT_HEX(barfour);
+
+	/* create prdt */
+
+	kprintf_direct("atapi_debug: setup PRDT\n");
+
+	prdt_virtual=(size_t) prdt+KERNEL_HIGH;			/* get virtual address */
+
+	/* address was initialized on module init */
+	prdt_virtual->last=0x8000;
+	prdt_virtual->size=ATAPI_SECTOR_SIZE;
+
+	/* send information to ata barfour */
+
+	if((physdrive == 0x80) || (physdrive == 0x81)) {			/* primary controller */
+		atapi_irq14_done=FALSE;
+	
+		kprintf_direct("Primary ATAPI PRDT\n");
+
+		outb(barfour+PRDT_STATUS_PRIMARY,4);
+		outd(barfour+PRDT_ADDRESS_PRIMARY,(uint32_t) prdt); 	/* PRDT physical address */
+		outb(barfour+PRDT_COMMAND_PRIMARY,8 | 1); 			/* read/write */
+	}
+	else if((physdrive == 0x82) || (physdrive == 0x83)) {			/* secondary controller */
+		atapi_irq15_done=FALSE;
+
+		kprintf_direct("Secondary ATAPI PRDT\n");
+
+		outb(barfour+PRDT_STATUS_SECONDARY,4);
+		outb(barfour+PRDT_COMMAND_SECONDARY,8 | 1); 		/* read/write */
+		outd(barfour+PRDT_ADDRESS_PRIMARY,(uint32_t) prdt); 	/* PRDT address */
+	}
+}
+
+kprintf_direct("tessssssssssssssst\n");
 
 /* send packet */
 
@@ -162,7 +272,20 @@ while(count < (sizeof(ATAPI_PACKET)/2)-2) {
 }
 
 atapi_clear_irq_flag(controller);		/* clear IRQ flag */
-atapi_wait_for_irq(controller);		/* wait for IRQ even though it's a PIO command. An IRQ will be received */
+atapi_wait_for_irq(controller);		/* wait for IRQ even though it may be PIO or DMA. An IRQ will be received */
+
+if(isdma == TRUE) {			/* for DMA transfers */
+	kprintf_direct("dma buf=%X\n",prdt_virtual->address+KERNEL_HIGH);	
+	kprintf_direct("buf=%X\n",buf);
+
+	memcpy(buf,prdt_virtual->address+KERNEL_HIGH,prdt_virtual->size);
+	asm("xchg %bx,%bx");
+
+	setlasterror(NO_ERROR);
+	return(0);
+}
+
+/* for PIO transfers read data from ATA data port */
 
 count=((inb(controller+ATA_CYLINDER_HIGH_PORT) << 8) | inb(controller+ATA_CYLINDER_LOW_PORT))/2;	/* number of words to read */
 

@@ -23,15 +23,9 @@
 #include "process.h"
 
 size_t multitaskingenabled=FALSE;
+size_t timer_count=0;
 
-void disablemultitasking(void);
-void enablemultitasking(void);
-void init_multitasking(void);
-PROCESS *find_next_process_to_switch_to(void);
-size_t is_multitasking_enabled(void);
-size_t is_process_ready_to_switch(void);
-
-extern *switch_task();
+extern void switch_task(void *regs);
 
 /*
  * Disable multitasking
@@ -74,6 +68,7 @@ multitaskingenabled=FALSE;
 setirqhandler(0,'SCHD',switch_task);		/* Register timer */
 
 multitaskingenabled=TRUE;
+timer_count=0;
 return;
 }
 
@@ -133,5 +128,30 @@ if(get_current_process_pointer() == NULL) return(FALSE);
 if(increment_tick_count() < get_max_tick_count()) return(FALSE);
 
 return(TRUE);
+}
+
+/*
+ * Increment timer count
+ *
+ * In: nothing
+ *
+ * Returns: noting
+ * 
+ */
+void timer_increment(void) {
+timer_count++;
+return;
+}
+
+/*
+ * Get timer count
+ *
+ * In: nothing
+ *
+ * Returns: Timer count
+ * 
+ */
+size_t get_timer_count(void) {
+return(timer_count);
 }
 

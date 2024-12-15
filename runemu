@@ -3,7 +3,7 @@
 make 2>out
 
 if [ $? == 0 ]; then
-	sudo ./installccp i386
+	sudo ./installccp-floppy i386
 	bochs -q &
 else
 	grep -i "error:" out

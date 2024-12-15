@@ -131,6 +131,7 @@ pop	es
 pop	ds
 
 popa						; restore registers
+
 iret						; return
 
 irqnumber dd 0

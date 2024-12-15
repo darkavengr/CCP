@@ -31,7 +31,7 @@
 	char *buf		Buffer
         int size		Buffer size
  *
- * Returns nothing
+ * Returns buffer size
  */
 
 unsigned long readline(unsigned long handle,char *buf,int size) {
@@ -46,9 +46,6 @@ while(1) {
 		return(-1);
 	}
 
-
-	if(count++ >= size) return;
-
 	if(*bufptr == 0x8) {			/* if backspace, erase character */
 		*bufptr=0;
 		*--bufptr=0;
@@ -56,13 +53,16 @@ while(1) {
 	}
 
 	if(*bufptr == '\n') {			/* if newline, return */
-		*bufptr=0;
+		*++bufptr=0;
 		break;
 	}
 
 	bufptr++;
+
+
+	if(count++ >= size) return(size);
 }
 
-return(NO_ERROR);
+return(size);
 }
 

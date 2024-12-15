@@ -26,13 +26,11 @@
 #include "../pci/pci.h"
 #include "debug.h"
 
-#define ATA_DEBUG 1
+//#define ATA_DEBUG 1
 
 #define MODULE_INIT ata_init
 
 prdt_struct *prdt;
-
-char *hddmastruct;
 size_t ata_irq14done=FALSE;
 size_t ata_irq15done=FALSE;
 
@@ -48,7 +46,6 @@ size_t ata_init(char *initstring) {
 ATA_IDENTIFY ident;
 size_t physdiskcount;
 prdt_struct *prdt_virtual;
-
 char *memory_alloc_err = "\nata: Error allocating memory for ATA module initialization\n";
 
 prdt=dma_alloc(sizeof(prdt_struct));	/* allocate DMA buffer */
@@ -73,7 +70,7 @@ for(physdiskcount=0x80;physdiskcount < 0x82;physdiskcount++) {  /* for each disk
 
 	 if(ata_ident(physdiskcount,&ident) == 0) {	/* get ATA information */
 
-	 	if(partitions_init(physdiskcount,&ata_io_pio) == -1) {	/* initalize partitions */
+	 	if(partitions_init(physdiskcount,&ata_pio) == -1) {	/* initalize partitions */
 	 		kprintf_direct("ata: Unable to intialize partitions for physical drive %X: %s\n",physdiskcount,kstrerr(getlasterror()));
 	 		continue;
 	  	}
@@ -98,7 +95,7 @@ return(0);
  *  Returns: 0 on success, -1 on error
  *
  */	
-size_t ata_io_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
+size_t ata_pio(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
 size_t count;
 size_t cylinder;
 size_t b;
@@ -112,6 +109,11 @@ uint32_t lowblock;
 ATA_IDENTIFY ident;
 uint16_t *bb;
 uint8_t atastatus;
+
+if((op != DEVICE_READ) && (op != DEVICE_WRITE)) {	/* invalid operation */
+	setlasterror(INVALID_PARAMETER);
+	return(-1);
+}
 
 highblock=((uint64_t) block >> 32);			/* get high block */
 lowblock=((uint64_t) block & 0x000000000ffffffff);	/* get low block */
@@ -139,8 +141,8 @@ if(ata_ident(physdrive,&ident) == -1) return(-1);	/* get information */
 
 islba=0;
 
-if(ident.lba28_size != 0) islba=28;	/* is 28bit lba */
 if(ident.commands_and_feature_sets_supported2 & 1024) islba=48; /* is 48bit lba */
+if(ident.lba28_size != 0) islba=28;	/* is 28bit lba */
 
 if(islba == 28) {						/* use lba28 */
 	if(block > ident.lba28_size) {			/* invalid block number */
@@ -261,7 +263,7 @@ return(NO_ERROR);
 
 /* Cylinder/head/sector routine is seperated for use in ata_init */
 
-size_t ata_io_chs (size_t op,size_t physdrive,size_t blocksize,size_t head,size_t cylinder,size_t sector,uint16_t *buf) {
+size_t ata_chs (size_t op,size_t physdrive,size_t blocksize,size_t head,size_t cylinder,size_t sector,uint16_t *buf) {
 size_t controller;
 size_t count;
 uint16_t *bb;
@@ -287,7 +289,7 @@ switch(physdrive) {
 	}
 
 
-if(ata_ident(physdrive,&result) == -1) return(-1);	/* bad drive */
+if(ata_ident(physdrive,&result) == -1) return(-1);	/* invalid ATA drive */
 
 switch(physdrive) {						/* master or slave */
 	case 0x80:							/* master */
@@ -341,8 +343,8 @@ count=0;
 bb=buf;
 
 while(count++ < 512/2) {
-	 if(op == DEVICE_READ)  *bb++=inw(controller+ATA_DATA_PORT);			/* read data from harddisk */
-	 if(op == DEVICE_WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data to harddisk */
+	 if(op == DEVICE_READ)  *bb++=inw(controller+ATA_DATA_PORT);			/* read data from hard disk */
+	 if(op == DEVICE_WRITE) outw(controller+ATA_DATA_PORT,*bb++);			/* write data to hard disk */
 }
 
 outb(controller+ATA_COMMAND_PORT,FLUSH);						/* flush buffer */
@@ -432,7 +434,7 @@ return(-1);
  *  Returns: 0 on success, -1 on error
  *
  */	
-size_t ata_io_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
+size_t ata_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf) {
 ATA_IDENTIFY ident;
 size_t count;
 BLOCKDEVICE blockdevice;
@@ -461,8 +463,6 @@ highblock=((uint64_t) block >> 32);			/* get high block */
 lowblock=((uint64_t) block & 0x000000000ffffffff);	/* get low block */
 
 barfour &= 0xFFFFFFFC;			/* clear bottom two bits */
-
-DEBUG_PRINT_HEX(barfour);
 
 /* create prdt */
 
@@ -646,7 +646,6 @@ kprintf_direct("dma buf=%X\n",prdt_virtual->address+KERNEL_HIGH);
 kprintf_direct("buf=%X\n",buf);
 
 memcpy(buf,prdt_virtual->address+KERNEL_HIGH,prdt_virtual->size);
-asm("xchg %bx,%bx");
 
 return(NO_ERROR);
 }

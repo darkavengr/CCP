@@ -17,22 +17,22 @@
     along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-char *errty[] = { "reading","writing" };
-char *nolabel = { "Missing label\n" };
-char *syntaxerror = { "Syntax error\n" };
-char *noparams = { "No parameters\n" };
-char *notbatchmode = { "Not in batch mode\n" };
-char *missingleftbracket = { "Missing (\n" };
-char *missingrightbracket = { "Missing )\n" };
-char *allfilesdeleted = { "All files will be deleted!\n" };
-char *badcommand = { "Bad command or filename\n" };
-char *overwrite = { "Overwrite %s (Y/N)?" };
-char *filescopied = { "%d File(s) copied\n" };
-char *directoryof = { "Directory of %s\n\n" };
-char *filesdirectories = { "%d files(s) %d directories\n" };
-char *pidheader = { "PID   Parent     Filename        Arguments\n" };
-char *abortretryfail = { "\nAbort, Retry, Fail?" };
-char *commandbanner = { "Command version %d.%d\n" };
-char *areyousure = { "Are you sure (Y/N)?" };
-char *terminatebatchjob = { "\nTerminate batch job (Y/N)?" };
+char *errty[]= { "reading","writing" };
+char *nolabel="Missing label\n";
+char *syntaxerror="Syntax error\n";
+char *noparams="No parameters\n";
+char *notbatchmode="Not in batch mode\n";
+char *missingleftbracket="Missing (\n";
+char *missingrightbracket="Missing )\n";
+char *allfilesdeleted="All files will be deleted!\n";
+char *badcommand="Bad command or filename\n";
+char *overwrite="Overwrite %s (Y/N)?";
+char *filescopied="%d File(s) copied\n";
+char *directoryof="Directory of %s\n\n";
+char *filesdirectories="%d files(s) %d directories\n";
+char *pidheader="PID   Parent     Filename        Arguments\n";
+char *abortretryfail="\nAbort, Retry, Fail?";
+char *commandbanner="Command version %d.%d\n";
+char *areyousure="Are you sure (Y/N)?";
+char *terminatebatchjob="\nTerminate batch job (Y/N)?";
 

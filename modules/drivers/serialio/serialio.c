@@ -200,6 +200,11 @@ size_t comportrcount;
 size_t whichport;
 char c;
 
+if((op != DEVICE_READ) && (op != DEVICE_WRITE)) {	/* invalid operation */
+	setlasterror(INVALID_PARAMETER);
+	return(-1);
+}
+
 if(op == DEVICE_WRITE) {				/* write com port */
 	while((inb(port+5) & 0x20) == 0) ;;		/* not ready */
 

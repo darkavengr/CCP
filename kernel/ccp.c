@@ -46,6 +46,13 @@ void halt(void);
 void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
+//char *buf[512];
+
+//DEBUG_PRINT_HEX(buf);
+//asm("xchg %bx,%bx");
+
+//atapi_dma(DEVICE_READ,0x81,(uint64_t) 0,buf);
+//asm("xchg %bx,%bx");
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);

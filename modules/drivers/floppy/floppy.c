@@ -38,7 +38,7 @@ uint8_t st0;
 uint8_t cyl;
 uint8_t st[7];
 
-//#define FLOPPY_DEBUG
+//#define FLOPPY_DEBUG	1
 
 struct {
 	uint8_t steprate_headunload;
@@ -134,7 +134,7 @@ for(count=0;count<floppycount;count++) {
 	}
 }
 
-setirqhandler(6,0,&irq6_handler);		/* set irq handler */
+setirqhandler(6,'FLOP',&irq6_handler);		/* set irq handler */
 }
 
 /*
@@ -377,10 +377,10 @@ if(op == DEVICE_WRITE) {
 	memcpy((char *) floppybuf+KERNEL_HIGH,buf,blocksize); 		/* copy to from sector buffer to buffer */
 }
 
-/* taken from http://wiki.osdev.org/ISA_DMA#Floppy_Disk_DMA_Initialization
-	  initialize floppy DMA */
 
 for(retrycount=0;retrycount < FLOPPY_RETRY_COUNT;retrycount++) {
+	irq6done=FALSE;
+
 	#ifdef FLOPPY_DEBUG
 	 kprintf_direct("floppy debug: Sector I/O: Enable DMA\n"); 
 	#endif
@@ -399,8 +399,6 @@ for(retrycount=0;retrycount < FLOPPY_RETRY_COUNT;retrycount++) {
 	
 	//delay_loop((size_t) floppy_parameters->head_settle_time);			/* wait for floppy head to settle */
 
-	irq6done=FALSE; 	
-
 	outb(0x0a,0x06);					/* mask DMA channel 2 and 0 (assuming 0 is already masked) */
 	if(op == DEVICE_READ) outb(0x0b,0x56);		     /* 01011010 single transfer, address increment, autoinit, read, channel 2 */
 	if(op == DEVICE_WRITE) outb(0x0b,0x5A);		     /* 01010110 single transfer, address increment, autoinit, write, channel 2 */
@@ -410,6 +408,8 @@ for(retrycount=0;retrycount < FLOPPY_RETRY_COUNT;retrycount++) {
 #ifdef FLOPPY_DEBUG
 	kprintf_direct("floppy debug: Sector I/O: Send command for I/O\n"); 
 #endif
+
+//	kwait(floppy_parameters->head_settle_time);		/* wait for drive */
 
 	irq6done=FALSE;
 
@@ -452,9 +452,8 @@ floppy_motor_off(drive);
 kprintf_direct("floppy debug: Sector I/O: Copy from buffer for read\n"); 
 #endif
 
-
 if(op == DEVICE_READ) {
-	memcpy((void *) buf,(char *) floppybuf+KERNEL_HIGH,blocksize); 		/* copy to from sector buffer to buffer */
+	memcpy((void *) buf,(char *) floppybuf+KERNEL_HIGH,blocksize); 		/* copy from sector buffer to buffer */
 
 	#ifdef FLOPPY_DEBUG
 		kprintf_direct("floppy debug: Sector I/O: copied ok\n");
@@ -492,6 +491,11 @@ char *b;
 uint8_t floppytype;
 b=buf;
 size_t rv;
+
+if((op != DEVICE_READ) && (op != DEVICE_WRITE)) {	/* invalid operation */
+	setlasterror(INVALID_PARAMETER);
+	return(-1);
+}
 
 getblockdevice(drive,&blockdevice);
 
@@ -670,9 +674,6 @@ if((st[1] & 0x80) || (st[1] & 0x20) || (st[1] & 0x10) || (st[1] & 0x10) || (st[1
 #ifdef FLOPPY_DEBUG
 	if(st[1] & 0x80) {
 		kprintf_direct("floppy: End of cylinder\n");
-
-		kprintf_direct("DMA buffer=%X\n",floppybuf+KERNEL_HIGH);		
-		asm("xchg %bx,%bx");
 	}
 	else if(st[1] & 0x20) {
 		kprintf_direct("floppy: CRC error\n");
@@ -687,6 +688,9 @@ if((st[1] & 0x80) || (st[1] & 0x20) || (st[1] & 0x10) || (st[1] & 0x10) || (st[1
 		kprintf_direct("floppy: No address mark found\n");
 	}
 #endif
+
+	kprintf_direct("DMA buffer=%X\n",floppybuf+KERNEL_HIGH);		
+	asm("xchg %bx,%bx");
 
 	setlasterror(GENERAL_FAILURE);
 	return(-1);
@@ -714,6 +718,10 @@ if((st[2] & 0x40) || (st[2] & 0x20) || (st[2] & 0x10) || (st[2] & 0x4) || (st[2]
 	}
 #endif
 
+
+	kprintf_direct("DMA buffer=%X\n",floppybuf+KERNEL_HIGH);		
+	asm("xchg %bx,%bx");	
+
 	setlasterror(GENERAL_FAILURE);
 	return(-1);
 }
@@ -722,6 +730,10 @@ if((st[2] & 0x2)) {
 #ifdef FLOPPY_DEBUG
 	kprintf_direct("floppy: Write protect error\n");
 #endif
+
+
+	kprintf_direct("DMA buffer=%X\n",floppybuf+KERNEL_HIGH);		
+	asm("xchg %bx,%bx");
 
 	setlasterror(WRITE_PROTECT_ERROR);
 	return(-1);

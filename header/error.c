@@ -44,7 +44,7 @@ char *errors[] = {
 "End of directory",\
 "Write-protect error",\
 "Invalid device",\
-"Drive not ready",\
+"Not ready",\
 "Module function not implemented",\
 "CRC error",\
 "Invalid executable",\

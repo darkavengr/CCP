@@ -39,6 +39,7 @@ extern get_current_process_pointer
 extern get_processes_pointer
 extern enablemultitasking
 extern disablemultitasking
+extern timer_increment
 
 %define offset
 
@@ -136,6 +137,8 @@ iret						; jump to cs:eip and restore interrupts
 switch_task:
 mov	eax,[esp+4]				; get pointer to registers
 mov	[save_esp],eax
+
+call	timer_increment
 
 push	dword [save_esp]			; save current task's stack pointer
 call	save_kernel_stack_pointer

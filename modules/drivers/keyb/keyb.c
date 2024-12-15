@@ -183,19 +183,19 @@ switch(keycode) {								/* control characters */
 	case LEFT_SHIFT:
 		keyboardflags |= SHIFT_PRESSED;
 
-		if((readcount-1) > 0) readcount--;	/* decrement readcount because shift shouldn't count this as a character on it's own */
+		if((readcount-1) >= 0) readcount--;	/* decrement readcount because shift shouldn't count this as a character on it's own */
 		return;
 	
 	case RIGHT_SHIFT:
 		keyboardflags |= SHIFT_PRESSED;
 
-	 	if((readcount-1) > 0) readcount--;
+	 	if((readcount-1) >= 0) readcount--;
 	 	return;
 
 	case KEY_ALT:
 		keyboardflags |= ALT_PRESSED;
 	
-		if((readcount-1) > 0) readcount--;
+		if((readcount-1) >= 0) readcount--;
 		return;
 
 	case KEY_BACK:
@@ -216,7 +216,7 @@ switch(keycode) {								/* control characters */
 		outb(KEYBOARD_DATA_PORT,SET_KEYBOARD_LEDS);		/* set keyboard LEDs */
 		outb(KEYBOARD_DATA_PORT,keyboardledflags);
 
-		if((readcount-1) > 0) readcount--;
+		if((readcount-1) >= 0) readcount--;
 	 	return;
 
 	case KEY_NUMLOCK:
@@ -233,7 +233,7 @@ switch(keycode) {								/* control characters */
 		outb(KEYBOARD_DATA_PORT,SET_KEYBOARD_LEDS);		/* set keyboard LEDs */
 		outb(KEYBOARD_DATA_PORT,keyboardledflags);
 
-		if((readcount-1) > 0) readcount--;
+		if((readcount-1) >= 0) readcount--;
 	 	return;
 
 	case KEY_CAPSLOCK:
@@ -250,7 +250,7 @@ switch(keycode) {								/* control characters */
 		outb(KEYBOARD_DATA_PORT,SET_KEYBOARD_LEDS);		/* set keyboard LEDs */
 		outb(KEYBOARD_DATA_PORT,keyboardledflags);
 
-		if((readcount-1) > 0) readcount--;
+		if((readcount-1) >= 0) readcount--;
 	 	return;
 
 	case KEY_CTRL:					/* ctrl characters and ctrl alt del */
@@ -258,7 +258,7 @@ switch(keycode) {								/* control characters */
 
 		keyboardflags |= CTRL_PRESSED;
 
-		if((readcount-1) > 0) readcount--;				/* see above comment about ignoring keys */
+		if((readcount-1) >= 0) readcount--;				/* see above comment about ignoring keys */
 		return;
 }
 
