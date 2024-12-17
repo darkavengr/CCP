@@ -213,7 +213,7 @@ FILESYSTEM fs;
 FILERECORD filerecord;
 size_t retval;
 BLOCKDEVICE bd;
-uint8_t magic[] = { 'u','s','t','a','r',' ',' ' };
+MAGIC magicdata[] = { { "ustar  ",7,257 } };
 BOOT_INFO *boot_info=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
 if(boot_info->initrd_size == 0) {	/* no initrd */
@@ -237,10 +237,10 @@ memset(&fs,0,sizeof(FILESYSTEM));
 /* register filesystem driver */
 strncpy(fs.name,"INITRDFS",MAX_PATH);	/* name */
 
-memcpy(fs.magicnumber,magic,INITRD_MAGIC_SIZE);
-fs.size=INITRD_MAGIC_SIZE;
-fs.location=257;
-fs.findfirst=&initrd_findfirst;
+memcpy(&fs.magicbytes,&magicdata,2*sizeof(MAGIC));	/* copy magic number data */
+
+fs.magic_count=1;		/* number of magic number entries */
+fs.findfirst=&initrd_findfirst;	/* add handlers */
 fs.findnext=&initrd_findnext;
 fs.read=&initrd_read;
 fs.write=NULL;			/* not used */

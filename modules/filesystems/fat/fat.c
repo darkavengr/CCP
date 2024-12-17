@@ -43,11 +43,13 @@ size_t b;
  */
 size_t fat_init(char *initstr) {
 FILESYSTEM fatfilesystem;
+MAGIC magicdata[] = { { "FAT",3,0x36 }, { "FAT32",5,0x52 } };
+size_t count;
+
+memcpy(&fatfilesystem.magicbytes,&magicdata,2*sizeof(MAGIC));
 
 strncpy(fatfilesystem.name,"FAT",MAX_PATH);
-strncpy(fatfilesystem.magicnumber,"FAT",MAX_PATH);
-fatfilesystem.size=3;
-fatfilesystem.location=0x36;
+fatfilesystem.magic_count=2;
 fatfilesystem.findfirst=&fat_findfirst;
 fatfilesystem.findnext=&fat_findnext;
 fatfilesystem.read=&fat_read;
@@ -59,6 +61,7 @@ fatfilesystem.rmdir=&fat_rmdir;
 fatfilesystem.create=&fat_create;
 fatfilesystem.chmod=&fat_chmod;
 fatfilesystem.touch=&fat_set_file_time_date;
+
 
 return(register_filesystem(&fatfilesystem));
 }

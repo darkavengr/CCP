@@ -327,19 +327,6 @@ call	init_multitasking
 call	driver_init				; initialize built-in modules
 call	initrd_init
 
-;extern ata_io_dma
-
-;mov	eax,esp
-;sub	eax,1024
-
-;push	eax			; buffer
-;push	dword 0			; block number
-;push	dword 0
-;push	dword 0x80		; physical drive number
-;push	dword 0			; read
-;call	ata_io_dma
-;xchg	bx,bx
-
 call	get_initial_kernel_stack_top
 add	eax,KERNEL_HIGH
 mov	esp,eax					; temporary stack

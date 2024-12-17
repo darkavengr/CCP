@@ -973,7 +973,8 @@ if(last->next == NULL) {
 next=last->next;
 }
 
-memcpy(next,newfs,sizeof(FILESYSTEM));
+memcpy(next,newfs,sizeof(FILESYSTEM));			/* copy filesystem data */
+
 next->next=NULL;
 
 unlock_mutex(&vfs_mutex);
@@ -995,12 +996,14 @@ return(0);
 size_t detect_filesystem(size_t drive,FILESYSTEM *buf) {
 void *blockbuf;
 FILESYSTEM *next;
-void *b=NULL;
+void *blockptr;
+size_t count;
 
 lock_mutex(&vfs_mutex);
 
 blockbuf=kernelalloc(VFS_MAX);
 if(blockbuf == NULL) return(-1);
+
 
 if(blockio(0,drive,(uint64_t) 0,blockbuf) == -1) return(-1);		/* read block */
 
@@ -1009,19 +1012,19 @@ if(blockio(0,drive,(uint64_t) 0,blockbuf) == -1) return(-1);		/* read block */
 next=filesystems;
 
 while(next != NULL) {
-	b=blockbuf;
-	b += next->location;
+	for(count=0;count<next->magic_count;count++) {
+		blockptr=blockbuf;			/* point to magic data location in superblock */
+		blockptr += next->magicbytes[count].location;
 
-	if(memcmp(b,next->magicnumber,next->size) == 0) {	/* if magic number matches */
-		memcpy(buf,next,sizeof(FILESYSTEM));
+		if(memcmp(blockptr,&next->magicbytes[count].magicnumber,next->magicbytes[count].size) == 0) {	/* if magic number matches */
+			memcpy(buf,next,sizeof(FILESYSTEM));
 
-		kernelfree(blockbuf);
+			kernelfree(blockbuf);
+			unlock_mutex(&vfs_mutex);
 
-		unlock_mutex(&vfs_mutex);
-
-		setlasterror(NO_ERROR);
-
-		return(NO_ERROR);
+			setlasterror(NO_ERROR);
+			return(0);
+		}
 	}
 
 	next=next->next;

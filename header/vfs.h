@@ -25,7 +25,7 @@
 #define O_RDWR 			O_RDONLY | O_WRONLY
 
 #define MAX_PATH		255
-#define VFS_MAX 		1024
+#define VFS_MAX 		10
 
 #define stdin			0
 #define stdout			1
@@ -37,12 +37,14 @@
 #define SEEK_CUR	1	/* Seek from current position */
 #define SEEK_END	2	/* Seek from end of file */
 
-
+typedef struct {
+	uint8_t magicnumber[MAX_PATH];
+	size_t size;
+	size_t location;
+} MAGIC;
+	
 typedef struct {
 	uint8_t name[MAX_PATH];
-	uint8_t magicnumber[MAX_PATH];
-	uint64_t size;
-	uint64_t location;
 	size_t (*findfirst)(char *name,void *);	/* handlers */
 	size_t (*findnext)(char *name,void *);
 	size_t (*read)(size_t,void *,size_t);
@@ -56,6 +58,8 @@ typedef struct {
 	size_t (*touch)(char *,size_t,size_t,size_t);
 	size_t (*getstartblock)(char *);
 	struct FILESYSTEM *next;
+	size_t magic_count;
+	MAGIC magicbytes[VFS_MAX];
 } FILESYSTEM;
 
 typedef struct {

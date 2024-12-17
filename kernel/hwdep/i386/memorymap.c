@@ -14,6 +14,7 @@ size_t *bufptr;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
 size_t memory_buffer_size;
 
+
 memory_size=(memory_size & ((0-1)-(PAGE_SIZE-1)));	/* round down memory size to last PAGE_SIZE */
 
 /* clear memory map area before filling it */
@@ -54,7 +55,7 @@ for(count=0;count<(memory_buffer_size/PAGE_SIZE)*sizeof(size_t);count++) {
 }
 
 /* map initial RAM disk	*/
-bufptr=memory_map_address+(bootinfo->initrd_start)*sizeof(size_t);
+bufptr=memory_map_address+(bootinfo->initrd_start/PAGE_SIZE)*sizeof(size_t);
 
 for(count=0;count<(bootinfo->initrd_size/PAGE_SIZE);count++) {
 	*bufptr++=SYSTEM_USE;

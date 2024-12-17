@@ -72,6 +72,7 @@ BLOCKDEVICE fdstruct;
 size_t floppycount=0;
 uint8_t ftype;
 size_t count;				 
+uint8_t floppy_type;
 
 floppybuf=dma_alloc(512);					/* allocate dma buffer */
 if(floppybuf == NULL) {					/* can't alloc */
@@ -95,21 +96,18 @@ if(ftype == 0) {				/* no floppy drives */
 if((ftype >> 4) != 0) floppycount++;		/* number of floppy drives */
 if((ftype & 0x0f) != 0) floppycount++;
 
-outb(0x70,0x10);					/* check floppy disk presence */
-ftype=inb(0x71);
-
 for(count=0;count<floppycount;count++) {
 	if(count == 0) {
-		ftype=ftype >> 4;
+		floppy_type=ftype >> 4;
 	}
 	else
 	{
-		ftype=ftype & 0x0f;
+		floppy_type=ftype & 0x0f;
 	}
 
-	fdstruct.sectorspertrack=fdparams[ftype].sectorspertrack;
-	fdstruct.numberofheads=fdparams[ftype].numberofheads;
-	fdstruct.numberofsectors=fdparams[ftype].numberofsectors;
+	fdstruct.sectorspertrack=fdparams[floppy_type].sectorspertrack;
+	fdstruct.numberofheads=fdparams[floppy_type].numberofheads;
+	fdstruct.numberofsectors=fdparams[floppy_type].numberofsectors;
  	fdstruct.ioctl=NULL;
  	fdstruct.blockio=&floppy_io;
 	fdstruct.flags=0;
