@@ -62,7 +62,6 @@ fatfilesystem.create=&fat_create;
 fatfilesystem.chmod=&fat_chmod;
 fatfilesystem.touch=&fat_set_file_time_date;
 
-
 return(register_filesystem(&fatfilesystem));
 }
 
@@ -116,6 +115,7 @@ char *blockptr;
 SPLITBUF *splitbuf;
 FILERECORD *lfnbuf;
 BPB *bpb;
+size_t findblock;
 
 lfnbuf=kernelalloc(sizeof(FILERECORD));	/* allocate split buffer */
 if(lfnbuf == NULL) return(-1);
@@ -133,7 +133,11 @@ if(find_type == FALSE) {
 	splitname(fp,splitbuf);				/* split filename */
 
 	buf->findentry=0;
-	buf->findlastblock=fat_get_start_block(splitbuf->dirname);
+	buf->findlastblock=fat_get_start_block(splitbuf->drive,splitbuf->dirname); /* get start block of directory file is in */
+
+	//if((splitbuf->drive == 2) && (find_type == TRUE)) DEBUG_PRINT_HEX(buf->findlastblock);
+	//if(splitbuf->drive == 2) DEBUG_PRINT_HEX(buf->findlastblock);
+
 	if(buf->findlastblock == -1) {
 		kernelfree(splitbuf);
 		kernelfree(lfnbuf);
@@ -145,10 +149,9 @@ if(find_type == FALSE) {
 else
 {
 	splitname(buf->searchfilename,splitbuf);	/* split filename */
-
 }
 
-if(strlen(splitbuf->filename) == 0) strncpy(splitbuf->filename,"*",MAX_PATH);
+if(strlen(splitbuf->filename) == 0) strncpy(splitbuf->filename,"*",MAX_PATH);	/* if no filename, search for all files */
 
 fattype=fat_detect_change(splitbuf->drive);
 if(fattype == -1) {
@@ -163,27 +166,7 @@ if(getblockdevice(splitbuf->drive,&blockdevice) == -1) {
 	return(-1);
 } 
 
-bpb=blockdevice.superblock;
-
-if(strncmp(splitbuf->dirname,"\\",MAX_PATH) != 0) { /* not root */
-	if(fattype == 12 || fattype == 16) {
-		rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
-		start_of_data_area=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
-	}
-	else
-	{
-		start_of_data_area=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
-	}
-	
-}
-else
-{
-	start_of_data_area=0;
-}
-
-	
-
-bpb=blockdevice.superblock;				/* point to superblock data*/
+bpb=blockdevice.superblock;				/* point to superblock data */
 
 blockbuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);			/* allocate block buffer */ 
 if(blockbuf == NULL) {
@@ -193,31 +176,34 @@ if(blockbuf == NULL) {
 }
 
 /*
- * If it's the root directory, it is located at a fixed position for fat12 and fat16.
+ * The FAT12 and FAT16 root directory is at a fixed block number
    All other directories are located in the data area. */
 
-if(strncmp(splitbuf->dirname,"\\",MAX_PATH) != 0) {		 /* not root */
-	if(fattype == 12 || fattype == 16) {
+if(fattype == 12 || fattype == 16) {
+	if(strncmp(splitbuf->dirname,"\\",MAX_PATH) != 0) {		 /* not root */
 		rootdir=((bpb->rootdirentries*FAT_ENTRY_SIZE)+(bpb->sectorsperblock-1))/bpb->sectorsize;
 		start_of_data_area=rootdir+(bpb->reservedsectors+(bpb->numberoffats*bpb->sectorsperfat))-2; /* get start of data area */
 	}
 	else
 	{
-		start_of_data_area=bpb->fat32rootdirstart+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat))-2;
+		start_of_data_area=0;	/* the root directory doesn't need the start of data area added to it */
 	}
-	
+
+	findblock=buf->findlastblock;
 }
-else
-{
-	start_of_data_area=0;
+else		
+{		/* FAT332 root directory is in the data area */
+	start_of_data_area=(bpb->fat32rootdirstart-2)+(bpb->reservedsectors+(bpb->numberoffats*bpb->fat32sectorsperfat));
+
+	findblock=buf->findlastblock-2;		 /* also in data area */
 }
 
-/* search thorough directory until filename found */
+/* search through directory until filename found */
 
 while(1) {
 	blockptr=blockbuf+(buf->findentry*FAT_ENTRY_SIZE);	/* point to next file */
 
-	if(blockio(DEVICE_READ,splitbuf->drive,(uint64_t) buf->findlastblock+start_of_data_area,blockbuf) == -1) { /* read directory block */
+	if(blockio(DEVICE_READ,splitbuf->drive,(uint64_t) findblock+start_of_data_area,blockbuf) == -1) { /* read directory block */
 		kernelfree(blockbuf);
 		kernelfree(lfnbuf);
 		kernelfree(splitbuf);
@@ -244,12 +230,12 @@ while(1) {
 		}
 
 		fat_entry_to_filename(dirent.filename,file);			/* convert filename */
-	
-		if(dirent.attribs == 0x0f) {			/* long filename */
-			lfncount=fat_read_long_filename(splitbuf->drive,buf->findlastblock,buf->findentry-1,lfnbuf);
-	
-			blockptr += (lfncount*FAT_ENTRY_SIZE);	
 
+		if(dirent.attribs == 0x0f) {			/* long filename */
+			lfncount=fat_read_long_filename(splitbuf->drive,start_of_data_area+findblock,buf->findentry-1,lfnbuf);
+
+			blockptr += (lfncount*FAT_ENTRY_SIZE);	
+			
 			if(wildcard(splitbuf->filename,lfnbuf->filename) == 0) { 	/* if file found */      	
 				strncpy(buf->filename,lfnbuf->filename,MAX_PATH); 	/* copy file information from long filename data returned */
 				buf->attribs=lfnbuf->attribs;
@@ -282,8 +268,8 @@ while(1) {
 				buf->currentblock=buf->startblock;
 
 				buf->drive=splitbuf->drive;
-				buf->dirent=buf->findentry-1;
-				buf->findentry=buf->dirent;
+				buf->findentry += lfncount;
+				buf->dirent=(buf->findentry+lfncount+1);
 				buf->access=0;
 				buf->currentpos=0;
 
@@ -306,9 +292,9 @@ while(1) {
 
 		}
 		else
-		{	
-			//kprintf_direct("%s %s\n",splitbuf->filename,file);
-	
+		{
+		//	kprintf_direct("%s %s\n",splitbuf->filename,file);
+
 			if(wildcard(splitbuf->filename,file) == 0) { 				/* if file found */     
 				memset(buf->filename,0,MAX_PATH);
 
@@ -369,7 +355,18 @@ while(1) {
 		buf->findlastblock=fat_get_next_block(splitbuf->drive,buf->findlastblock);	/* get next block */		
 		buf->findentry=0;
 
-		if((fattype == 12 && buf->findlastblock >= 0xff8) || (fattype == 16 && buf->findlastblock >= 0xfff8) || (fattype == 32 && buf->findlastblock >= 0xfffffff8)) {
+	//	DEBUG_PRINT_HEX(buf->findlastblock);
+	//	asm("xchg %bx,%bx");
+
+		if((fattype == 12 || fattype == 16)) {
+			findblock=buf->findlastblock;		 /* also in data area */
+		}
+		else
+		{
+			findblock=buf->findlastblock-2;
+		}
+
+		if((fattype == 12 && buf->findlastblock >= 0xff8) || (fattype == 16 && buf->findlastblock >= 0xfff8) || (fattype == 32 && findblock >= 0xfffffff8)) {
 			kernelfree(blockbuf);
 			kernelfree(splitbuf);
 
@@ -533,8 +530,6 @@ size_t previousblock;
 
 getfullpath(filename,fullpath);
 
-DEBUG_PRINT_STRING(fullpath);
-	
 if(findfirst(fullpath,&filecheck) == 0) {			/* file exists */
 	setlasterror(FILE_EXISTS);
 	return(-1);
@@ -561,7 +556,7 @@ else
 blockbuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);			/* allocate block buffer */ 
 if(blockbuf == NULL) return(-1);
 
-rb=fat_get_start_block(splitbuf.dirname);		/* get start of directory where new file will be created */
+rb=fat_get_start_block(splitbuf.drive,splitbuf.dirname);		/* get start of directory where new file will be created */
 if(rb == -1) return(-1);
 
 /* search thorough directory until free entry found */
@@ -770,7 +765,7 @@ BLOCKDEVICE blockdevice;
 size_t rootdir;
 size_t start_of_data_area;
 
-parentdir_startblock=fat_get_start_block(dirname);		/* get start block of parent directory */
+parentdir_startblock=fat_get_start_block(drive,dirname);		/* get start block of parent directory */
 		
 dirblockbuf=kernelalloc(MAX_BLOCK_SIZE);	/* allocate buffer for subdirectory block */
 if(dirblockbuf == NULL) return(-1);
@@ -1586,7 +1581,7 @@ return(-1);
  *
  */
 
-size_t fat_get_start_block(char *name) {
+size_t fat_get_start_block(size_t drive,char *name) {
 char *token_buffer[MAX_PATH];
 uint64_t rb;
 size_t count;
@@ -1600,7 +1595,6 @@ char *blockbuf;
 char *blockptr;
 char *file[11];
 size_t c;
-uint64_t start_of_data_area=0;
 uint64_t rootdir_size=0;
 DIRENT directory_entry;
 FILERECORD *lfnbuf=NULL;
@@ -1622,7 +1616,7 @@ memset(splitbuf,0,sizeof(SPLITBUF));
 
 splitname(fullpath,splitbuf);
 
-fattype=fat_detect_change(splitbuf->drive);
+fattype=fat_detect_change(drive);
 if(fattype == -1) {
 	kernelfree(splitbuf);
 	kernelfree(lfnbuf);
@@ -1630,10 +1624,9 @@ if(fattype == -1) {
 	return(-1);
 } 
 
-if(getblockdevice(splitbuf->drive,&blockdevice) == -1) return(-1);
+if(getblockdevice(drive,&blockdevice) == -1) return(-1);
 
 bpb=blockdevice.superblock;		/* point to data */
-
 
 blockbuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);			/* allocate block buffer */
 if(blockbuf == NULL) {
@@ -1668,6 +1661,19 @@ count=1;
 if(fattype == 12 || fattype == 16) rb=bpb->reservedsectors+(bpb->sectorsperfat*bpb->numberoffats);  /* get start of root directory */
 if(fattype == 32) rb=bpb->fat32rootdirstart;  /* get start of root directory */
 
+
+rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
+
+if(fattype == 12 || fattype == 16) {
+	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
+	datastart=bpb->reservedsectors+fatsize+rootdirsize;
+}
+
+if(fattype == 32) {
+	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
+	datastart=(bpb->reservedsectors+fatsize+rootdirsize)-2;
+}
+
 if(strncmp(splitbuf->dirname,"\\",MAX_PATH) == 0) {						           /* root directory */
 	if(strlen(splitbuf->filename) == 0) { 
 		kernelfree(lfnbuf);
@@ -1678,17 +1684,6 @@ if(strncmp(splitbuf->dirname,"\\",MAX_PATH) == 0) {						           /* root dire
 	}
 }
 
-if(fattype == 12 || fattype == 16) {
-	fatsize=(bpb->sectorsperfat*bpb->numberoffats);
-	rootdirsize=((bpb->rootdirentries*FAT_ENTRY_SIZE)+bpb->sectorsperblock-1)/bpb->sectorsize;
-	datastart=bpb->reservedsectors+fatsize+rootdirsize;
-}
-
-if(fattype == 32) {
-	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
-	datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
-}
-
 while(c != -1) {
 	memset(token_buffer,0,MAX_PATH);
 	c=get_filename_token_count(fullpath);
@@ -1697,7 +1692,7 @@ while(c != -1) {
 	tc--;	
 
 	do {
-		if(blockio(DEVICE_READ,splitbuf->drive,(uint64_t) rb+start_of_data_area,blockbuf) == -1) {			/* read block for entry */
+		if(blockio(DEVICE_READ,drive,(uint64_t) rb+datastart,blockbuf) == -1) {			/* read block for entry */
 			kernelfree(splitbuf);
 			kernelfree(blockbuf);
 		     	kernelfree(lfnbuf);
@@ -1744,7 +1739,7 @@ while(c != -1) {
 			blockptr=blockptr+FAT_ENTRY_SIZE;					/* point to next entry */
 		}
 
-		rb=fat_get_next_block(splitbuf->drive,rb);
+		rb=fat_get_next_block(drive,rb);
 
 	} while((fattype == 12 && rb <= 0xff8) || (fattype == 16 && rb <= 0xfff8) || (fattype == 32 && rb <= 0xfffffff8));
 
@@ -1978,19 +1973,28 @@ getblockdevice(drive,&blockdevice);		/* get device */
 bootbuf=kernelalloc(MAX_BLOCK_SIZE);				/* allocate buffer */
 if(bootbuf == NULL) return(-1); 
 	
-if(blockio(DEVICE_READ,drive,(uint64_t) 0,bootbuf) == -1) {				/* get bios parameter block */
+if(blockio(DEVICE_READ,drive,(uint64_t) 0,bootbuf) == -1) {				/* get bios Parameter Block */
 	kernelfree(bootbuf);
 	return(-1); 
 }
 
-memcpy(&bpb,bootbuf,54);		/* copy bpb */
+memcpy(&bpb,bootbuf,54);		/* copy BPB */
 
 blockdevice.sectorsperblock=bpb.sectorsperblock;
 
-if(blockdevice.numberofsectors/blockdevice.sectorsperblock < 4095) fattype=12;		/* get fat type */
-if(blockdevice.numberofsectors/blockdevice.sectorsperblock >= 4095 && blockdevice.numberofsectors/bpb.sectorsperblock < 268435445) fattype=16;
-if(blockdevice.numberofsectors/blockdevice.sectorsperblock/bpb.sectorsperblock >= 268435445) fattype=32;
-if(fattype == 32) memcpy((void *) &bpb.fat32sectorsperfat, (void *) bootbuf+54,62-36);		/* fat32 */
+/* get FAT type */
+
+if(blockdevice.numberofsectors/blockdevice.sectorsperblock < 4095) {
+	fattype=12;
+}
+else if(blockdevice.numberofsectors/bpb.sectorsperblock < 65525) {
+	fattype=16;
+}
+else {
+	fattype=32;
+}
+
+if(fattype == 32) memcpy((void *) &bpb.fat32sectorsperfat, (void *) bootbuf+36,54);		/* get FAT32 BPB */
 
 kernelfree(bootbuf);
 
@@ -2003,6 +2007,7 @@ if(blockdevice.superblock == NULL) {
 }
 
 memcpy(blockdevice.superblock,&bpb,sizeof(BPB));		/* update BPB */
+
 
 update_block_device(drive,&blockdevice);			/* update block device information */
 
@@ -2110,7 +2115,7 @@ if(lfn == NULL) {
 	return(-1);
 }
 
-blockptr=blockbuf+entryno*FAT_ENTRY_SIZE;		/* point to first entry */
+blockptr=blockbuf+(entryno*FAT_ENTRY_SIZE);		/* point to first entry */
 
 d=buf;
 d += MAX_PATH;
@@ -2142,7 +2147,7 @@ while((fattype == 12 && blockcount <= 0xff8) || (fattype == 16 && blockcount <= 
 	        if(lfn->sequence == 0xE5) continue;			/* skip deleted entries */
 		
 		entrycount=lfn->sequence;				/* get number of entries */
-		if(entrycount >= 0x40) entrycount=entrycount-0x40;
+		if(entrycount >= 0x40) entrycount -= 0x40;
 		
 		/* Copy filename from long filename entry in reverse order */
 
@@ -2308,7 +2313,7 @@ bpb=blockdevice.superblock;		/* get bpb */
 getfullpath(new->filename,fullpath);			/* get full path */
 splitname(fullpath,&splitbuf);
 
-firstblock=fat_get_start_block(splitbuf.dirname);
+firstblock=fat_get_start_block(drive,splitbuf.dirname);
 
 block=firstblock;					/* save block number */
 

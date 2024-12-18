@@ -1051,8 +1051,6 @@ while(*b-- != '\\') ;;
 b=b+2;
 *b=0;
 
-//kprintf("Directory of %s\n",buffer);
-
 kprintf(directoryof,buffer);
 	
 memset(&direntry.filename,0,MAX_PATH);
@@ -1088,7 +1086,6 @@ do {
 	  fcount++;
 
 	  memset(&direntry,sizeof(FILERECORD));
-
 } while(findnext(parsebuf[1],&direntry) != -1);
 
 ksnprintf(temp,"%d",MAX_PATH,getlasterror()); 		/* set errorlevel */

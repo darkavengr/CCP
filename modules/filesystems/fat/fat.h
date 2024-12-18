@@ -68,16 +68,18 @@ typedef struct {
 	/* fat32 extended bpb */
 	
 	uint32_t fat32sectorsperfat;
-	uint32_t fat32mirrorflags;
-	uint32_t fat32filesystemversion;
+	uint16_t fat32mirrorflags;
+	uint16_t fat32filesystemversion;
 	uint32_t fat32rootdirstart;
 	uint16_t fat32infosector;
 	uint16_t fat32bootblockcopy;
-	uint32_t fat32reserved[12];
-	uint32_t fat32physdriveno;
-	uint32_t fat32reserved2;
-	uint32_t fat32signature;
+	uint8_t fat32reserved[12];
+	uint8_t fat32physdriveno;
+	uint8_t fat32flags;
+	uint8_t fat32signature;
 	uint32_t fat32serialno;
+	uint8_t fat32volumelabel[11];
+	uint8_t fat32ident[8];
 } __attribute__((packed)) BPB;
 
 
@@ -94,7 +96,7 @@ size_t fat_write(size_t handle,void *addr,size_t size);							// TESTED
 size_t fat_chmod(char *filename,size_t attribs);							// TESTED
 size_t fat_set_file_time_date(char *filename,TIME *create_time_date,TIME *last_modified_time_date,TIME *last_accessed_time_date); // TESTED
 size_t fat_find_free_block(size_t drive);								// TESTED
-size_t fat_get_start_block(char *name);									// TESTED
+size_t fat_get_start_block(size_t drive,char *name);							// TESTED
 size_t fat_get_next_block(size_t drive,uint64_t block);							// TESTED
 size_t fat_update_fat(size_t drive,uint64_t block,uint16_t block_high_word,uint16_t block_low_word);	// TESTED - MORE
 size_t fat_detect_change(size_t drive);									// TESTED
