@@ -131,8 +131,6 @@ size_t gethandle(size_t handle,FILERECORD *buf);
 size_t getfilesize(size_t handle);
 size_t splitname(char *name,SPLITBUF *splitbuf);
 size_t updatehandle(size_t handle,FILERECORD *buf);
-size_t get_filename_token(char *filename,void *buf);
-size_t get_filename_token_count(char *filename);
 size_t change_file_owner_pid(size_t handle,size_t pid);
 size_t init_console_device(size_t type,size_t handle,void *cptr);
 size_t filemanager_init(void);

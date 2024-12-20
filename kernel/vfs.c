@@ -1079,20 +1079,31 @@ else if((d == ':') && (e != '\\')) {		/* drive and filename only */
 	strncat(buf,filename+3,MAX_PATH);                 /* get filename */
 }
 else if(d != ':') {               /* filename only */
-	b=buf;
+	if(c == '\\') {		/* path without drive */
+		memcpy(buf,cwd,2);	/* copy drive letter and : */
+		strncat(buf,filename,MAX_PATH);	/* copy filename */
+	}
+	else
+	{
+		b=cwd;
+		b += strlen(cwd)-1;		/* point to end */
 
-	*b++=*cwd;
-	*b++=':';
-	if(*filename != '\\') *b++='\\';
+		if(*b == '\\') {		/* trailing \ */
+			ksnprintf(buf,"%s%s",MAX_PATH,cwd,filename);	/* copy directory\filename */
+		}
+		else
+		{
+			ksnprintf(buf,"%s\\%s",MAX_PATH,cwd,filename);	/* copy directory\filename */
+		}
 
-	strncat(b,filename,MAX_PATH);
+	}
 }
 
 tc=tokenize_line(cwd,token,"\\");		/* tokenize line */
 dottc=tokenize_line(filename,dottoken,"\\");		/* tokenize line */
 
 
-for(countx=0;countx<dottc;countx++) {
+for(countx=0;countx<dottc-1;countx++) {
 	if(strncmp(dottoken[countx],"..",MAX_PATH) == 0 ||  strncmp(dottoken[countx],".",MAX_PATH) == 0) {
 
 		for(count=0;count<dottc;count++) {
@@ -1448,72 +1459,6 @@ unlock_mutex(&vfs_mutex);
 
 setlasterror(INVALID_HANDLE);
 return(-1);
-}
-
-/*
- * Get single part of path from filename
- *
- * In:  filename	Filename to get part of filename from
-	buf		Buffer to hold filename part
- *
- * Returns: -1 on error, 0 on success
- *
- * Returns a single part of the filename each time it is called
- */
-
-size_t get_filename_token(char *filename,void *buf) {
-char *f;
-char *bufptr;
-
-if(old == NULL)  {					/* start of filename */
-	old=filename;
-	f=filename;
-}
-
-f=old;
-bufptr=buf;
-
-while(*f != 0) {
-	*bufptr++=*f++;					/* copy character from path */
-
-	if((*f == '\\') || (*f == 0)) {				/* found separator */ 
-		old=f+1;
-		return(0);
-	}
-
-}
-
-
-return(-1);
-}
-
-
-/*
- * Get number of parts in filename seperated by \
- *
- * In:  handle	File handle
-	addr	Buffer to read to
-	size	Number of bytes to read
- *
- * Returns: -1 on error, 0 on success
- *
- */
-
-size_t get_filename_token_count(char *filename) {
-char *f;
-size_t count;
-	
-count=0;
-
-f=filename;
-
-while(*f != 0) {
-	if(*f++ == '\\') count++;					/* at end of token */
-}
-	
-count++;
-
-return(count);						/* return number of tokens */
 }
 
 /*

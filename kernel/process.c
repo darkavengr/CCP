@@ -926,8 +926,12 @@ size_t chdir(char *dirname) {
 char *fullpath[MAX_PATH];
 char *savecwd[MAX_PATH];
 FILERECORD chdir_file_record;
+char *buffer[MAX_PATH];
+SPLITBUF split;
 
-getfullpath(dirname,fullpath);
+getfullpath(dirname,fullpath);			/* get full path of directory */
+
+splitname(fullpath,&split);
 
 /* findfirst (and other other filesystem calls) use currentprocess->currentdirectory to get the
 	  full path of a file, but this function checks that a new current directory is valid,
@@ -947,12 +951,14 @@ if(findfirst(fullpath,&chdir_file_record) == -1) {		/* path doesn't exist */
 	return(-1);		
 }
 
-if((chdir_file_record.flags & FILE_DIRECTORY) == 0) {		/* not directory */
+if((strncmp(split.dirname,"\\",MAX_PATH) != 0) && ((chdir_file_record.flags & FILE_DIRECTORY) == 0)) {		/* not directory */
 	setlasterror(NOT_DIRECTORY);
 	return(-1);
 }
 
 strncpy(currentprocess->currentdirectory,fullpath,MAX_PATH);	/* set directory */
+
+DEBUG_PRINT_STRING(currentprocess->currentdirectory);
 
 setlasterror(NO_ERROR);  
 return(NO_ERROR);				/* no error */

@@ -65,7 +65,7 @@ return;
 void init_multitasking(void) {
 multitaskingenabled=FALSE;
 
-setirqhandler(0,'SCHD',switch_task);		/* Register timer */
+//setirqhandler(0,'SCHD',switch_task);		/* Register timer */
 
 multitaskingenabled=TRUE;
 timer_count=0;

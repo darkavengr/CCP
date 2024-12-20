@@ -785,6 +785,10 @@ while(*token != 0) {
  }
 
 tc++;
+
+d=tokens[tc];
+*d=0;
+
 return(tc);
 }
 
