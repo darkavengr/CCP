@@ -146,8 +146,10 @@ if(find_type == FALSE) {
 		return(-1);
 	}
 
-//	DEBUG_PRINT_HEX(buf->findlastblock);
-//	asm("xchg %bx,%bx");
+	if(splitbuf->drive == 2) {
+		DEBUG_PRINT_HEX(buf->findlastblock);
+		asm("xchg %bx,%bx");
+	}
 
 	strncpy(buf->searchfilename,fp,MAX_PATH); 
 }
@@ -208,8 +210,12 @@ else
 while(1) {
 	blockptr=blockbuf+(buf->findentry*FAT_ENTRY_SIZE);	/* point to next file */
 
-	DEBUG_PRINT_HEX(findblock);
-	DEBUG_PRINT_HEX(blockptr);
+	if(splitbuf->drive == 2) {
+		DEBUG_PRINT_HEX(findblock);
+		DEBUG_PRINT_HEX(blockptr);
+		DEBUG_PRINT_HEX(start_of_data_area);
+		asm("xchg %bx,%bx");
+	}
 
 	if(blockio(DEVICE_READ,splitbuf->drive,(uint64_t) findblock+start_of_data_area,blockbuf) == -1) { /* read directory block */
 		kernelfree(blockbuf);
@@ -1606,6 +1612,7 @@ size_t datastart;
 size_t fatsize;
 size_t rootdirsize;
 uint64_t readblock;
+size_t foundtoken;
 
 splitbuf=kernelalloc(sizeof(SPLITBUF));
 if(splitbuf == NULL) return(-1);
@@ -1618,6 +1625,10 @@ getfullpath(name,fullpath);		/* get full path */
 memset(splitbuf,0,sizeof(SPLITBUF));
 
 splitname(fullpath,splitbuf);
+
+//DEBUG_PRINT_STRING(fullpath);
+//DEBUG_PRINT_STRING(splitbuf->dirname);
+//DEBUG_PRINT_STRING(splitbuf->filename);
 
 fattype=fat_detect_change(drive);
 if(fattype == -1) {
@@ -1680,29 +1691,37 @@ if(strncmp(splitbuf->dirname,"\\",MAX_PATH) == 0) {						           /* root dire
 	}
 }
 
-DEBUG_PRINT_STRING(fullpath);
-
 kprintf_direct("start tc=%X\n",tc);
 
 for(c=1;c<tc;c++) {
 	do {
-		DEBUG_PRINT_STRING(path_tokens[c]);
-		DEBUG_PRINT_HEX(rb);
-		DEBUG_PRINT_HEX(datastart);
-		DEBUG_PRINT_HEX(rb+datastart);
-		asm("xchg %bx,%bx");
+		foundtoken=FALSE;
+
+//		DEBUG_PRINT_HEX(c);
+//		DEBUG_PRINT_HEX(tc);
+//		DEBUG_PRINT_STRING(path_tokens[c]);
+//		DEBUG_PRINT_HEX(bpb->reservedsectors);
+//		DEBUG_PRINT_HEX(rb);
+//		DEBUG_PRINT_HEX(datastart);
+//		DEBUG_PRINT_HEX(rb+datastart);
+		//asm("xchg %bx,%bx");
 
 		if(c == 1) {		/* in root directory */
-			readblock=rb;
+			if(fattype == 12 || fattype == 16) {
+				readblock=rb;
+			}
+			else if(fattype == 32) {
+				readblock=((rb-2)*bpb->sectorsperblock)+datastart;
+			}
 		}
 		else
 		{
 			readblock=((rb-2)*bpb->sectorsperblock)+datastart;
 		}
 
-		DEBUG_PRINT_HEX(readblock);
-		DEBUG_PRINT_HEX(blockbuf);
-		asm("xchg %bx,%bx");
+//		DEBUG_PRINT_HEX(readblock);
+//		DEBUG_PRINT_HEX(blockbuf);
+	//	asm("xchg %bx,%bx");
 
 		if(blockio(DEVICE_READ,drive,(uint64_t) readblock,blockbuf) == -1) {			/* read block for entry */
 			kernelfree(splitbuf);
@@ -1723,19 +1742,20 @@ for(c=1;c<tc;c++) {
 
 			touppercase(path_tokens[c],path_tokens[c]);			/* convert to uppercase */
 		
-			kprintf_direct("%s %s\n",path_tokens[c],file);
+//			kprintf_direct("%s %s\n",path_tokens[c],file);
 
 			if(wildcard(path_tokens[c],file) == 0) { 		/* if short entry filename found */ 
-				kprintf_direct("found path token %s\n",path_tokens[c]);
+//				kprintf_direct("found path token %s\n",path_tokens[c]);
 			
 				if(fattype == 12 || fattype == 16) rb=directory_entry.block_low_word;		/* get next block */
-				if(fattype == 32) rb=(uint64_t) ((directory_entry.block_high_word << 16)+directory_entry.block_low_word); 	/* get next block */
-
-				DEBUG_PRINT_HEX(directory_entry.block_low_word);
-				kprintf_direct("new rb=%X\n",rb);
-				asm("xchg %bx,%bx");
+				if(fattype == 32) rb=((directory_entry.block_high_word << 16)+directory_entry.block_low_word); 	/* get next block */
+				
+//				kprintf_direct("new rb=%X\n",rb);
 
 				if(c == tc-1) {				/* last token in path */
+//					kprintf_direct("At end\n");
+//	 				asm("xchg %bx,%bx");
+
 					setlasterror(NO_ERROR);
 		
 					kernelfree(lfnbuf);
@@ -1747,6 +1767,8 @@ for(c=1;c<tc;c++) {
 
 				c++;		/* point to next token */
 
+				foundtoken=TRUE;			/* found token */
+				break;
 			}
 
 			if(*blockptr == 0) {				/* end of directory */     
@@ -1761,11 +1783,12 @@ for(c=1;c<tc;c++) {
 			blockptr=blockptr+FAT_ENTRY_SIZE;					/* point to next entry */
 		}
 
-		rb=fat_get_next_block(drive,rb);
+		if(foundtoken == FALSE) {	`		/* at end of block and not found token */
+			rb=fat_get_next_block(drive,rb);
 
-		kprintf_direct("next block=%X\n",rb);
-		asm("xchg %bx,%bx");
-
+//			kprintf_direct("next block=%X\n",rb);
+//			asm("xchg %bx,%bx");
+		}
 	} while((fattype == 12 && rb <= 0xff8) || (fattype == 16 && rb <= 0xfff8) || (fattype == 32 && rb <= 0xfffffff8));
 
 }
