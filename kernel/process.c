@@ -958,8 +958,6 @@ if((strncmp(split.dirname,"\\",MAX_PATH) != 0) && ((chdir_file_record.flags & FI
 
 strncpy(currentprocess->currentdirectory,fullpath,MAX_PATH);	/* set directory */
 
-DEBUG_PRINT_STRING(currentprocess->currentdirectory);
-
 setlasterror(NO_ERROR);  
 return(NO_ERROR);				/* no error */
 }

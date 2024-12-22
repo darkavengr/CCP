@@ -205,11 +205,6 @@ for(count=0;count<next->sectorsperblock;count++) {
 	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {
 		lasterr=getlasterror();
 
-		if(drive == 1) {
-			DEBUG_PRINT_HEX(lasterr);
-			asm("xchg %bx,%bx");
-		}
-
 		if((lasterr == WRITE_PROTECT_ERROR) || (lasterr == DRIVE_NOT_READY) || (lasterr == INVALID_CRC) \
 		|| (lasterr == GENERAL_FAILURE) || (lasterr == READ_FAULT) || (lasterr == WRITE_FAULT)) { 
 	
@@ -236,7 +231,7 @@ for(count=0;count<next->sectorsperblock;count++) {
 		}
 	}
 
-b=b+next->sectorsize;
+	b=b+next->sectorsize;
 }
 
 

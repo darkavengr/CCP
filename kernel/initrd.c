@@ -87,9 +87,6 @@ getfullpath(filename,fullpath);
 
 splitname(fullpath,&split);
 
-//DEBUG_PRINT_STRING(filename);
-//DEBUG_PRINT_HEX(op);
-
 if(op == 0) {
 	buf->findlastblock=0;
 
@@ -109,9 +106,6 @@ touppercase(split.filename,split.filename);
 do {
 	tarptr=(boot_info->initrd_start+KERNEL_HIGH)+(buf->findlastblock*TAR_BLOCK_SIZE);	/* point to next file */
 
-//	DEBUG_PRINT_HEX(buf);
-//	DEBUG_PRINT_HEX(tarptr);
-
 	if(*tarptr->name == 0) {		/* end of directory */
 		setlasterror(END_OF_DIRECTORY);
 		return(-1);
@@ -121,12 +115,7 @@ do {
 	
 	touppercase(tarptr->name,tempname);			/* convert to uppercase */
 
-//	DEBUG_PRINT_STRING(split.filename);
-//	DEBUG_PRINT_STRING(tarptr->name);
-//	DEBUG_PRINT_STRING(tempname);
-
 	if(wildcard(split.filename,tempname) == 0) { 	/* if file found */      	
-//		kprintf_direct("FOUND=%s\n",tarptr->name);
 
 		strncpy(buf->filename,tarptr->name,MAX_PATH);	/* copy information */
 
@@ -237,9 +226,9 @@ memset(&fs,0,sizeof(FILESYSTEM));
 /* register filesystem driver */
 strncpy(fs.name,"INITRDFS",MAX_PATH);	/* name */
 
-memcpy(&fs.magicbytes,&magicdata,2*sizeof(MAGIC));	/* copy magic number data */
-
 fs.magic_count=1;		/* number of magic number entries */
+memcpy(&fs.magicbytes,&magicdata,fs.magic_count*sizeof(MAGIC));	/* copy magic number data */
+
 fs.findfirst=&initrd_findfirst;	/* add handlers */
 fs.findnext=&initrd_findnext;
 fs.read=&initrd_read;

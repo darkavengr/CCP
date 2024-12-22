@@ -335,19 +335,19 @@ irq6done=FALSE;
 
 floppy_motor_on(drive);					/* enable motor */ 
 
-dir=inb(DIGITAL_INPUT_REGISTER);		/* check if disk in drive */
+//dir=inb(DIGITAL_INPUT_REGISTER);		/* check if disk in drive */
 
-if((dir & 0x80)) {
+//if((dir & 0x80)) {
 
-	dir &= 0x80;
+//	dir &= 0x80;
 	 
-	outb(DIGITAL_INPUT_REGISTER,dir);
+//	outb(DIGITAL_INPUT_REGISTER,dir);
 
-	floppy_motor_off(drive);
+//	floppy_motor_off(drive);
 
-	setlasterror(DRIVE_NOT_READY);
-	return(-1);
-}
+//	setlasterror(DRIVE_NOT_READY);
+//	return(-1);
+//}
 
 #ifdef FLOPPY_DEBUG
 	kprintf_direct("floppy debug: Sector I/O: Seek\n");

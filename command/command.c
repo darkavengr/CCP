@@ -152,6 +152,7 @@ switch(signal) {
 		break;
 
 	case SIGTERM:
+		kprintf("command: Caught signal SIGTERM. Terminating\n");
 		exit(0);
 
 	case SIGINT:
@@ -223,21 +224,22 @@ if(argcount >= 2) {
 			}
 			else if(((char) *b == 'K') || ((char) *b == 'k')) {
 				doline(commandlinearguments[count+1]);
+				continue;
 			}
 			else if(((char) *b == 'P') || ((char) *b == 'p')) {
-				commandlineoptions |= COMMAND_PERMENANT;
-				count++;	
+				commandlineoptions |= COMMAND_PERMANENT;
+				continue;	
 			}			
 			else if((char) *b == '?') {
 				kprintf("Command interpreter\n");
 				kprintf("\n");
 				kprintf("COMMAND [OPTIONS] {command}\n");
 				kprintf("\n");
-				kprintf("/C run command and exit\n");
+				kprintf("/C Run command and exit\n");
 				kprintf("\n");
-				kprintf("/K run command and continue running command interpreter\n");
+				kprintf("/K Run command and continue running command interpreter\n");
 				kprintf("\n");
-				kprintf("/P make command interpreter permanant (no exit)\n");
+				kprintf("/P Make command interpreter permanent (no exit)\n");
 		
 				exit(0);
 			}
@@ -966,7 +968,7 @@ return(0);
  */
 
 size_t exit_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-	if((commandlineoptions & COMMAND_PERMENANT) == 0) exit(atoi(parsebuf[1]));
+	if((commandlineoptions & COMMAND_PERMANENT) == 0) exit(atoi(parsebuf[1]));
 }
 
 /*
@@ -1033,8 +1035,8 @@ return(0);
 size_t dir_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 char *b;
 char *buffer[MAX_PATH];
-size_t dircount;
-size_t fcount;
+size_t dircount=0;
+size_t fcount=0;
 char *temp[MAX_PATH];
 FILERECORD direntry;
 
@@ -1060,10 +1062,6 @@ if(findfirst(parsebuf[1],&direntry) == -1) {
 	return(-1);
 }
 
-
-dircount=0;
-fcount=0;
-
 do {
 
 /*time date size filename */
@@ -1080,10 +1078,11 @@ do {
 	  else
 	  {
 	  	kprintf(" %d ",direntry.filesize);
+
+		  fcount++;
 	  }
 
 	  kprintf("%s\n",direntry.filename);
-	  fcount++;
 
 	  memset(&direntry,sizeof(FILERECORD));
 } while(findnext(parsebuf[1],&direntry) != -1);
