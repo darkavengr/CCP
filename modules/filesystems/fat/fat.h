@@ -110,7 +110,8 @@ size_t fat_create_long_filename(size_t type,FILERECORD *newname,uint64_t block,s
 void fat_entry_to_filename(char *filename,char *out);							// TESTED
 size_t fat_init(char *i);										// TESTED
 size_t fat_create_int(size_t entrytype,char *filename);							// TESTED
-size_t fat_create_entry(size_t type,size_t drive,uint64_t rb,size_t entryno,size_t datastart,size_t fattype,char *filename,char *blockbuf); // TESTED
+size_t fat_create_entry(size_t type,size_t drive,uint64_t rb,size_t entryno,size_t fattype,char *filename,char *blockbuf,BPB *bpb); // TESTED
 size_t fat_is_long_filename(char *filename);								// TESTED
-size_t fat_create_subdirectory_entries(char *dirname,size_t parentdir_startblock,size_t datastart,size_t startblock,TIME *time,TIME *date,size_t fattype,size_t drive); // TESTED
+size_t fat_create_subdirectory_entries(char *dirname,size_t parentdir_startblock,size_t startblock,BPB *bpb,TIME *time,TIME *date,size_t fattype,size_t drive); // TESTED
+uint64_t get_block_data_area_relative_dir(size_t blocknumber,char *dirname,size_t fattype,BPB *bpb);	// TESTED
 
