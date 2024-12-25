@@ -5,3 +5,4 @@ all:
 	$(ASM) @arch@/boot.asm -o @buildroot@/bin/@arch@/boot -i@buildroot@/kernel/@arch@/
 
 
+

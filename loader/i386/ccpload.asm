@@ -5,6 +5,7 @@
 ; 
 ;
 %include "../kernel/hwdep/i386/bootinfo.inc"
+%include "i386/fatinfo.inc"
 
 NULL equ 0
 LOAD_ADDRESS		equ 0x100000				; load address for CCP.SYS
@@ -12,48 +13,12 @@ ROOTDIRADDR		equ end_prog+1024			; buffer for root directory
 TEMP_ADDRESS		equ end_prog+2048			; temporary address for int 13h
 FAT_BUF			equ end_prog+3072
 
-CCPLOAD_STACK		equ 0xfffe				; stack address
+CCPLOAD_STACK		equ 0xFFFE				; stack address
 
 KERNEL_HIGH		equ 0x80000000
-_ENTRY_SIZE		equ 32					; size of fat entry
 BASE_OF_SECTION 	equ 0x1000
 
-_FILENAME 		equ 0
-_FILEATTR 		equ 11
-_BYTE_RESERVED		equ 12
- _CREATE_TIME_FINE_RES	equ 13 
-_CREATE_TIME 		equ 14
- _CREATE_DATE 		equ 16
- _LAST_ACCESS_DATE 	equ 18
- _BLOCK_HIGH_WORD 	equ 20
- _LAST_MODIFIED_TIME 	equ 22
- _LAST_MODIFIED_DATE 	equ 24
- _BLOCK_LOW_WORD	equ 26
- _FILE_SIZE		equ 28
-
-RETRY_COUNT equ 3
-
- _JUMP 			equ 0												
- _FSMARKER 		equ 3
- _SECTORSIZE		equ 11
- _SECTORSPERBLOCK	equ 13
- _RESERVEDSECTORS	equ 14
- _NUMBEROFFATS		equ 16
- _ROOTDIRENTRIES	equ 17
- _NUMBEROFSECTORS	equ 19
- _MEDIADESCRIPTOR	equ 21
- _SECTORSPERFAT		equ 22
- _SECTORSPERTRACK	equ 24
- _NUMBEROFHEADS		equ 26
- _HIDDENSECTORS		equ 28
- _SECTORSDWORD		equ 32
- _PHYSICALDRIVE		equ 36
- _RESERVED		equ 37
- _EXBOOTSIG		equ 38
- _SERIALNO		equ 39
- _VOLUMELABEL		equ 43
- _FATNAME		equ 54
-
+RETRY_COUNT	equ	3
 ; 32-bit table indexes
 
 ELF32_MAGIC 	equ 0
@@ -180,7 +145,7 @@ cli							; disable interrupts
 
 bits 16
 use16
-mov	sp,0e000h				; temp stack
+mov	sp,0xE000				; temp stack
 
 mov	ax,cs	
 mov	ds,ax
@@ -251,20 +216,20 @@ push	ss
 
 mov	edi,offset gdtinfo
 
-db 	66h
+db 	0x66
 lgdt 	[ds:di]					; load gdt
 
 mov 	eax,cr0   				; switch to pmode
 or	al,1
 mov  	cr0,eax
 
-mov   	bx,10h			; load selector
+mov   	bx,0x10			; load selector
 mov   	ds,bx
 mov   	es,bx
 mov   	ss,bx
 
 mov 	eax,cr0  
-and	al,0feh
+and	al,0xFE
 mov  	cr0,eax
 
 pop	ss
@@ -273,27 +238,27 @@ pop	ds
 
 mov	al,[BOOT_INFO_PHYSICAL_DRIVE]			; get physical drive
 
-test	al,80h						; is hard drive
+test	al,0x80						; is hard drive
 jz	not_boot_hd
 
-sub	al,80h						; get logical drive from physical drive
+sub	al,0x80						; get logical drive from physical drive
 add	al,2						; logical drives start from drive 2
 
 not_boot_hd:
 mov	[BOOT_INFO_DRIVE],al
 
-mov	ax,[7c00h+_FATNAME+3]				; get fat type
+mov	ax,[0x7C00+BPB_FATNAME+3]				; get fat type
 xchg	ah,al						; swap bytes
-; sub ax,3120h is the same as:
-;  sub ax,3030h
-; sub ax,0f0h
+; sub ax,0x3120 is the same as:
+;  sub ax,0x3030
+; sub ax,0xf0
 
-sub	ax,3120h					; from ascii to number
+sub	ax,0x3120					; from ascii to number
 mov	[fattype],al					; save fat type
 
 xor	eax,eax
-mov	al,[7c00h+_SECTORSPERBLOCK]			; sectors per block
-mov	dx,[7c00h+_SECTORSIZE]
+mov	al,[0x7C00+BPB_SECTORSPERBLOCK]			; sectors per block
+mov	dx,[0x7C00+BPB_SECTORSIZE]
 mul	dx 
 mov	[blocksize],eax
 
@@ -320,13 +285,13 @@ mov	[BOOT_INFO_KERNEL_START],edx
 
 ; save kernel size
 
-mov	ecx,[ebx+_FILE_SIZE]
+mov	ecx,[ebx+FAT_DIRECTORY_FILE_SIZE]
 mov	[BOOT_INFO_KERNEL_SIZE],ecx
 
 ; save current end address
 
 mov	eax,edx					; address
-add	eax,[ebx+_FILE_SIZE]			; +size
+add	eax,[ebx+FAT_DIRECTORY_FILE_SIZE]			; +size
 mov	[currentptr],eax
 
 add	edx,(1024*1024)			; load after file load address so it can be relocated
@@ -335,7 +300,7 @@ call	loadfile
 
 mov	esi,edx
 mov	eax,[esi+ELF32_MAGIC]				; get elf marker
-cmp	eax,464c457Fh					; check if file is elf file
+cmp	eax,0x464C457F					; check if file is elf file
 je	is_elf
 jmp	short bad_elf
 
@@ -373,7 +338,7 @@ call	output16				; display message
 
 call	readkey
 
-int	19h
+int	0x19
 
 is_phok:
 ;
@@ -704,7 +669,7 @@ add	edx,[BOOT_INFO_SYMBOL_SIZE]
 
 mov	[BOOT_INFO_INITRD_START],edx
 
-mov	ecx,[ebx+_FILE_SIZE]			; save initrd size
+mov	ecx,[ebx+FAT_DIRECTORY_FILE_SIZE]			; save initrd size
 mov	[BOOT_INFO_INITRD_SIZE],ecx
 
 call	loadfile
@@ -717,7 +682,7 @@ mov	[BOOT_INFO_INITRD_START],edx
 mov	[BOOT_INFO_INITRD_SIZE],edx
 
 continue:
-mov	ah,3h					; get cursor
+mov	ah,0x3					; get cursor location
 xor	bh,bh
 int	10h
 
@@ -727,7 +692,7 @@ mov	[BOOT_INFO_CURSOR_ROW],dh
 xor	dl,dl					; go to start of line
 mov	[BOOT_INFO_CURSOR_COL],dl
 
-mov	ah,2h					; set cursor
+mov	ah,0x2					; set cursor
 xor	bh,bh
 int	10h
 
@@ -736,13 +701,13 @@ call	detect_memory				; get memory size
 mov	[BOOT_INFO_MEMORY_SIZE],eax
 mov	[BOOT_INFO_MEMORY_SIZE+4],edx
 
-mov	ax,10h
+mov	ax,0x10
 mov	ds,ax
 mov	es,ax
 mov	ss,ax
 
-db	67h
-jmp	0ffffh:10h					; jump to kernel
+db	0x67
+jmp	0xffff:0x10					; jump to kernel
 
 initrd_file_not_found:
 mov	esi,offset initrd_notfound
@@ -761,7 +726,7 @@ mov	esi,offset pressanykey
 call	output16				; display message
 
 call	readkey
-int	19h					; reset
+int	0x19					; reset
 
 ; get next block
 ;
@@ -772,13 +737,13 @@ push	ecx
 push	edx
 
 mov	cl,[fattype]			; get fat type
-cmp	cl,12h				; fat12
+cmp	cl,0x12				; fat12
 je	getnext_fat12
 
-cmp	cl,16h				; fat16
+cmp	cl,0x16			; fat16
 je	getnext_fat16
 
-cmp	cl,32h				; fat32
+cmp	cl,0x32				; fat32
 je	getnext_fat32
 
 getnext_fat12:
@@ -803,8 +768,8 @@ mov	[entryno],eax
 
 ok:
 xor	eax,eax				
-mov	al,[7c00h+_SECTORSPERBLOCK]	
-mul	word [7c00h+_RESERVEDSECTORS]
+mov	al,[0x7C00+BPB_SECTORSPERBLOCK]	
+mul	word [0x7C00+BPB_RESERVEDSECTORS]
 mov	ecx,eax
 
 ;  blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
@@ -841,13 +806,13 @@ loop	next_fatblock
 pop	ebx				; restore address
 
 mov	ch,[fattype]			; get fat type
-cmp	ch,12h				; fat 16
+cmp	ch,0x12				; fat 16
 je	get_block_fat12
 
-cmp	ch,16h				; fat 16
+cmp	ch,0x16				; fat 16
 je	get_block_fat16
 
-cmp	ch,32h				; fat 32
+cmp	ch,0x32				; fat 32
 je	get_block_fat32
 
 get_block_fat12:
@@ -858,7 +823,7 @@ mov	dx,[block]
 rcr	dx,1				; copy lsb to carry flag
 jc	is_odd
 
-and	ax,0fffh					; is even
+and	ax,0xfff					; is even
 jmp	check_end
 
 is_odd:
@@ -897,18 +862,18 @@ push	edi
 mov	[find_buf],ebx
 mov	[find_name],edx
 
-mov	bx,[7C00H+_SECTORSPERFAT]			; number of sectors per FAT
+mov	bx,[0x7C00+BPB_SECTORSPERFAT]			; number of sectors per FAT
 xor	eax,eax
-mov	al,[7c00h+_NUMBEROFFATS]			; number of fats
+mov	al,[0x7C00+BPB_NUMBEROFFATS]			; number of fats
 mul	bx
 
-add	al,[7c00h+_RESERVEDSECTORS]			; reserved sectors
+add	al,[0x7C00+BPB_RESERVEDSECTORS]			; reserved sectors
 
 mov	ebx,eax
 xor	ah,ah
-mov	al,[7c00h+_SECTORSPERBLOCK]			; sectors per block
+mov	al,[0x7C00+BPB_SECTORSPERBLOCK]			; sectors per block
 mul	ebx
-add	eax,[7c00h+_HIDDENSECTORS]			; start of partition
+add	eax,[0x7C00+BPB_HIDDENSECTORS]			; start of partition
 
 mov	[find_blockno],eax
 
@@ -933,7 +898,7 @@ next_entry:
 ;
 
 mov	al,[ebx]					; skip deleted files
-cmp	al,0E5h
+cmp	al,FAT_DELETED
 jne	not_deleted
 
 jmp	next
@@ -947,9 +912,9 @@ rep	cmpsb						; compare
 je	found_file					; load file
 
 next:
-add	ebx,_ENTRY_SIZE
+add	ebx,FAT_DIRECTORY_ENTRY_SIZE
 mov	eax,[blockcount]
-add	eax,_ENTRY_SIZE					; to next entry
+add	eax,FAT_DIRECTORY_ENTRY_SIZE					; to next entry
 mov	[blockcount],eax
 
 cmp	eax,[blocksize]					; if at end of block
@@ -960,25 +925,25 @@ call	getnextblock					; get next block
 mov	[find_blockno],eax
 
 mov	ah,[fattype]
-cmp	ah,12h
+cmp	ah,0x12
 je	check_fat_12
 
-cmp	ah,16h
+cmp	ah,0x16
 je	check_fat_16
 
-cmp	ah,32h
+cmp	ah,0x32
 je	check_fat_32
 
 check_fat_12:
-mov	eax,0fffh
+mov	eax,0xFF8
 jl	read_next_block
 
 check_fat_16:
-mov	eax,0ffffh
+mov	eax,0xFFF8
 jl	read_next_block	
 
 check_fat_32:
-mov	eax,0ffffffffh
+mov	eax,0xFFFFFFF8
 jl	read_next_block
 
 jmp	short end_find
@@ -986,7 +951,7 @@ jmp	short end_find
 found_file:
 mov	esi,ebx
 mov	edi,[find_buf]
-mov	ecx,_ENTRY_SIZE
+mov	ecx,FAT_DIRECTORY_ENTRY_SIZE
 rep	movsb				; copy entry
 
 xor	eax,eax
@@ -1044,23 +1009,23 @@ foundblock:
 
 next_block:
 mov	ebx,[block]
-movsx	ecx,word [7c00h+_RESERVEDSECTORS]			; reserved sectors
+movsx	ecx,word [0x7C00+BPB_RESERVEDSECTORS]			; reserved sectors
 add	ebx,ecx
 
 xor	eax,eax
 
 xor	ah,ah
-mov	cx,[7C00H+_SECTORSPERFAT]			; number of sectors per FAT
-mov	al,[7c00h+_NUMBEROFFATS]			; number of fats
+mov	cx,[0x7C00+BPB_SECTORSPERFAT]			; number of sectors per FAT
+mov	al,[0x7C00+BPB_NUMBEROFFATS]			; number of fats
 mul	ecx
 add	ebx,eax
 
-mov	eax,_ENTRY_SIZE
-mul	word [7C00H+_ROOTDIRENTRIES]			; number of root directory entries
+mov	eax,FAT_DIRECTORY_ENTRY_SIZE
+mul	word [0x7C00+BPB_ROOTDIRENTRIES]			; number of root directory entries
 
 xor	edx,edx
 xor	ecx,ecx
-mov	cx,[7c00h+_SECTORSIZE]
+mov	cx,[0x7C00+BPB_SECTORSIZE]
 div	ecx
 
 add	ebx,eax
@@ -1075,7 +1040,7 @@ mov	ebx,[loadptr]					; buffer
 add	ebx,[blocksize]					; point to next
 mov	[loadptr],ebx
 
-mov	ax,0e2eh
+mov	ax,0x0E2E		; print .
 int	10h
 
 ;
@@ -1090,22 +1055,22 @@ mov	[block],eax
 ; check if at end
 ;
 mov	cl,[fattype]					; get fat type
-cmp	cl,16h
+cmp	cl,0x16
 je	check_fat16_end
 
-cmp	cl,32h
+cmp	cl,0x32
 je	check_fat32_end
 
 ; fat 12 otherwise
-cmp	ax,0ff8h					; if at end
+cmp	ax,0xFF8					; if at end
 jle	next_block					; loop if not
 
 check_fat16_end:
-cmp	ax,0fff8h					; if at end
+cmp	ax,0xFFF8					; if at end
 jle	next_block					; loop if not
 
 check_fat32_end:
-cmp	eax,0fffffff8h					; if at end
+cmp	eax,0xFFFFFFF8					; if at end
 jle	next_block					; loop if not
 
 xor	eax,eax				; loaded ok
@@ -1126,30 +1091,43 @@ ret
 ; ebx=buffer
 
 readblock:
-push	ebx					; save registers
+push	eax					; save registers
+push	ebx
 push	ecx
 push	edx
+push	esi
+push	edi
 
 mov	[save_esp],esp				; save esp
 mov	[dest_addr],ebx
+
+mov	dl,[BOOT_INFO_PHYSICAL_DRIVE]
+
+cmp	dl,0x80					; if hard drive
+jb	not_hard_drive
+
+add	eax,[BOOT_INFO_BOOT_DRIVE_START_LBA]	; add starting LBA for the partition
+
+not_hard_drive:
 mov	[read_block],eax
 
-mov	al,dl
-and	al,80h	
-test	al,al
-jz	no_extensions
+mov	al,[BOOT_INFO_PHYSICAL_DRIVE]
 
-mov	ah,41h					; check for int 13h extensions
-mov	bx,55aah
+cmp	al,0x80					; if hard drive
+jb	no_extensions				; skip extensions if not
+
+mov	ah,0x41					; check for int 13h extensions
+mov	al,[BOOT_INFO_PHYSICAL_DRIVE]
+mov	bx,0x55AA
 int	13h
 jc	no_extensions
 
 mov	esi,offset dap				; set up disk address packet
-mov	al,10h
+mov	al,0x10
 mov	[esi],al				; size of dap
 xor	al,al
 mov	[esi+1],al				; reserved
-mov	al,[7c00h+_SECTORSPERBLOCK]	
+mov	al,[0x7C00+BPB_SECTORSPERBLOCK]	
 mov	[esi+3],al				; number of sectors to read
 mov	ax,ds					; segment:offset address to read to
 mov	[esi+4],ax
@@ -1162,7 +1140,7 @@ xor	eax,eax						; clear counter
 mov	dword [retry_counter],eax
 
 next_retry_ext:
-mov	ah,42h					; extended read
+mov	ah,0x42				; extended read
 mov	dl,[BOOT_INFO_PHYSICAL_DRIVE]
 int	13h
 
@@ -1170,7 +1148,7 @@ inc	dword [retry_counter]
 cmp	dword [retry_counter],RETRY_COUNT
 jne	next_retry_ext					; loop
 
-mov	eax,0fffffffh
+mov	eax,0xFFFFFFFF
 jmp	end_read
 
 no_extensions:
@@ -1184,7 +1162,7 @@ push	ebx
 mov	eax,[read_block]
 xor 	edx,edx		
 xor	ebx,ebx
-mov 	bx,[7c00h+_SECTORSPERTRACK]			; sectors per track
+mov 	bx,[0x7C00+BPB_SECTORSPERTRACK]			; sectors per track
 div	ebx
 
 inc	edx				; sectors start fron 1
@@ -1194,7 +1172,7 @@ mov	cl,dl						; save sector
 inc	cl
 
 xor 	dx,dx
-mov 	bx,[7c00h+_NUMBEROFHEADS]			; number of heads
+mov 	bx,[0x7C00+BPB_NUMBEROFHEADS]			; number of heads
 div 	bx
 
 mov	[cyl],ax
@@ -1217,7 +1195,7 @@ next_retry:
 xor	ebx,ebx
 
 mov	ah,2h						; read sectors
-mov	al,[7c00h+_SECTORSPERBLOCK]			; block
+mov	al,[0x7C00+BPB_SECTORSPERBLOCK]			; block
 mov	bx,TEMP_ADDRESS
 mov	ch,[cyl]
 mov	cl,[sector]
@@ -1233,7 +1211,7 @@ inc	dword [retry_counter]
 cmp	dword [retry_counter],RETRY_COUNT
 jne	next_retry					; loop
 
-mov	eax,0fffffffh
+mov	eax,0xFFFFFFFF
 jmp	short end_read
 
 copy_data:
@@ -1241,15 +1219,18 @@ mov	esi,TEMP_ADDRESS
 mov	edi,[dest_addr]
 mov	ecx,[blocksize]
 
-db	67h
+db	0x67
 rep	movsd
 
 end_read:
 mov	esp,[save_esp]			; restore esp
 
+pop	edi
+pop	esi
 pop	edx						; restore registers
 pop	ecx
 pop	ebx
+pop	eax
 ret
 
 ;
@@ -1264,7 +1245,7 @@ mov	[save_esp],esp				; save esp
 next_output:
 xor	eax,eax
 
-mov	ah,0eh						; output character
+mov	ah,0xE						; output character
 mov	al,[esi]
 int	10h
 
@@ -1282,7 +1263,7 @@ ret
 readkey:
 pusha
 xor	ax,ax
-int	16h					; get key
+int	0x16					; get key
 popa
 ret
 
@@ -1323,10 +1304,10 @@ not_end_e820:
 push	ecx
 push	edx
 
-mov	eax,0e820h				; get memory block
-mov	edx,534d4150h
+mov	eax,0xE820				; get memory block
+mov	edx,0x534D4150
 mov	ecx,24					; size of memory block
-int	15h
+int	0x15
 
 pop	edx
 pop	ecx
@@ -1337,20 +1318,20 @@ adc	edx,[es:di+INT15_E820_LENGTH_HIGH]			; add size
 test	ebx,ebx					; if at end
 jnz	not_end_e820				; loop if not
 
-add	ecx,8000h
+add	ecx,0x8000
 adc	edx,0
 
 jmp	end_detect_memory
 
 no_e820:
-mov	ax,0e801h				; get memory info
+mov	ax,0xe801				; get memory info
 int	15h
 jc	no_e801					; e801 not supported
 
-cmp	ah,86h					; not supported
+cmp	ah,0x86					; not supported
 je	no_e801
 
-cmp	ah,80h					; not supported
+cmp	ah,0x80					; not supported
 je	no_e801
 
 test	eax,eax					; use eax,ebx
@@ -1371,17 +1352,17 @@ mov	ecx,eax
 jmp	short end_detect_memory
 
 no_e801:
-mov	ah,88h					; get extended memory count
-int	15h
+mov	ah,0x88					; get extended memory count
+int	0x15
 jc	no_88h					; not supported
 
 test	ax,ax					; error
 jz	no_88h					; not supported
 
-cmp	ah,86h					; not supported
+cmp	ah,0x86					; not supported
 je	no_88h
 
-cmp	ah,80h					; not supported
+cmp	ah,0x80					; not supported
 je	no_88h
 
 add	eax,1024				; plus conventional memory
@@ -1393,7 +1374,7 @@ no_88h:
 xor	ecx,ecx
 xor	ebx,ebx
 
-mov	ax,0da88h				; get extended memory size
+mov	ax,0xDA88				; get extended memory size
 int	15h
 jc	no_da88h				; not supported
 
@@ -1405,8 +1386,8 @@ add	ecx,1024					; add conventional memory size
 jmp	short end_detect_memory
 
 no_da88h:
-mov	ah,8ah					; get extended memory size
-int	15h
+mov	ah,0x8A					; get extended memory size
+int	0x15
 jc	no_8ah
 push	ax					; returned in dx:ax
 push	dx
@@ -1484,18 +1465,19 @@ db 0
 db 0,0
 db 0
 
-dw 0ffffh					; low word of limit
+dw 0xFFFF					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 09ah,0cfh					; Code segment
+db 0x9A,0xCF					; Code segment
 db 0						; last byte of base
 
-dw 0ffffh					; low word of limit
+dw 0xFFFF					; low word of limit
 dw 0		 				; low word of base
-db 0	 					; middle byte of base
-db 92h,0cfh					; Data segment
+db 0						; middle byte of base
+db 0x92,0xCF					; Data segment
 db 0						; last byte of base
 gdt_end:
 db 0
 
 end_prog:
+

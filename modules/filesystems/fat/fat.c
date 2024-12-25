@@ -1434,7 +1434,7 @@ if(fattype == 12) {				/* fat 12 */
 	fatsize=bpb->sectorsperfat;
 	rb=bpb->reservedsectors;
 
-//	kprintf_direct("Find free block\n");
+	kprintf_direct("Find free block\n");
 
 	while(rb < (fatsize*bpb->sectorsperblock)) {
 		b=buf;
@@ -1454,13 +1454,13 @@ if(fattype == 12) {				/* fat 12 */
 		while(entrycount < bpb->sectorsize*2) {
 			longentry=(buf[entrycount+2] << 16) | (buf[entrycount+1] << 8) | buf[entrycount];	/* get two FAT entries */
 
-		//	kprintf_direct("raw entry=%X\n",longentry);
+			kprintf_direct("raw entry=%X\n",longentry);
 
 			shortentry=longentry & 0xfff;		/* get first FAT entry */
 			second_shortentry=longentry >> 12;	/* get second FAT entry */
 
-		//	DEBUG_PRINT_HEX(shortentry);
-		//	DEBUG_PRINT_HEX(second_shortentry);
+			DEBUG_PRINT_HEX(shortentry);
+			DEBUG_PRINT_HEX(second_shortentry);
 
 //			asm("xchg %bx,%bx");
 //
@@ -1475,6 +1475,8 @@ if(fattype == 12) {				/* fat 12 */
 			entrycount += 3;
 	      }
 	}
+
+	asm("xchg %bx,%bx");
 }
 
 if(fattype == 16) {				/* fat 16 */
@@ -1648,18 +1650,13 @@ for(c=1;c<tc;c++) {
 //		asm("xchg %bx,%bx");
 
 		if(c == 1) {		/* in root directory */
-			if(fattype == 12 || fattype == 16) {
-				readblock=rb;
-			}
-			else if(fattype == 32) {
-				readblock=((rb-2)*bpb->sectorsperblock)+datastart;
-			}
+			readblock=get_block_data_area_relative_dir(rb,"\\",fattype,bpb);
 		}
 		else
-		{
-			readblock=((rb-2)*bpb->sectorsperblock)+datastart;
+		{	
+			readblock=get_block_data_area_relative_dir(rb,path_tokens[c],fattype,bpb);
 		}
-
+		
 	//	DEBUG_PRINT_HEX(readblock);
 	//	asm("xchg %bx,%bx");
 
@@ -1994,7 +1991,7 @@ return(NO_ERROR);
 
 
 size_t fat_detect_change(size_t drive) {
-size_t  count;
+size_t count;
 size_t fattype;
 char *bootbuf;
 BPB bpb;

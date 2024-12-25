@@ -47,8 +47,8 @@ void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
 
-mkdir("A:\\NEWDIR");
-asm("xchg %bx,%bx");
+//mkdir("A:\\NEWDIR");
+//asm("xchg %bx,%bx");
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);
