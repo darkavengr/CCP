@@ -14,5 +14,5 @@ sync
 
 # 1048638=62 (BPB size)+1048576 (start of partition)
 
-dd if=bin/i386/boot of=/home/matt/bochs_disk_images/hd.img  bs=1 seek=1048638 skip=61 conv=notrunc
+dd if=bin/i386/boot of=/home/matt/bochs_disk_images/hd.img  bs=1 seek=1048638 skip=62 conv=notrunc
 

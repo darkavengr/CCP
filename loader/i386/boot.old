@@ -169,6 +169,8 @@ mov	[block],ax
 mov	si,LOAD_ADDRESS					; buffer
 
 next_block:
+xchg	bx,bx
+
 mov	bx,[block]
 sub	bx,2						; data area starts at block 2
 

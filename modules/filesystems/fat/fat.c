@@ -669,7 +669,8 @@ if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 		DEBUG_PRINT_HEX(rb);
 		DEBUG_PRINT_HEX(startblock >> 16);
 		DEBUG_PRINT_HEX(startblock & 0xffff);
-		asm("xchg %bx,%bx");
+
+		DEBUG_PRINT_HEX(fat_get_start_block(0,"A:\\CCP.SYS"));
 
 		if(fattype == 12) {
 			kprintf_direct("Create update FAT\n");
@@ -683,6 +684,9 @@ if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 		else if(fattype == 32) {
 			if(fat_update_fat(splitbuf.drive,startblock,0xffff,0xfff8) == -1) return(-1);
 		}
+	
+		asm("xchg %bx,%bx");
+
 	}
 
 	if((fattype == 12) || (fattype == 16)) {
@@ -1434,7 +1438,7 @@ if(fattype == 12) {				/* fat 12 */
 	fatsize=bpb->sectorsperfat;
 	rb=bpb->reservedsectors;
 
-	kprintf_direct("Find free block\n");
+//	kprintf_direct("Find free block\n");
 
 	while(rb < (fatsize*bpb->sectorsperblock)) {
 		b=buf;
@@ -1447,7 +1451,11 @@ if(fattype == 12) {				/* fat 12 */
 
 			b += bpb->sectorsize;
 		}
-			
+		
+		DEBUG_PRINT_HEX(buf);
+		DEBUG_PRINT_HEX(rb);
+		asm("xchg %bx,%bx");
+
 		rb += 2;	
 		entrycount=0;
 
@@ -1457,29 +1465,34 @@ if(fattype == 12) {				/* fat 12 */
 			kprintf_direct("raw entry=%X\n",longentry);
 
 			shortentry=longentry & 0xfff;		/* get first FAT entry */
+
+			kprintf_direct("%X: %X\n",whichentry,shortentry);
+
+			if((whichentry > 2) && (shortentry == 0)) {
+				kprintf_direct("FOUND=%X\n",whichentry);
+				return(whichentry);		/* found free entry */
+			}
+
+			whichentry++;
+
 			second_shortentry=longentry >> 12;	/* get second FAT entry */
+		
+			kprintf_direct("%X: %X\n",whichentry,second_shortentry);
 
-			DEBUG_PRINT_HEX(shortentry);
-			DEBUG_PRINT_HEX(second_shortentry);
-
-//			asm("xchg %bx,%bx");
-//
-			if(shortentry == 0) return(whichentry);		/* found free entry */
-
-			whichentry++;
-
-			if(second_shortentry == 0) return(whichentry);		/* found free entry */
-
+			if((whichentry > 2) && (second_shortentry == 0)) {
+				kprintf_direct("FOUND=%X\n",second_shortentry);
+				return(whichentry);		/* found free entry */
+			}
 
 			whichentry++;
+			
 			entrycount += 3;
 	      }
 	}
 
 	asm("xchg %bx,%bx");
 }
-
-if(fattype == 16) {				/* fat 16 */
+else if(fattype == 16) {				/* fat 16 */
 	fatsize=bpb->sectorsperfat;
 	rb=bpb->reservedsectors;
 
@@ -1502,8 +1515,7 @@ if(fattype == 16) {				/* fat 16 */
 		}
 	}
 }
-
-if(fattype == 32) {
+else if(fattype == 32) {
 	for(count=bpb->reservedsectors;count<bpb->fat32sectorsperfat;count++) {  
 		if(blockio(DEVICE_READ,drive,count,buf) == -1) {			/* read block */ 
 			kernelfree(buf);
@@ -1814,9 +1826,9 @@ if(getblockdevice(drive,&blockdevice) == -1) return(-1);
 buf=kernelalloc(MAX_BLOCK_SIZE);
 if(buf == NULL) return(-1);
 
-bpb=blockdevice.superblock;		/* point to data */
+bpb=blockdevice.superblock;		/* point to BPB */
 
-if(fattype == 12) {					/* fat12 */
+if(fattype == 12) {					/* FAT 12 */
 	entryno=(block+(block/2));
 	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
 	entry_offset=(entryno % (bpb->sectorsperblock*bpb->sectorsize));	/* offset into fat */
@@ -1837,13 +1849,13 @@ if(fattype == 12) {					/* fat12 */
 	{
 		entry=entry & 0xfff;
 	}
-		
+	
 	kernelfree(buf);
 	return(entry);
 }
 
 
-if(fattype == 16) {					/* fat16 */
+if(fattype == 16) {					/* FAT 16 */
 
 	entryno=block*2;				
 	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
@@ -1860,7 +1872,7 @@ if(fattype == 16) {					/* fat16 */
 		return(entry);
 	}
 
-	if(fattype == 32) {					/* fat32 */
+	if(fattype == 32) {					/* FAT 32 */
 
 		entryno=block*4;				
 		blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
@@ -1915,17 +1927,17 @@ bpb=blockdevice.superblock;		/* point to BPB */
 
 if(fattype == 12) {					/* fat12 */
 	entryno=block+(block/2);
-	blockno=(uint64_t) bpb->reservedsectors+(entryno/bpb->sectorsize);
+	blockno=(uint64_t) bpb->reservedsectors+(entryno/bpb->sectorsize);	/* FAT sector number */
 	entry_offset=entryno % bpb->sectorsize;	/* offset into FAT */
 
+	if(blockio(DEVICE_READ,drive,blockno,buf) == -1) return(-1); 	/* read block */
+	if(blockio(DEVICE_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)) == -1) return(-1); 	/* read block+1 */
+
+	DEBUG_PRINT_HEX(&buf[entry_offset]);
 	DEBUG_PRINT_HEX(block);
 	DEBUG_PRINT_HEX(entryno);
 	DEBUG_PRINT_HEX(blockno);
 	DEBUG_PRINT_HEX(entry_offset);
-	asm("xchg %bx,%bx");
-
-	if(blockio(DEVICE_READ,drive,blockno,buf) == -1) return(-1); 	/* read block */
-	if(blockio(DEVICE_READ,drive,blockno+1,buf+(bpb->sectorsperblock*bpb->sectorsize)) == -1) return(-1); 	/* read block+1 */
 
 	firstbyte=buf[entry_offset];
 	secondbyte=buf[entry_offset+1];
@@ -1934,21 +1946,28 @@ if(fattype == 12) {					/* fat12 */
 	// 23 61 45
 
 	if(block & 1) {					/* block is odd */
+		kprintf_direct("Is odd\n");
+
 		secondbyte=(secondbyte & 0x0f)+(uint8_t) (block_low_word & 0xf0);
 		thirdbyte=((block_low_word & 0xff80) >> 8);
 	}
 	else
 	{
+		kprintf_direct("Is even\n");
+
 		firstbyte=(uint8_t) (block_low_word & 0xff);
 		secondbyte=(secondbyte & 0x0f)+(uint8_t) ((block_low_word & 0xf00) >> 4);
 	}
 
+	asm("xchg %bx,%bx");
+
 	buf[entry_offset]=firstbyte;
 	buf[entry_offset+1]=secondbyte;
 	buf[entry_offset+2]=thirdbyte;
-}
 
-if(fattype == 16) {					/* fat16 */
+	asm("xchg %bx,%bx");
+}
+else if(fattype == 16) {					/* fat16 */
 	entryno=block*2;				
 	blockno=bpb->reservedsectors+entryno;
 	entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
@@ -1957,7 +1976,6 @@ if(fattype == 16) {					/* fat16 */
 
 	*(uint16_t*)&buf[entry_offset]=block_low_word;
 }
-
 if(fattype == 32) {					/* fat32 */
 	entryno=block*4;				
 	blockno=bpb->reservedsectors+entryno;

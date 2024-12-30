@@ -46,8 +46,19 @@ void halt(void);
 void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
+size_t block;
 
-//mkdir("A:\\NEWDIR");
+//DEBUG_PRINT_HEX(fat_find_free_block(0));
+
+//block=fat_get_start_block(0,"A:\\CCP.SYS");
+
+//do {
+//	DEBUG_PRINT_HEX(block);
+
+//	block=fat_get_next_block(0,block);
+//} while(block < 0xff8);
+
+mkdir("A:\\NEWDIR");
 //asm("xchg %bx,%bx");
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
