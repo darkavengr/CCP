@@ -898,7 +898,7 @@ return(NO_ERROR);				/* no error */
 size_t fat_read(size_t handle,void *addr,size_t size) {
 char *ioaddr;
 char *iobuf;
-size_t bytesdone;
+size_t bytesdone=0;
 size_t fattype;
 BLOCKDEVICE blockdevice;
 FILERECORD read_file_record;
@@ -983,7 +983,13 @@ while(read_size > 0) {
 	}
 	else
 	{
-		count=(bpb->sectorsperblock*bpb->sectorsize);
+		if(read_size < (bpb->sectorsperblock*bpb->sectorsize)) {
+			count=read_size;
+		}
+		else
+		{
+			count=(bpb->sectorsperblock*bpb->sectorsize);
+		}
 	}
 
 	if((blockoffset+count) > (bpb->sectorsperblock*bpb->sectorsize)) count=(bpb->sectorsperblock*bpb->sectorsize)-(blockoffset+count);
@@ -991,6 +997,7 @@ while(read_size > 0) {
 	bytesdone += count;
 
 	memcpy(addr,iobuf+blockoffset,count);			/* copy data to buffer */
+
 	addr += count;      /* point to next address */
 
 	/* if reading data that crosses a block boundary, find next block to read remainder of data */
@@ -1830,8 +1837,8 @@ bpb=blockdevice.superblock;		/* point to BPB */
 
 if(fattype == 12) {					/* FAT 12 */
 	entryno=(block+(block/2));
-	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-	entry_offset=(entryno % (bpb->sectorsperblock*bpb->sectorsize));	/* offset into fat */
+	blockno=bpb->reservedsectors+(entryno / bpb->sectorsize);
+	entry_offset=(entryno % bpb->sectorsize);	/* offset into fat */
 
 	if(blockio(DEVICE_READ,drive,blockno,buf) == -1) { 	/* read block */
 		kernelfree(buf);
@@ -1856,10 +1863,10 @@ if(fattype == 12) {					/* FAT 12 */
 
 
 if(fattype == 16) {					/* FAT 16 */
-
-	entryno=block*2;				
-	blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-	entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
+	entryno=block*2;
+				
+	blockno=bpb->reservedsectors+(entryno / bpb->sectorsize);
+	entry_offset=entryno % bpb->sectorsize;			/* offset into fat */
 
 	if(blockio(DEVICE_READ,drive,blockno,buf) == -1) { 	/* read block */
 		kernelfree(buf);
@@ -1873,12 +1880,11 @@ if(fattype == 16) {					/* FAT 16 */
 	}
 
 	if(fattype == 32) {					/* FAT 32 */
-
 		entryno=block*4;				
-		blockno=(bpb->reservedsectors*bpb->sectorsperblock)+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-		entry_offset=entryno % (bpb->sectorsperblock*bpb->sectorsize);	/* offset into fat */
+		blockno=bpb->reservedsectors+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
+		entry_offset=entryno % bpb->sectorsize;	/* offset into fat */
 
-		if(blockio(DEVICE_READ,drive,blockno,buf) == -1) {			/* read block */
+		if(blockio(DEVICE_READ,drive,blockno,buf+(bpb->sectorsperblock*bpb->sectorsize)) == -1) {			/* read block */
 			kernelfree(buf);
 			return(-1);
 		}
