@@ -1,8 +1,8 @@
 #!/bin/bash
 
 losetup -o 1048576 /dev/loop666 /home/matt/bochs_disk_images/hd.img
-
 mount /dev/loop666 /mnt
+
 cp "bin/$1/CCP.SYS" /mnt
 cp "bin/$1/INITRD.SYS" /mnt
 cp "bin/$1/COMMAND.RUN" /mnt
@@ -12,7 +12,8 @@ umount /mnt
 losetup -d /dev/loop666
 sync
 
-# 1048638=62 (BPB size)+1048576 (start of partition)
+# 1048638+62 (BPB size)+1048576 (start of partition)
 
-dd if=bin/i386/boot of=/home/matt/bochs_disk_images/hd.img  bs=1 seek=1048638 skip=62 conv=notrunc
+#dd if=bin/i386/boot of=/home/matt/bochs_disk_images/hd.img  bs=1 seek=1048638 skip=62 conv=notrunc
+dd if=bin/i386/boot32 of=/home/matt/bochs_disk_images/hd2.img  bs=1 seek=1048666 skip=90 conv=notrunc
 

@@ -4,22 +4,22 @@ LD=@cc@
 
 all: @buildroot@/obj/@arch@/ex-hwdep.o @buildroot@/obj/@arch@/partition-hwdep.o @buildroot@/obj/@arch@/port-hwdep.o @buildroot@/obj/@arch@/sched-hwdep.o @buildroot@/obj/@arch@/mutex-hwdep.o @buildroot@/obj/@arch@/interrupts-hwdep.o @buildroot@/obj/@arch@/stack-hwdep.o  @buildroot@/obj/@arch@/aainit-hwdep.o @buildroot@/obj/@arch@/aamemorymap-hwdep.o @buildroot@/obj/@arch@/usermode-hwdep.o  @buildroot@/obj/@arch@/cpustate-hwdep.o @buildroot@/obj/@arch@/tss-hwdep.o @buildroot@/obj/@arch@/gdt-hwdep.o @buildroot@/obj/@arch@/page-hwdep.o
  @buildroot@/obj/@arch@/ex-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header ex.c -o @buildroot@/obj/@arch@/ex-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header/@arch@ ex.c -o @buildroot@/obj/@arch@/ex-hwdep.o
 
  @buildroot@/obj/@arch@/partition-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header partition.c -o @buildroot@/obj/@arch@/partition-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header/@arch@ partition.c -o @buildroot@/obj/@arch@/partition-hwdep.o
 
  @buildroot@/obj/@arch@/port-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header port.c -o @buildroot@/obj/@arch@/port-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header/@arch@ port.c -o @buildroot@/obj/@arch@/port-hwdep.o
 
  @buildroot@/obj/@arch@/sched-hwdep.o:
 		$(ASM) @asm_opts@ sched.asm -o @buildroot@/obj/@arch@/sched-hwdep.o
 
 ` @buildroot@/obj/@arch@/mutex-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header mutex.c -o @buildroot@/obj/@arch@/mutex-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header/@arch@ mutex.c -o @buildroot@/obj/@arch@/mutex-hwdep.o
 
  @buildroot@/obj/@arch@/aamemorymap-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header ../i386/memorymap.c -o @buildroot@/obj/@arch@/aamemorymap-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header/@arch@ ../i386/memorymap.c -o @buildroot@/obj/@arch@/aamemorymap-hwdep.o
 
  @buildroot@/obj/@arch@/aainit-hwdep.o:
 		$(ASM) @asm_opts@ init.asm -o @buildroot@/obj/@arch@/aainit-hwdep.o
@@ -43,5 +43,5 @@ all: @buildroot@/obj/@arch@/ex-hwdep.o @buildroot@/obj/@arch@/partition-hwdep.o 
 		$(ASM) @asm_opts@ usermode.asm -o @buildroot@/obj/@arch@/usermode-hwdep.o
 
  @buildroot@/obj/@arch@/page-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/kernel -I@buildroot@/header page.c -o @buildroot@/obj/@arch@/page-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header/@arch@ page.c -o @buildroot@/obj/@arch@/page-hwdep.o
 

@@ -7,4 +7,5 @@ cp "bin/$1/COMMAND.RUN" /mnt
 cp "bin/$1/CCPLOAD.SYS" /mnt
 umount /mnt
 sync
+
 dd if=bin/$1/boot of=/home/matt/bochs_disk_images/floppy.img conv=notrunc

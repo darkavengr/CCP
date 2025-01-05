@@ -1,139 +1,99 @@
 ;
-; CCP FAT32 boot loader
+; CCP boot loader
 ;
- %define offset
 
-  NULL equ 0
- LOAD_SEG		equ 0x1000			; segment:offset address to to load to
- LOAD_ADDRESS		equ 0
+%include "../kernel/hwdep/i386/bootinfo.inc"
+%include "i386/fatinfo.inc"
 
- _FILENAME 		equ 0				; fat entry offsets
- _FILEATTR 		equ 11
- _BYTE_RESERVED		equ 12
-  _CREATE_TIME_FINE_RES	equ 13 
- _CREATE_TIME 		equ 14
- _CREATE_DATE 		equ 16
- _LAST_ACCESS_DATE 	equ 18
- _BLOCK_HIGH_WORD 	equ 20
- _LAST_MODIFIED_TIME 	equ 22
- _LAST_MODIFIED_DATE 	equ 24
- _BLOCK_LOW_WORD	equ 26
- _FILE_SIZE		equ 28
+NULL equ 0
+LOAD_ADDRESS		equ 0x1000			;  address to to load to
+
+PTABLE_BOOTABLE		equ 0
+PTABLE_START_HEAD	equ 1
+PTABLE_START_SECTOR	equ 2
+PTABLE_START_CYLINDER	equ 3
+PTABLE_SYSTEM_ID	equ 4
+PTABLE_END_HEAD		equ 5
+PTABLE_END_SECTOR	equ 6
+PTABLE_END_CYLINDER	equ 7
+PTABLE_START_LBA	equ 8
+PTABLE_SECTOR_COUNT	equ 12
 
 RETRY_COUNT equ 3						; number of times to retry
 
- _JUMP 			equ 0					; bpb offsets											
- _FSMARKER 		equ 3
- _SECTORSIZE		equ 11
- _SECTORSPERBLOCK	equ 13
- _RESERVEDSECTORS	equ 14
- _NUMBEROFFATS		equ 16
- _ROOTDIRENTRIES	equ 17
- _NUMBEROFSECTORS	equ 19
- _MEDIADESCRIPTOR	equ 21
- _SECTORSPERFAT		equ 22
- _SECTORSPERTRACK	equ 24
- _NUMBEROFHEADS		equ 26
- _HIDDENSECTORS		equ 28
- _SECTORSDWORD		equ 32
- _PHYSICALDRIVE		equ 36
- _RESERVED		equ 37
- _EXBOOTSIG		equ 38
- _SERIALNO		equ 39
- _VOLUMELABEL		equ 43
- _FATNAME		equ 54
+; addresses of variables
 
-root_start equ end_prog					; addresses of variables
-file_count  equ end_prog + 2				
-blockstart  equ end_prog + 4
-numtracks  equ end_prog + 8
-sect  equ end_prog + 16
-entrycount  equ end_prog + 18
-blocksize  equ end_prog + 20
-epb  equ end_prog + 22
-retrycount  equ end_prog + 24
-block equ end_prog + 26
-sector equ end_prog + 28
-fat_start_block equ end_prog + 30
-startblock equ end_prog + 32
-BOOT_DRIVE equ end_prog + 33
-entryno  equ end_prog + 34
-blockno  equ end_prog + 36
-entry_offset  equ end_prog + 38
-DRIVE equ end_prog + 40
 fattype equ end_prog + 41
 FAT_BUF equ end_prog + 42
-ROOTDIRADDR equ end_prog + 512 + 43
+blocksize equ end_prog + 44
+ROOTDIRADDR equ end_prog + 46
 
+org	0x7c00						; origin
+ jmp	short	over
+ db	0x90						; nop
 
- _ENTRY_SIZE 		equ 32
- MAX_CLUSTER_SIZE 	equ 32767			; maxiumum cluster size
- EOF equ 0xffffffff					; end of file
+;
+; don't fill in these values, patch this boot loader into a existing FAT32 boot sector
+;
+ times 90-3 db 0
 
- TRUE		equ 1
- FALSE		equ 0
-
- _READONLY	equ 1				; file attributes
- _HIDDEN 	equ 2
- _SYSTEM 	equ 4
- VOL_LABEL	equ 8
- _DIRECTORY 	equ 16
- _ARCHIVE	equ 32
-
-org	7c00h						; origin
- jmp	short	over					; eb 3c
- db	90h						; nop
- db	"MSDOS5.0"					; oem name
- dw	512						; bytes per sector
- db	1						; sectors per block
- dw	1						; reserved sectors
- db 	2						; number of FATs
- dw	224						; maximum number of directory entries
- dw	2880						; maximum number of sectors if less than 65536 
- db	0xF0						; media descriptor
- dw	9						; sectors per FAT
- dw	18						; sectors per track
- dw	2						; number of heads
- dd	0						; number of sectors before this parition if hard disk
- dd	0						; number of sectors of sectors if more than 65536
- db	0						; drive number (useless)
- db 	0x29						; flags
- dw	0x29A,0x29A					; volume serial number
- db	"BOOT      "					; label
- db	"FAT12  "					; fat identification
 over:
-mov	[0xAC],dl					; save drive
+mov	[BOOT_INFO_PHYSICAL_DRIVE],dl			; save drive
 
-mov	sp,0fffeh					; stack
+test	dl,0x80
+jb	not_hd_init					; don't add starting LBA if not hard drive
 
+; si points to partition table entry for this volume
+
+add	si,PTABLE_START_LBA					; point to start LBA
+mov	di,BOOT_INFO_BOOT_DRIVE_START_LBA
+
+lodsw
+add	ax,[si+PTABLE_START_LBA]				; add starting LBA low word
+stosw				; copy low word
+lodsw
+adc	ax,[si+PTABLE_START_LBA+2]				; add starting LBA high word
+stosw				; copy high word
+
+not_hd_init:
 mov	ax,cs						; cs
 mov	ds,ax						; ds=cs
 mov	es,ax
 mov	ss,ax
 
+mov	ax,[0x7c00+BPB_FATNAME+3]			; get fat type
+xchg	ah,al						; swap bytes
+; sub ax,0x3120 is the same as:
+;  sub ax,0x3030
+; sub ax,0xf0
+
+sub	ax,0x3120					; from ascii to number
+mov	[fattype],al					; save fat type
+
 xor	ah,ah
-mov	al,[7c00h+_SECTORSPERBLOCK]			; sectors per block
-mul	word [7c00h+_SECTORSIZE]
+mov	al,[0x7c00+BPB_SECTORSPERBLOCK]			; sectors per block
+mul	word [0x7c00+BPB_SECTORSIZE]
 mov	[blocksize],ax
 
 ;
-; search root directory for ccp.sys
+; search root directory for ccpload.sys
 ;
 
 ; find root directory
 
-mov	eax,[fat32_rootdir_start]
-mov	[root_start],eax					; save root start
+xchg	bx,bx
+
+mov	eax,[0x7c00+BPB_FAT32_ROOTDIR]
 
 ;
 ; read sectors from root directory and search
 ;
 
-
 read_next_block:
+call	add_data_area_start					; add data area
+
 mov	bx,ROOTDIRADDR					; read root directory
 call	readblock					; read block
-
 
 mov	si,bx						; point to buffer
 
@@ -144,94 +104,67 @@ next_entry:
 
 cld
 mov	si,bx
-mov	di,offset ccp_name				; point to name
+mov	di,ccp_name				; point to name
 mov	cx,11						; size
 rep	cmpsb						; compare
 je	found_file					; load file
 
-add	bx,_ENTRY_SIZE					; point
+add	bx,FAT_DIRECTORY_ENTRY_SIZE					; point
 cmp	bx,[blocksize]					; if at end of block
-jle	next_entry
+jl	next_entry
 
-mov	eax,[block]					; find next block
-call	getnextblock
+call	getnextblock					; get next block
 
-cmp	eax,0ffffffff8h					; if at end
+cmp	eax,0fffffff8h					; if at end
 jne	read_next_block
-
 
 ;
 ; not found
 ;
 
 badfile:		
-mov	si,offset bad_system
+mov	si,bad_system				; point to message
 
 output_message:
-mov	ah,0eh						; output character
+mov	ah,0xE						; output character
 lodsb							; get character
-int	10h
+int	0x10
 
 test	al,al						; if at end
 jne	output_message					; loop if not
 
-xor	ax,ax
-int	16h						; get key
-int	19h						; reset
+cli
+hlt					; halt
 
 found_file:
-mov	eax,[bx+_BLOCK_LOW_WORD]				; get block
-shl	eax,16
-add	eax,[bx+_BLOCK_HIGH_WORD]
-mov	[block],eax
+mov	eax,[bx+FAT_DIRECTORY_BLOCK_LOW_WORD]		; get block
 
 ;
-; load ccp.sys
+; load ccpload.sys
+;
 
-mov	ax,LOAD_SEG					; segment
-mov	es,ax						; put segment
 mov	si,LOAD_ADDRESS					; buffer
 
 next_block:
-mov	ebx,[block]
+mov	ebx,eax
+sub	ebx,2						; data area starts at block 2
 
-add	ebx,[7c00h+_RESERVEDSECTORS]			; reserved sectors
+movzx	eax,byte [0x7c00+BPB_SECTORSPERBLOCK]			; sectors per block
+mul	ebx
 
-xor	eax,eax
-mov	ecx,[7C00H+_SECTORSPERFAT]			; number of sectors per FAT
-mov	al,[7c00h+_NUMBEROFFATS]			; number of fats
-mul	ecx
-add	ebx,eax
+call	add_data_area_start				; add start of data area
 
-mov	eax,_ENTRY_SIZE
-mul	word [7C00H+_ROOTDIRENTRIES]			; number of root directory entries
-xor	dx,dx
-mov	cx,[7c00h+_SECTORSIZE]
-div	cx
-add	bx,ax
-sub	bx,2						; data area starts at block 2
-
-mov	ax,bx						; block number
 mov	bx,si						; buffer
 call	readblock					; read block
 
 add	si,[blocksize]					; point to next
-jnc	short no_inc					; carry set means next segment
 
-increment_segment:
-mov	ax,es
-inc	ax
-mov	es,ax
-
-no_inc:
-mov	eax,[block]					; start block
-call	getnextblock					; get next block
-mov	[block],eax
+call	getnextblock					; find next blcok
 
 cmp	eax,0xfffffff8					; if at end
 jl	next_block					; loop if not
-jmp	LOAD_SEG:LOAD_ADDRESS				; load
 
+jmp	0:LOAD_ADDRESS				; load
 
 ;
 ; read block
@@ -241,125 +174,163 @@ jmp	LOAD_SEG:LOAD_ADDRESS				; load
 
 readblock:
 push	eax						; save registers
-push	bx
-push	cx
-push	dx
+push	ebx
+push	ecx
+push	edx
+
+mov	dl,[BOOT_INFO_PHYSICAL_DRIVE]
+
+cmp	dl,0x80
+jb	not_hd						; don't add starting LBA if not hard drive
+
+add	eax,[BOOT_INFO_BOOT_DRIVE_START_LBA]		; add partition starting LBA
+
+not_hd:
+push	eax
+push	es						; restore es:bx, int 0x13, ah=0x8 overwrites it
+push	ebx
+
+xor	ecx,ecx
+xor	edx,edx
+
+mov	ah,0x8						; get drive parameters
+int	0x13
+
+pop	ebx						; restore es:bx
+pop	es
+pop	eax						; save block number
+and	cx,0000000000111111b				; get sectors per track
+
+shr	dx,8						; get number of heads
+inc	dl						; heads is zero-based
 
 ;
 ; convert block number to cylinder,head,sector
 ;
 
-push	bx
+push	ebx						; save buffer address
+push	edx						; save number of heads
+push	ecx						; save sectors per track
 
-xor 	dx,dx		
-mov 	ebx,[7c00h+_SECTORSPERTRACK]			; sectors per track
+xchg	bx,bx
+xor 	edx,edx		
+pop	ebx						; sectors per track
 div	ebx
 
 mov	cl,dl						; save sector
 inc	cl
 
 xor 	edx,edx
-mov 	bx,[7c00h+_NUMBEROFHEADS]			; number of heads
-div 	bx
+pop	ebx						; number of heads
+div 	ebx
 
 mov	dh,dl						; head
-mov	ch,al			
+mov	ch,al						; cylinder	
 
-xor	di,di						; reset count
+shr	ax,2
+and	ax,0xc0
+or	cx,ax
 
-pop	bx
+pop	ebx
+
+xor	edi,edi						; reset count
+
 next_retry:
-
-mov	ah,2h						; read sectors
-mov	al,[7c00h+_SECTORSPERBLOCK]			; block
-mov	dl,[DRIVE]
-int	13h
+mov	ah,0x2						; read sectors
+mov	al,[0x7c00+BPB_SECTORSPERBLOCK]			; number of sectors to read
+mov	dl,[BOOT_INFO_PHYSICAL_DRIVE]
+int	0x13
 jnc	read_exit
 
-inc 	di					; increment counter
-
-cmp	dh,[7c00h+_SECTORSPERTRACK]		; at end of track
-jl	not_end
-
-inc	ch					; next track
-xor	dh,dh
+inc 	edi					; increment counter
 
 not_end:
-cmp	di,RETRY_COUNT
+cmp	edi,RETRY_COUNT
 jne	next_retry					; loop
 
 jmp	badfile						; bad system
 
 read_exit:
-pop	dx
-pop	cx
-pop	bx
+pop	edx
+pop	ecx
+pop	ebx
 pop	eax						; restore registers
 ret
 
 ;
+; Add data area start to block number
+;
+; eax=block number
+;
+; returns: block number+data area
+;
+add_data_area_start:
+sub	eax,2
+mul	word [blocksize]
+
+push	eax
+
+; DataArea=(SectorsPerFAT*NumberOfFATs)+NumberOfReservedSectors+(RootDirStart-2)
+
+; (SectorsPerFAT*NumberOfFATs)
+xor	edx,edx
+mov	ecx,[0x7c00+BPB_FAT32_SECTORS_PER_FAT]		; number of sectors per FAT
+movzx	eax,byte [0x7c00+BPB_NUMBEROFFATS]		; number of fats
+mul	ecx
+
+;+NumberOfReservedSectors
+movzx	ecx,word [0x7c00+BPB_RESERVEDSECTORS]		; add reserved sectors
+add	eax,ecx
+
+;+(RootDirStart-2)
+add	eax,[0x7c00+BPB_FAT32_ROOTDIR]
+sub	eax,2
+
+pop	ecx
+add	eax,ecx
+ret
+
+
+
 ; get next block
 ;
+;
 getnextblock:
-push	bx
-push	cx
-push	dx
-push	es
+push	ebx
+push	ecx
+push	edx
 
-shl	eax,*2				; multiple by four
-jmp	short ok
+getnext_mult_blockno_fat32:
+shl	eax,2				; multiple by four
 
-mov	ebx,eax				; entryno=block * (block/2)
-shr	eax,4				; divide by four
-add	eax,ebx
-mov	[entryno],eax
+; blockno=next->reservedsectors+(entryno / (next->sectorsperblock*next->sectorsize));		
+; entry_offset=(entryno % next->sectorsize);	/* offset into fat */
 
-ok:
-xor	ah,ah				;blockno=(next->reservedsectors*next->sectorsperblock)+(entryno / (next->sectorsperblock*next->sectorsize));		
-mov	al,[7c00h+_SECTORSPERBLOCK]	
-mul	word [7c00h+_RESERVEDSECTORS]
-mov	ecx,eax
-
-;  entry_offset=(entryno % (next->sectorsperblock*next->sectorsize));	/* offset into fat */
-
-xor	dx,dx
-mov	eax,[entryno]
+xor	edx,edx
 div	word [blocksize]		; entryno/blocksize
-add	eax,ecx
-mov	[blockno],eax
-mov	[entry_offset],edx
 
-mov	cx,2
-mov	bx,FAT_BUF			; buffer
+xor	eax,eax
+add	al,[0x7c00+BPB_RESERVEDSECTORS]
 
-push	bx				; save address
+mov	ecx,2
+mov	ebx,FAT_BUF			; buffer
 
-xor	ax,ax				; segment
-mov	es,ax
-
-next_fatblock:
-mov	eax,[blockno]			; read fat sector and fat sector + 1 to buffer
-mov	dl,[DRIVE]
 call	readblock
 
-inc	ax				; block+1
-add	bx,[blocksize]
-loop	next_fatblock
+add	ebx,edx				; get entry
 
-pop	bx				; restore address
-add	bx,[entry_offset]		; get entry
-mov	eax,[bx]
+mov	eax,[ebx]
 
-check_end:
-pop	es
-pop	dx
-pop	cx
-pop	bx
+and	eax,0xff000000
+
+pop	edx
+pop	ecx
+pop	ebx
 ret
-	     
-ccp_name db "CCP     SYS"
-bad_system db "System?",0
-TIMES 510-($-$$) db 0ffh
-dw 0aa55h						; marker
+
+ccp_name db "CCPLOAD SYS"
+bad_system db "?",0
+TIMES 510-($-$$) db 0
+dw 0xaa55						; marker
 
 end_prog:

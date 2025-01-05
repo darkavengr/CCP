@@ -11,11 +11,11 @@ FAT_DIRECTORY_LAST_MODIFIED_DATE 	equ 24
 FAT_DIRECTORY_BLOCK_LOW_WORD		equ 26
 FAT_DIRECTORY_FILE_SIZE			equ 28
 
-FAT_DELETED	equ 0xE5
+FAT_DELETED				equ 0xE5
 FAT_DIRECTORY_ENTRY_SIZE 		equ 32
-MAX_CLUSTER_SIZE 	equ 32767			; maxiumum cluster size
+MAX_CLUSTER_SIZE 			equ 32767			; maxiumum cluster size
 
-BPB_JUMP 			equ 0					; bpb offsets											
+BPB_JUMP 		equ 0					; bpb offsets											
 BPB_FSMARKER 		equ 3
 BPB_SECTORSIZE		equ 11
 BPB_SECTORSPERBLOCK	equ 13
@@ -49,5 +49,4 @@ BPB_FAT32_SIG		equ 66
 BPB_FAT32_VOLID		equ 67
 BPB_FAT32_LABEL		equ 71
 BPB_FAT32_ID		equ 82
-
 

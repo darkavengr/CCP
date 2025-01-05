@@ -1,7 +1,7 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,@buildroot@/mapfiles/command.map -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
+CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
 LDFLAGS=-ffreestanding -nostdlib -T ld.script.command  -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
 OBJFILES=command.o string.o error.o addvar.o copyfile.o err.o getfullpath.o kprintf.o readline.o runcommand.o call.o
 OUTFILE=@buildroot@/bin/@arch@/COMMAND.RUN 
@@ -10,34 +10,34 @@ all: 	$(OBJFILES)
 	$(CC) -o $(OUTFILE) $(OBJFILES) $(LDFLAGS)
 
 addvar.o:
-	$(CC) $(CCFLAGS) addvar.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ addvar.c
 
 command.o:
-	$(CC) $(CCFLAGS) command.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ command.c
 
 copyfile.o:
-	$(CC) $(CCFLAGS) copyfile.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ copyfile.c
 
 err.o:
-	$(CC) $(CCFLAGS) err.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ err.c
 
 getfullpath.o:
-	$(CC) $(CCFLAGS) getfullpath.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ getfullpath.c
 
 kprintf.o:
-	$(CC) $(CCFLAGS) kprintf.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ kprintf.c
 
 readline.o:
-	$(CC) $(CCFLAGS) readline.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ readline.c
 
 runcommand.o:
-	$(CC) $(CCFLAGS) runcommand.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ runcommand.c
 
 string.o:
-	$(CC) $(CCFLAGS) @buildroot@/header/string.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ @buildroot@/header/string.c
 
 error.o:
-	$(CC) $(CCFLAGS) @buildroot@/header/error.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ @buildroot@/header/error.c
 
 call.o:
 	$(ASM) @asm_opts@ @arch@/call.asm -o call.o

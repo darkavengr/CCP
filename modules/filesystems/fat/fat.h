@@ -82,6 +82,14 @@ typedef struct {
 	uint8_t fat32ident[8];
 } __attribute__((packed)) BPB;
 
+typedef struct {
+	uint32_t leadsignature;
+	uint8_t reserved[480];
+	uint32_t secondsignature;
+	uint32_t freeblockcount;
+	uint8_t signature;
+	uint32_t trailsignature;
+} FSINFO;
 
 size_t fat_findfirst(char *filename,FILERECORD *buf);							// TESTED
 size_t fat_findnext(char *filename,FILERECORD *buf);							// TESTED
@@ -114,4 +122,6 @@ size_t fat_create_entry(size_t type,size_t drive,uint64_t rb,size_t entryno,size
 size_t fat_is_long_filename(char *filename);								// TESTED
 size_t fat_create_subdirectory_entries(char *dirname,size_t parentdir_startblock,size_t startblock,BPB *bpb,TIME *time,TIME *date,size_t fattype,size_t drive); // TESTED
 uint64_t get_block_data_area_relative_dir(size_t blocknumber,char *dirname,size_t fattype,BPB *bpb);	// TESTED
+size_t fat_update_free_block_count(size_t drive,size_t blockcount);
+
 

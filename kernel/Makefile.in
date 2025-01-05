@@ -36,45 +36,45 @@ drivers:
 	for f in @driver_list@; do make -C $$f;done
 
 	for f in @initrd_driver_list@; do make -C $$f;done
-	$(foreach f,$(FILES),$(CC) $(CCOPTS) $f -o $(patsubst %.c,%.o, @buildroot@/obj/@arch@/$(notdir $(f)));)
+	$(foreach f,$(FILES),$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $f -o $(patsubst %.c,%.o, @buildroot@/obj/@arch@/$(notdir $(f)));)
 
 #
 # Rules for building the core files
 #
 
 @buildroot@/obj/@arch@/drive.o:
-	$(CC) $(CCOPTS) drive.c -o @buildroot@/obj/@arch@/drive.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ drive.c -o @buildroot@/obj/@arch@/drive.o
 
 @buildroot@/obj/@arch@/memorymanager.o:
-	$(CC) $(CCOPTS) memorymanager.c -o @buildroot@/obj/@arch@/memorymanager.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ memorymanager.c -o @buildroot@/obj/@arch@/memorymanager.o
 
 @buildroot@/obj/@arch@/ccp.o:
-	$(CC) $(CCOPTS) ccp.c -o @buildroot@/obj/@arch@/ccp.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ccp.c -o @buildroot@/obj/@arch@/ccp.o
 
 @buildroot@/obj/@arch@/device.o:
-	$(CC) $(CCOPTS) device.c -o @buildroot@/obj/@arch@/device.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ device.c -o @buildroot@/obj/@arch@/device.o
 
 @buildroot@/obj/@arch@/vfs.o:
-	$(CC) $(CCOPTS) vfs.c -o @buildroot@/obj/@arch@/vfs.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ vfs.c -o @buildroot@/obj/@arch@/vfs.o
 
 @buildroot@/obj/@arch@/initrd.o:
-	$(CC) $(CCOPTS) initrd.c -o @buildroot@/obj/@arch@/initrd.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ initrd.c -o @buildroot@/obj/@arch@/initrd.o
 
 @buildroot@/obj/@arch@/process.o:
-	$(CC) $(CCOPTS) process.c -o @buildroot@/obj/@arch@/process.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ process.c -o @buildroot@/obj/@arch@/process.o
 
 @buildroot@/obj/@arch@/multitasking.o:
-	$(CC) $(CCOPTS) multitasking.c -o @buildroot@/obj/@arch@/multitasking.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ multitasking.c -o @buildroot@/obj/@arch@/multitasking.o
 
 @buildroot@/obj/@arch@/kprintf_direct.o:
-	$(CC) $(CCOPTS) header/kprintf_direct.c -o @buildroot@/obj/@arch@/kprintf_direct.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ header/kprintf_direct.c -o @buildroot@/obj/@arch@/kprintf_direct.o
 
 @buildroot@/obj/@arch@/module.o:
-	$(CC) $(CCOPTS) module.c -o @buildroot@/obj/@arch@/module.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ module.c -o @buildroot@/obj/@arch@/module.o
 
 @buildroot@/obj/@arch@/error.o:
-	$(CC) $(CCOPTS) ../header/error.c -o @buildroot@/obj/@arch@/error.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ../header/error.c -o @buildroot@/obj/@arch@/error.o
 
 @buildroot@/obj/@arch@/string.o:
-	$(CC) $(CCOPTS) ../header/string.c -o @buildroot@/obj/@arch@/string.o
+	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ../header/string.c -o @buildroot@/obj/@arch@/string.o
 

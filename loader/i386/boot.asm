@@ -1,5 +1,25 @@
 ;
-; CCP boot loader
+;  CCP Version 0.0.1
+;  (C) Matthew Boote 2020-2023
+;
+;  This file is part of CCP.
+;
+;  CCP is free software: you can redistribute it and/or modify
+;  it under the terms of the GNU General Public License as published by
+;  the Free Software Foundation, either version 3 of the License, or
+;  (at your option) any later version.
+;
+;  CCP is distributed in the hope that it will be useful,
+;  but WITHOUT ANY WARRANTY; without even the implied warranty of
+;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;  GNU General Public License for more details.
+;
+;  You should have received a copy of the GNU General Public License
+;  along with CCP.  If not, see <https://www.gnu.org/licenses/>.
+;
+
+;
+; CCP first stage boot loader for FAT12 and FAT16
 ;
 
 %include "../kernel/hwdep/i386/bootinfo.inc"
@@ -30,7 +50,6 @@ entryno  equ end_prog + 34
 blockno  equ end_prog + 36
 entry_offset  equ end_prog + 38
 PTABLE_INFO equ end_prog + 43
-
 fattype equ end_prog + 41
 FAT_BUF equ end_prog + 42
 ROOTDIRADDR equ end_prog + 512 + 43
@@ -63,7 +82,7 @@ over:
 mov	[BOOT_INFO_PHYSICAL_DRIVE],dl			; save drive
 
 test	dl,0x80
-jb	not_hd						; don't add starting LBA if not hard drive
+jb	not_hd_init					; don't add starting LBA if not hard drive
 
 ; si points to partition table entry for this volume
 
@@ -77,6 +96,7 @@ lodsw
 adc	ax,[si+PTABLE_LBA+2]				; add starting LBA high word
 stosw				; copy high word
 
+not_hd_init:
 mov	sp,0xfffe					; stack
 
 mov	ax,cs						; cs
@@ -214,9 +234,10 @@ getnext_fat12:
 mov	bx,ax				; entryno=block * (block/2)
 shr	ax,1				; divide by two
 add	ax,bx
-mov	[entryno],ax
 
 ok:
+mov	[entryno],ax
+
 xor	ah,ah				;blockno=(next->reservedsectors*next->sectorsperblock)+(entryno / (next->sectorsperblock*next->sectorsize));		
 mov	al,[0x7c00+BPB_SECTORSPERBLOCK]	
 mul	word [0x7c00+BPB_RESERVEDSECTORS]
@@ -225,6 +246,7 @@ mov	cx,ax
 ;  entry_offset=(entryno % (next->sectorsperblock*next->sectorsize));	/* offset into fat */
 
 xor	dx,dx
+
 mov	ax,[entryno]
 div	word [blocksize]		; entryno/blocksize
 add	ax,cx
