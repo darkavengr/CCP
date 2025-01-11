@@ -27,8 +27,10 @@
 #define ATA_STATUS_PORT		7
 
 #define	ATA_ERROR		1
+#define ATA_IDX			2
+#define ATA_CORR		4
 #define ATA_DATA_READY		8
-#define ATA_OVERLAPPED_MODE	8
+#define ATA_OVERLAPPED_MODE	16
 #define ATA_DRIVE_FAULT		32
 #define ATA_RDY			64
 #define ATA_BUSY		128

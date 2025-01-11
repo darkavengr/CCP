@@ -40,7 +40,6 @@ extern get_process_stack_size
 extern save_kernel_stack_pointer
 extern get_kernel_stack_top
 
-section .text
 [BITS 32]
 use32
 
@@ -133,6 +132,5 @@ get_kernel_stack_size:
 mov	eax,KERNEL_STACK_SIZE
 ret
 
-section .data
 tempeip dd 0
 

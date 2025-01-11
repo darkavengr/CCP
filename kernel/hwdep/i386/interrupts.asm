@@ -40,7 +40,6 @@ extern enablemultitasking
 extern enableirq
 extern disableirq
 
-section .text
 [BITS 32]
 use32
 
@@ -560,7 +559,6 @@ mov	eax,[tempone]					; then return old eax
 iret_error:
 iret  
 
-section .data
 idt:
 dw 0x3FFF					; limit
 dd offset idttable				; base

@@ -71,20 +71,22 @@ org	0x7c00						; origin
  dw	9						; sectors per FAT
  dw	18						; sectors per track
  dw	2						; number of heads
- dd	0						; number of sectors before this parition if hard disk
+ dd	0						; number of sectors before this partition if hard disk
  dd	0						; number of sectors of sectors if more than 65536
  db	0						; drive number (useless)
  db 	0x29						; flags
  dw	0x29A,0x29A					; volume serial number
  db	"BOOT        "					; label
- db	"FAT12   "					; fat identification
+ db	"FAT12   "					; FAT identification
 over:
+;
+; here dl=physical boot drive
+; si points to partition table entry for the boot drive it it's partitioned
+;
 mov	[BOOT_INFO_PHYSICAL_DRIVE],dl			; save drive
 
 test	dl,0x80
 jb	not_hd_init					; don't add starting LBA if not hard drive
-
-; si points to partition table entry for this volume
 
 add	si,PTABLE_LBA					; point to start LBA
 mov	di,BOOT_INFO_BOOT_DRIVE_START_LBA
@@ -135,13 +137,18 @@ add	ax,[0x7c00+BPB_RESERVEDSECTORS]			; reserved sectors
 ; read sectors from root directory and search
 ;
 
-xor	dx,dx
+xor	dl,dl
 
 read_next_block:
 mov	bx,ROOTDIRADDR					; read root directory
 call	readblock					; read block
 
+mov	si,bx						; find end address of block
+add	si,[blocksize]
+	
 next_entry:
+push	si						; save end address
+
 ;
 ; compare name
 ;
@@ -154,10 +161,13 @@ rep	cmpsb						; compare
 je	found_file					; load file
 
 add	bx,FAT_DIRECTORY_ENTRY_SIZE			; point
-cmp	bx,[blocksize]					; if at end of block
-jle	next_entry
 
-inc	dx						; next entry
+pop	si						; restore end address
+
+cmp	bx,si						; if at end of block
+jl	next_entry
+
+inc	dl						; next entry
 cmp	dx,[0x7c00+BPB_ROOTDIRENTRIES]
 jl	read_next_block					; loop
 
@@ -305,6 +315,7 @@ jl	next_block					; loop if not
 check_fat16_end:
 cmp	ax,0xfff8					; if at end
 jl	next_block					; loop if not
+
 jmp	0:LOAD_ADDRESS				; load
 
 ;
@@ -364,9 +375,9 @@ div 	bx
 mov	dh,dl						; head
 mov	ch,al						; cylinder	
 
-;and	ah,00000011b		; add cylinder bits 8 and 9 to sector number
-;shl	ah,6
-;add	cl,ah
+shr	ah,2						; add bits 8-9 of cylinder to sector number
+and	ah,0xc0
+or	ch,ah
 
 pop	bx
 

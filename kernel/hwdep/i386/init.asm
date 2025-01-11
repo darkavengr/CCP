@@ -95,13 +95,11 @@ test  al,1
 jz    %%a202
 %endmacro
 
-section.text
-
 [BITS 16]
 use16
 
 cli
-mov	sp,0e000h				; temporary stack
+mov	sp,0xE000				; temporary stack
 
 xor	ax,ax
 mov	ds,ax
@@ -112,9 +110,11 @@ mov	esi,starting_ccp
 sub	esi,KERNEL_HIGH
 
 next_banner_char:
-mov	ah,0eh					; output character
+mov	ah,0xE					; output character
+
+db	0x67
 mov	al,[esi]
-int	10h
+int	0x10
 
 inc	esi
 test	al,al					; loop until end
@@ -157,22 +157,17 @@ out   0x64,al
 a20wait
 		
 a20done:
-xor	ax,ax
-mov	ds,ax
-mov	es,ax
-mov	ss,ax
-
 mov 	edi,offset gdtinfo
-add	edi,KERNEL_HIGH
-db	66h
+sub	edi,KERNEL_HIGH
+db	0x66
 lgdt 	[ds:edi]			; load gdt
 
 mov 	eax,cr0   			; switch to protected mode
 or	al,1
 mov  	cr0,eax
 
-db	66h				; jmp dword 0x8:pmode
-db	0eah
+db	0x66				; jmp dword 0x8:pmode
+db	0xEA
 dd	offset pmode-KERNEL_HIGH
 dw	8
 
@@ -283,44 +278,44 @@ call	filemanager_init		; initialize file manager
 ; with no bad effects.
 ; Without this int 0x21 will be used by irq 1 and will conflict the system call interface
 
-mov	al,11h
-mov	dx,20h
+mov	al,0x11
+mov	dx,0x20
 out	dx,al				; remap irq
 
-mov	al,11h
-mov	dx,0A0h
+mov	al,0x11
+mov	dx,0xA0
 out	dx,al	
 
-mov	al,0f0h
-mov	dx,21h
+mov	al,0xF0
+mov	dx,0x21
 out	dx,al	
 
-mov	al,0f8h
-mov	dx,0A1h
+mov	al,0xF8
+mov	dx,0xA1
 out	dx,al	
 
 mov	al,4
-mov	dx,21h
+mov	dx,0x21
 out	dx,al	
 
-mov	al,2h
-mov	dx,0A1h
+mov	al,0x2
+mov	dx,0xA1
 out	dx,al	
 
 mov	al,1
-mov	dx,21h
+mov	dx,0x21
 out	dx,al	
 
-mov	al,1h
-mov	dx,0A1h
+mov	al,0x1
+mov	dx,0xA1
 out	dx,al	
 
 xor	al,al
-mov	dx,21h
+mov	dx,0x21
 out	dx,al
 
 xor	al,al
-mov	dx,0A1h
+mov	dx,0xA1
 out	dx,al
 
 call	init_multitasking
@@ -343,7 +338,7 @@ sti
 ; jump to highlevel code
 jmp	kernel
 
-section .data
+
 gdtinfo:
 dw offset gdt_end - offset gdt-1
 dd offset gdt-KERNEL_HIGH
@@ -362,29 +357,29 @@ db 0
 ; intial gdt
 ; ring 0 segments
 
-dw 0ffffh					; low word of limit
+dw 0xFFFF					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 09ah,0cfh					; Code segment
+db 0x9A,0xCF					; Code segment
 db 0						; last byte of base
 
-dw 0ffffh					; low word of limit
+dw 0xFFFF					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 92h,0cfh					; Data segment
+db 0x92,0xCF					; Data segment
 db 0						; last byte of base
 
 ; ring 3 segments
-dw 0ffffh					; low word of limit
+dw 0xFFFF					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 0FAh,0cfh					; Code segment
+db 0xFA,0xCF					; Code segment
 db 0						; last byte of base
 
 dw 0ffffh					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 0f2h,0cfh					; Data segment
+db 0xF2,0xCF					; Data segment
 db 0						; last byte of base
 
 times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0		; extra entries for TSS and other things

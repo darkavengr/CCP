@@ -1,5 +1,0 @@
-#!/bin/bash
-
-losetup -o 1048576 /dev/loop666 /home/matt/bochs_disk_images/hd2.img
-fsck /dev/loop666
-losetup -d /dev/loop666

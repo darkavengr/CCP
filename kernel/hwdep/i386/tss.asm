@@ -10,7 +10,6 @@ extern set_gdt
 
 TSS_GDT_ENTRY equ 5
 
-section .text
 [BITS 32]
 use32
 

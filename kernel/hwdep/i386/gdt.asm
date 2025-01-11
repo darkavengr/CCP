@@ -12,7 +12,6 @@ GDT_ACCESS	equ 5
 GDT_GRANULARITY equ 6
 GDT_BASE_HIGH	equ 7
 
-section .text
 [BITS 32]
 use32
 

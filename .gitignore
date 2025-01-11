@@ -6,5 +6,7 @@ ccp.sym
 Makefile
 modernize
 runemu
-installccp
+installccp-floppy
+installccp-hd
+itsalive.wav
 

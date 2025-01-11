@@ -276,7 +276,7 @@ while(1) {
 
 			buf->attribs=dirent.attribs;
 			buf->filesize=dirent.filesize;
-			buf->startblock=(dirent.block_high_word << 16)+(dirent.block_low_word);
+			buf->startblock=(dirent.block_high_word << 16) | (dirent.block_low_word);
 			buf->drive=splitbuf->drive;
 			buf->dirent=buf->findentry-1;
 			buf->access=0;
@@ -611,7 +611,7 @@ size_t blocksused=0;
 getfullpath(filename,fullpath);
 splitname(fullpath,&splitbuf);
 
-gettime(&timedate);				/* get time and date */
+get_time_date(&timedate);				/* get time and date */
 
 if((type == _FILE) || (type == _DIR)) {				/* create file or directory */
 
@@ -949,7 +949,7 @@ if(fattype == 12 || fattype == 16) {
 
 if(fattype == 32) {
 	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
-	datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
+	datastart=bpb->reservedsectors+fatsize;
 	blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
@@ -1049,7 +1049,7 @@ size_t write_size;
 size_t is_first_written_block=FALSE;
 SPLITBUF split;
 
-gettime(&TIME);				/* get time and date */
+get_time_date(&TIME);				/* get time and date */
 
 if(gethandle(handle,&write_file_record) == -1) {	/* invalid handle */
 	setlasterror(INVALID_HANDLE);
@@ -1085,7 +1085,7 @@ if(fattype == 12 || fattype == 16) {
 
 if(fattype == 32) {
 	fatsize=(bpb->fat32sectorsperfat*bpb->numberoffats);
-	datastart=bpb->reservedsectors+fatsize+bpb->fat32rootdirstart;
+	datastart=bpb->reservedsectors+fatsize;
 	blockno=((write_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 }
 
@@ -1811,31 +1811,30 @@ if(fattype == 16) {					/* FAT 16 */
 		return(-1);
 	}
 
-		entry=*(uint16_t*)&buf[entry_offset];		/* get entry */
+	entry=*(uint16_t*)&buf[entry_offset];		/* get entry */
 
+	kernelfree(buf);
+	return(entry);
+}
+
+if(fattype == 32) {					/* FAT 32 */
+	entryno=block*4;				
+	blockno=bpb->reservedsectors+(entryno / bpb->sectorsize);
+	entry_offset=entryno % bpb->sectorsize;	/* offset into fat */
+
+	if(blockio(DEVICE_READ,drive,blockno,buf) == -1) {			/* read block */
 		kernelfree(buf);
-		return(entry);
+		return(-1);
 	}
 
-	if(fattype == 32) {					/* FAT 32 */
-		entryno=block*4;				
-		blockno=bpb->reservedsectors+(entryno / (bpb->sectorsperblock*bpb->sectorsize));
-		entry_offset=entryno % bpb->sectorsize;	/* offset into fat */
+	entry_dword=*(uint32_t*)&buf[entry_offset];		/* get entry */				/* get entry */
 
-		if(blockio(DEVICE_READ,drive,blockno,buf+(bpb->sectorsperblock*bpb->sectorsize)) == -1) {			/* read block */
-			kernelfree(buf);
-			return(-1);
-		}
-
-		entry_dword=*(buf+entry_offset);				/* get entry */
-
-		entry_dword=entry_dword+(bpb->fat32sectorsperfat*bpb->numberoffats)+((bpb->rootdirentries*FAT_ENTRY_SIZE)/bpb->sectorsperblock)-bpb->reservedsectors;
-
-		kernelfree(buf);
-		return(entry_dword & 0x0FFFFFFF);
-	}
+	kernelfree(buf);
+	return(entry_dword & 0x0FFFFFFF);
+}
 
 }
+
 /*
  * Update FAT entry
  *
@@ -1908,9 +1907,7 @@ else if(fattype == 32) {					/* fat32 */
 	/* update FAT */
 
 	newentry=(block_high_word << 16) | block_low_word;
-	newentry=uint32t_to_littleendian(newentry);
-
-	*(uint32_t*)&buf[entry_offset]=0x0ffffff8; //(uint32_t) newentry;
+	*(uint32_t*)&buf[entry_offset]=(uint32_t) newentry;
 }
 
 /* write FATs */
@@ -2637,7 +2634,7 @@ size_t fattype;
 uint64_t block_count_loop;
 TIME TIME;
 size_t startblock;
-gettime(&TIME);				/* get time and date */
+get_time_date(&TIME);				/* get time and date */
 FILERECORD exists;
 size_t rootdir;
 size_t start_of_data_area;

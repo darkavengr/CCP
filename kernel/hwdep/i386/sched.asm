@@ -128,8 +128,8 @@ iret						; jump to cs:eip and restore interrupts
 ;
 ; Switch task
 ;
-; This function is called by a function which is expected to save the registers onto the stack and call switch_task.
-; After returning from switch_task, the calling function will then restore the registers and return, transferring control to the new process.
+; This function is called by a function which is expected to save the registers onto the stack and call switch_task().
+; After returning from switch_task(), the calling function will then restore the registers and return, transferring control to the new process.
 ;
 ; You are not expected to understand this
 ;
@@ -152,14 +152,6 @@ jmp	end_switch
 
 multitasking_enabled:
 inc	byte [0x800b8000]
-
-;call	getpid
-
-;test	eax,eax
-;jnz	no_debug2
-
-;xchg	bx,bx
-;no_debug2:
 
 call	is_process_ready_to_switch
 test	eax,eax					; if process not ready to switch, return
@@ -201,8 +193,9 @@ push	eax
 call	loadpagetable
 add	esp,4
 
+; switch kernel stack
 call	get_kernel_stack_pointer
-mov	esp,eax						; switch kernel stack
+mov	esp,eax
 
 ; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
 call	get_kernel_stack_top

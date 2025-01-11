@@ -56,13 +56,14 @@
 
 typedef struct {
 	uint8_t opcode;
-	uint8_t lun;
-	uint32_t lba;
-	uint8_t reserved;
+	uint8_t lun;			// 0
+
+	uint32_t lba;			// 1, 2
+	uint8_t reserved;		// 3
 	uint8_t reserved2;
-	uint8_t pmi;
+	uint8_t pmi;			// 4
 	uint8_t control;
-	uint8_t reserved3;
+	uint8_t reserved3;		// 5
 	uint8_t reserved4;
 } ATAPI_PACKET;
 

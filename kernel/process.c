@@ -259,6 +259,8 @@ if(entrypoint == -1) {					/* can't load executable */
 
 initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
+//DEBUG_PRINT_HEX(currentprocess->kernelstacktop);
+
 /* create psp */ 
 
 ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
@@ -268,12 +270,7 @@ psp->cmdlinesize=strlen(psp->commandline);
 if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
 
-	kernelfree(next->kernelstacktop);	/* free kernel stack */
-
-	if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
-
-	lastprocess->next=NULL;		/* remove process */
-	processes_end=lastprocess;
+	yield();
 
 	loadpagetable(getpid());
 

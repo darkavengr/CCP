@@ -1,6 +1,6 @@
 /*  CCP Version 0.0.1
 	   (C) Matthew Boote 2020-2023
-
+7
 	   This file is part of CCP.
 
 	   CCP is free software: you can redistribute it and/or modify
@@ -23,8 +23,11 @@
 #include "device.h"
 #include "vfs.h"
 #include "clock.h"
+#include "debug.h"
 
 #define MODULE_INIT clock_init
+
+uint16_t cmos_rtc_offsets[] = { 4,2,0,7,8,9,0x32,0xFFFF };		/* offsets to read time and date */
 
 /*
  * Initialize RTC
@@ -39,7 +42,8 @@ size_t clock_init(char *init) {
 CHARACTERDEVICE device;
 
 strncpy(&device.name,"CLOCK$",MAX_PATH);
-device.charioread=&clockio;
+device.charioread=&clockio_read;
+device.chariowrite=&clockio_write;
 device.ioctl=NULL;
 device.flags=0;
 device.data=NULL;
@@ -53,109 +57,73 @@ if(add_character_device(&device) == -1) { 	/* add character device */
 setlasterror(NO_ERROR);
 return(NO_ERROR);
 }
-/*
- * Get time and date
- *
- * In:  timebuf 	struct to store time and date
- *
- *  Returns: nothing
- *
- */
-size_t gettime(TIMEBUF *timebuf) {
-outb(0x70,4); 
-timebuf->hours=inb(0x71); 			/* read hour */
-outb(0x70,2); 
-timebuf->minutes=inb(0x71); 		/* read minutes */
-outb(0x70,1); 
-timebuf->seconds=inb(0x71); 		/* read seconds */
-	 
-outb(0x70,9); 
-timebuf->year=inb(0x71); 			/* read year */
-outb(0x70,8); 
-timebuf->month=inb(0x71); 			/* read month */
-outb(0x70,7); 
-timebuf->day=inb(0x71);			 /* read day */
-}
 
 /*
- * Set time and date
- *
- * In:  timebuf 	struct with time and date
- *
- *  Returns: nothing
- *
- */
-void settime(TIMEBUF *timebuf) {
-outb(0x70,4); 
-outb(0x71,timebuf->hours);			 /* set hours */
-outb(0x70,2); 
-outb(0x71,timebuf->minutes);		/* set minutes */
-outb(0x70,0); 
-outb(0x71,timebuf->seconds);		/* set hours */
-	
-outb(0x70,9); 
-outb(0x71,(timebuf->year & 0xff));	 	/* set year */
-outb(0x70,8); 
-outb(0x71,timebuf->month);	 		/* set month */
-outb(0x70,7); 
-outb(0x71,timebuf->day);	 		/* set day */
-return;
-}
-
-/*
- * Delay loop
- *
- * In:  delaycount	Number of seconds to wait
- *
- *  Returns: nothing
- *
- */
-size_t delay_loop(size_t delaycount) {
-size_t oldcount;
-size_t count;
-
-outb(0x70,1);				/* get seconds */ 
-oldcount=inb(0x71);
-
-while(count < oldcount+delaycount) {		/* loop until end */
-	outb(0x70,1); 
-	count=inb(0x71);
-}
-
-return;
-}
-
-/*
- * Clock  I/O function
+ * Clock I/O function
  *
  * In:  op	Operation (0=read,1=write)
-	       buf	Buffer
-	len	Number of bytes to read/write
+	       	buf	Buffer
+	ignored	This parameter is ignored
  *
- *  Returns: nothing
+ *  Returns: 0 on success or -1 on failure
  *
  */
-size_t clockio(size_t op,void *buf,size_t size) {
-TIMEBUF time;
 
-if(op == DEVICE_READ) {		/* read time */
-	gettime(&time);	
+size_t clock_io_internal(size_t op,void *buf) {
+uint8_t *bufptr=buf;
+size_t count=0;
 
-	memcpy(buf,&time,size); 
+DEBUG_PRINT_HEX(buf);
 
-	 setlasterror(NO_ERROR);
-	 return(NO_ERROR);
+do {
+	outb(CMOS_COMMAND_PORT,cmos_rtc_offsets[count]);	/* set read or write address in CMOS RAM */
+
+	if(op == DEVICE_READ) {
+		*bufptr=inb(CMOS_DATA_PORT);			/* read CMOS RAM data */
+
+		kprintf_direct("%X: %X\n",cmos_rtc_offsets[count],*bufptr);
+		bufptr++;
+
+	//	asm("xchg %bx,%bx");
+	}
+	else
+	{
+		outb(CMOS_DATA_PORT,*bufptr++);			/* write CMOS RAM data */
+	}
+
+	count++;
+} while(cmos_rtc_offsets[count] != 0xFFFF);
+
+
+//asm("xchg %bx,%bx");
+
+setlasterror(NO_ERROR);
+return(CMOS_TIMEDATE_SIZE);
 }
 
-if(op == DEVICE_WRITE) {		/* write time */
-	memcpy(&time,buf,size);  
-	settime(&time);
-	setlasterror(NO_ERROR);
-	return(NO_ERROR);
+/*
+ * Read RTC
+ *
+ * In:  buf	Buffer
+	ignored	This parameter is ignored
+ *
+ *  Returns: 0 on success or -1 on failure
+ *
+ */
+size_t clockio_read(void *buf,size_t ignored) {
+	return(clock_io_internal(DEVICE_READ,buf));
 }
 
-
-setlasterror(READ_FAULT);
-return(-1);
+/*
+ * Write RTC
+ *
+ * In:  buf	Buffer
+	ignored	This parameter is ignored
+ *
+ *  Returns: 0 on success or -1 on failure
+ *
+ */
+size_t clockio_write(void *buf,size_t ignored) {
+	return(clock_io_internal(DEVICE_WRITE,buf));
 }
 

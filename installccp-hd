@@ -1,6 +1,6 @@
 #!/bin/bash
 
-losetup -o 1048576 /dev/loop666 /home/matt/bochs_disk_images/hd.img
+losetup -o 1048576 /dev/loop666 /home/matt/bochs_disk_images/hd2.img
 mount /dev/loop666 /mnt
 
 cp "bin/$1/CCP.SYS" /mnt

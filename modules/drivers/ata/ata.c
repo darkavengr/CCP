@@ -66,9 +66,9 @@ if(prdt_virtual->address == NULL) {
 
 /* Add hard disk partitions */
 
-for(physdiskcount=0x80;physdiskcount < 0x82;physdiskcount++) {  /* for each disk */
+for(physdiskcount=0x80;physdiskcount < 0x84;physdiskcount++) {  /* for each disk */
 
-	 if(ata_ident(physdiskcount,&ident) == 0) {	/* get ATA information */
+	if(ata_ident(physdiskcount,&ident) == 0) {	/* get ATA information */
 
 	 	if(partitions_init(physdiskcount,&ata_pio) == -1) {	/* initalize partitions */
 	 		kprintf_direct("ata: Unable to intialize partitions for physical drive %X: %s\n",physdiskcount,kstrerr(getlasterror()));
@@ -76,8 +76,7 @@ for(physdiskcount=0x80;physdiskcount < 0x82;physdiskcount++) {  /* for each disk
 	  	}
 	 }
 }
-
-	 
+ 
 setirqhandler(14,'ATA$',&irq14_handler);		/* set irq handler for master */
 setirqhandler(15,'ATA$',&irq15_handler);		/* set irq handler for slave */
 
@@ -376,17 +375,17 @@ switch(physdrive) {					/* which controller */
 		break;
 
 	 case 0x81:
-		controller=0x1f0;					/* secondary controller, slave */
+		controller=0x1f0;					/* primary	 controller, slave */
 		outb(controller+ATA_DRIVE_HEAD_PORT,(uint8_t) 0xB0);
 		break;
 
 	 case 0x82:
-		controller=0x370;					/* secondary controller, master */
+		controller=0x170;					/* secondary controller, master */
 		outb(controller+ATA_DRIVE_HEAD_PORT,(uint8_t) 0xA0);	
 		break;
 
 	 case 0x83:
-		controller=0x370;					/* secondary controller, slave */
+		controller=0x170;					/* secondary controller, slave */
 		outb(controller+ATA_DRIVE_HEAD_PORT,(uint8_t) 0xB0);
 		break;
 }
@@ -662,7 +661,7 @@ size_t irq14_handler(void) {
 uint16_t barfour;
 
 #ifdef ATA_DEBUG
-	kprintf_direct("received irq 14\n");
+	kprintf_direct("ata: received IRQ 14\n");
 #endif
 
 //asm("xchg %bx,%bx");
@@ -686,7 +685,7 @@ size_t irq15_handler(void) {
 uint16_t barfour;
 
 #ifdef ATA_DEBUG
-	kprintf_direct("received irq 15\n");
+	kprintf_direct("ata: received IRQ 15\n");
 #endif
 
 barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);

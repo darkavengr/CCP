@@ -844,8 +844,8 @@ return(-1);
  */
 
 size_t dup_internal(size_t handle,size_t desthandle,size_t sourcepid,size_t destpid) {
-FILERECORD *source;
-FILERECORD *dest;
+FILERECORD *source=NULL;
+FILERECORD *dest=NULL;
 FILERECORD *next;
 FILERECORD *saveend;
 size_t count=0;
@@ -856,7 +856,6 @@ lock_mutex(&vfs_mutex);
 next=openfiles;
 	
 while(next != NULL) {					/* find handle in list */
-
 	if((next->handle == handle) && (next->owner_process == sourcepid)) source=next;
 	if((next->handle == desthandle) && (next->owner_process == destpid)) dest=next;		/* if desthandle == -1, it will not match any */
 												/* in the list */
@@ -888,6 +887,7 @@ if(desthandle == -1) {				/* if desthandle == -1, add to end */
 memcpy(dest,source,sizeof(FILERECORD));		/* copy file handle */
 
 dest->owner_process=destpid;
+dest->next=NULL;
 
 //if(desthandle == -1) dest->handle=++highest_handle;		/* set handle of destination */
 

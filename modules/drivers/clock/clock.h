@@ -1,17 +1,13 @@
 #include <stdint.h>
 
-typedef struct {
-	uint8_t seconds;
-	uint8_t minutes;
-	uint8_t hours;
-	uint8_t day;
-	uint8_t month;
-	uint16_t year;
-}  __attribute__((packed)) TIMEBUF;
+#define CMOS_TIMEDATE_SIZE 6
 
-size_t gettime(TIMEBUF *timebuf);
-void settime(TIMEBUF *timebuf);
-size_t delay_loop(size_t delaycount);
-size_t clockio(size_t op,void *buf,size_t size);
+#define CMOS_COMMAND_PORT	0x70
+#define CMOS_DATA_PORT		0x71
+
+size_t clockio_internal(size_t op,void *buf);
 size_t clock_init(char *init);
+size_t clockio_read(void *buf,size_t ignored);
+size_t clockio_write(void *buf,size_t ignored);
+
 
