@@ -776,6 +776,8 @@ cmp	byte [fattype],0x32
 je	getnext_mult_blockno_fat32
 
 getnext_mult_blockno_fat12:
+
+
 mov	ebx,eax				; entryno=block * (block/2)
 shr	eax,1				; divide by two
 add	ebx,eax
@@ -797,6 +799,7 @@ ok:
 ; blockno=next->reservedsectors+(entryno / next->sectorsize));		
 ; entry_offset=(entryno % next->sectorsize);	/* into fat */
 
+mov	eax,[entryno]
 xor	edx,edx
 movzx	ecx,word [0x7c00+BPB_SECTORSIZE]
 div	ecx
@@ -834,6 +837,7 @@ getentry_blockno_fat12:
 xor	eax,eax
 
 mov	ax,[ebx]
+
 mov	cx,[block]
 and	cx,1
 test	cx,cx
@@ -847,7 +851,6 @@ shr	eax,4
 jmp	short got_entry
 
 getentry_blockno_fat16:
-xor	eax,eax
 mov	ax,[ebx]
 jmp	short got_entry
 
@@ -892,7 +895,8 @@ movzx	ebx,word [0x7c00+BPB_SECTORSPERFAT]			; number of sectors per FAT
 movzx	eax,byte [0x7c00+BPB_NUMBEROFFATS]			; number of FATs
 mul	ebx
 
-add	eax,[0x7c00+BPB_RESERVEDSECTORS]			; reserved sectors
+movzx	ecx,word [0x7c00+BPB_RESERVEDSECTORS]
+add	eax,ecx				; reserved sectors
 jmp	saveblock
 
 get_root_fat32:
@@ -1030,8 +1034,8 @@ cmp	al,0x32
 je	fat_32_getblock
 
 fat_12_16_getblock:
-movzx	edx,word [ebx+FAT_DIRECTORY_BLOCK_LOW_WORD]
-mov	[block],edx
+movzx	eax,word [ebx+FAT_DIRECTORY_BLOCK_LOW_WORD]
+mov	[block],eax
 jmp	short foundblock
 
 fat_32_getblock:
@@ -1063,6 +1067,7 @@ int	0x10
 ;
 ; get next block
 ;
+
 mov	eax,[block]					; start block
 call	getnextblock					; get next block
 mov	[block],eax
@@ -1454,8 +1459,8 @@ ret
 ;
 ; Add data area start to block number
 ;
-; eax=block number
 ;
+; eax=block number
 ; returns: block number+data area
 ;
 add_data_area_start:
@@ -1479,7 +1484,8 @@ je	data_start_fat32
 
 ; add start of data area to block number
 
-add	ebx,[0x7c00+BPB_RESERVEDSECTORS]			; reserved sectors
+movzx	ecx,word [0x7c00+BPB_RESERVEDSECTORS]
+add	ebx,ecx				; reserved sectors
 
 movzx	ecx,word [0x7c00+BPB_SECTORSPERFAT]			; number of sectors per FAT
 movzx	eax,byte [0x7c00+BPB_NUMBEROFFATS]			; number of fats
