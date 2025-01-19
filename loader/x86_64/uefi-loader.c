@@ -25,6 +25,7 @@
 #include "bootinfo.h"
 #include <elf.h>
 #include "errors.h"
+#include "string.h"
 
 /* based on  https://gitlab.com/bztsrc/posix-uefi/-/blob/master/examples/ */
 

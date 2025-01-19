@@ -28,6 +28,7 @@ along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 #include "mutex.h"
 #include "debug.h"
 #include "page.h"
+#include "string.h"
 
 extern size_t PAGE_SIZE;
 extern size_t MEMBUF_START;

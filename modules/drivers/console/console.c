@@ -27,10 +27,12 @@
 #include "vfs.h"
 #include "console.h"
 #include "bootinfo.h"
+#include "string.h"
 
 #define MODULE_INIT console_init
 
 uint8_t color=7;		/* text color */
+char *scrollbuf[CONSOLE_MAX_X*CONSOLE_MAX_Y];
 
 /* color is in the format XY where X is background color and Y is foreground color
 
@@ -87,7 +89,6 @@ return(0);
  */
 size_t outputconsole(char *s,size_t size) {
 char *consolepos;
-char *scrollbuf[CONSOLE_MAX_X*CONSOLE_MAX_Y];
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
 
 consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*CONSOLE_MAX_X)+bootinfo->cursor_col)*2);	/* address to write to */
@@ -115,6 +116,8 @@ if((size_t) consolepos % 2 == 1) consolepos++;
 		}
 
 		if(bootinfo->cursor_row >= 24) {					/* scroll */
+			//asm("xchg %bx,%bx");
+
 			memcpy(scrollbuf,KERNEL_HIGH+0xB80a0,(CONSOLE_MAX_X*2)*25);		/* to buffer */
 			memcpy(KERNEL_HIGH+0xB8000,scrollbuf,(CONSOLE_MAX_X*2)*25);		/* to screen */
 

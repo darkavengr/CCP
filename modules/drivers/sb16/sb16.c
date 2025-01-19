@@ -20,6 +20,7 @@
 #include "mutex.h"
 #include "device.h"
 #include "sb16.h"
+#include "string.h"
 
 #define MODULE_INIT sb16_init
 

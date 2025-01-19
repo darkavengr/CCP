@@ -30,6 +30,7 @@
 #include "kernelhigh.h"
 #include "debug.h"
 #include "memorymanager.h"
+#include "string.h"
 
 BLOCKDEVICE *blockdevices=NULL;
 size_t lastdrive=2;
@@ -564,6 +565,7 @@ drive_bitmap &= (ipow(2,drive));		/* free drive */
 void devicemanager_init(void) {
 blockdevices=NULL;
 characterdevs=NULL;
+irq_handlers=NULL;
 
 initialize_mutex(&blockdevice_mutex);		/* intialize mutex */
 initialize_mutex(&characterdevice_mutex);	/* intialize mutex */
@@ -599,6 +601,7 @@ else
 irq_handlers_end->handler=handler;		/* set entry */
 irq_handlers_end->refnumber=refnumber;
 irq_handlers_end->irqnumber=irqnumber;
+irq_handlers_end->next=NULL;
 
 setlasterror(NO_ERROR);
 return(0);
@@ -617,7 +620,11 @@ void callirqhandlers(size_t irqnumber,void *stackparams) {
 IRQ_HANDLER *next=irq_handlers;
 
 while(next != NULL) {
-	if((next->irqnumber == irqnumber) && (next->handler != NULL)) next->handler(stackparams);		/* call handler */
+	//kprintf_direct("IRQ=%X %X\n",next->irqnumber,next->handler);
+	
+	if((next->irqnumber == irqnumber) && (next->handler != NULL)) {
+		next->handler(stackparams);		/* call handler */
+	}
 
 	next=next->next;
 }

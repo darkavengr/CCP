@@ -3,7 +3,7 @@ CC=@cc@
 LD=@ld@
 CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
 LDFLAGS=-ffreestanding -nostdlib -T ld.script.command  -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
-OBJFILES=command.o string.o error.o addvar.o copyfile.o err.o getfullpath.o kprintf.o readline.o runcommand.o call.o
+OBJFILES=command.o string.o error.o addvar.o copyfile.o err.o getfullpath.o kprintf_direct.o readline.o runcommand.o call.o
 OUTFILE=@buildroot@/bin/@arch@/COMMAND.RUN 
 
 all: 	$(OBJFILES)
@@ -22,10 +22,10 @@ err.o:
 	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ err.c
 
 getfullpath.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ getfullpath.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ../kernel/getfullpath.c
 
-kprintf.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ kprintf.c
+kprintf_direct.o:
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ../header/kprintf_direct.c
 
 readline.o:
 	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ readline.c

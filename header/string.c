@@ -24,27 +24,7 @@
 #include "device.h"
 #include "vfs.h"
 #include "string.h"
-
-size_t strlen(char *str);
-size_t strlen_unicode(char *str,size_t maxlen);
-void strncpy(char *d,char *s,size_t size);
-void strncat(char *d,char *s,size_t size);
-size_t memcpy(void *d,void *s,size_t c);
-size_t memcmp(char *source,char *dest,size_t count);
-size_t strncmp(char *source,char *dest,size_t size);
-void memset(void *buf,char i,size_t size);
-size_t itoa(size_t n, char s[]);
-void reverse(char s[]);
-size_t wildcard(char *mask,char *filename);
-size_t touppercase(char *string,char *out);
-size_t wildcard_rename(char *name,char *mask,char *out);
-int strtrunc(char *str,int c);
-int atoi(char *hex,int base);
-void ksnprintf(char *buf,char *format,size_t size, ...);
-void tohex(size_t hex,char *buf,size_t numberofbytes);
-size_t tokenize_line(char *linebuf,char *tokens[MAX_PATH][MAX_PATH],char *split);
-void kprintf_direct(char *format, ...);
-size_t signextend(size_t num,size_t bitnum);
+#include "debug.h"
 
 /*
  * Get string length
@@ -249,8 +229,8 @@ return(d-c);
  */
 size_t strncmpi(char *source,char *dest,size_t size) {
 char a,b;
-char *sourcetemp[MAX_PATH];
-char *desttemp[MAX_PATH];
+char *sourcetemp[MAX_SIZE];
+char *desttemp[MAX_SIZE];
 
 touppercase(source,sourcetemp);
 touppercase(dest,desttemp);
@@ -275,7 +255,7 @@ char *b;
  
 b=buf;					/* point to buffer */
 
-for(count=0;count<size;count++) { 
+for(count=0;count<size;count++) {
 	*b++=i;				/* put byte */
 }
 
@@ -344,16 +324,16 @@ size_t count;
 size_t countx;
 char *x;
 char *y;
-char *buf[MAX_PATH];
+char *buf[MAX_SIZE];
 char *b;
 char *d;
-char *mmask[MAX_PATH];
-char *nname[MAX_PATH];
+char *mmask[MAX_SIZE];
+char *nname[MAX_SIZE];
 
 touppercase(mask,mmask);
 touppercase(filename,nname);
 
-memset(buf,0,MAX_PATH);				/* clear buffer */
+memset(buf,0,MAX_SIZE);				/* clear buffer */
  
 x=mmask;
 y=nname;
@@ -415,6 +395,32 @@ while(*s != 0) {			/* until end */
 }
 
 /*
+ * Convert string to uppercase
+ *
+ * In: char *string	String to convert
+ *
+ * Returns nothing
+ *
+ */
+size_t tolowercase(char *string,char *out) {
+char *s;
+char *outptr=out;
+
+s=string;
+
+while(*s != 0) {			/* until end */
+	*outptr=*s;
+
+	if((*outptr >= 'A') && (*outptr <= 'Z')) *outptr = *outptr+32;			/* to uppercase */
+	
+	outptr++;
+	s++;
+}
+
+*outptr++=0;
+}
+
+/*
  * Replace string using wildcard
  *
  * In: char *name	Input string
@@ -431,9 +437,9 @@ char *n;
 char *o;
 char c;
 size_t countx;
-char *newmask[MAX_PATH];
-char *mmask[MAX_PATH];
-char *nname[MAX_PATH];
+char *newmask[MAX_SIZE];
+char *mmask[MAX_SIZE];
+char *nname[MAX_SIZE];
 
 touppercase(mask,mmask);					/* convert to uppercase */
 touppercase(name,nname);
@@ -617,7 +623,7 @@ while(*b != 0) {
 			count += strlen(s);
 			if(count >= size) return;
 
-			strncat(bufptr,s,MAX_PATH);
+			strncat(bufptr,s,MAX_SIZE);
 
 			bufptr += strlen(s);
 
@@ -627,7 +633,7 @@ while(*b != 0) {
 		case 'd':				/* signed decimal */
 			num=va_arg(args,int);
 
-			if((num >> ((sizeof(int)*8)-1)) == 1)  strncat(bufptr,"-",MAX_PATH);
+			if((num >> ((sizeof(int)*8)-1)) == 1)  strncat(bufptr,"-",MAX_SIZE);
   
 			itoa(num,z);
 
@@ -717,6 +723,7 @@ size_t count;
 size_t h;
 size_t shiftamount;
 size_t mask=0;
+size_t found_start=FALSE;
 
 char *b;
 char *hexbuf[] = {"0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"};
@@ -730,10 +737,52 @@ b=buf;
 for(count=0;count<(bytecount*2);count++) {
 	h=((hex & mask) >> shiftamount);	/* shift nibbles to end */
 
-	shiftamount=shiftamount-4;
-	mask=mask >> 4;  
+	if(h != 0) found_start=TRUE;		/* don't include trailing zeroes */
 
-	strncpy(b++,hexbuf[h],MAX_PATH);
+	shiftamount -= 4;
+	mask=mask >> 4;  			/* shift mask */
+
+	if(found_start == TRUE) strncpy(b++,hexbuf[h],MAX_SIZE);	/* copy hex digit */
+}
+
+return;
+}
+
+/*
+ * Convert number to octal string
+ *
+ * In:	octal		Number to convert
+ *	buf		Buffer to store converted number
+ *	bytecount	number of bytes to convert
+ * Returns nothing
+ */
+
+void tooctal(size_t oct,char *out) {
+size_t count;
+size_t shiftvalue;
+size_t mask;
+char *digits[] = { "0","1","2","3","4","5","6","7" };
+size_t foundstart=FALSE;
+
+/* size_t is not divisible by 3 so there are 2 bits at the start */
+
+shiftvalue=(sizeof(size_t)*4)-2;
+mask=3 << shiftvalue;
+
+if((oct & mask) >> shiftvalue) foundstart=TRUE;	/* don't include trailing zeroes */
+
+if(foundstart == TRUE) strncat(out,digits[(oct & mask) >> shiftvalue],MAX_PATH);
+
+/* get rest of the bits */
+
+shiftvalue=(sizeof(size_t)*4)-5; 	/* shift value */
+mask=07 << shiftvalue;			/* bit mask */
+
+for(count=shiftvalue;count != 0;count -= 3) {
+	if((oct & mask) >> shiftvalue) foundstart=TRUE;	/* don't include trailing zeroes */
+
+	if(foundstart == TRUE) strncat(out,digits[(oct & mask) >> count],MAX_SIZE);
+	mask=mask >> 3;
 }
 
 return;
@@ -743,13 +792,13 @@ return;
  * Tokenize string into array
  *
  * In: char *linebuf			String to tokenize
-	   char *tokens[MAX_PATH][MAX_PATH]	Array to hold tokens
+	   char *tokens[MAX_SIZE][MAX_SIZE]	Array to hold tokens
 	   char *split			Character delimiter
  *
  * Returns number of tokens
  */
 
-size_t tokenize_line(char *linebuf,char *tokens[MAX_PATH][MAX_PATH],char *split) {
+size_t tokenize_line(char *linebuf,char *tokens[MAX_SIZE][MAX_SIZE],char *split) {
 char *token;
 size_t tc=0;
 size_t count;
@@ -759,7 +808,7 @@ char *splitptr;
 
 tc=0;
 
-memset(tokens,0,MAX_PATH);
+memset(tokens,0,MAX_SIZE);
 
 token=linebuf;
 

@@ -19,6 +19,7 @@
 #include "device.h"
 #include "pci.h"
 #include "memorymanager.h"
+#include "string.h"
 
 #define MODULE_INIT pci_init
 

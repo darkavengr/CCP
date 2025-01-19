@@ -776,8 +776,6 @@ cmp	byte [fattype],0x32
 je	getnext_mult_blockno_fat32
 
 getnext_mult_blockno_fat12:
-
-
 mov	ebx,eax				; entryno=block * (block/2)
 shr	eax,1				; divide by two
 add	ebx,eax
@@ -796,7 +794,7 @@ mov	[entryno],eax
 ; fall through
 
 ok:
-; blockno=next->reservedsectors+(entryno / next->sectorsize));		
+; blockno=next->reservedsectors+(entryno / next->sectorsize);		
 ; entry_offset=(entryno % next->sectorsize);	/* into fat */
 
 mov	eax,[entryno]
@@ -804,7 +802,9 @@ xor	edx,edx
 movzx	ecx,word [0x7c00+BPB_SECTORSIZE]
 div	ecx
 
-add	ax,[0x7c00+BPB_RESERVEDSECTORS]
+movzx	ecx,word [0x7c00+BPB_RESERVEDSECTORS]
+add	eax,ecx
+
 mov	[blockno],eax
 mov	[entry_offset],edx
 
@@ -813,8 +813,9 @@ mov	ebx,FAT_BUF			; buffer
 
 push	ebx
 
+mov	eax,[blockno]			; read fat sector and fat sector+1 to buffer
+
 next_fatblock:
-mov	eax,[blockno]			; read fat sector and fat sector + 1 to buffer
 call	readblock
 
 inc	eax				; block+1
@@ -1053,6 +1054,8 @@ foundblock:
 next_block:
 call	add_data_area_start				; add start of data area
 
+;call	debug_print_hex
+
 mov	dl,[BOOT_INFO_PHYSICAL_DRIVE]
 mov	ebx,[loadptr]					; buffer
 call	readblock					; read block
@@ -1190,6 +1193,7 @@ rep	movsb
 jmp	end_read
 
 no_extensions:
+
 push	es						; restore es:bx, int 0x13, ah=0x8 overwrites it
 push	ebx
 
@@ -1203,6 +1207,8 @@ pop	ebx						; restore es:bx
 pop	es
 
 mov	eax,[read_block]						; save block number
+;xchg	bx,bx
+
 and	cx,0000000000111111b				; get sectors per track
 
 shr	dx,8						; get number of heads
@@ -1528,6 +1534,53 @@ pop	ecx
 pop	ebx
 ret
 
+debug_print_hex:
+push	eax
+push	ebx
+push	ecx
+push	edx
+push	esi
+push	edi
+
+mov	edx,0xf0000000		; bit mask
+mov	cl,28			; shift value
+
+next_digit:
+push	eax			; save number
+
+and	eax,edx			; mask off unwanted bits
+shr	edx,4			; shift bit mask
+shr	eax,cl			; shift bits to lowest nibble
+
+sub	cl,4			; update shift value
+
+mov	ebx,digits		; point to digits
+add	ebx,eax			; point to hex digit
+
+mov	ah,0xe			; output character
+mov	al,[ebx]		; character
+int	0x10
+
+pop	eax			; restore number
+
+cmp	cl,0xfc
+jnz	next_digit
+
+mov	ax,0x0e0d		; output newline
+int	0x10
+
+mov	ax,0x0e0a		; output newline
+int	0x10
+
+pop	edi
+pop	esi
+pop	edx
+pop	ecx
+pop	ebx
+pop	eax
+ret
+
+digits db "0123456789ABCDEF",0
 ccpsys_notfound db "loader: CCP.SYS not found",0
 initrd_notfound db 10,13,"loader: No initrd found (INITRD.SYS), skipping it.",0
 noa20_error db "loader: Can't enable A20 line",0

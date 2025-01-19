@@ -26,25 +26,9 @@
 #include "vfs.h"
 #include "memorymanager.h"
 #include "debug.h"
+#include "string.h"
 
 #define MODULE_INIT serialio_init
-
-uint8_t comport(size_t op,uint16_t port,char *buf,size_t size);
-void read_com1(char *buf,size_t size);
-void read_com2(char *buf,size_t size);
-void read_com3(char *buf,size_t size);
-void read_com3(char *buf,size_t size);
-void write_com1(char *buf,size_t size);
-void write_com2(char *buf,size_t size);
-void write_com3(char *buf,size_t size);
-void write_com3(char *buf,size_t size);
-
-void com1_irq_handler(void *regs);
-void com2_irq_handler(void *regs);
-void com3_irq_handler(void *regs);
-void com4_irq_handler(void *regs);
-void serialio_init(char *init);
-size_t serial_ioctl(size_t handle,unsigned long request,char *buffer);
 
 /* Serial and parallel ports default settings */
 
@@ -70,7 +54,7 @@ parity parityvals[] = { { "none", 0 },\
  *  Returns nothing
  *
  */
-void serialio_init(char *init) {
+size_t serialio_init(char *init) {
 CHARACTERDEVICE device;
 char *tokens[10][255];
 char *op[2][255];
@@ -101,7 +85,7 @@ if(init != NULL) {			/* args found */
 
 		if(strncmp(op[0],"port",MAX_PATH) == 0) {		/* set port */
 			for(whichp=0;whichp<5;whichp++) {
-				if(strncmp(ports[whichp],op[1],MAX_PATH) == 0) break;
+				if(strncmp(&ports[whichp],op[1],MAX_PATH) == 0) break;
 			}
 
 	
@@ -112,21 +96,21 @@ if(init != NULL) {			/* args found */
 	 	}
 
 	 	if(strncmp(op[0],"buffersize",MAX_PATH) == 0) {
-	  		ports[whichp].buffersize=atoi(op[1]);
+	  		ports[whichp].buffersize=atoi(op[1],10);
 	  		return;
 	 	}
 
-	 	if(strncmp(op[0],"baud") == 0,MAX_PATH) {		/* set baud */
-	  		ports[whichp].baud=atoi(op[0]);
+	 	if(strncmp(op[0],"baud",MAX_PATH) == 0,MAX_PATH) {		/* set baud */
+	  		ports[whichp].baud=atoi(op[0],10);
 	 	}
 
 	 	if(strncmp(op[0],"databits",MAX_PATH) == 0) {		/* set databits */
-	  		ports[whichp].databits=atoi(op[1]);
+	  		ports[whichp].databits=atoi(op[1],10);
 	 	}
 
 
 	 	if(strncmp(op[0],"stopbits",MAX_PATH) == 0) {		/* set stop bits */
-	 		ports[whichp].stopbits=atoi(op[1]);
+	 		ports[whichp].stopbits=atoi(op[1],10);
 	 	}
 
 	 	if(strncmp(tokens[count],"parity",MAX_PATH) == 0) {		/* set baud */
@@ -140,7 +124,7 @@ if(init != NULL) {			/* args found */
 	 
 	  		if(countx == -1) {		/* bad value */
 	   			kprintf_direct("serial: parity must be odd or even\n");
-	   			return;
+	   			return(-1);
 	  		}
 	 	}
 	}
@@ -167,7 +151,11 @@ for(count=0;count<4;count++) {
 	device.flags=0;
 	device.data=NULL;
 	device.next=NULL;
-	add_character_device(&device);			
+
+	if(add_character_device(&device) == -1) {	/* add character device */
+		kprintf_direct("serialio: Can't register character device %s: %s\n",device.name,kstrerr(getlasterror()));
+		return(-1);
+	}
 
 	outb(ports[count].port+1, 0x00);    			/* Disable all interrupts */
 	outb(ports[count].port+3, 0x80);    			/* Enable DLAB (set baud rate divisor) */
@@ -178,7 +166,7 @@ for(count=0;count<4;count++) {
 	outb(ports[count].port+4, 0x0B);    				/* IRQs enabled, RTS/DSR set  */
 }
 
-return;
+return(0);
 }	
 
 
@@ -411,7 +399,7 @@ if(gethandle(handle,&serialdevice) == -1) {		/* get information about device */
 /* find device name */
 
 for(count=0;count<4;count++) {
-	if(strncmp(ports[count].name,serialdevice.filename),MAX_PATH) break;	/* found device */
+	if(strncmp(ports[count].name,serialdevice.filename,MAX_PATH) == 0) break;	/* found device */
 }
 
 if(count > 4) return(-1);			/* not a serial device */

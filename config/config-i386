@@ -11,7 +11,8 @@ CC=i386-elf-gcc
 LD=i386-elf-ld
 
 # options to pass to the compiler, @cc_opts@ in Makefile.in is replaced with this
-CC_OPTS=-c -w -ffreestanding -nostdlib -lgcc
+CC_OPTS=-c -w
+LD_OPTS=-ffreestanding -nostdlib -lgcc
 
 # options to pass to the assembler, @asm_opts@ in Makefile.in is replaced with this
 

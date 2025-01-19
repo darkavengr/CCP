@@ -24,6 +24,7 @@
 #include "vfs.h"
 #include "clock.h"
 #include "debug.h"
+#include "string.h"
 
 #define MODULE_INIT clock_init
 

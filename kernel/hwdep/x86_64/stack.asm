@@ -22,7 +22,7 @@
 %include "kernelselectors.inc"
 
 KERNEL_STACK_SIZE equ  65536*3				; size of initial kernel stack
-INITIAL_KERNEL_STACK_ADDRESS equ 0x70000		; intial kernel stack address
+INITIAL_KERNEL_STACK_ADDRESS equ 0x50000		; intial kernel stack address
 
 global initializestack
 global initializekernelstack

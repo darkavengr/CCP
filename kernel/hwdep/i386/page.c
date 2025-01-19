@@ -36,6 +36,7 @@
 #include "errors.h"
 #include "debug.h"
 #include "memorymanager.h"
+#include "string.h"
 
 size_t PAGE_SIZE=4096;
 

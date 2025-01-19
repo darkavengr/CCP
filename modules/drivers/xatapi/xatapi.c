@@ -28,6 +28,7 @@
 #include "debug.h"
 #include "../pci/pci.h"
 #include "kernelhigh.h"
+#include "string.h"
 
 #define MODULE_INIT xatapi_init
 
@@ -69,10 +70,9 @@ if(prdt_virtual->address == NULL) {
 
 /* Add atapi partitions */
 
-for(physdiskcount=0x80;physdiskcount<0x84;physdiskcount++) {  /* for each disk */
+for(physdiskcount=0x80;physdiskcount<0x82;physdiskcount++) {  /* for each disk */
 
 	if(atapi_ident(physdiskcount,&ident) == 0) {		/* get atapi drive information */
-
 		logicaldrive=allocatedrive();	/* get drive number */
 
 		ksnprintf(blockdevice.name,"ATAPI%d",MAX_PATH,logicaldrive);
@@ -130,8 +130,8 @@ return(atapi_io_internal(op,physdrive,block,buf,TRUE));
  * ATAPI internal function
  *
  * In:  op	Operation (0=read,1=write)
-	block	Block number
         buf	Buffer
+	len	Number of bytes to read/write
  *	isdma	PIO or DMA (0=PIO, 1=DMA)
  *
  *  Returns: 0 on success, -1 on error
@@ -147,8 +147,6 @@ uint16_t barfour;
 prdt_struct *prdt_virtual;
 size_t count;
 ATAPI_PACKET packet;
-
-DEBUG_PRINT_HEX(isdma);
 
 if((op != DEVICE_READ) && (op != DEVICE_WRITE)) {	/* invalid operation */
 	setlasterror(INVALID_PARAMETER);
@@ -173,12 +171,12 @@ switch(physdrive) {
 		break;
 
 	case 0x82:
-		controller=0x170;					/* secondary controller, master */
+		controller=0x370;					/* secondary controller, master */
 		slavebit=0;
 		break;
 
 	case 0x83:
-		controller=0x170;					/* secondary controller, slave */
+		controller=0x370;					/* secondary controller, slave */
 		slavebit=1;
 		break;
 }
@@ -193,6 +191,8 @@ if(atapi_wait_for_controller_ready(controller) == -1) {	/* wait for controller *
 	setlasterror(READ_FAULT);
 	return(-1);
 }
+
+DEBUG_PRINT_HEX(isdma);
 
 outb(controller+ATA_FEATURES_PORT,((uint8_t) isdma));		/* use PIO or DMA */
 		
@@ -245,12 +245,11 @@ if(isdma == TRUE) {			/* for DMA transfers */
 
 		outb(barfour+PRDT_STATUS_SECONDARY,4);
 		outb(barfour+PRDT_COMMAND_SECONDARY,8 | 1); 		/* read/write */
-		outd(barfour+PRDT_ADDRESS_SECONDARY,(uint32_t) prdt); 	/* PRDT address */
+		outd(barfour+PRDT_ADDRESS_PRIMARY,(uint32_t) prdt); 	/* PRDT address */
 	}
 }
 
 kprintf_direct("tessssssssssssssst\n");
-asm("xchg %bx,%bx");
 
 /* send packet */
 
@@ -267,18 +266,11 @@ packet.lba=((uint64_t) block & 0x000000000ffffffff);	/* block number */
 bb=&packet;
 count=0;
 
-DEBUG_PRINT_HEX((sizeof(ATAPI_PACKET)/2)-3);
-
-while(count < (sizeof(ATAPI_PACKET)/2)-3) {
-	DEBUG_PRINT_HEX(count);
-
+while(count != 5) {	/* Six packet words */
 	outw(controller+ATA_DATA_PORT,*bb++);			/* send packet data */
 
 	count++;
 }
-
-kprintf_direct("sent packet\n");
-asm("xchg %bx,%bx");
 
 atapi_clear_irq_flag(controller);		/* clear IRQ flag */
 atapi_wait_for_irq(controller);		/* wait for IRQ even though it may be PIO or DMA. An IRQ will be received */
@@ -297,8 +289,6 @@ if(isdma == TRUE) {			/* for DMA transfers */
 /* for PIO transfers read data from ATA data port */
 
 count=((inb(controller+ATA_CYLINDER_HIGH_PORT) << 8) | inb(controller+ATA_CYLINDER_LOW_PORT))/2;	/* number of words to read */
-
-DEBUG_PRINT_HEX(count);
 
 bb=buf;
 
@@ -351,13 +341,13 @@ switch(physdrive) {					/* which controller */
 		break;
 
 	case 0x82:
-		controller=0x170;					/* secondary controller, master */
+		controller=0x370;					/* secondary controller, master */
 		outb(controller+ATA_DRIVE_HEAD_PORT,(uint8_t) 0xA0);	
 
 		break;
 
 	case 0x83:
-		controller=0x170;					/* secondary controller, slave */
+		controller=0x370;					/* secondary controller, slave */
 		outb(controller+ATA_DRIVE_HEAD_PORT,(uint8_t) 0xB0);
 
 		break;
@@ -431,18 +421,14 @@ uint8_t atastatus=0;
 while(1) {
 	atastatus=inb(controller+ATA_STATUS_PORT);
 
+	//76543210
+	//01010011
+
 	DEBUG_PRINT_HEX(atastatus);
 
-	//76543210
-	//01010000
+	if(atastatus & ATA_ERROR) return(-1);
 
 	if(((atastatus & ATA_BUSY) == 0) && (atastatus & ATA_DATA_READY)) break;		/* controller is ready */
-  
-	if((atastatus & ATA_ERROR) || (atastatus & ATA_DRIVE_FAULT)) {
-		if(atastatus & ATA_ERROR) kprintf_direct("atapi: ATA_ERROR bit set\n");
-		if(atastatus & ATA_DRIVE_FAULT) kprintf_direct("atapi: ATA_DRIVE_FAULT bit set\n");
-		return(-1);
-	}
 
 	atapi_wait(controller);
 }

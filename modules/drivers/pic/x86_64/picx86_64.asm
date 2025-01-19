@@ -24,6 +24,7 @@ global irq_exit
 ; IRQ handlers
 ;
 irq0:
+;xchg	bx,bx
 mov	qword [rel irqnumber],0
 jmp	irq
 
@@ -81,6 +82,7 @@ mov	qword [rel irqnumber],13
 jmp	irq
 
 irq14:
+;xchg	bx,bx
 mov	qword [rel irqnumber],14
 jmp	irq
 
@@ -102,10 +104,10 @@ push	r13
 push	r14
 push	r15
 
-push	esp					; stack parameter pointer
-push	qword [irqnumber]			; irq number
+mov	rdi,qword irqnumber
+mov	rdi,[rdi]				; irq number
+mov	rsi,rsp					; stack parameter pointer
 call	callirqhandlers				; call irq handler
-add	esp,16
 
 irq_exit:
 nop

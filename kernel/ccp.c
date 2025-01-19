@@ -46,22 +46,6 @@ void halt(void);
 void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
-size_t handle;
-/*char *buf[1024];
-
-handle=open("C:\\CCPLOAD.SYS",O_RDONLY);
-
-if(handle) {
-	read(handle,buf,512);
-	asm("xchg %bx,%bx");
-
-	DEBUG_PRINT_HEX(buf);
-	close(handle);
-}
-else
-{
-	kprintf_direct("open() error\n");
-}*/
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);

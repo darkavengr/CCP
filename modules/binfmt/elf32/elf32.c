@@ -9,6 +9,7 @@
 #include "memorymanager.h"
 #include "process.h"
 #include "elf32.h"
+#include "string.h"
 
 #define MODULE_INIT elf32_init
 

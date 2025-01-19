@@ -48,6 +48,7 @@
 #include "memorymanager.h"
 #include "process.h"
 #include "signal.h"
+#include "string.h"
 
 extern char *errors[255];
 extern char *directories[26][MAX_PATH];
@@ -109,50 +110,50 @@ char c;
 
 switch(signal) {
 	case SIGHUP:
-		kprintf("command: Caught signal SIGHUP. Terminating\n");
+		kprintf_direct("command: Caught signal SIGHUP. Terminating\n");
 		exit(0);
 		break;	
 
 	case SIGQUIT:
-		kprintf("command: Caught signal SIGQUIT. Terminating\n");
+		kprintf_direct("command: Caught signal SIGQUIT. Terminating\n");
 		exit(0);
 		break;
 
 	case SIGILL:
-		kprintf("command: Caught signal SIGILL. Terminating\n");
+		kprintf_direct("command: Caught signal SIGILL. Terminating\n");
 		exit(0);
 		break;
 
 	case SIGABRT:
-		kprintf("command: Caught signal SIGABRT. Terminating\n");
+		kprintf_direct("command: Caught signal SIGABRT. Terminating\n");
 		exit(0);
 		break;
 
 	case SIGFPE:
-		kprintf("command: Caught signal SIGFPE. Terminating\n");
+		kprintf_direct("command: Caught signal SIGFPE. Terminating\n");
 		exit(0);
 		break;
 
 	case SIGKILL:
-		kprintf("command: Caught signal SIGKILL. Terminating\n");
+		kprintf_direct("command: Caught signal SIGKILL. Terminating\n");
 		exit(0);
 		break;
 
 	case SIGSEGV:
-		kprintf("command: Caught signal SIGHUP. Terminating\n");
+		kprintf_direct("command: Caught signal SIGHUP. Terminating\n");
 		exit(0);
 		break;
 
 	case SIGPIPE:
-		kprintf("command: Caught signal SIGPIPE.\n");
+		kprintf_direct("command: Caught signal SIGPIPE.\n");
 		break;
 
 	case SIGALRM:
-		kprintf("command: Caught signal SIGALRM.\n");
+		kprintf_direct("command: Caught signal SIGALRM.\n");
 		break;
 
 	case SIGTERM:
-		kprintf("command: Caught signal SIGTERM. Terminating\n");
+		kprintf_direct("command: Caught signal SIGTERM. Terminating\n");
 		exit(0);
 
 	case SIGINT:
@@ -160,7 +161,7 @@ switch(signal) {
 			/* ask user to terminate batch job */
 
 			while(1) {  
-				kprintf("%s",terminatebatchjob);
+				kprintf_direct("%s",terminatebatchjob);
 
 				read(stdin,&c,1);
 	
@@ -178,11 +179,11 @@ switch(signal) {
 		break;
 
 	case SIGCONT:
-		kprintf("command: Caught signal SIGCONT.\n");
+		kprintf_direct("command: Caught signal SIGCONT.\n");
 		break;
 
 	case SIGSTOP:
-		kprintf("command: Caught signal SIGSTOP.\n");
+		kprintf_direct("command: Caught signal SIGSTOP.\n");
 		break;
 	}	
 }
@@ -207,7 +208,7 @@ struct psp {
 
 /* get and parse command line arguments */
 
-kprintf(commandbanner,COMMAND_VERSION_MAJOR,COMMAND_VERSION_MINOR);
+kprintf_direct(commandbanner,COMMAND_VERSION_MAJOR,COMMAND_VERSION_MINOR);
 
 argcount=tokenize_line(psp->commandline,commandlinearguments," \t");		/* tokenize command line arguments */
 
@@ -231,21 +232,21 @@ if(argcount >= 2) {
 				continue;	
 			}			
 			else if((char) *b == '?') {
-				kprintf("Command interpreter\n");
-				kprintf("\n");
-				kprintf("COMMAND [OPTIONS] {command}\n");
-				kprintf("\n");
-				kprintf("/C Run command and exit\n");
-				kprintf("\n");
-				kprintf("/K Run command and continue running command interpreter\n");
-				kprintf("\n");
-				kprintf("/P Make command interpreter permanent (no exit)\n");
+				kprintf_direct("Command interpreter\n");
+				kprintf_direct("\n");
+				kprintf_direct("COMMAND [OPTIONS] {command}\n");
+				kprintf_direct("\n");
+				kprintf_direct("/C Run command and exit\n");
+				kprintf_direct("\n");
+				kprintf_direct("/K Run command and continue running command interpreter\n");
+				kprintf_direct("\n");
+				kprintf_direct("/P Make command interpreter permanent (no exit)\n");
 		
 				exit(0);
 			}
 			else
 			{
-				kprintf("command: Invalid option: /%c\n",(char) *commandlinearguments[count]);
+				kprintf_direct("command: Invalid option: /%c\n",(char) *commandlinearguments[count]);
 				exit(1);
 			}
 		}
@@ -279,7 +280,7 @@ while(1) {	/* forever */
 	getcwd(buffer); 
 
 	c=*buffer;
-	kprintf("%c>",c);		/* display prompt */
+	kprintf_direct("%c>",c);		/* display prompt */
 
 	memset(buffer,0,MAX_PATH);
 
@@ -338,7 +339,7 @@ for(count=1;count<tc;count++) {	/* replace variables with value */
 	 	b++;
 	  
 		if(getvar(b,temp) != -1) {
-	   		strncpy(parsebuf[count],temp); 			/* replace with value */
+	   		strncpy(parsebuf[count],temp,MAX_PATH); 			/* replace with value */
 	  	}
 	  	else
 	  	{
@@ -347,7 +348,7 @@ for(count=1;count<tc;count++) {	/* replace variables with value */
 	 }
 	 else if(firstchar == '%' && (lastchar >= '0' || lastchar <= '9')) {	/* command-line parameter */
 	 	if(getvar(parsebuf[count],temp) != -1) {
-	 		strncpy(parsebuf[count],temp); 			/* replace with value */
+	 		strncpy(parsebuf[count],temp,MAX_PATH); 			/* replace with value */
 	 	}
 	 	else
 	 	{
@@ -367,7 +368,7 @@ for(count=0;count<tc;count++) {
 
 	 	handle=open(parsebuf[count-1],O_RDONLY);
 	 	if(handle == -1) {			/* can't open */
-	 		kprintf("%s\n",kstrerr(getlasterror()));
+	 		kprintf_direct("%s\n",kstrerr(getlasterror()));
 	 		return(0);
 	   	}
 
@@ -380,7 +381,7 @@ for(count=0;count<tc;count++) {
 
 	  	handle=open(parsebuf[count+1],O_WRONLY | O_CREAT | O_TRUNC);		
 	  	if(handle == -1) {			/* can't open */
-	    		kprintf("%s\n",kstrerr(getlasterror()));
+	    		kprintf_direct("%s\n",kstrerr(getlasterror()));
 	     		return(-1);
 	    	}
 	 
@@ -393,12 +394,12 @@ for(count=0;count<tc;count++) {
 
 	  	handle=open(parsebuf[count+1],O_WRONLY);		
 	  	if(handle == -1) {			/* can't open */
-	    		kprintf("%s\n",kstrerr(getlasterror()));
+	    		kprintf_direct("%s\n",kstrerr(getlasterror()));
 	     		return(0);
 	    	}
 	 
 		if(seek(handle,0,SEEK_END) == -1) {	/* seek to end */
-	    		kprintf("%s\n",kstrerr(getlasterror()));
+	    		kprintf_direct("%s\n",kstrerr(getlasterror()));
 	     		return(0);
 	    	}
 		
@@ -429,7 +430,7 @@ for(count=0;count<tc;count++) {
 
 		/* command1 | command2 | command3 */
 		if((count == 0) || (count == tc)) {	/* no command before or after */
-			kprintf("%s",syntaxerror);
+			kprintf_direct("%s",syntaxerror);
 			return(0);
 		}
 
@@ -450,7 +451,7 @@ for(count=0;count<tc;count++) {
 		dup2(outputpipehandle,stderr);	/* connect stderr to pipe */
 
 		if(runcommand(parsebuf[count],temp,FALSE) == -1) {		/* run command */
-			kprintf("%s\n",kstrerr(getlasterror()));
+			kprintf_direct("%s\n",kstrerr(getlasterror()));
 			return(-1);
 		}
 
@@ -473,7 +474,7 @@ if((char) *b == ':' && strlen(parsebuf[0]) == 2) {
 	drivenumber=(char) *parsebuf[0]-'A';		/* get drive number */
 
 	if(chdir(directories[drivenumber]) == -1) {	/* change to directory for drive */
-		kprintf("%s\n",kstrerr(getlasterror()));
+		kprintf_direct("%s\n",kstrerr(getlasterror()));
 		return(-1);	
 	}
 
@@ -554,14 +555,14 @@ if(getvar("PATH",d) != -1) {			/* get path */
 if((getlasterror() == FILE_NOT_FOUND) || (getlasterror() == END_OF_DIRECTORY)) {
 	setvar("ERRORLEVEL",FILE_NOT_FOUND);
 
-	kprintf("%s",badcommand);
+	kprintf_direct("%s",badcommand);
 }
 else
 {
-	kprintf("error=%X\n",getlasterror());
+	kprintf_direct("error=%X\n",getlasterror());
 
 	setvar("ERRORLEVEL",getlasterror());
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 }
 
 return(-1);
@@ -582,7 +583,7 @@ if(tc == 1) {			/* display variables */
 		 *b++=*varptr++;
 		}
 
-		kprintf("%s\n",buffer);
+		kprintf_direct("%s\n",buffer);
 	}
 
 	return(0);
@@ -601,7 +602,7 @@ char *buffer[MAX_PATH];
 size_t count;
 
 if(tc == 1) {			/* insufficient parameters */
-	kprintf("%s",noparams);
+	kprintf_direct("%s",noparams);
 	return(-1);
 }
 
@@ -634,7 +635,7 @@ else
 	 }
 
 	 if(count >= tc) {	/* no == */
-	 	kprintf("%s",syntaxerror); 
+	 	kprintf_direct("%s",syntaxerror); 
 	 	return(-1);
 	 }
 
@@ -668,20 +669,20 @@ size_t drivenumber;
 if(tc == 1) {			/* insufficient parameters */
 	getcwd(directoryname);
 
-	kprintf("%s\n",directoryname);
+	kprintf_direct("%s\n",directoryname);
 	return(0);
 }
 
 getfullpath(parsebuf[1],directoryname);	/* get full path of directory */
 
 if(chdir(parsebuf[1]) == -1) {		/* set directory */
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
 drivenumber=(char) *directoryname-'A';	/* get drive number */
 
-strncpy(directories[drivenumber],directoryname);	/* save directory name */
+strncpy(directories[drivenumber],directoryname,MAX_PATH);	/* save directory name */
 return(0);
 }
 
@@ -698,19 +699,19 @@ char c;
 char *buffer[MAX_PATH];
 
 if(tc == 1) {			/* insufficient parameters */
-	kprintf("%s",noparams);
+	kprintf_direct("%s",noparams);
 	return(-1);
 }
 
 if(strlen(parsebuf[1]) == 0 || strlen(parsebuf[2]) == 0) { /* missing args */
-	 kprintf("%s",noparams);
+	 kprintf_direct("%s",noparams);
 	 return(-1);
 }
 
 findresult=findfirst(parsebuf[1],&sourcedirentry);
 
 if(findresult == -1) {	/* no source file */
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	 return(-1);
 }
 
@@ -721,7 +722,7 @@ do {
 
 	if((findresult != -1) && getlasterror() != (FILE_NOT_FOUND)) {
 		while(1) {
-			kprintf(overwrite,parsebuf[2]);
+			kprintf_direct(overwrite,parsebuf[2]);
 			read(stdin,&c,1);
 
 			if((c == 'Y') || (c == 'y')) break;
@@ -729,7 +730,7 @@ do {
 		}
 	}
 	 
-	kprintf("%s\n",sourcedirentry.filename);
+	kprintf_direct("%s\n",sourcedirentry.filename);
 	count++;
 
 	if(destdirentry.flags == FILE_DIRECTORY) {	/* copying to directory */
@@ -737,13 +738,13 @@ do {
 	}
 
 	if(copyfile(sourcedirentry.filename,parsebuf[2]) == -1) {
-		kprintf("%s\n",kstrerr(getlasterror()));
+		kprintf_direct("%s\n",kstrerr(getlasterror()));
 		return(-1);
 	}
 
 } while(findnext(parsebuf[1],&sourcedirentry) != -1);
 
-kprintf(filescopied,count);
+kprintf_direct(filescopied,count);
 
 return(0);
 }
@@ -763,7 +764,7 @@ char c;
 //for %a in (*.*) do echo %a
 
 if(strncmpi(parsebuf[2],"IN",MAX_PATH) != 0) {
-	kprintf("%s",syntaxerror);
+	kprintf_direct("%s",syntaxerror);
 	return(-1);
 }
 
@@ -785,7 +786,7 @@ for(start=3;start<tc;start++) {		/* find start */
 }
 
 if(start == tc) {
-	kprintf("%s",syntaxerror);
+	kprintf_direct("%s",syntaxerror);
 	return(-1);
 }
 	
@@ -802,7 +803,7 @@ else
 	c=*parsebuf[startvars];
 
 	if(c != '(') {
-		kprintf(missingleftbracket);
+		kprintf_direct(missingleftbracket);
 		return(-1);
 	}
 	else
@@ -812,12 +813,12 @@ else
 		b=parsebuf[startvars];
 		b++;
 
-		strncpy(tempbuffer,b);
-		strncpy(parsebuf[startvars],tempbuffer);
+		strncpy(tempbuffer,b,MAX_PATH);
+		strncpy(parsebuf[startvars],tempbuffer,MAX_PATH);
 	}
 }
 
-if(strncmp(parsebuf[start-1],")") == 0,MAX_PATH) {
+if(strncmp(parsebuf[start-1],")",MAX_PATH) == 0) {
 	endvars--;			/* skip ( */
 }
 else
@@ -829,7 +830,7 @@ else
 	c=*b;
 
 	if(c != ')') {
-		kprintf("%s",missingrightbracket);
+		kprintf_direct("%s",missingrightbracket);
 		return(-1);
 	}
 	else
@@ -844,7 +845,7 @@ for(count=startvars;count<endvars+1;count++) {
 	setvar(parsebuf[1],parsebuf[count]);
 
 	if(doline(buffer) == -1) {
-		kprintf("%s\n",kstrerr(getlasterror()));
+		kprintf_direct("%s\n",kstrerr(getlasterror()));
 		return(-1);
 	}
 }
@@ -864,15 +865,15 @@ size_t runopts;
 char c;
 
 if(tc == 1) {			/* insufficient parameters */
-	kprintf("%s",noparams);
+	kprintf_direct("%s",noparams);
 	return(-1);
 }
 
 if((strncmp(parsebuf[1],"*",MAX_PATH) == 0) || (strncmp(parsebuf[1],"*.*",MAX_PATH) == 0)) {
-	kprintf("%s",allfilesdeleted);
+	kprintf_direct("%s",allfilesdeleted);
 
 	while(1) {  
-		kprintf("%s",areyousure);
+		kprintf_direct("%s",areyousure);
 		read(stdin,&c,1);
 	
 		if((c == 'Y') || (c == 'y')) break;
@@ -881,7 +882,7 @@ if((strncmp(parsebuf[1],"*",MAX_PATH) == 0) || (strncmp(parsebuf[1],"*.*",MAX_PA
 }
 
 if(delete(parsebuf[1]) == -1) {
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -891,12 +892,12 @@ return(0);
 
 size_t mkdir_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* insufficient parameters */
-	kprintf("%s",noparams);
+	kprintf_direct("%s",noparams);
 	return(-1);
 }
 
 if(mkdir(parsebuf[1]) == -1) {		/* set directory */
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -906,12 +907,12 @@ return(0);
 
 size_t rmdir_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* insufficient parameters */
-	kprintf("%s",noparams);
+	kprintf_direct("%s",noparams);
 	return(-1);
 }
 
 if(rmdir(parsebuf[1]) == -1) {		/* set directory */
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -922,12 +923,12 @@ return(0);
 
 size_t rename_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 if(tc < 2) {			/* insufficient parameters */
-	kprintf("%s",noparams);
+	kprintf_direct("%s",noparams);
 	return(-1);
 }
 
 if(rename(parsebuf[1],parsebuf[2]) == -1) {		/* set directory */
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -944,7 +945,7 @@ size_t isnewline=TRUE;
 size_t starttoken=1;
 
 if(tc == 1) {
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -955,10 +956,10 @@ if(strncmp(parsebuf[1],"-n",MAX_PATH) == 0) {		/* no newline */
 }
 
 for(count=starttoken;count<tc;count++) {
-	 kprintf("%s ",parsebuf[count]);
+	 kprintf_direct("%s ",parsebuf[count]);
 }
 
-if(isnewline == TRUE) kprintf("\n");
+if(isnewline == TRUE) kprintf_direct("\n");
 
 return(0);
 }
@@ -968,7 +969,7 @@ return(0);
  */
 
 size_t exit_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-	if((commandlineoptions & COMMAND_PERMANENT) == 0) exit(atoi(parsebuf[1]));
+	if((commandlineoptions & COMMAND_PERMANENT) == 0) exit(atoi(parsebuf[1],10));
 }
 
 /*
@@ -985,20 +986,20 @@ size_t handle;
 size_t findresult;
 
 if(tc == 1) {
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
 readbuf=alloc(MAX_READ_SIZE);		/* allocate buffer */
 
 if(readbuf == NULL) {			/* can't allocate */
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
 handle=open(parsebuf[1],O_RDONLY);
 if(handle == -1) {				/* can't open */
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 	
@@ -1010,12 +1011,12 @@ while(findresult != -1) {
 	 findresult=read(handle,readbuf,MAX_READ_SIZE);			/* read from file */
 	 if(findresult == -1) {				/* can't read */
 	 	if(getlasterror() != END_OF_FILE) {
-	 		kprintf("%s\n",kstrerr(getlasterror()));
+	 		kprintf_direct("%s\n",kstrerr(getlasterror()));
 	 		break;
 	 	}
 	 }
 
-	 kprintf(readbuf);
+	 kprintf_direct(readbuf);
 }
 	
 
@@ -1040,7 +1041,7 @@ size_t fcount=0;
 char *temp[MAX_PATH];
 FILERECORD direntry;
 
-if(!*parsebuf[1]) strncpy(parsebuf[1],"*");	/* find all by default */
+if(!*parsebuf[1]) strncpy(parsebuf[1],"*",MAX_PATH);	/* find all by default */
 
 getfullpath(parsebuf[1],buffer);
 
@@ -1053,12 +1054,12 @@ while(*b-- != '\\') ;;
 b=b+2;
 *b=0;
 
-kprintf(directoryof,buffer);
+kprintf_direct(directoryof,buffer);
 	
 memset(&direntry.filename,0,MAX_PATH);
 
 if(findfirst(parsebuf[1],&direntry) == -1) {
-	if(getlasterror() != END_OF_DIRECTORY) kprintf("%s\n",kstrerr(getlasterror()));
+	if(getlasterror() != END_OF_DIRECTORY) kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -1066,36 +1067,34 @@ do {
 
 /*time date size filename */
 
-	  kprintf("%u:%u:%u %u/%u/%u",direntry.last_written_time_date.hours,direntry.last_written_time_date.minutes,\
+	  kprintf_direct("%02u:%02u:%02u %02u/%02u/%u",direntry.last_written_time_date.hours,direntry.last_written_time_date.minutes,\
 				      direntry.last_written_time_date.seconds,direntry.last_written_time_date.day,\
 				      direntry.last_written_time_date.month,direntry.last_written_time_date.year);
 
 	  if(direntry.flags & FILE_DIRECTORY) {
-	  	kprintf("     <DIR> ");
+	  	kprintf_direct("     <DIR> ");
 
 		dircount++;
 	  }
 	  else
 	  {
-	  	kprintf(" %d ",direntry.filesize);
+	  	kprintf_direct(" %d ",direntry.filesize);
 
 		  fcount++;
 	  }
 
-	  kprintf("%s\n",direntry.filename);
-
-	  memset(&direntry,sizeof(FILERECORD));
+	  kprintf_direct("%s\n",direntry.filename);
 } while(findnext(parsebuf[1],&direntry) != -1);
 
 ksnprintf(temp,"%d",MAX_PATH,getlasterror()); 		/* set errorlevel */
 setvar("ERRORLEVEL",temp);
 
 if(getlasterror() != END_OF_DIRECTORY) {		/* return error */
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
-kprintf(filesdirectories,fcount,dircount);
+kprintf_direct(filesdirectories,fcount,dircount);
 
 return(0);
 }
@@ -1108,7 +1107,7 @@ PROCESS *handle;
 handle=findfirstprocess(&pbuf);				/* find first process */
 
 do {
-	kprintf("%u\n",pbuf.pid);
+	kprintf_direct("%u\n",pbuf.pid);
 
 	handle=findnextprocess(handle,&pbuf);		/* get next process */
 } while(handle != NULL);
@@ -1120,12 +1119,12 @@ size_t kill_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t findresult;
 
 if(tc == 1) {		/* missing argument */
-	kprintf("%s",noparams);
+	kprintf_direct("%s",noparams);
 	return(-1);
 }
 	 
 if(kill(atoi(parsebuf[1],10)) == -1) {
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -1138,12 +1137,12 @@ char *bufptr;
 char *b;
 
 if(tc == 1) {		/* missing label */
-	kprintf("%s",nolabel);
+	kprintf_direct("%s",nolabel);
 	return(-1);
 }
 
 if(get_batch_mode() == FALSE) {			/* Not batch mode */
-	kprintf("%s",notbatchmode);
+	kprintf_direct("%s",notbatchmode);
 	return(-1);
 }
 
@@ -1172,7 +1171,7 @@ while(*bufptr != 0) {
 
 /* label not found */
 
-kprintf(nolabel);  
+kprintf_direct(nolabel);  
 return(-1);
 }
 
@@ -1184,15 +1183,15 @@ size_t critical_error_handler(char *name,size_t drive,size_t flags,size_t error)
 char *buf[10];
 
 if(flags & 0x80000000) {			/* from disk */
-	kprintf("%s %s Drive %c\n",errors[error],errty[flags & 0x80000000],drive+'A');
+	kprintf_direct("%s %s Drive %c\n",errors[error],errty[flags & 0x80000000],drive+'A');
 }
 else
 {
-	 kprintf("%s %s %s\n",errors[error],errty[flags],name);
+	 kprintf_direct("%s %s %s\n",errors[error],errty[flags],name);
 }
 
 while(1) {
-	  kprintf(abortretryfail);
+	  kprintf_direct(abortretryfail);
 	  read(stdin,buf,1);
 
 	  if(((char) *buf == 'A') || ((char) *buf == 'a')) return(CRITICAL_ERROR_ABORT);
@@ -1201,5 +1200,9 @@ while(1) {
 }
 
 return(0);
+}
+
+size_t outputconsole(char *s,size_t size) {
+ return(write(stdout,s,size));
 }
 

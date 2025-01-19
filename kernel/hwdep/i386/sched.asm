@@ -45,7 +45,7 @@ extern timer_increment
 
 %include "kernelselectors.inc"
 ;
-; The functions switch_task_process_descriptor and yield should not be called from 
+; The functions switch_task_process_descriptor() and yield() should not be called from 
 ; an interrupt handler. Instead, switch_task must be called.
 ;
 
@@ -91,6 +91,8 @@ cli
 
 ; save eip, cs and eflags in the same way as an interrupt call
 
+xchg	bx,bx
+
 push	eax
 mov	eax,[esp+4]				; get eip
 mov	[save_eip],eax				; save it
@@ -135,12 +137,12 @@ iret						; jump to cs:eip and restore interrupts
 ;
 
 switch_task:
-mov	eax,[esp+4]				; get pointer to registers
+mov	eax,[esp+4]				; get pointer to saved context
 mov	[save_esp],eax
 
 call	timer_increment
 
-push	dword [save_esp]			; save current task's stack pointer
+push	dword [save_esp]			; save current tasks stack pointer
 call	save_kernel_stack_pointer
 add	esp,4
 
@@ -154,7 +156,7 @@ multitasking_enabled:
 inc	byte [0x800b8000]
 
 call	is_process_ready_to_switch
-test	eax,eax					; if process not ready to switch, return
+test	eax,eax					; return if process is not ready to switch
 jnz	task_time_slice_finished
 
 jmp	end_switch

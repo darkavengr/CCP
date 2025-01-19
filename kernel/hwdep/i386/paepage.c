@@ -41,6 +41,7 @@ XXAAAAAAAAABBBBBBBBBCCCCCCCCCCCC
 #include "errors.h"
 #include "debug.h"
 #include "memorymanager.h"
+#include "string.h"
 
 extern end(void);
 extern kernel_begin(void);

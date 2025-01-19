@@ -23,6 +23,7 @@
 #include "mutex.h"
 #include "device.h"
 #include "vfs.h"
+#include "string.h"
 
 /*
  * Read line from console
@@ -42,7 +43,7 @@ bufptr=buf;				/* point to buffer */
 
 while(1) { 
 	if(read(stdin,bufptr,1) == -1) {
-		kprintf("command: Error reading stdin\n");
+		kprintf_direct("command: Error reading stdin\n");
 		return(-1);
 	}
 

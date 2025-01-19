@@ -10,7 +10,7 @@
  * 
  */
 
-size_t lock_mutex(MUTEX *mutex) {
+void lock_mutex(MUTEX *mutex) {
  if(mutex->owner_process == getpid()) return;			/* waiting for already owned mutex */
 
  while(mutex->is_locked == 1) ;;				/* wait for mutex to unlock */
@@ -30,7 +30,7 @@ size_t lock_mutex(MUTEX *mutex) {
  * 
  */
 
-size_t unlock_mutex(MUTEX *mutex) { 
+void unlock_mutex(MUTEX *mutex) { 
  asm("movl $0,%eax");
  asm volatile("lock cmpxchg %%eax,%0":"=m"(mutex->is_locked): );	/* atomically set mutex->is_locked to 0 */
 }
@@ -44,7 +44,7 @@ size_t unlock_mutex(MUTEX *mutex) {
  * 
  */
 
-size_t initialize_mutex(MUTEX *mutex) {
+void initialize_mutex(MUTEX *mutex) {
  mutex->owner_process=getpid();
  mutex->is_locked=0;
 } 

@@ -1,7 +1,7 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-FILES=pic.c
+FILES=@arch@/pic.c
 ASMFILES=@arch@/pic@arch@.asm
 
 all: @buildroot@/obj/@arch@/pic.o @buildroot@/obj/@arch@/pic@arch@.o

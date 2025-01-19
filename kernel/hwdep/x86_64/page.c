@@ -25,6 +25,7 @@
 #include "errors.h"
 #include "debug.h"
 #include "memorymanager.h"
+#include "string.h"
 
 size_t signextend(size_t num,size_t bitnum);
 
@@ -523,7 +524,7 @@ size_t pml4_of;
 size_t pdpt_of;
 size_t pd;
 size_t pt;
-uint64_t *p;
+uint64_t *ptptr;
 uint64_t *v;
 
 next=processpaging;					/* find process page directory */
@@ -535,7 +536,8 @@ do {
 		pd=((virtaddr & 0x3FE00000) >> 21);
 		pt=((virtaddr & 0x1FF000) >> 12);
 
-		v=signextend((0x1ff << 39) | (pml4_of << 30) | (pdpt_of << 21) | (pd << 12),47);
+		ptptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) pml4_of << 30) | ((uint64_t) pdpt_of << 21) | ((uint64_t) pd << 12),47);
+		v=((size_t) ptptr | (pml4_of << 30) | (pdpt_of << 21) | (pd << 12));
 
 		return(v[pt] & 0xfffffffffffff000);				/* return physical address */
 	}

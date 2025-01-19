@@ -271,8 +271,9 @@ push	bx				; save address
 xor	ax,ax				; segment
 mov	es,ax
 
-next_fatblock:
 mov	ax,[blockno]			; read fat sector and fat sector + 1 to buffer
+
+next_fatblock:
 call	readblock
 
 inc	ax				; block+1

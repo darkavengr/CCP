@@ -24,7 +24,7 @@ global switch_to_usermode_and_call_process
 
 section .text
 [BITS 64]
-use
+use64
 
 ;
 ; Jump to address and switch to user mode

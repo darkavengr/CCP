@@ -25,7 +25,7 @@
 #include "ata.h"
 #include "../pci/pci.h"
 #include "debug.h"
-
+#include "string.h"
 //#define ATA_DEBUG 1
 
 #define MODULE_INIT ata_init
@@ -76,7 +76,7 @@ for(physdiskcount=0x80;physdiskcount < 0x84;physdiskcount++) {  /* for each disk
 	  	}
 	 }
 }
- 
+
 setirqhandler(14,'ATA$',&irq14_handler);		/* set irq handler for master */
 setirqhandler(15,'ATA$',&irq15_handler);		/* set irq handler for slave */
 

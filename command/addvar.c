@@ -26,6 +26,7 @@
 #include "mutex.h"
 #include "device.h"
 #include "vfs.h"
+#include "string.h"
 
 	
 /*
@@ -60,13 +61,13 @@ while((size_t) *varptr != NULL) {
 
 	if(strncmpi(buffer,name,MAX_PATH) == 0) {	/* variable found */
 		if(strlen(varptr) == strlen(val)) { /* same size */
-			strncpy(varptr,val);
+			strncpy(varptr,val,MAX_PATH);
 	  		return(0);
 		}
 		else if(strlen(buffer) < strlen(val)) { /* smaller size */
 	   		diff=(strlen(val)-strlen(buffer))+1;	/* get difference */
 		
-	   		strncpy(varptr,val);
+	   		strncpy(varptr,val,MAX_PATH);
 	   
 			varptr += strlen(varptr);		/* point to end */
 	   		*varptr++=0;				/* put null at end */
@@ -78,7 +79,7 @@ while((size_t) *varptr != NULL) {
 			/* copy forward */
 	   		memcpy(varptr+strlen(val),varptr,ENVIROMENT_SIZE-strlen(val));
 
- 	   		strncpy(varptr,val);
+ 	   		strncpy(varptr,val,MAX_PATH);
 	   		varptr += strlen(varptr);		/* point to end */
 	   		*varptr++=0;				/* put null at end */
 	   
@@ -90,11 +91,11 @@ while((size_t) *varptr != NULL) {
  }
 
 /* add new variable */
-strncpy(varptr,name);	/* name */
+strncpy(varptr,name,MAX_PATH);	/* name */
 
 varptr += strlen(varptr);	/* point to end */
 *varptr++='=';
-strncpy(varptr,val);	/* value */
+strncpy(varptr,val,MAX_PATH);	/* value */
 
 return(0);
 }
@@ -130,7 +131,7 @@ while(*varptr != 0) {
 	}
 
 	if(strncmpi(varname,name,MAX_PATH) == 0) {	/* variable found */
-		strncpy(buf,varptr);
+		strncpy(buf,varptr,MAX_PATH);
 		return(0);
 	}
 

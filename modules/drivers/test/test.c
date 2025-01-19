@@ -19,6 +19,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "string.h"
+
 #define MODULE_INIT test_init
 
 /*

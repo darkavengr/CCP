@@ -29,6 +29,7 @@
 #include "bootinfo.h"
 #include "debug.h"
 #include "keyb.h"
+#include "string.h"
 
 #define MODULE_INIT keyb_init
 
@@ -86,7 +87,7 @@ if(add_character_device(&device) == -1) {	/* add character device */
 	return(-1);
 }
 
-setirqhandler(1,0,&readkey);		/* set IRQ handler */
+setirqhandler(1,'KEYB',&readkey);		/* set IRQ handler */
 	
 init_console_device(DEVICE_READ,0,&readconsole);
 return(0);

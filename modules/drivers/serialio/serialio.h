@@ -12,6 +12,8 @@
 #define IOCTL_SERIAL_STOPBITS 2
 #define IOCTL_SERIAL_PARITY 3
 
+#define UART_CLOCK_RATE 115200
+
 typedef struct _port {
 	char *name;
 	size_t port;
@@ -34,7 +36,7 @@ typedef struct _parity {
 } parity;
 
 
-void serialio_init(char *init);
+size_t serialio_init(char *init);
 uint8_t comport(size_t op,uint16_t port,char *buf,size_t size);
 void read_com1(char *buf,size_t size);
 void write_com1(char *buf,size_t size);

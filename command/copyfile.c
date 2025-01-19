@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include "command.h"
 #include "errors.h"
+#include "string.h"
 
 /*
  * Copy file
@@ -42,7 +43,7 @@ unsigned long countx;
 
 sourcehandle=open(source,O_RDONLY);
 if(sourcehandle == -1) {				/* can't open */
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -51,7 +52,7 @@ if(desthandle == -1)   return(-1);
 
 readbuf=alloc(MAX_PATH);
 if(readbuf == -1) {
-	kprintf("%s\n",kstrerr(getlasterror()));
+	kprintf_direct("%s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
@@ -59,14 +60,14 @@ while((count != -1) || (countx != -1)) {
 	count=read(sourcehandle,readbuf,MAX_PATH);
 
 	if(count == -1) {
-		kprintf("%s\n",kstrerr(getlasterror()));
+		kprintf_direct("%s\n",kstrerr(getlasterror()));
 		return(-1);
 	}
 
 	countx=write(desthandle,readbuf,count);
 
 	if(countx == -1) {
-		kprintf("%s\n",kstrerr(getlasterror()));
+		kprintf_direct("%s\n",kstrerr(getlasterror()));
 		return(-1);
 	}
 	

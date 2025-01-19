@@ -24,6 +24,7 @@
 
 #include "kernelhigh.h"
 #include "acpi.h"
+#include "string.h"
 
 RSDP rsdp;
 RSDT rsdt;

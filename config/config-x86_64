@@ -12,7 +12,10 @@ CC=x86_64-elf-gcc
 LD=x86_64-elf-ld
 
 # options to pass to the compiler, @cc_opts@ in Makefile.in is replaced with this
-CC_OPTS=-c -w -mcmodel=large -ffreestanding -nostdlib -mno-red-zone -z max-page-size=0x1000
+CC_OPTS=-c -w -ffreestanding -nostdlib -mcmodel=large
+
+# options to pass to the linked, @ld_opts@ in Makefile.in is replaced with this
+LD_OPTS=-ffreestanding -nostdlib -mno-red-zone -z max-page-size=0x1000
 
 # options to pass to the assembler, @asm_opts@ in Makefile.in is replaced with this
 

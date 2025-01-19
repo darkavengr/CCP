@@ -3008,7 +3008,7 @@ if(blockio(DEVICE_READ,drive,bpb->fat32infosector,blockptr) == -1) {	/* read FSI
 	return(-1);
 }
 
-memcpy(fsinfo,blockptr,sizeof(FSINFO));		/* get FSInfo information */
+memcpy(&fsinfo,blockptr,sizeof(FSINFO));		/* get FSInfo information */
 
 if(fsinfo.freeblockcount != 0xFFFFFFFF) {
 	/* check signatures */
@@ -3021,7 +3021,7 @@ if(fsinfo.freeblockcount != 0xFFFFFFFF) {
 	fsinfo.freeblockcount += blockcount;	/* add or subtract free block count */
 
 	if(fsinfo.freeblockcount >= 0) {
-		memcpy(blockptr,fsinfo,sizeof(FSINFO));		/* update FSInfo information */
+		memcpy(blockptr,&fsinfo,sizeof(FSINFO));		/* update FSInfo information */
 
 		if(blockio(DEVICE_WRITE,drive,bpb->fat32infosector,blockptr) == -1) {	/* write FSInfo sector */
 			kernelfree(blockptr);

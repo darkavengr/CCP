@@ -21,6 +21,7 @@
 #include "device.h"
 #include "vfs.h"
 #include "memorymanager.h"
+#include "string.h"
 
 #define NULL 0
 #define GPT_BLOCK_SIZE 65536

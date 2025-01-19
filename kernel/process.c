@@ -31,6 +31,7 @@
 #include "bootinfo.h"
 #include "debug.h"
 #include "version.h"
+#include "string.h"
 
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
@@ -259,8 +260,6 @@ if(entrypoint == -1) {					/* can't load executable */
 
 initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
-//DEBUG_PRINT_HEX(currentprocess->kernelstacktop);
-
 /* create psp */ 
 
 ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
@@ -366,7 +365,7 @@ else
 unlock_mutex(&process_mutex);			/* unlock mutex */
 
 if(process == oldprocess) {
-	currentprocess->ticks=currentprocess->maxticks;	/* force task to end of timeslot */
+	currentprocess->ticks=currentprocess->maxticks+1;	/* force task to end of timeslot */
 
 	enablemultitasking();
 

@@ -38,6 +38,7 @@ GDT_LIMIT equ 10
 
 PAGE_PRESENT equ 1
 PAGE_RW equ 2
+PAGE_SIZE equ 4096
 
 %define TRUE 1
 %define FALSE 0
@@ -48,12 +49,12 @@ extern kernel_begin						; start of kernel in memory
 extern filemanager_init						; intialize file manager
 extern memorymanager_init					; intialize memory manager
 extern processmanager_init					; intialize process manager
-extern devicemanager_init					; intialize device manager
+extern devicemanager_init					; intialize device
 extern init_multitasking					; initalize multitasking
 extern driver_init						; initialize built-in drivers
 extern initialize_interrupts					; initialize interrupts
 extern initialize_memory_map					; initialize memory map
-extern initialize_paging_long_mode				; initialize paging and switch to long mode
+extern initializepaging						; initialize paging
 extern initrd_init						; initialize initial RAM disk
 extern end							; end of kernel in memory
 extern load_idt							; load IDT
@@ -61,7 +62,9 @@ extern unmap_lower_half						; unmap lower half
 extern initialize_tss						; initialize tss
 extern set_tss_rsp0						; set kernel mode stack address in TSS
 extern load_modules_from_initrd					; load modules from initial RAM disk
-extern kprintf_direct
+extern get_initial_kernel_stack_base				; get initial kernel stack base
+extern get_initial_kernel_stack_top				; get initial kernel stack top
+extern get_kernel_stack_size					; get kernel stack size
 
 ; globals
 ;
@@ -83,13 +86,12 @@ _asm_init:
 ;
 ; 16-bit initialisation code
 ;
-; here the computer is still in real mode,
+; Here the computer is still in real mode,
 ; the kernel will enable the a20 line, detect memory
-; load gdt and idt and jump to long mode
+; load gdt and idt and jump to long mode.
 ;
-;
-; from here to jump_high, the code is located in the lower
-; half of memory.
+; From here to jump_high, the code is located in the lower
+; half of physical and virtual memory.
 ;
 ; Addresses should be position-independent until label longmode
 			
@@ -115,7 +117,7 @@ jmp	over
 
 output16:
 next_char:
-mov	ah,0xe					; output character
+mov	ah,0xE					; output character
 a32	lodsb
 int	10h
 
@@ -262,11 +264,13 @@ mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
 
 cld
 
+mov	edx,PAGE_SIZE
+
 map_next_page:
 mov	[edi],eax			; low dword
 
 add	edi,8
-add	eax,PAGE_SIZE			; point to next page
+add	eax,edx				; point to next page
 loop	map_next_page
 
 mov	eax,cr4				; enable pae paging
@@ -287,7 +291,7 @@ or	eax,(1 << 31) | (1 << 0)
 mov	cr0,eax
 
 mov 	edi,(gdtinfo_64-_asm_init)+phys_start_address
-db	66h
+db	0x66
 lgdt 	[ds:edi]			; load GDT
 
 mov	ax,KERNEL_DATA_SELECTOR	
@@ -297,8 +301,8 @@ mov	fs,ax
 mov	gs,ax
 mov	ss,ax
 
-db	66h				; jmp dword KERNEL_CODE_SELECTOR:longmode
-db	0eah
+db	0x66				; jmp dword KERNEL_CODE_SELECTOR:longmode
+db	0xEA
 dd	(longmode-_asm_init)+phys_start_address
 dw	KERNEL_CODE_SELECTOR
 
@@ -316,39 +320,47 @@ higher_half:
 mov	rax,qword gdtinfo_high_64
 lgdt	[rax]				; load higher-half GDT
 
-;
-; place memory map after initrd and symbol table
-;
-xor	rdx,rdx
-xor	rax,rax
-
-mov	rsi,BOOT_INFO_KERNEL_START
-mov	eax,[rsi]
-add	rdx,rax
-
-mov	rsi,qword BOOT_INFO_KERNEL_SIZE		; Point to end of kernel
-mov	eax,[rsi]
-add	rdx,rax
-
-mov	rsi,qword BOOT_INFO_SYMBOL_SIZE
-mov	eax,[rsi]
-add	rdx,rax
-
-mov	rsi,qword BOOT_INFO_INITRD_SIZE
-mov	eax,[rsi]
-add	rdx,rax
-
-mov	rax,qword KERNEL_HIGH	
-add	rdx,rax
-
-mov	rdi,MEMBUF_START
-add	[rdi],rdx
-
 call	get_initial_kernel_stack_top
+add	rax,KERNEL_HIGH
 mov	rsp,rax					; temporary stack
 
 call	get_initial_kernel_stack_base
+add	rax,KERNEL_HIGH
 mov	rbp,rax
+
+;
+; place memory map after kernel,initrd and symbol table
+;
+xor	rdx,rdx
+
+mov	r11,BOOT_INFO_KERNEL_START+KERNEL_HIGH
+mov	edx,[r11]
+
+mov	r11,BOOT_INFO_KERNEL_SIZE+KERNEL_HIGH
+add	edx,[r11]
+
+mov	r11,BOOT_INFO_SYMBOL_SIZE+KERNEL_HIGH
+add	edx,[r11]
+
+mov	r11,BOOT_INFO_INITRD_SIZE+KERNEL_HIGH
+add	edx,[r11]
+
+mov	r11,MEMBUF_START-KERNEL_HIGH
+mov	[r11],rdx
+
+mov	rax,KERNEL_HIGH
+add	rdx,rax
+
+mov	rdi,MEMBUF_START
+mov	[rdi],rdx
+
+call	get_initial_kernel_stack_top
+mov	rcx,KERNEL_HIGH
+add	rax,rcx
+mov	rsp,rax					; temporary stack
+
+call	get_initial_kernel_stack_base
+add	rax,rcx
 
 ; Unmap lower half
 
@@ -362,18 +374,27 @@ call	load_idt			; load interrupts
 call	processmanager_init		; intialize process manager
 call	devicemanager_init		; intialize device manager
 
-;	rdi=Memory map address
-;	rsi=Initial kernel stack address
-;	rdx=Initial kernel stack size
-;	rcx=Memory size
-;
-mov	r11,MEMBUF_START		; memory map start address
-mov	rdi,[r11]
-mov	rsi,INITIAL_KERNEL_STACK_ADDRESS
-mov	rdx,KERNEL_STACK_SIZE		; kernel
+; rdi, rsi, rdx, rcx, r8, r9
 
-mov	r11,BOOT_INFO_MEMORY_SIZE+KERNEL_HIGH
-mov	rcx,[r11]
+;void initialize_memory_map(size_t memory_map_address,size_t memory_size,size_t kernel_begin,size_t kernel_size,size_t stack_address,size_t stack_size) {
+
+mov	r11,qword MEMBUF_START
+mov	rdi,[r11]
+
+mov	r11,qword BOOT_INFO_MEMORY_SIZE+KERNEL_HIGH
+mov	rsi,[r11]			; memory_size
+
+mov	rdx,qword kernel_begin		; kernel_begin
+
+mov	rcx,qword end
+mov	rax,qword kernel_begin
+sub	rcx,rax				; kernel_size
+
+call	get_initial_kernel_stack_top
+mov	r8,rax				; stack_address
+
+call	get_kernel_stack_size
+mov	r9,rax				; stack_size
 
 call	initialize_memory_map		; initialize memory map
 
@@ -393,53 +414,54 @@ call	filemanager_init		; initialize file manager
 ; with no bad effects.
 ; Without this int 0x21 will be used by irq 1 and will conflict the system call interface
 
-mov	al,11h
-mov	dx,20h
+mov	al,0x11
+mov	dx,0x20
 out	dx,al				; remap irq
 
-mov	al,11h
-mov	dx,0A0h
+mov	al,0x11
+mov	dx,0xA0
 out	dx,al	
 
-mov	al,0f0h
-mov	dx,21h
+mov	al,0xF0
+mov	dx,0x21
 out	dx,al	
 
-mov	al,0f8h
-mov	dx,0A1h
+mov	al,0xF8
+mov	dx,0xA1
 out	dx,al	
 
 mov	al,4
-mov	dx,21h
+mov	dx,0x21
 out	dx,al	
 
-mov	al,2h
-mov	dx,0A1h
+mov	al,0x2
+mov	dx,0xA1
 out	dx,al	
 
 mov	al,1
-mov	dx,21h
+mov	dx,0x21
 out	dx,al	
 
-mov	al,1h
-mov	dx,0A1h
+mov	al,0x1
+mov	dx,0xA1
 out	dx,al	
 
 xor	al,al
-mov	dx,21h
+mov	dx,0x21
 out	dx,al
 
 xor	al,al
-mov	dx,0A1h
+mov	dx,0xA1
 out	dx,al
 
 ;call	init_multitasking
 
 call	driver_init				; initialize built-in drivers and filesystems
-
 call	initrd_init
 
 call	get_initial_kernel_stack_top
+mov	rcx,qword KERNEL_HIGH
+add	rax,rcx
 mov	rsp,rax					; temporary stack
 
 push	rsp
@@ -475,29 +497,29 @@ db 0
 ; intial gdt
 ; ring 0 segments
 
-dw 0ffffh					; low word of limit
+dw 0xFFFF					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 09ah,0afh					; Code segment
+db 0x9A,0xAF					; Code segment
 db 0						; last byte of base
 
-dw 0ffffh					; low word of limit
+dw 0xFFFF					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 92h,0cfh					; Data segment
+db 0x92,0x0CF					; Data segment
 db 0						; last byte of base
 
 ; ring 3 segments
-dw 0ffffh					; low word of limit
+dw 0xFFFF					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 0FAh,0afh					; Code segment
+db 0xFA,0xAF					; Code segment
 db 0						; last byte of base
 
-dw 0ffffh					; low word of limit
+dw 0xFFFF					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 0f2h,0cfh					; Data segment
+db 0xF2,0xCF					; Data segment
 db 0						; last byte of base
 
 times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0	; extra entries for TSS and other things

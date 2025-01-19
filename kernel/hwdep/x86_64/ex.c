@@ -89,13 +89,13 @@ size_t shiftcount;
 size_t rowcount;
 
 if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("\nKernel panic [%s] at address %lX\n",exp[e],regs[0]);
+	kprintf_direct("\nKernel panic [%s] at address %016lX\n",exp[e],regs[0]);
 }
 else
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %lX in %s\n",exp[e],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %016lX in %s\n",exp[e],regs[0],processname);  /* exception */
 }
 
 count=0;
@@ -104,7 +104,7 @@ rowcount=0;
 while(regnames[count] != NULL) {							/* dump registers */
 	if(regnames[count] == NULL) break;
 
-	kprintf_direct("%s=%lX ",regnames[count],regs[count]);
+	kprintf_direct("%s=%016lX ",regnames[count],regs[count]);
 
 	if(++rowcount == 3) {				/* at end of row */
 		kprintf_direct("\n");

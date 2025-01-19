@@ -63,8 +63,8 @@ typedef struct {
 } FILESYSTEM;
 
 typedef struct {
-	char *filename[MAX_PATH];
-	char *dirname[MAX_PATH];
+	uint8_t filename[MAX_PATH];
+	uint8_t dirname[MAX_PATH];
 	size_t drive;
 } SPLITBUF;
 

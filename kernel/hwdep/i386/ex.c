@@ -32,6 +32,7 @@
 #include "vfs.h"
 #include "memorymanager.h"
 #include "process.h"
+#include "string.h"
 
 #define DIVZERO 	0
 #define DEBUGEX		1
@@ -64,7 +65,6 @@
  */
 
 void exception(uint32_t *regs,uint32_t e,uint32_t dummy);
-uint32_t tohex(uint32_t hex,char *buf);
 uint32_t flags;
 
 char *exp[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception", \
@@ -86,13 +86,13 @@ uint32_t shiftcount;
 size_t rowcount;
 
 if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("\nKernel panic [%s] at address %X\n\n",exp[e],regs[0]);
+	kprintf_direct("\nKernel panic [%s] at address %08X\n\n",exp[e],regs[0]);
 }
 else
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %X in %s\n\n",exp[e],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %08X in %s\n\n",exp[e],regs[0],processname);  /* exception */
 }
 
 count=0;
@@ -101,7 +101,7 @@ rowcount=0;
 do {							/* dump registers */
 	if(regnames[count] == "") break;
 
-	kprintf_direct("%s=%X ",regnames[count],regs[count]);
+	kprintf_direct("%s=%08X ",regnames[count],regs[count]);
 
 	if(++rowcount == 4) {			/* at end of row */
 		kprintf_direct("\n");

@@ -31,6 +31,7 @@
 #include "debug.h"
 #include "module.h"
 #include "memorymanager.h"
+#include "string.h"
 
 #include <elf.h>
 

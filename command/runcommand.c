@@ -24,6 +24,7 @@
 #include "mutex.h"
 #include "device.h"
 #include "vfs.h"
+#include "string.h"
 
 char *parsebuf[MAX_PATH][MAX_PATH];
 char *batchfilebuf;
@@ -133,7 +134,7 @@ size_t filesize;
 
 if(flags == RUN_BACKGROUND) {				/* run batch file in background */
 	if(getvar("COMSPEC",buf) == -1) {			/* get command interpreter */
-		kprintf("command: Missing COMSPEC variable\n");
+		kprintf_direct("command: Missing COMSPEC variable\n");
 		return(-1);
 	}
 	

@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "mutex.h"
+#include "string.h"
 
 /*
  * Lock mutex

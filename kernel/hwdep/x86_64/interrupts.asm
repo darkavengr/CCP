@@ -49,6 +49,7 @@ global int15_handler
 global int16_handler
 global int17_handler
 global int18_handler
+global int_common
 global d_lowlevel
 
 extern exception					; exception handler
@@ -57,7 +58,6 @@ extern dispatchhandler					; high-level dispatcher
 
 [BITS 64]
 use64
-section .text
 
 %macro initializeinterrupt 4
 mov	rdi,qword %1			; flags
@@ -252,11 +252,13 @@ mov	rsi,qword 12
 jmp	int_common	
 
 int13_handler:
+xchg	bx,bx
 mov	rdi,qword regbuf
 mov	rsi,qword 13
 jmp	int_common	
 
 int14_handler:
+xchg	bx,bx
 mov	rdi,qword regbuf
 mov	rsi,qword 14
 jmp	int_common	

@@ -2,7 +2,7 @@ ASM=@asm@
 CC=@cc@
 LD=@cc@
 
-all: @buildroot@/obj/@arch@/ex-hwdep.o @buildroot@/obj/@arch@/partition-hwdep.o @buildroot@/obj/@arch@/port-hwdep.o @buildroot@/obj/@arch@/sched-hwdep.o @buildroot@/obj/@arch@/mutex-hwdep.o @buildroot@/obj/@arch@/interrupts-hwdep.o @buildroot@/obj/@arch@/stack-hwdep.o  @buildroot@/obj/@arch@/aainit-hwdep.o @buildroot@/obj/@arch@/aamemorymap-hwdep.o @buildroot@/obj/@arch@/usermode-hwdep.o  @buildroot@/obj/@arch@/cpustate-hwdep.o @buildroot@/obj/@arch@/initializepaging-hwdep.o @buildroot@/obj/@arch@/tss-hwdep.o @buildroot@/obj/@arch@/gdt-hwdep.o @cc_opt_obj_files@
+all: @buildroot@/obj/@arch@/ex-hwdep.o @buildroot@/obj/@arch@/partition-hwdep.o @buildroot@/obj/@arch@/port-hwdep.o @buildroot@/obj/@arch@/sched-hwdep.o @buildroot@/obj/@arch@/mutex-hwdep.o @buildroot@/obj/@arch@/interrupts-hwdep.o @buildroot@/obj/@arch@/stack-hwdep.o  @buildroot@/obj/@arch@/aainit-hwdep.o @buildroot@/obj/@arch@/usermode-hwdep.o  @buildroot@/obj/@arch@/cpustate-hwdep.o @buildroot@/obj/@arch@/initializepaging-hwdep.o @buildroot@/obj/@arch@/tss-hwdep.o @buildroot@/obj/@arch@/gdt-hwdep.o @cc_opt_obj_files@
  @buildroot@/obj/@arch@/ex-hwdep.o:
 		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ex.c -o @buildroot@/obj/@arch@/ex-hwdep.o
 
@@ -17,9 +17,6 @@ all: @buildroot@/obj/@arch@/ex-hwdep.o @buildroot@/obj/@arch@/partition-hwdep.o 
 
  @buildroot@/obj/@arch@/mutex-hwdep.o:
 		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ mutex.c -o @buildroot@/obj/@arch@/mutex-hwdep.o
-
- @buildroot@/obj/@arch@/aamemorymap-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ memorymap.c -o @buildroot@/obj/@arch@/aamemorymap-hwdep.o
 
  @buildroot@/obj/@arch@/aainit-hwdep.o:
 		$(ASM) @asm_opts@ init.asm -o @buildroot@/obj/@arch@/aainit-hwdep.o
@@ -50,3 +47,4 @@ all: @buildroot@/obj/@arch@/ex-hwdep.o @buildroot@/obj/@arch@/partition-hwdep.o 
 
  @buildroot@/obj/@arch@/paepage-hwdep.o:
 		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ paepage.c -o @buildroot@/obj/@arch@/paepage-hwdep
+

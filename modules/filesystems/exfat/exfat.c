@@ -23,6 +23,7 @@
 #include "memorymanager.h"
 #include "fat.h"
 #include "debug.h"
+#include "string.h"
 
 /* 
  * ExFAT Filesystem

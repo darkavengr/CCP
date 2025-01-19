@@ -20,6 +20,7 @@
 #include "processmanager/mutex.h"
 #include "device.h"
 #include "vfs.h"
+#include "string.h"
 
 #define MODULE_INIT speaker_io
 

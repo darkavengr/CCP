@@ -146,7 +146,7 @@ call	disablemultitasking
 
 push	qword [rel save_rsp]			; save current task's stack pointer
 call	save_kernel_stack_pointer
-add	rsp,4
+add	rsp,8
 
 call	increment_process_ticks
 
@@ -186,7 +186,7 @@ call	find_next_process_to_switch_to			; get pointer to next process to switch to
 have_descriptor:
 push	rax						; update current process pointer
 call	update_current_process_pointer
-add	rsp,4
+add	rsp,8
 
 ; load page tables
 
@@ -204,7 +204,7 @@ call	get_kernel_stack_top
 
 push	rax
 call	set_tss_rsp0
-add	rsp,4
+add	rsp,8
 
 call	enablemultitasking
 

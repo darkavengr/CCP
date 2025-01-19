@@ -24,7 +24,7 @@
 global halt
 global restart
 
-section.text
+section .text
 [BITS 64]
 use64
 ;

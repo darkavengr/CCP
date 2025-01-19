@@ -3,6 +3,7 @@
 #include "kernelhigh.h"
 #include "bootinfo.h"
 #include "debug.h"
+#include "string.h"
 
 extern size_t PAGE_SIZE;
 
@@ -13,7 +14,6 @@ size_t count;
 size_t *bufptr;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
 size_t memory_buffer_size;
-
 
 memory_size=(memory_size & ((0-1)-(PAGE_SIZE-1)));	/* round down memory size to last PAGE_SIZE */
 
@@ -32,7 +32,7 @@ for(count=0;count<(1024*1024)/PAGE_SIZE;count++) {
 
 /* map kernel */
 
-bufptr=memory_map_address+(((kernel_begin-KERNEL_HIGH)/PAGE_SIZE)*sizeof(size_t));
+bufptr=memory_map_address+((((kernel_begin-KERNEL_HIGH)/PAGE_SIZE)*sizeof(size_t)));
 
 for(count=0;count<(kernel_size/PAGE_SIZE);count++) {
 	*bufptr++=SYSTEM_USE;

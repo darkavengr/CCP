@@ -21,6 +21,7 @@
 #include "vfs.h"
 #include "memorymanager.h"
 #include "process.h"
+#include "string.h"
 
 size_t multitaskingenabled=FALSE;
 size_t timer_count=0;
@@ -124,6 +125,8 @@ return(NULL);
 
 size_t is_process_ready_to_switch(void) { 
 if(get_current_process_pointer() == NULL) return(FALSE);
+
+if(getpid() > 0) kprintf_direct("tick=%X %X\n",increment_tick_count() < get_max_tick_count());
 
 if(increment_tick_count() < get_max_tick_count()) return(FALSE);
 

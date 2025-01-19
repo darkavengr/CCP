@@ -65,7 +65,6 @@ size_t rem_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 void signal_handler(size_t signalno);
 size_t critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
 void write_error(void);
-uint32_t tohex(uint32_t hex,char *buf,size_t numberofbytes);
 unsigned long runcommand(char *filename,char *args,unsigned long backg);
 char *get_buf_pointer(void);
 size_t get_batch_mode(void);
