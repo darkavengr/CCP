@@ -1,9 +1,9 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-FILES=acpi.c aml.c
+FILES=acpi.c
+OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
-@buildroot@/obj/@arch@/acpi.o:
-	$(ASM) @arch@/sci_interrupt.asm -o @buildroot@/obj/@arch@/sci_interrupt.o
-	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
+$(OBJFILES): %.o: %.c
+	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 

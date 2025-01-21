@@ -1,46 +1,37 @@
-ASM=@asm@
-CC=@cc@
-LD=@ld@
+fasASM=nasm
+CC=@arch@-elf-gcc
+LD=@arch@-elf-ld
+CFILES=addvar.c command.c copyfile.c err.c readline.c runcommand.c
+ASMFILES=@arch@/call.asm
 CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
 LDFLAGS=-ffreestanding -nostdlib -T ld.script.command  -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
-OBJFILES=command.o string.o error.o addvar.o copyfile.o err.o getfullpath.o kprintf_direct.o readline.o runcommand.o call.o
 OUTFILE=@buildroot@/bin/@arch@/COMMAND.RUN 
+COBJFILES=$(addsuffix .o,$(basename $(notdir $(CFILES))))
+KERNELOBJFILES=string.o getfullpath.o kprintf_direct.o error.o
+ASMOBJFILES=$(addsuffix .o,$(basename $(notdir $(ASMFILES))))
 
-all: 	$(OBJFILES)
-	$(CC) -o $(OUTFILE) $(OBJFILES) $(LDFLAGS)
+all: 	$(KERNELOBJFILES) $(COBJFILES) $(ASMOBJFILES)
+	echo $(KERNELOBJFILES) $(COBJFILES) $(ASMOBJFILES)
 
-addvar.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ addvar.c
+	$(CC) $(KERNELOBJFILES) $(COBJFILES) $(ASMOBJFILES) -o $(OUTFILE) $(LDFLAGS)
 
-command.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ command.c
+$(COBJFILES): %.o: %.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) $< -o $@
 
-copyfile.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ copyfile.c
+getfullpath.o: ../kernel/getfullpath.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/getfullpath.c -o getfullpath.o
 
-err.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ err.c
+kprintf_direct.o: ../kernel/kprintf_direct.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/kprintf_direct.c -o kprintf_direct.o
 
-getfullpath.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ../kernel/getfullpath.c
+string.o: ../kernel/string.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/string.c -o string.o
 
-kprintf_direct.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ../header/kprintf_direct.c
+error.o: ../kernel/error.c
+	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/error.c -o error.o
 
-readline.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ readline.c
-
-runcommand.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ runcommand.c
-
-string.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ @buildroot@/header/string.c
-
-error.o:
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ @buildroot@/header/error.c
-
-call.o:
-	$(ASM) @asm_opts@ @arch@/call.asm -o call.o
+$(ASMOBJFILES): %.o: @arch@/%.asm
+	$(ASM) @asm_opts@ $< -o $@
 
 clean:
 	rm @buildroot@/bin/@arch@/COMMAND.RUN *.o

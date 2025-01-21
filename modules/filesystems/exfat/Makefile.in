@@ -1,9 +1,9 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-FILES=fat.c
+FILES=exfat.c
+OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
-../../../obj/@arch@/fat.o:
-
-	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o $(patsubst %.c,%.o,../../../obj/@arch@/$(notdir $(FILES))) 
+$(OBJFILES): %.o: %.c
+	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 

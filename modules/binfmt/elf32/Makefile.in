@@ -2,7 +2,8 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=elf32.c
+OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
-@buildroot@/obj/@arch@/elf32.o:
-	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o @buildroot@/obj/@arch@/elf32.o
+$(OBJFILES): %.o: %.c
+	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 

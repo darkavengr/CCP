@@ -2,8 +2,8 @@ ASM=@asm@
 CC=@cc@
 LD=@ld@
 FILES=keyb.c
-OBJFILE=keyb.o
+OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
-@buildroot@obj/@arch@/keyb.o:
-	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o  @buildroot@/obj/@arch@/keyb.o
+$(OBJFILES): %.o: %.c
+	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 

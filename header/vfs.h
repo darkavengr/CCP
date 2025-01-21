@@ -126,7 +126,6 @@ size_t tell(size_t handle);
 size_t touch(char *filename,TIME *create_time_date,TIME *last_modified_time_date,TIME *last_accessed_time_date);
 size_t register_filesystem(FILESYSTEM *newfs);
 size_t detect_filesystem(size_t drive,FILESYSTEM *buf);
-size_t getfullpath(char *filename,char *buf);
 size_t gethandle(size_t handle,FILERECORD *buf);
 size_t getfilesize(size_t handle);
 size_t splitname(char *name,SPLITBUF *splitbuf);

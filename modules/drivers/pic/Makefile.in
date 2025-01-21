@@ -1,14 +1,16 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-FILES=@arch@/pic.c
-ASMFILES=@arch@/pic@arch@.asm
+CFILES=pic.c
+ASMFILES=pic_inthandler_@arch@.asm
+COBJFILES=$(addsuffix .o,$(basename $(notdir $(CFILES))))
+ASMOBJFILES=$(addsuffix .o,$(basename $(notdir $(ASMFILES))))
 
-all: @buildroot@/obj/@arch@/pic.o @buildroot@/obj/@arch@/pic@arch@.o
+all: $(COBJFILES) $(ASMOBJFILES)
 
-@buildroot@/obj/@arch@/pic.o:
-	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o $(patsubst %.c,%.o,@buildroot@/obj/@arch@/$(notdir $(FILES))) 
+$(COBJFILES): %.o: %.c
+	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 
-@buildroot@/obj/@arch@/pic@arch@.o:
-	$(ASM) @asm_opts@ -i@buildroot@/kernel/hwdep/@arch@/ $(ASMFILES) -o $(patsubst %.asm,%.o,@buildroot@/obj/@arch@/$(notdir $(ASMFILES))) 
+$(ASMOBJFILES): %.o: %.asm
+	$(ASM) -felf32 -I@buildroot@/kernel/hwdep/@arch@/ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 

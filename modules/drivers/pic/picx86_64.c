@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../pic.h"
+#include "pic.h"
 #include "string.h"
 
 #define MODULE_INIT pic_init

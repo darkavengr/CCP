@@ -1,85 +1,40 @@
 ASM=nasm
 CC=@arch@-elf-gcc
 LD=@arch@-elf-gcc
-FILES=@buildroot@/kernel/drive.c @buildroot@/kernel/memorymanager.c @buildroot@/kernel/ccp.c @buildroot@/kernel/device.c @buildroot@/kernel/vfs.c @buildroot@/kernel/initrd.c @buildroot@/kernel/process.c @buildroot@/kernel/multitasking.c @buildroot@/kernel/module.c @buildroot@/header/kprintf_direct.c @buildroot@/header/error.c @buildroot@/header/string.c @buildroot@/kernel/timedate.c @buildroot@/kernel/memorymap.c  @buildroot@/kernel/getfullpath.c
+FILES=@buildroot@/kernel/drive.c @buildroot@/kernel/memorymanager.c @buildroot@/kernel/ccp.c @buildroot@/kernel/device.c @buildroot@/kernel/vfs.c @buildroot@/kernel/initrd.c @buildroot@/kernel/process.c @buildroot@/kernel/multitasking.c @buildroot@/kernel/module.c @buildroot@/kernel/kprintf_direct.c @buildroot@/kernel/error.c @buildroot@/kernel/string.c @buildroot@/kernel/timedate.c @buildroot@/kernel/memorymap.c  @buildroot@/kernel/getfullpath.c
 CCOPTS=-c -w -lgcc -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 LDOPTS=-lgcc -ffreestanding -nostdlib -Wl,-Map -Wl,@buildroot@/mapfiles/ccp.map
-OBJFILES=@buildroot@/obj/@arch@/drive.o @buildroot@/obj/@arch@/memorymanager.o @buildroot@/obj/@arch@/ccp.o @buildroot@/obj/@arch@/device.o @buildroot@/obj/@arch@/vfs.o @buildroot@/obj/@arch@/initrd.o @buildroot@/obj/@arch@/process.o @buildroot@/obj/@arch@/multitasking.o @buildroot@/obj/@arch@/kprintf_direct.o @buildroot@/obj/@arch@/module.o @buildroot@/obj/@arch@/error.o @buildroot@/obj/@arch@/string.o @buildroot@/obj/@arch@/timedate.o @buildroot@/obj/@arch@/getfullpath.o
+OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
-#
-# Recipe to make everything
-#
-all: hwdep drivers ccp
-	$(CC) -T hwdep/@arch@/ld.script -o @buildroot@/bin/@arch@/CCP.SYS @buildroot@/obj/@arch@/*-hwdep.o $(OBJFILES) $(addsuffix *.o,$(addprefix @buildroot@/obj/i386/,$(notdir @driver_list@))) $(LDOPTS)
+all: ccp hwdep modules
+	$(CC) -T hwdep/@arch@/ld.script -o @buildroot@/bin/@arch@/CCP.SYS @buildroot@/obj/@arch@/*-hwdep.o $(addprefix @buildroot@/hwdep/@arch@,$(OBJFILES)) $(addsuffix *.o,$(addprefix @buildroot@/obj/@arch@/,$(notdir @driver_list@))) $(LDOPTS)
 	@buildroot@/gensym @buildroot@/bin/@arch@/CCP.SYS @buildroot@/mapfiles/ccp.sym
 
 #
 # Recipe to make kernel
 #
-.PHONY: ccp
 ccp: $(OBJFILES)
+
 #
 # Recipe to make hardware-dependent code
 #
 
-.PHONY: hwdep
 hwdep:
 	make -C hwdep/@arch@
 
 #
-# Recipe to make built-in drivers
+# Recipe to make modules
 #
-.PHONY: drivers
-drivers:
-	@buildroot@/gendrivelist  @driver_list@
+.PHONY: modules
+modules:
+	@buildroot@/gendrivelist @driver_list@
 	for f in @driver_list@; do make -C $$f;done
 
 	for f in @initrd_driver_list@; do make -C $$f;done
-	$(foreach f,$(FILES),$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $f -o $(patsubst %.c,%.o, @buildroot@/obj/@arch@/$(notdir $(f)));)
 
 #
-# Rules for building the core files
+# Recipe to make modules
 #
-
-@buildroot@/obj/@arch@/drive.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ drive.c -o @buildroot@/obj/@arch@/drive.o
-
-@buildroot@/obj/@arch@/memorymanager.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ memorymanager.c -o @buildroot@/obj/@arch@/memorymanager.o
-
-@buildroot@/obj/@arch@/ccp.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ccp.c -o @buildroot@/obj/@arch@/ccp.o
-
-@buildroot@/obj/@arch@/device.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ device.c -o @buildroot@/obj/@arch@/device.o
-
-@buildroot@/obj/@arch@/vfs.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ vfs.c -o @buildroot@/obj/@arch@/vfs.o
-
-@buildroot@/obj/@arch@/initrd.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ initrd.c -o @buildroot@/obj/@arch@/initrd.o
-
-@buildroot@/obj/@arch@/process.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ process.c -o @buildroot@/obj/@arch@/process.o
-
-@buildroot@/obj/@arch@/multitasking.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ multitasking.c -o @buildroot@/obj/@arch@/multitasking.o
-
-@buildroot@/obj/@arch@/kprintf_direct.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ header/kprintf_direct.c -o @buildroot@/obj/@arch@/kprintf_direct.o
-
-@buildroot@/obj/@arch@/module.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ module.c -o @buildroot@/obj/@arch@/module.o
-
-@buildroot@/obj/@arch@/error.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ../header/error.c -o @buildroot@/obj/@arch@/error.o
-
-@buildroot@/obj/@arch@/string.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ../header/string.c -o @buildroot@/obj/@arch@/string.o
-
-@buildroot@/obj/@arch@/timedate.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ timedate.c -o @buildroot@/obj/@arch@/timedate.o
-
-@buildroot@/obj/@arch@/getfullpath.o:
-	$(CC) $(CCOPTS) -I@buildroot@/kernel -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ getfullpath.c -o @buildroot@/obj/@arch@/getfullpath.o
+$(OBJFILES): %.o: %.c
+	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 
