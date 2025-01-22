@@ -147,10 +147,10 @@ while [ "$optcount" != 0 ]; do		# until all optional features done
 	if [ ${#yesno} == 0 ] || [ $yesno == "y" ]; then		# include feature
 		CC_OPT_FILES="$CC_OPT_FILES $BUILDROOT/$cc_yes"
 
-		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES $BUILDROOT/obj/$compile_arch/`echo $(basename $cc_yes) | sed s:.c:-hwdep.o:`"	# get path of object file 
+		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES `echo $(basename $cc_yes) | sed s:.c:.o:`"	# get path of object file 
 	else
 		CC_OPT_FILES="$CC_OPT_FILES $BUILDROOT/$cc_no"
-		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES $BUILDROOT/obj/$compile_arch/`echo $(basename $cc_no) | sed s:.c:-hwdep.o:`"
+		CC_OPT_OBJ_FILES="$CC_OPT_OBJ_FILES `echo $(basename $cc_no) | sed s:.c:.o:`"
 	fi
 
 	

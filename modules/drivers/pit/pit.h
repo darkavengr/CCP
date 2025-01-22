@@ -1,4 +1,4 @@
-#define PIT_VAL 1193180 / 50					/* frequency of irq 0 called by PIT */
+#define PIT_VAL 1193180 / 50				/* frequency of irq 0 called by PIT */
 #define NULL 0
 
 size_t pit_init(char *init);

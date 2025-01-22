@@ -67,6 +67,11 @@ while(*formatptr != 0) {
 			formatchar=*++formatptr;
 		}
 
+		if(formatchar == '*') {			/* width in parameter */
+			width=va_arg(args,size_t);
+			formatchar=*++formatptr;
+		}
+
 		if(formatchar == ' ') {			/* print space before numbers */
 			flags |= SPACE_BEFORE_DIGIT_FLAG;
 			formatchar=*++formatptr;
@@ -74,10 +79,6 @@ while(*formatptr != 0) {
 		else if(formatchar == '0') {			/* pad out number with zeroes */
 			flags |= ZERO_BEFORE_DIGIT_FLAG;
 			formatchar=*++formatptr;	
-		}
-		else if(formatchar == '*') {			/* width in parameter */
-			width=va_arg(args,size_t);
-			formatchar=*++formatptr;
 		}
 		
 		/* width */
@@ -140,8 +141,14 @@ while(*formatptr != 0) {
 	
 		/* specifiers */
 
-		if(formatchar == 's') {
+		if(formatchar == 's') {				/* string */
 				s=va_arg(args,const char*);	/* get variable argument */
+
+				if(strlen(s) < width) {		/* pad out string */
+					for(count=0;count<width-strlen(s);count++) {
+						outputconsole(" ",1);
+					}
+				}
 
 				outputconsole(s,strlen(s));
 
@@ -279,7 +286,7 @@ while(*formatptr != 0) {
 				formatptr++;			/* point to next format character */
 
 			}
-			if(formatchar == 'c') {
+			if(formatchar == 'c') {			/* character */
 	  			num=(unsigned char) va_arg(args,int);
 
 				ptr=tempbuffer;
@@ -290,13 +297,13 @@ while(*formatptr != 0) {
 
 	  			formatptr++;
 			}
-			if(formatchar == '%') {
+			if(formatchar == '%') {			/* % character */
 				outputconsole("%",1);
 				
 				outcount++;
 	  			formatptr++;
    			}
-			if(formatchar == 'p') {
+			if(formatchar == 'p') {			/* pointer */
 				num=(unsigned char) va_arg(args,size_t);
 
 				tohex(num,tempbuffer,sizeof(size_t)*4);
@@ -309,7 +316,7 @@ while(*formatptr != 0) {
 
 				outcount += sizeof(size_t)*4;
 			}
-			if(formatchar == 'n') {
+			if(formatchar == 'n') {			/* store count in parameter */
 				num=(unsigned char) va_arg(args,signed int);
 
 				if(flags & USE_HALFHALF_NUMBER_FLAG) {

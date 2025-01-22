@@ -22,6 +22,8 @@
 #include "memorymanager.h"
 #include "process.h"
 #include "string.h"
+#include "multitasking.h"
+#include "debug.h"
 
 size_t multitaskingenabled=FALSE;
 size_t timer_count=0;
@@ -66,7 +68,8 @@ return;
 void init_multitasking(void) {
 multitaskingenabled=FALSE;
 
-setirqhandler(0,'SCHD',switch_task);		/* Register timer */
+setirqhandler(0,'SCHD',&switch_task);		/* Register task switcher */
+setirqhandler(0,'TIMR',&timer_increment);		/* Register timer */
 
 multitaskingenabled=TRUE;
 timer_count=0;
@@ -126,8 +129,6 @@ return(NULL);
 size_t is_process_ready_to_switch(void) { 
 if(get_current_process_pointer() == NULL) return(FALSE);
 
-if(getpid() > 0) kprintf_direct("tick=%X %X\n",increment_tick_count() < get_max_tick_count());
-
 if(increment_tick_count() < get_max_tick_count()) return(FALSE);
 
 return(TRUE);
@@ -141,9 +142,8 @@ return(TRUE);
  * Returns: noting
  * 
  */
-void timer_increment(void) {
-timer_count++;
-return;
+size_t timer_increment(void) {
+return(++timer_count);
 }
 
 /*

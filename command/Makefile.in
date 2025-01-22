@@ -1,4 +1,4 @@
-fasASM=nasm
+ASM=nasm
 CC=@arch@-elf-gcc
 LD=@arch@-elf-ld
 CFILES=addvar.c command.c copyfile.c err.c readline.c runcommand.c

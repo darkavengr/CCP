@@ -1,7 +1,7 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-CFILES=pic.c
+CFILES=pic@arch@.c
 ASMFILES=pic_inthandler_@arch@.asm
 COBJFILES=$(addsuffix .o,$(basename $(notdir $(CFILES))))
 ASMOBJFILES=$(addsuffix .o,$(basename $(notdir $(ASMFILES))))

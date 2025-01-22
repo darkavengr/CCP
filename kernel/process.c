@@ -188,6 +188,8 @@ if(currentprocess != NULL) {
 	memcpy(saveenv,currentprocess->envptr,ENVIROMENT_SIZE);		/* copy enviroment variables */
 }
 
+if(getpid() > 0) asm("xchg %bx,%bx");
+
 page_init(highest_pid_used);				/* intialize page directory */	
 loadpagetable(highest_pid_used);			/* load page table */
 

@@ -39,14 +39,13 @@ extern get_current_process_pointer
 extern get_processes_pointer
 extern enablemultitasking
 extern disablemultitasking
-extern timer_increment
 
 %define offset
 
 %include "kernelselectors.inc"
 ;
 ; The functions switch_task_process_descriptor() and yield() should not be called from 
-; an interrupt handler. Instead, switch_task must be called.
+; an interrupt handler. Instead, switch_task() must be called.
 ;
 
 switch_task_process_descriptor:
@@ -139,8 +138,6 @@ iret						; jump to cs:eip and restore interrupts
 switch_task:
 mov	eax,[esp+4]				; get pointer to saved context
 mov	[save_esp],eax
-
-call	timer_increment
 
 push	dword [save_esp]			; save current tasks stack pointer
 call	save_kernel_stack_pointer

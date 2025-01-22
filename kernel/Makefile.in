@@ -6,19 +6,21 @@ CCOPTS=-c -w -lgcc -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 LDOPTS=-lgcc -ffreestanding -nostdlib -Wl,-Map -Wl,@buildroot@/mapfiles/ccp.map
 OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
-all: ccp hwdep modules
-	$(CC) -T hwdep/@arch@/ld.script -o @buildroot@/bin/@arch@/CCP.SYS @buildroot@/obj/@arch@/*-hwdep.o $(addprefix @buildroot@/hwdep/@arch@,$(OBJFILES)) $(addsuffix *.o,$(addprefix @buildroot@/obj/@arch@/,$(notdir @driver_list@))) $(LDOPTS)
+all: modules ccp hwdep
+	$(CC) -T hwdep/@arch@/ld.script -o @buildroot@/bin/@arch@/CCP.SYS @buildroot@/obj/@arch@/*.o $(LDOPTS)
 	@buildroot@/gensym @buildroot@/bin/@arch@/CCP.SYS @buildroot@/mapfiles/ccp.sym
 
 #
 # Recipe to make kernel
 #
 ccp: $(OBJFILES)
+	echo $(OBJFILES)
 
 #
 # Recipe to make hardware-dependent code
 #
 
+.PHONY: hwdep
 hwdep:
 	make -C hwdep/@arch@
 

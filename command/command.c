@@ -1040,6 +1040,7 @@ size_t dircount=0;
 size_t fcount=0;
 char *temp[MAX_PATH];
 FILERECORD direntry;
+size_t outcount=0;
 
 if(!*parsebuf[1]) strncpy(parsebuf[1],"*",MAX_PATH);	/* find all by default */
 
