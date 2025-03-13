@@ -81,7 +81,7 @@ cli
 ; RSI
 ; RDI
 
-; save eip, cs and eflags in the same way as an interrupt call
+; save rip, cs and rflags in the same way as an interrupt call
 
 push	rax
 mov	rax,[rsp+8]				; get rip
@@ -177,14 +177,14 @@ no_debug:
 ; Switch to next process
 ;
 
-mov	rax,[rel save_descriptor]			; get descriptor
-test	rax,rax						; if not switching to a specific process
+mov	rdi,[rel save_descriptor]			; get descriptor
+test	rdi,rdi						; if not switching to a specific process
 jnz	have_descriptor					; update process now
 
 call	find_next_process_to_switch_to			; get pointer to next process to switch to
+mov	rdi,rax
 
 have_descriptor:
-push	rax						; update current process pointer
 call	update_current_process_pointer
 add	rsp,8
 
@@ -192,7 +192,7 @@ add	rsp,8
 
 call	getpid
 
-push	rax
+mov	rdi,rax
 call	loadpagetable
 add	rsp,4
 
@@ -202,7 +202,7 @@ mov	rsp,rax						; switch kernel stack
 ; Patch rsp0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
 call	get_kernel_stack_top
 
-push	rax
+mov	rdi,rax
 call	set_tss_rsp0
 add	rsp,8
 

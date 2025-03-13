@@ -33,6 +33,8 @@
 #include "version.h"
 #include "string.h"
 
+extern irq_exit;
+
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
 PROCESS *processes_end=NULL;
@@ -61,7 +63,6 @@ size_t *stackinit;
 */
 
 size_t exec(char *filename,char *argsx,size_t flags) {
-size_t handle;
 void *kernelstackbase;
 PROCESS *next;
 PROCESS *oldprocess;
@@ -69,8 +70,9 @@ size_t stackp;
 PROCESS *lastprocess;
 PSP *psp=NULL;
 char *fullpath[MAX_PATH];
+size_t *stackptr;
 
-disablemultitasking(); 
+disable_interrupts();
 
 oldprocess=currentprocess;					/* save current process pointer */
 
@@ -83,16 +85,14 @@ if(processes == NULL) {  					/* first process */
 		loadpagetable(getppid());
 		freepages(highest_pid_used);	
 
-		close(handle);
-
-		enablemultitasking();
+		enable_interrupts();
 		return(-1);
 	}
 
-processes_end=processes;					/* save end of list */
-lastprocess=processes_end;			/* save current end */
+	processes_end=processes;					/* save end of list */
+	lastprocess=processes_end;			/* save current end */
 
-next=processes;
+	next=processes;
 }
 else								/* not first process */
 {
@@ -101,10 +101,9 @@ else								/* not first process */
 		loadpagetable(getppid());
 		freepages(highest_pid_used);
 
-		close(handle);
 		setlasterror(NO_MEM);
 
-		enablemultitasking();
+		enable_interrupts();
 		return(-1);
 	}
 
@@ -148,15 +147,15 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
 
-	close(handle);
-
-	enablemultitasking();
+	enable_interrupts();
 	return(-1);
 }
 
 next->kernelstackbase=next->kernelstacktop;
 next->kernelstacktop += PROCESS_STACK_SIZE;			/* top of kernel stack */
-next->kernelstackpointer=next->kernelstacktop;			/* intial kernel stack address */
+next->kernelstackpointer=next->kernelstacktop-(12*sizeof(size_t));			/* intial kernel stack address */
+
+initializekernelstack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -179,23 +178,19 @@ if(currentprocess != NULL) {
 		lastprocess->next=NULL;		/* remove process */
 		processes_end=lastprocess;
 
-		close(handle);
-
-		enablemultitasking();
+		enable_interrupts();
 		return(-1);
 	}
 
 	memcpy(saveenv,currentprocess->envptr,ENVIROMENT_SIZE);		/* copy enviroment variables */
 }
 
-if(getpid() > 0) asm("xchg %bx,%bx");
-
 page_init(highest_pid_used);				/* intialize page directory */	
 loadpagetable(highest_pid_used);			/* load page table */
 
 currentprocess=next;					/* use new process */
 
-currentprocess->lasterror=last_error_no_process;	/* get last error */
+if(oldprocess == NULL) currentprocess->lasterror=last_error_no_process;	/* get no-process last error */
 
 highest_pid_used++;
 
@@ -225,7 +220,8 @@ if(stackp == NULL) {
 
 	loadpagetable(getpid());
 	freepages(highest_pid_used);
-	enablemultitasking();	
+
+	enable_interrupts();
 	return(-1);
 }
 
@@ -242,6 +238,7 @@ if(getpid() != 0) {
 
 processes_end=next;						/* save last process address */
 
+enable_interrupts();
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
@@ -256,11 +253,10 @@ if(entrypoint == -1) {					/* can't load executable */
 	currentprocess=lastprocess;	/* restore current process */
 
 	loadpagetable(getpid());
-	enablemultitasking();
+
+	enable_interrupts();
 	return(-1);
 }
-
-initializekernelstack(currentprocess->kernelstacktop,entrypoint,currentprocess->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
 /* create psp */ 
 
@@ -271,25 +267,25 @@ psp->cmdlinesize=strlen(psp->commandline);
 if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
 
-	yield();
-
 	loadpagetable(getpid());
 
 	enablemultitasking();
 	enable_interrupts();
 
-	return;
+	yield();
+
+	enable_interrupts();
+	return(0);
 }
 else
 {
 	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
 
 	enablemultitasking();
-
 	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
 }
 
-return;
+return(0);
 }
 
 /*
@@ -936,7 +932,6 @@ splitname(fullpath,&split);
 	  so it must copy the new current directory to currentprocess->currentdirectory to make sure that 
 	  it will be used to validate it.
 
-	  If it fails, the old path is restored
 */
 
 strncpy(savecwd,currentprocess->currentdirectory,MAX_PATH);		/* save current directory */
@@ -950,6 +945,8 @@ if(findfirst(fullpath,&chdir_file_record) == -1) {		/* path doesn't exist */
 }
 
 if((strncmp(split.dirname,"\\",MAX_PATH) != 0) && ((chdir_file_record.flags & FILE_DIRECTORY) == 0)) {		/* not directory */
+	strncpy(currentprocess->currentdirectory,savecwd,MAX_PATH);		/* restore old current directory */
+
 	setlasterror(NOT_DIRECTORY);
 	return(-1);
 }
@@ -1133,7 +1130,7 @@ if(next->signalhandler != NULL) {		/* if the process has a signal handler */
 
 	loadpagetable(process);			/* switch to process address space */
 
-	next->signalhandler(signalno);		/*call signal handler */
+	next->signalhandler(signalno);		/* call signal handler */
 	loadpagetable(thisprocess);		/* switch back to original address space */
 
 	enablemultitasking();
@@ -1304,6 +1301,20 @@ size_t get_kernel_stack_pointer(void) {
 if(currentprocess == NULL) return(NULL);
 
 return(currentprocess->kernelstackpointer);
+}
+
+/*
+* Get user-mode stack pointer for current process
+*
+* In:  Nothing
+*
+* Returns:  stack pointer or NULL if there are no processes running
+*
+*/
+size_t get_usermode_stack_pointer(void) {
+if(currentprocess == NULL) return(NULL);
+
+return(currentprocess->stackpointer);
 }
 
 /*
@@ -1534,7 +1545,7 @@ return(-1);
 * Returns: Nothing
 *
 */
-void reset_process_ticks(void) {
+void reset_current_process_ticks(void) {
 if(currentprocess == NULL) return;
 
 currentprocess->ticks=0;

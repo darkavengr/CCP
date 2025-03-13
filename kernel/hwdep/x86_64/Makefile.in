@@ -4,19 +4,19 @@ LD=@cc@
 
 all: ex.o partition.o port.o sched.o mutex.o interrupts.o stack.o  aainit.o usermode.o  cpustate.o tss.o gdt.o page.o @cc_opt_obj_files@
 ex-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header ex.c -oex-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 ex.c -oex-hwdep.o
 
 partition-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header ../i386/partition.c -opartition-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 ../i386/partition.c -opartition-hwdep.o
 
 port-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header port.c -oport-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 port.c -oport-hwdep.o
 
 sched-hwdep.o:
 		$(ASM) @asm_opts@ sched.asm -osched-hwdep.o
 
 `mutex-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header mutex.c -omutex-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 mutex.c -omutex-hwdep.o
 
 aainit-hwdep.o:
 		$(ASM) @asm_opts@ init.asm -oaainit-hwdep.o
@@ -40,5 +40,5 @@ usermode-hwdep.o:
 		$(ASM) @asm_opts@ usermode.asm -ousermode-hwdep.o
 
 page-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header page.c -opage-hwdep.o
+		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 page.c -opage-hwdep.o
 

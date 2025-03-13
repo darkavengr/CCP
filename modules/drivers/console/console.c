@@ -90,6 +90,7 @@ return(0);
 size_t outputconsole(char *s,size_t size) {
 char *consolepos;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
+size_t count;
 
 consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*CONSOLE_MAX_X)+bootinfo->cursor_col)*2);	/* address to write to */
 
@@ -104,6 +105,7 @@ if((size_t) consolepos % 2 == 1) consolepos++;
 		if(*s == 0x0A || *s == 0x0D) {			/* newline */
 			bootinfo->cursor_row++;						/* wrap round */
 			bootinfo->cursor_col=0;
+
 			consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*80)+bootinfo->cursor_col)*2);
 
 			consolepos++;
@@ -120,6 +122,8 @@ if((size_t) consolepos % 2 == 1) consolepos++;
 
 			memcpy(scrollbuf,KERNEL_HIGH+0xB80a0,(CONSOLE_MAX_X*2)*25);		/* to buffer */
 			memcpy(KERNEL_HIGH+0xB8000,scrollbuf,(CONSOLE_MAX_X*2)*25);		/* to screen */
+		
+			consolepos=KERNEL_HIGH+0xB80a0;
 
 			bootinfo->cursor_col=1;						/* wrap round */
 			bootinfo->cursor_row=23;

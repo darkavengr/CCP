@@ -92,17 +92,30 @@ jmp	irq
 
 irq:
 pusha						; save registers
-mov	eax,esp
-sub	eax,12					; minus 2 dword callirqhandlers() parameters and one dword return address = 3*4=12
 
-push	eax					; stack parameters
-push	dword [irqnumber]			; IRQ number
-call	callirqhandlers				; call IRQ handler
+mov	dword [esp-4],0				; clear before pushing, pushing segment registers does not modify upper 16 bits of stack entry
+push	ds					; save segment registers
+mov	dword [esp-4],0
+push	es
+mov	dword [esp-4],0
+push	fs
+mov	dword [esp-4],0
+push	gs
+
+mov	ax,KERNEL_DATA_SELECTOR			; kernel data selector
+mov	ds,ax
+mov	es,ax
+mov	fs,ax
+mov	gs,ax
+
+push	esp					; stack parameter pointer
+push	dword [irqnumber]			; irq number
+call	callirqhandlers				; call irq handler
 add	esp,8
 
 irq_exit:
 mov	ebx,[irqnumber]			        ; get interrupt number
-cmp	ebx,7			     	        ; if slave IRQ
+cmp	ebx,7			     	        ; if slave irq
 jle	nslave				        ; continue if not
 
 mov	al,0x20				        ; reset slave			     
@@ -112,7 +125,13 @@ nslave:
 mov	al,0x20				        ; reset master
 out	0x20,al
 
+pop	gs					; restore segments
+pop	fs
+pop	es
+pop	ds
+
 popa						; restore registers
+
 iret						; return
 
 irqnumber dd 0

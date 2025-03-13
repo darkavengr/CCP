@@ -18,6 +18,7 @@
 
 global switch_task
 global end_switch
+global end_yield
 global yield
 global switch_task_process_descriptor
 
@@ -29,8 +30,8 @@ extern get_kernel_stack_pointer
 extern update_current_process_pointer
 extern set_tss_esp0
 extern find_next_process_to_switch_to
-extern is_process_ready_to_switch
-extern reset_process_ticks
+extern is_current_process_ready_to_switch
+extern reset_current_process_ticks
 extern increment_tick_count
 extern get_kernel_stack_top
 extern increment_process_ticks
@@ -39,6 +40,7 @@ extern get_current_process_pointer
 extern get_processes_pointer
 extern enablemultitasking
 extern disablemultitasking
+extern getphysicaladdress
 
 %define offset
 
@@ -70,10 +72,10 @@ cli
 ;
 ; Stack format:
 ;
-; EIP ( already on stack)
-; CS  
+; return-to-yield() address
+; EIP      
+; CS
 ; EFLAGS
-; ESP 
 ; EAX	
 ; ECX
 ; EDX
@@ -82,104 +84,96 @@ cli
 ; EBP
 ; ESI
 ; EDI
-; cs
-; ds
-; es
-; fs
-; gs
 
 ; save eip, cs and eflags in the same way as an interrupt call
-
-xchg	bx,bx
 
 push	eax
 mov	eax,[esp+4]				; get eip
 mov	[save_eip],eax				; save it
 pop	eax
 
-sub	esp,4
-
-pushf
-push	cs
-push	dword [save_eip]
+; create fake interrupt return stack
+pushf						; eflags
+push	dword KERNEL_CODE_SELECTOR		; cs
+push	dword [save_eip]			; eip
 
 pusha						; save registers
+push	dword end_yield
 
-push	ds					; save segment registers
-push	es
-push	fs
-push	gs
-
-mov	ax,KERNEL_DATA_SELECTOR			; kernel data selector
-mov	ds,ax
-mov	es,ax
-mov	fs,ax
-mov	gs,ax
-
+push	esp
 call	switch_task				; switch to next task
 
-pop	gs					; restore segments
-pop	fs
-pop	es
-pop	ds
+end_yield:
+add	esp,4
 
 popa						; restore registers
-iret						; jump to cs:eip and restore interrupts
+iret
 
 ;
 ; Switch task
 ;
-; This function is called by a function which is expected to save the registers onto the stack and call switch_task().
-; After returning from switch_task(), the calling function will then restore the registers and return, transferring control to the new process.
+; The caller is expected to save the registers onto the stack and call switch_task().
+; After returning from switch_task(), the caller function will then restore the registers and return,
+; transferring control to the new process.
 ;
 ; You are not expected to understand this
 ;
+
+; void switch_task(size_t *regs);
 
 switch_task:
 mov	eax,[esp+4]				; get pointer to saved context
 mov	[save_esp],eax
 
-push	dword [save_esp]			; save current tasks stack pointer
-call	save_kernel_stack_pointer
-add	esp,4
+; return if there are no processes
 
+call	get_processes_pointer
+test	eax,eax
+jnz	have_processes
+
+jmp	no_stack_switch
+
+have_processes:
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled
 
-jmp	end_switch
+jmp	no_stack_switch
 
 multitasking_enabled:
 inc	byte [0x800b8000]
 
-call	is_process_ready_to_switch
+call	is_current_process_ready_to_switch
 test	eax,eax					; return if process is not ready to switch
 jnz	task_time_slice_finished
 
-jmp	end_switch
+jmp	no_stack_switch
 
 task_time_slice_finished:
-call	reset_process_ticks
+push	dword [save_esp]			; save current tasks stack pointer
+call	save_kernel_stack_pointer
+add	esp,4
 
-call	getpid
-
-cmp	eax,1
-jl	no_debug
-
-xchg	bx,bx
-no_debug:
+call	reset_current_process_ticks
 
 ;
 ; Switch to next process
 ;
 
-mov	eax,[save_descriptor]				; get descriptor
-test	eax,eax						; if not switching to a specific process
-jnz	have_descriptor					; update process now
+;mov	eax,[save_descriptor]				; get descriptor
+;test	eax,eax						; if not switching to a specific process
+;jnz	have_descriptor					; update process now
 
+call	getpid
+
+test	eax,eax
+jz	no_debug
+
+xchg	bx,bx
+no_debug:
 call	find_next_process_to_switch_to			; get pointer to next process
 
-have_descriptor:
+;have_descriptor:
 push	eax						; update current process pointer
 call	update_current_process_pointer
 add	esp,4
@@ -192,10 +186,6 @@ push	eax
 call	loadpagetable
 add	esp,4
 
-; switch kernel stack
-call	get_kernel_stack_pointer
-mov	esp,eax
-
 ; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
 call	get_kernel_stack_top
 
@@ -203,9 +193,12 @@ push	eax
 call	set_tss_esp0
 add	esp,4
 
-end_switch:
-xor	eax,eax
-mov	[save_descriptor],eax				; clear descriptor
+call	get_kernel_stack_pointer
+mov	esp,eax						; switch kernel stack
+
+no_stack_switch:
+;xor	eax,eax
+;mov	[save_descriptor],eax				; clear descriptor
 ret
 
 save_esp dd 0

@@ -17,9 +17,9 @@
 ;    You should have received a copy of the GNU General Public License
 ;    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
-KERNEL_CODE_SELECTOR	equ	8h			; kernel code selector
-KERNEL_DATA_SELECTOR	equ	10h			; kernel data selector
-USER_CODE_SELECTOR	equ	1Bh			; user code selector
-USER_DATA_SELECTOR	equ	23h			; user data selector
-TSS_SELECTOR 		equ	28h			; tss selector
+KERNEL_CODE_SELECTOR	equ	0x8			; kernel code selector
+KERNEL_DATA_SELECTOR	equ	0x10			; kernel data selector
+USER_CODE_SELECTOR	equ	0x1B			; user code selector
+USER_DATA_SELECTOR	equ	0x23			; user data selector
+TSS_SELECTOR 		equ	0x28			; tss selector
 

@@ -318,6 +318,11 @@ xor	al,al
 mov	dx,0xA1
 out	dx,al
 
+call	initialize_tss					; initialize tss
+
+push	esp
+call	set_tss_esp0
+
 call	init_multitasking
 call	driver_init				; initialize built-in modules
 call	initrd_init
@@ -325,11 +330,6 @@ call	initrd_init
 call	get_initial_kernel_stack_top
 add	eax,KERNEL_HIGH
 mov	esp,eax					; temporary stack
-
-push	esp
-call	set_tss_esp0
-
-call	initialize_tss					; initialize tss
 
 call	load_modules_from_initrd
 

@@ -37,32 +37,26 @@ extern get_process_stack_size
 extern save_kernel_stack_pointer
 extern set_tss_rsp0
 
-section .text
 [BITS 64]
 use64
 
 ;
 ; Initialize user-mode stack
 ;
-; In:	Stack pointer address
-;	Stack size
+; In:	rdi	Stack pointer address
+;	rsi	Stack size
 ;
 ; Returns: Nothing
 ;
 initializestack:
 cli
-mov	rax,[rsp]					; get rip
-mov	r11,temprip
-mov	[r11],rax
+mov	r11,[rsp]					; get RIP
 
-mov	rbx,[rsp+8]					; get stack size
-mov	rax,[rsp+4]					; get stack pointer
+mov	rax,rdi
+sub	rax,rsi					; minus stack size
 
-mov	rbx,rax
-sub	rbx,[rsp+8]					; minus stack size
-
-mov	rsp,rax
-mov	rbp,rbx
+mov	rsp,rdi
+mov	rbp,rax
 
 jmp	[r11]					; return without using stack
 
@@ -133,6 +127,5 @@ get_kernel_stack_size:
 mov	rax,KERNEL_STACK_SIZE
 ret
 
-section .data
 temprip dq 0
 

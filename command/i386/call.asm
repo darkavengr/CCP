@@ -56,6 +56,12 @@ global lock_mutex
 global unlock_mutex
 global getenv
 global pipe
+global switch_to_next_task
+
+switch_to_next_task:
+mov 	ah,0x31
+int	0x21
+ret
 
 exit:
 mov 	ah,0x4c

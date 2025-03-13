@@ -141,7 +141,7 @@ else
 	asm("xchg %bx,%bx");
 	enable_interrupts();
 
-	kill(getpid());
+	//kill(getpid());
 	kprintf_direct("\nProcess terminated\n");
 }
 

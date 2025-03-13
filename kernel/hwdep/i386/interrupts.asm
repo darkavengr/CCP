@@ -39,6 +39,7 @@ extern disablemultitasking
 extern enablemultitasking
 extern enableirq
 extern disableirq
+extern getpid
 
 [BITS 32]
 use32
@@ -440,12 +441,11 @@ push	12
 jmp	int_common	
 
 int13_handler:
+xchg	bx,bx
 push	13
-mov	dword [intnumber],13
 jmp	int_common	
 
 int14_handler:
-xchg	bx,bx
 push	14
 jmp	int_common	
 
@@ -490,7 +490,6 @@ call	exception
 add	esp,12
 
 exit_exception:
-xchg	bx,bx
 iret
 
 end_process:
@@ -535,7 +534,9 @@ mov 	gs,ax
 
 call	disablemultitasking
 sti
+
 call	dispatchhandler
+
 cli
 call	enablemultitasking
 
@@ -552,7 +553,7 @@ pop	ecx
 pop	ebx
 pop	eax
 
-cmp	eax,0ffffffffh					; if error ocurred
+cmp	eax,0xffffffff					; if error ocurred
 je	iret_error
 
 mov	eax,[tempone]					; then return old eax

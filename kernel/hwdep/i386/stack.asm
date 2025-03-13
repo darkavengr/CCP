@@ -33,12 +33,15 @@ global create_initial_stack_entries
 global get_initial_kernel_stack_base
 global get_initial_kernel_stack_top
 global get_kernel_stack_size
+global get_stack_pointer
+global updatekernelstack
 
 extern set_tss_esp0
 extern irq_exit
 extern get_process_stack_size
 extern save_kernel_stack_pointer
 extern get_kernel_stack_top
+extern get_usermode_stack_pointer
 
 [BITS 32]
 use32
@@ -79,27 +82,19 @@ mov	esi,[esp+4]				; kernel stack top
 mov	edx,[esp+8]				; entry point
 mov	ecx,[esp+12]				; kernel stack bottom
 
-mov	edi,esi
-sub	edi,17*4				; space for initial stack frame
-
-mov	eax,irq_exit
-mov	[edi],eax
-mov	dword [edi+4],KERNEL_DATA_SELECTOR	; ds
-mov	dword [edi+8],KERNEL_DATA_SELECTOR	; es
-mov	dword [edi+12],KERNEL_DATA_SELECTOR	; fs
-mov	dword [edi+16],KERNEL_DATA_SELECTOR	; gs
-mov	dword [edi+20],0xAAAAAAAA		; edi
-mov	dword [edi+24],0xBBBBBBBB		; esi
-mov	[edi+28],ecx				; ebp
-mov	[edi+32],esi				; esp
-mov	dword [edi+36],0xCCCCCCCC		; ebx
-mov	dword [edi+40],0xDDDDDDDD		; edx
-mov	dword [edi+44],0xEEEEEEEE		; ecx
-mov	dword [edi+48],0xFFFFFFFF		; eax
-mov	dword [edi+52],edx			; eip
-mov	dword [edi+56],KERNEL_CODE_SELECTOR	; cs
-mov	dword [edi+60],0x200			; eflags
-mov	dword [edi+64],ebx			; esp
+mov	dword [esi],irq_exit
+mov	dword [esi+4],0xAAAAAAAA		; edi
+mov	dword [esi+8],0xBBBBBBBB		; esi
+mov	[esi+12],ecx				; ebp
+mov	[esi+16],esi				; esp
+mov	dword [esi+20],0xCCCCCCCC		; ebx
+mov	dword [esi+24],0xDDDDDDDD		; edx
+mov	dword [esi+28],0xEEEEEEEE		; ecx
+mov	dword [esi+32],0xFFFFFFFF		; eax
+mov	[esi+36],edx				; eip
+mov	dword [esi+40],KERNEL_CODE_SELECTOR	; cs
+mov	dword [esi+44],0x200			; eflags
+mov	[esi+48],ebx				; esp
 
 ;
 ; Adjust kernel stack pointer
@@ -112,11 +107,19 @@ push	eax
 call	save_kernel_stack_pointer
 add	esp,4
 
-; Set tss esp0 to ensure that the kernel stack is switched to next time the cpu switches to ring 0.
+; Set tss esp0 to ensure that the kernel stack is switched to next time the CPU switches to ring 0.
 
-push	edi
+push	esi
 call	set_tss_esp0
 add	esp,4
+ret
+
+get_kernel_stack_size:
+mov	eax,KERNEL_STACK_SIZE
+ret
+
+get_stack_pointer:
+mov	eax,esp
 ret
 
 get_initial_kernel_stack_base:
@@ -128,8 +131,40 @@ mov	eax,INITIAL_KERNEL_STACK_ADDRESS
 add	eax,KERNEL_STACK_SIZE
 ret
 
-get_kernel_stack_size:
-mov	eax,KERNEL_STACK_SIZE
+updatekernelstack:
+push	edi
+push	edx
+push	ecx
+
+; updatekernelstack(oldprocess->kernelstackpointer,oldprocess->stackpointer,&&end_exec);
+
+mov	edi,[esp+4+12]				; kernel stack pointer
+mov	ecx,[esp+8+12]				; user stack pointer
+mov	edx,[esp+12+12]				; entry point
+
+mov	dword [edi],irq_exit
+mov	[edi+8],esi				; esi
+mov	[edi+12],ebp				; ebp
+mov	[edi+16],esp				; esp
+mov	[edi+20],ebx				; ebx
+mov	[edi+32],eax				; eax
+mov	[edi+36],edx				; eip
+mov	dword [edi+40],KERNEL_CODE_SELECTOR	; cs
+
+pushf
+pop	eax
+mov	[edi+44],eax				; eflags
+
+call	get_usermode_stack_pointer
+mov	[edi+48],eax				; esp
+
+pop	ecx
+pop	edx
+pop	edi
+
+mov	[edi+4],edi				; edi
+mov	[edi+24],edx				; edx
+mov	[edi+28],ecx				; ecx
 ret
 
 tempeip dd 0

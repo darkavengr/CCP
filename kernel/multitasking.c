@@ -69,9 +69,8 @@ void init_multitasking(void) {
 multitaskingenabled=FALSE;
 
 setirqhandler(0,'SCHD',&switch_task);		/* Register task switcher */
-setirqhandler(0,'TIMR',&timer_increment);		/* Register timer */
+//setirqhandler(0,'TIMR',&timer_increment);		/* Register timer */
 
-multitaskingenabled=TRUE;
 timer_count=0;
 return;
 }
@@ -101,6 +100,8 @@ return(multitaskingenabled);
 PROCESS *find_next_process_to_switch_to(void) { 
 PROCESS *newprocess;
 
+if(get_current_process_pointer() == NULL) return(get_processes_pointer());
+
 newprocess=get_current_process_pointer();
 
 /* find next process */
@@ -126,8 +127,8 @@ return(NULL);
  * 
  */
 
-size_t is_process_ready_to_switch(void) { 
-if(get_current_process_pointer() == NULL) return(FALSE);
+size_t is_current_process_ready_to_switch(void) { 
+if(get_processes_pointer() == NULL) return(FALSE);
 
 if(increment_tick_count() < get_max_tick_count()) return(FALSE);
 

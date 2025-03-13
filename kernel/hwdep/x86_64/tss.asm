@@ -16,7 +16,7 @@ use64
 ;
 ; Set TSS ring 0 ESP value
 ;
-; In: New ring 0 ESP value
+; In: rdi	 New ring 0 ESP value
 ;
 ; Returns: Nothing
 ;

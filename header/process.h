@@ -92,7 +92,7 @@ PROCESS *get_current_process_pointer(void);
 PROCESS *get_next_process_pointer(void);
 size_t register_executable_format(EXECUTABLEFORMAT *format);
 size_t load_executable(char *filename);
-void reset_process_ticks(void);
+void reset_current_process_ticks(void);
 size_t get_tick_count(void);
 size_t increment_tick_count(void);
 size_t GetVersion(void);

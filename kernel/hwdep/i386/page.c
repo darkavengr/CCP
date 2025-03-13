@@ -78,6 +78,7 @@ uint32_t p;
 uint32_t *v;
 uint32_t c;
 uint32_t temp;
+struct ppt *remap;
 
 next=processpaging;
 
@@ -108,6 +109,24 @@ if(next->pagedir[pd] == 0) {				/* if page directory empty */
 
 v=(uint32_t *) 0xffc00000 + (pd*1024);
 v[pt]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
+
+/* map page into all address spaces if it is a kernel page */
+
+if(page > KERNEL_HIGH) {
+	remap=processpaging;
+
+	while(remap != NULL) {
+		if(remap->process != process) {
+			next->pagedir[1022]=remap->pagedir[1023];
+			v=(uint32_t *) 0xFF800000 + (pd*1024);
+
+			v[pt]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
+		}
+
+		remap=remap->next;
+	}
+
+}
 
 return(0);
 }
@@ -287,7 +306,7 @@ for(count=start;count<end;count++) {			/* page directories */
 
 		v=(uint32_t *) 0xffc00000 + (count*1024);
 
-		for(countx=0;countx<1023;countx++) {      
+		for(countx=0;countx<1022;countx++) {      
 			if(v[countx] == 0) {
 	        		if(s == 0) last=countx;
 
