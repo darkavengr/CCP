@@ -18,7 +18,7 @@ size_t wildcard_rename(char *name,char *mask,char *out);
 int strtrunc(char *str,int c);
 int atoi(char *hex,int base);
 void ksnprintf(char *buf,char *format,size_t size, ...);
-void tohex(size_t hex,char *buf,size_t numberofbytes);
+void tohex(size_t hex,char *buf);
 size_t tokenize_line(char *linebuf,char *tokens[MAX_SIZE][MAX_SIZE],char *split);
 size_t signextend(size_t num,size_t bitnum);
 size_t tolowercase(char *string,char *out);

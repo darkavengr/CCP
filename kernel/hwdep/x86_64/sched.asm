@@ -21,7 +21,6 @@ global end_switch
 global yield
 global switch_task_process_descriptor
 
-extern is_multitasking_enabled			
 extern save_kernel_stack_pointer
 extern getpid
 extern loadpagetable
@@ -29,8 +28,8 @@ extern get_kernel_stack_pointer
 extern update_current_process_pointer
 extern set_tss_rsp0
 extern find_next_process_to_switch_to
-extern is_process_ready_to_switch
-extern reset_process_ticks
+extern is_current_process_ready_to_switch
+extern reset_current_process_ticks
 extern increment_tick_count
 extern get_kernel_stack_top
 extern increment_process_ticks
@@ -39,6 +38,8 @@ extern get_current_process_pointer
 extern get_processes_pointer
 extern enablemultitasking
 extern disablemultitasking
+extern getphysicaladdress
+extern is_multitasking_enabled
 
 %define offset
 
@@ -154,7 +155,7 @@ mov	rax,[rel save_descriptor]			; get descriptor
 test	rax,rax					; if switching to a specific process
 jnz	task_time_slice_finished		; don't check if process is ready to switch
 
-call	is_process_ready_to_switch
+call	is_current_process_ready_to_switch
 test	rax,rax					; if process not ready to switch, return
 jnz	task_time_slice_finished
 
@@ -163,7 +164,7 @@ call	enablemultitasking
 jmp	end_switch
 
 task_time_slice_finished:
-call	reset_process_ticks
+call	reset_current_process_ticks
 
 call	getpid
 

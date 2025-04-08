@@ -21,8 +21,8 @@
 
 %include "kernelselectors.inc"
 
-KERNEL_STACK_SIZE equ  65536*3				; size of initial kernel stack
-INITIAL_KERNEL_STACK_ADDRESS equ 0x50000		; intial kernel stack address
+KERNEL_STACK_SIZE equ  65536*5			; size of initial kernel stack
+INITIAL_KERNEL_STACK_ADDRESS equ 0x20000		; intial kernel stack address
 
 global initializestack
 global initializekernelstack
@@ -49,7 +49,6 @@ use64
 ; Returns: Nothing
 ;
 initializestack:
-cli
 mov	r11,[rsp]					; get RIP
 
 mov	rax,rdi
@@ -58,7 +57,7 @@ sub	rax,rsi					; minus stack size
 mov	rsp,rdi
 mov	rbp,rax
 
-jmp	[r11]					; return without using stack
+jmp	r11					; return without using stack
 
 ;
 ; Initialize kernel-mode stack
@@ -72,12 +71,12 @@ jmp	[r11]					; return without using stack
 ;
 initializekernelstack:
 mov	r11,rdi
-sub	r11,17*8				; space for initial stack frame
+sub	r11,16*8				; space for initial stack frame
 
 mov	rax,irq_exit
 mov	[r11],rax
 
-; fill in zeroes for rax,rbx,rcx ,rdx,rsi,rdi,r10,r11,r12,r13,r14,r15
+; fill in zeroes for rax,rbx,rcx,rdx,rsi,rdi,r10,r11,r12,r13,r14,r15
 
 push	rdi
 
@@ -91,7 +90,7 @@ rep	stosq
 
 pop	rdi
 
-mov	[r11+104],rdx			; eip
+mov	[r11+104],rdx				; rip
 mov	qword [r11+112],KERNEL_CODE_SELECTOR	; cs
 mov	qword [r11+116],0x200			; rflags
 mov	[r11+124],rdi			; rsp
@@ -101,17 +100,15 @@ mov	[r11+124],rdi			; rsp
 ; so it points to intial values
 ;
 call	get_kernel_stack_top
-sub	rax,17*4
+sub	rax,16*8
 
-push	rax
+mov	rdi,rax
 call	save_kernel_stack_pointer
-add	rsp,8
 
 ; Set tss esp0 to ensure that the kernel stack is switched to next time the cpu switches to ring 0.
 
-push	rdi
+mov	rdi,rax
 call	set_tss_rsp0
-add	rsp,8
 ret
 
 get_initial_kernel_stack_base:

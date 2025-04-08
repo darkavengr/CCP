@@ -47,7 +47,7 @@ extern getphysicaladdress
 %include "kernelselectors.inc"
 ;
 ; The functions switch_task_process_descriptor() and yield() should not be called from 
-; an interrupt handler. Instead, switch_task() must be called.
+; an interrupt handler. Instead, call switch_task().
 ;
 
 switch_task_process_descriptor:
@@ -96,15 +96,14 @@ pop	eax
 pushf						; eflags
 push	dword KERNEL_CODE_SELECTOR		; cs
 push	dword [save_eip]			; eip
-
 pusha						; save registers
 push	dword end_yield
 
 push	esp
 call	switch_task				; switch to next task
 
-end_yield:
 add	esp,4
+end_yield:
 
 popa						; restore registers
 iret
@@ -141,6 +140,10 @@ jnz	multitasking_enabled
 jmp	no_stack_switch
 
 multitasking_enabled:
+push	dword [save_esp]			; save current task's stack pointer
+call	save_kernel_stack_pointer
+add	esp,4
+
 inc	byte [0x800b8000]
 
 call	is_current_process_ready_to_switch
@@ -150,10 +153,6 @@ jnz	task_time_slice_finished
 jmp	no_stack_switch
 
 task_time_slice_finished:
-push	dword [save_esp]			; save current tasks stack pointer
-call	save_kernel_stack_pointer
-add	esp,4
-
 call	reset_current_process_ticks
 
 ;
@@ -171,6 +170,7 @@ jz	no_debug
 
 xchg	bx,bx
 no_debug:
+
 call	find_next_process_to_switch_to			; get pointer to next process
 
 ;have_descriptor:

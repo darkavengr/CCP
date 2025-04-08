@@ -5,19 +5,19 @@ LD=@arch@-elf-gcc
 all: ex.o partition.o port.o sched.o mutex.o interrupts.o stack.o aainit.o usermode.o cpustate.o initializepaging.o tss.o gdt.o @cc_opt_obj_files@
 
 ex.o:
-	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ex.c -o @buildroot@/obj/@arch@/ex.o
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ex.c -o @buildroot@/obj/@arch@/ex.o
 
 partition.o:
-	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ partition.c -o @buildroot@/obj/@arch@/partition.o
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ partition.c -o @buildroot@/obj/@arch@/partition.o
 
 port.o:
-	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ port.c -o @buildroot@/obj/@arch@/port.o
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ port.c -o @buildroot@/obj/@arch@/port.o
 
 sched.o:
 	$(ASM) -felf32 sched.asm -o @buildroot@/obj/@arch@/sched.o
 
 mutex.o:
-	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ mutex.c -o @buildroot@/obj/@arch@/mutex.o
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ mutex.c -o @buildroot@/obj/@arch@/mutex.o
 
 aainit.o:
 	$(ASM) -felf32 init.asm -o @buildroot@/obj/@arch@/aainit.o
@@ -44,9 +44,9 @@ initializepaging.o:
 	$(ASM) -felf32 initializepaging.asm -o @buildroot@/obj/@arch@/initializepaging.o
 
 page.o:
-	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ page.c -o @buildroot@/obj/@arch@/page.o
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ page.c -o @buildroot@/obj/@arch@/page.o
 
 paepage.o:
-	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ paepage.c -o @buildroot@/obj/@arch@/paepage.o
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ paepage.c -o @buildroot@/obj/@arch@/paepage.o
 
 

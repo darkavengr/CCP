@@ -70,11 +70,12 @@ void exception(uint64_t *regs,uint64_t e);
 
 
 uint64_t flags;
-char *exp[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception",\
-		"Into detected overflow","Out of bounds exception","Invalid opcode exception","No coprocessor exception",\
-		 "Double Fault","Coprocessor segment overrun","Bad TSS","Segment not present","Stack fault",\
-		 "General protection fault","Page fault","Unknown interrupt exception","Coprocessor fault",\
-		 "Alignment check exception","Machine check exception" };
+char *exp[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception","Into detected overflow",
+		"Out of bounds exception","Invalid opcode exception","No coprocessor exception","Double Fault","Coprocessor segment overrun",
+		"Bad TSS","Segment not present","Stack fault","General protection fault","Page fault","Unknown interrupt exception",
+		"Coprocessor fault","Alignment check exception","Machine check exception","SIMD Floating-Point Exception",
+		"Virtualization Exception","Control Protection Exception","Reserved #1","Reserved #2","Reserved #3","Reserved #4","Reserved #5",
+		"Hypervisor Injection Exception","VMM Communication Exception","Security Exception","Reserved #5" };
 
 char *regnames[] = { "RIP","RSP","RAX","RBX","RCX","RDX","RSI","RDI","RBP","R10","R11","R12","R13","R14","R15",NULL};
 
@@ -89,13 +90,13 @@ size_t shiftcount;
 size_t rowcount;
 
 if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("\nKernel panic [%s] at address %016lX\n",exp[e],regs[0]);
+	kprintf_direct("\nKernel panic [%s] at address %016X\n",exp[e],regs[0]);
 }
 else
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %016lX in %s\n",exp[e],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %016X in %s\n",exp[e],regs[0],processname);  /* exception */
 }
 
 count=0;
@@ -104,7 +105,7 @@ rowcount=0;
 while(regnames[count] != NULL) {							/* dump registers */
 	if(regnames[count] == NULL) break;
 
-	kprintf_direct("%s=%016lX ",regnames[count],regs[count]);
+	kprintf_direct("%s=%016X ",regnames[count],regs[count]);
 
 	if(++rowcount == 3) {				/* at end of row */
 		kprintf_direct("\n");

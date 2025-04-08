@@ -57,10 +57,10 @@ initialize_interrupts:
 
 ; Divide by zero
 
-push	0
+push	0				; interrupt number
 push	offset int0_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -69,7 +69,7 @@ add	esp,16				; fix stack pointer
 push	1
 push	offset int1_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -78,7 +78,7 @@ add	esp,16				; fix stack pointer
 push	2
 push	offset int2_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -87,7 +87,7 @@ add	esp,16				; fix stack pointer
 push	3
 push	offset int3_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -96,7 +96,7 @@ add	esp,16				; fix stack pointer
 push	4
 push	offset int4_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -105,7 +105,7 @@ add	esp,16				; fix stack pointer
 push	5
 push	offset int5_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -114,7 +114,7 @@ add	esp,16				; fix stack pointer
 push	6
 push	offset int6_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -123,7 +123,7 @@ add	esp,16				; fix stack pointer
 push	7
 push	offset int7_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -132,7 +132,7 @@ add	esp,16				; fix stack pointer
 push	8
 push	offset int8_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -141,16 +141,16 @@ add	esp,16				; fix stack pointer
 push	9
 push	offset int9_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
-; Bad TSS
+; Invalid TSS
 
 push	10
 push	offset int10_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -159,7 +159,7 @@ add	esp,16				; fix stack pointer
 push	11
 push	offset int11_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -168,7 +168,7 @@ add	esp,16				; fix stack pointer
 push	12
 push	offset int12_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -177,7 +177,7 @@ add	esp,16				; fix stack pointer
 push	13
 push	offset int13_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -186,7 +186,7 @@ add	esp,16				; fix stack pointer
 push	14
 push	offset int14_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -195,7 +195,7 @@ add	esp,16				; fix stack pointer
 push	15
 push	offset int15_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -204,7 +204,7 @@ add	esp,16				; fix stack pointer
 push	16
 push	offset int16_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -213,7 +213,7 @@ add	esp,16				; fix stack pointer
 push	17
 push	offset int17_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -222,7 +222,7 @@ add	esp,16				; fix stack pointer
 push	18
 push	offset int18_handler
 push	8				; selector
-push	8eh				; flags
+push	0x8E				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 
@@ -232,7 +232,7 @@ add	esp,16				; fix stack pointer
 push	0x21
 push	offset d_lowlevel
 push	8				; selector
-push	0eeh				; flags
+push	0xEE				; flags
 call	set_interrupt
 add	esp,16				; fix stack pointer
 ret

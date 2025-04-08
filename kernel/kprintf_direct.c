@@ -198,7 +198,9 @@ while(*formatptr != 0) {
 
 				itoa(num,tempbuffer);		/* convert it to string */
 
-				if(width > 0) {		/* pad out number */
+				/* pad out number */
+		
+		/*		if(width > 0) {
 					for(count=width-strlen(tempbuffer);count > 0;count--) {
 						if(flags & ZERO_BEFORE_DIGIT_FLAG) {
 							outputconsole("0",1);
@@ -209,7 +211,7 @@ while(*formatptr != 0) {
 
 						outcount++;
 					}
-				}
+				}*/
 
 				outputconsole(tempbuffer,strlen(tempbuffer));
 				outcount += strlen(tempbuffer);
@@ -262,7 +264,7 @@ while(*formatptr != 0) {
 				else if((formatchar == 'x') || (formatchar == 'X')) {
 					if(flags & USE_HEX_OCTAL_SIGN) outputconsole("0x",2);		/* print 0x before hexadecimal numbers */
 
-					tohex(num,tempbuffer,paramsize);
+					tohex(num,tempbuffer);
 
 					if(formatchar == 'x') tolowercase(tempbuffer,tempbuffer);	/* print lowercase hexadecimal number */
 				}
@@ -306,7 +308,7 @@ while(*formatptr != 0) {
 			if(formatchar == 'p') {			/* pointer */
 				num=(unsigned char) va_arg(args,size_t);
 
-				tohex(num,tempbuffer,sizeof(size_t)*4);
+				tohex(num,tempbuffer);
 
 				for(outcount=sizeof(size_t)*4-strlen(tempbuffer);count > 0;count--) {
 					outputconsole("0",1);

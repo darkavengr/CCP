@@ -1,37 +1,37 @@
 ASM=nasm
 CC=@arch@-elf-gcc
 LD=@arch@-elf-ld
-CFILES=addvar.c command.c copyfile.c err.c readline.c runcommand.c
+CFILES=command.c addvar.c copyfile.c err.c readline.c runcommand.c
 ASMFILES=@arch@/call.asm
-CCFLAGS=-c -w -ffreestanding -g -lgcc -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
+CCFLAGS=-g -lgcc -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
 LDFLAGS=-ffreestanding -nostdlib -T ld.script.command  -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
 OUTFILE=@buildroot@/bin/@arch@/COMMAND.RUN 
 COBJFILES=$(addsuffix .o,$(basename $(notdir $(CFILES))))
 KERNELOBJFILES=string.o getfullpath.o kprintf_direct.o error.o
 ASMOBJFILES=$(addsuffix .o,$(basename $(notdir $(ASMFILES))))
 
-all: 	$(KERNELOBJFILES) $(COBJFILES) $(ASMOBJFILES)
+all: 	$(COBJFILES) $(KERNELOBJFILES) $(ASMOBJFILES)
 	echo $(KERNELOBJFILES) $(COBJFILES) $(ASMOBJFILES)
 
-	$(CC) $(KERNELOBJFILES) $(COBJFILES) $(ASMOBJFILES) -o $(OUTFILE) $(LDFLAGS)
+	$(CC) $(LDFLAGS) -o @buildroot@/bin/@arch@/COMMAND.RUN *.o
 
 $(COBJFILES): %.o: %.c
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) $< -o $@
+	$(CC) -c -w -ffreestanding -nostdlib -mcmodel=large -mno-red-zone $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) $< -o $@
 
 getfullpath.o: ../kernel/getfullpath.c
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/getfullpath.c -o getfullpath.o
+	$(CC) -c -w -ffreestanding -nostdlib -mcmodel=large -mno-red-zone $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/getfullpath.c -o getfullpath.o
 
 kprintf_direct.o: ../kernel/kprintf_direct.c
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/kprintf_direct.c -o kprintf_direct.o
+	$(CC) -c -w -ffreestanding -nostdlib -mcmodel=large -mno-red-zone $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/kprintf_direct.c -o kprintf_direct.o
 
 string.o: ../kernel/string.c
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/string.c -o string.o
+	$(CC) -c -w -ffreestanding -nostdlib -mcmodel=large -mno-red-zone $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/string.c -o string.o
 
 error.o: ../kernel/error.c
-	$(CC) $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/error.c -o error.o
+	$(CC) -c -w -ffreestanding -nostdlib -mcmodel=large -mno-red-zone $(CCFLAGS) -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ -c $(CCOPTS) ../kernel/error.c -o error.o
 
 $(ASMOBJFILES): %.o: @arch@/%.asm
-	$(ASM) @asm_opts@ $< -o $@
+	$(ASM) -felf64 $< -o $@
 
 clean:
 	rm @buildroot@/bin/@arch@/COMMAND.RUN *.o

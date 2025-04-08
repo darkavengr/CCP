@@ -55,6 +55,8 @@ global d_lowlevel
 extern exception					; exception handler
 extern exit
 extern dispatchhandler					; high-level dispatcher
+extern enablemultitasking
+extern disablemultitasking
 
 [BITS 64]
 use64
@@ -66,6 +68,38 @@ mov	rdx,qword %3			; address
 mov	rcx,qword %4			; interrupt number
 call	set_interrupt
 %endmacro
+
+%macro inthandler_noerr 1
+int%1_handler:
+push	rax
+push	rbx
+push	rsi
+push	rdi
+
+mov	rdi,qword regbuf	; point to register buffer
+mov	rsi,%1			; interrupt number
+
+mov	rax,[rsp+32]		; get rip from stack
+mov	rbx,[rsp+32+16]		; get rflags from stack
+
+jmp	int_common
+%endmacro
+
+%macro inthandler_err 1
+int%1_handler:
+push	rax
+push	rbx
+push	rsi
+push	rdi
+
+mov	rdi,qword regbuf	; point to register buffer
+mov	rsi,%1			; interrupt number
+mov	rax,[rsp+32+8]		; get rip from stack
+mov	rbx,[rsp+32+24]		; get rflags from stack
+
+jmp	int_common
+%endmacro
+
 
 ;
 ; Initialize interrupts
@@ -186,112 +220,45 @@ ret
 ; Interrupt handlers
 ;
 
-int0_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 0
-jmp	int_common
-
-int1_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 1
-jmp	int_common	
-
-int2_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 2
-jmp	int_common	
-
-int3_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 3
-jmp	int_common	
-
-int4_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 4
-jmp	int_common	
-
-int5_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 5
-jmp	int_common	
-
-int6_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 6
-jmp	int_common	
-
-int7_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 7
-jmp	int_common	
-
-int8_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 8
-jmp	int_common	
-
-int9_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 9
-jmp	int_common	
-
-int10_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 10
-jmp	int_common	
-
-int11_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 11
-jmp	int_common	
-
-int12_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 12
-jmp	int_common	
-
-int13_handler:
-xchg	bx,bx
-mov	rdi,qword regbuf
-mov	rsi,qword 13
-jmp	int_common	
-
-int14_handler:
-xchg	bx,bx
-mov	rdi,qword regbuf
-mov	rsi,qword 14
-jmp	int_common	
-
-int15_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 15
-jmp	int_common	
-
-int16_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 16
-jmp	int_common	
-
-int17_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 17
-jmp	int_common	
-
-int18_handler:
-mov	rdi,qword regbuf
-mov	rsi,qword 18
-;jmp	int_common	
+inthandler_noerr 0
+inthandler_noerr 1
+inthandler_noerr 2
+inthandler_noerr 3
+inthandler_noerr 4
+inthandler_noerr 5
+inthandler_noerr 6
+inthandler_noerr 7
+inthandler_err 8
+inthandler_noerr 9
+inthandler_err 10
+inthandler_err 11
+inthandler_err 12
+inthandler_err 13
+inthandler_err 14
+inthandler_noerr 15
+inthandler_noerr 16
+inthandler_err 17
+inthandler_noerr 18
+inthandler_noerr 19
+inthandler_noerr 20
+inthandler_err 21
+inthandler_noerr 22
+inthandler_noerr 23
+inthandler_noerr 24
+inthandler_noerr 25
+inthandler_noerr 26
+inthandler_noerr 27
+inthandler_noerr 28
+inthandler_err 29
+inthandler_err 30
+inthandler_noerr 31
 
 int_common:
-push	rdi
-mov	rdi,regbuf
-mov	[rdi+8],rsp			; save other registers into buffer to pass to exception handler
-mov	[rdi+16],rax
-mov	[rdi+24],rbx
+; save other registers into buffer to pass to exception handler
+mov	[rdi],rax			; save eip
+mov	[rdi+8],rsp
 mov	[rdi+32],rcx
 mov	[rdi+40],rdx
-mov	[rdi+48],rsi
 mov	[rdi+64],rbp
 mov	[rdi+72],r10
 mov	[rdi+80],r11
@@ -299,15 +266,16 @@ mov	[rdi+88],r12
 mov	[rdi+96],r13
 mov	[rdi+104],r14
 mov	[rdi+112],r15
+mov	[rdi+120],rbx			; save flags
 
-pop	rax
+pop	rax				; get rax from stack
+mov	[rdi+16],rax
+pop	rax				; get rbx from stack
+mov	[rdi+24],rax
+pop	rax				; get rsi from stack
+mov	[rdi+48],rax
+pop	rax				; get rdi from stack
 mov	[rdi+56],rax
-
-mov	rax,[rsp+16]			; get flags
-mov	[rdi+120],rax			; save flags
-
-mov	rax,[rsp+8]			; get RIP of interrupt handler from stack
-mov	[rdi],rax			; save it
 
 call	exception			; call exception handler
 add	rsp,16
@@ -316,33 +284,52 @@ exit_exception:
 xchg	bx,bx
 iretq
 
-;
 ; low level dispatcher
+;
 ;
 ; In: Nothing
 ;
 ; Returns: Nothing
 ;
 d_lowlevel:
-mov	r10,rsi				; pass registers
-mov	r11,rdi
-
-mov	rdi,rax
+mov	r9,rax
+mov	r8,rbx
+; rcx and rdx are unchanged
 mov	rsi,rbx
-mov	r8,rcx
-mov	r9,rdx
+mov	rdi,rax
+
+;push	rax
+;push	rbx
+;push	rcx
+;push	rdx
+;push	rsi
+;push	rdi
+
+;call	disablemultitasking
+
+;pop	rdi
+;pop	rsi
+;pop	rdx
+;pop	rcx
+;pop	rbx
+;pop	rax
 
 sti
+
+;xchg	bx,bx
 call	dispatchhandler
+
+;call	enablemultitasking
 cli
 
-mov	r11,tempone
+mov	r11,qword tempone
 mov	[r11],rax
 
-cmp	rdx,qword 0xffffffffffffffff					; if error ocurred
+mov	r11,qword 0xffffffffffffffff
+cmp	rdx,r11					; if error ocurred
 je	iretq_error
 
-mov	r11,tempone
+mov	r11,qword tempone
 mov	rax,[r11]				; then return old rax
 
 iretq_error:
@@ -359,5 +346,5 @@ idt_end:
 tempone dq 0
 temptwo dq 0
 intnumber dq 0
-regbuf times 20 dq 0
+regbuf times 120 dq 0
 

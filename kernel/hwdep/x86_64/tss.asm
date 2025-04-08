@@ -14,15 +14,15 @@ section .text
 use64
 
 ;
-; Set TSS ring 0 ESP value
+; Set TSS ring 0 RSP value
 ;
-; In: rdi	 New ring 0 ESP value
+; In: rdi	 New ring 0 RSP value
 ;
 ; Returns: Nothing
 ;
 
 set_tss_rsp0:
-mov	r11,rsp0
+mov	r11,qword rsp0
 mov	[r11],rdi
 ret
 
@@ -34,20 +34,19 @@ ret
 ; Returns: Nothing
 ;
 initialize_tss:
-; don't use set_gdt(), TSSs have a different format
-; and TSS GDT entries take up two GDT entries
+; don't use set_gdt(), TSS GDT entries have a different format and take up two GDT entries
 
-mov	rdi,qword gdt
+mov	rdi,qword gdt			; point to GDT
 
-mov	rax,qword TSS_GDT_ENTRY
-shl	rax,3
-add	rdi,rax
+mov	rax,qword TSS_GDT_ENTRY		; get TSS GDT entry
+shl	rax,3				; multiply by 8
+add	rdi,rax				; add to GDT base
 
 mov	rax,qword (end_tss-tss)+tss
 mov	[rdi],ax			; put bits 0-15 of limit
 
-shr	rax,16				
-and	al,0fh				; get bottom 4 bits
+shr	rax,16
+and	al,0xF				; get bottom 4 bits
 
 mov	[rdi+4],al			; put bits 16-23 of limit
 
@@ -61,22 +60,23 @@ shr	rax,8
 mov	[rdi+7],al			; put bits 24-31 of base
 
 shr	rax,8
-mov	[rdi+8],al			; put bits 32-63 of base
+mov	[rdi+8],eax			; put bits 32-63 of base
 
 xor	eax,eax
 mov	[rdi+12],eax			; put reserved bits
 
-mov	al,(1 << 7) | (3 << 5) | 9	; access byte
+;	    Present    DPL     	  Executable  Accessed
+mov	al,(1 << 7) | (3 << 6) | (1 << 3) |  (1 << 0)	; access byte
 mov	[rdi+5],al
 
-mov	ax,TSS_SELECTOR + 3		; load tss for interrupt calls from ring 3
+mov	al,(1 << 2)			; flags
+mov	ax,TSS_SELECTOR | 3		; load tss for interrupt calls from ring 3
 ltr	ax
 ret
 
 section .data
 tss:
-reserved db 0
-iopb db 0
+reserved dd 0
 rsp0 dq 0
 rsp1 dq 0
 rsp2 dq 0

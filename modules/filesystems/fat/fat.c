@@ -1989,7 +1989,6 @@ if(blockdevice.superblock == NULL) {
 
 memcpy(blockdevice.superblock,&bpb,sizeof(BPB));		/* update BPB */
 
-
 update_block_device(drive,&blockdevice);			/* update block device information */
 
 return(fattype);
@@ -2006,7 +2005,7 @@ return(fattype);
  *
  */
 
-size_t fat_convert_filename(char *filename,char *outname) {
+void fat_convert_filename(char *filename,char *outname) {
 char *s;
 char *d;
 size_t count;

@@ -87,6 +87,7 @@ mov	qword [rel irqnumber],14
 jmp	irq
 
 irq15:
+xchg	bx,bx
 mov	qword [rel irqnumber],15
 jmp	irq
 
@@ -106,7 +107,7 @@ push	r15
 
 mov	rdi,qword irqnumber
 mov	rdi,[rdi]				; irq number
-mov	rsi,rsp					; stack parameter pointer
+mov	rsi,qword buf					; stack parameter pointer
 call	callirqhandlers				; call irq handler
 
 irq_exit:
@@ -137,4 +138,5 @@ pop	rax
 iretq						; return
 
 irqnumber dq 0
+buf times 15 dq 0
 

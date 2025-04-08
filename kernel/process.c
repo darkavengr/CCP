@@ -155,8 +155,6 @@ next->kernelstackbase=next->kernelstacktop;
 next->kernelstacktop += PROCESS_STACK_SIZE;			/* top of kernel stack */
 next->kernelstackpointer=next->kernelstacktop-(12*sizeof(size_t));			/* intial kernel stack address */
 
-initializekernelstack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
-
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
 *
@@ -189,6 +187,8 @@ page_init(highest_pid_used);				/* intialize page directory */
 loadpagetable(highest_pid_used);			/* load page table */
 
 currentprocess=next;					/* use new process */
+
+initializekernelstack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
 if(oldprocess == NULL) currentprocess->lasterror=last_error_no_process;	/* get no-process last error */
 
@@ -239,6 +239,7 @@ if(getpid() != 0) {
 processes_end=next;						/* save last process address */
 
 enable_interrupts();
+
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
@@ -282,6 +283,7 @@ else
 	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
 
 	enablemultitasking();
+
 	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
 }
 
@@ -474,7 +476,7 @@ return(-1);
 *
 */
 
-size_t dispatchhandler(size_t ignored1,size_t ignored2,size_t ignored3,size_t ignored4,void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone) {
+size_t dispatchhandler(void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone) {
 FILERECORD findbuf;
 size_t highbyte;
 size_t lowbyte;

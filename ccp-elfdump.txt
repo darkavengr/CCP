@@ -1,0 +1,677 @@
+ELF Header:
+  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00 
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           Advanced Micro Devices X86-64
+  Version:                           0x1
+  Entry point address:               0xffffff0000100000
+  Start of program headers:          64 (bytes into file)
+  Start of section headers:          170648 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               64 (bytes)
+  Size of program headers:           56 (bytes)
+  Number of program headers:         1
+  Size of section headers:           64 (bytes)
+  Number of section headers:         9
+  Section header string table index: 8
+
+Section Headers:
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [ 0]                   NULL             0000000000000000  00000000
+       0000000000000000  0000000000000000           0     0     0
+  [ 1] .text             PROGBITS         ffffff0000100000  00001000
+       000000000002095d  0000000000000000  AX       0     0     16
+  [ 2] .data             PROGBITS         ffffff0000120960  00021960
+       0000000000000d3a  0000000000000000  WA       0     0     32
+  [ 3] .rodata           PROGBITS         ffffff00001216a0  000226a0
+       0000000000001ef9  0000000000000000   A       0     0     32
+  [ 4] .bss              NOBITS           ffffff00001235a0  00024599
+       0000000000084888  0000000000000000  WA       0     0     32
+  [ 5] .comment          PROGBITS         0000000000000000  00024599
+       0000000000000011  0000000000000001  MS       0     0     1
+  [ 6] .symtab           SYMTAB           0000000000000000  000245b0
+       00000000000038e8  0000000000000018           7   178     8
+  [ 7] .strtab           STRTAB           0000000000000000  00027e98
+       0000000000001bbc  0000000000000000           0     0     1
+  [ 8] .shstrtab         STRTAB           0000000000000000  00029a54
+       000000000000003d  0000000000000000           0     0     1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  l (large), p (processor specific)
+
+There are no section groups in this file.
+
+Program Headers:
+  Type           Offset             VirtAddr           PhysAddr
+                 FileSiz            MemSiz              Flags  Align
+  LOAD           0x0000000000001000 0xffffff0000100000 0xffffff0000100000
+                 0x0000000000023599 0x00000000000a7e28  RWE    0x1000
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .text .data .rodata .bss 
+
+There is no dynamic section in this file.
+
+There are no relocations in this file.
+
+The decoding of unwind sections for machine type Advanced Micro Devices X86-64 is not currently supported.
+
+Symbol table '.symtab' contains 607 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: ffffff0000100000     0 SECTION LOCAL  DEFAULT    1 
+     2: ffffff0000120960     0 SECTION LOCAL  DEFAULT    2 
+     3: ffffff00001216a0     0 SECTION LOCAL  DEFAULT    3 
+     4: ffffff00001235a0     0 SECTION LOCAL  DEFAULT    4 
+     5: 0000000000000000     0 SECTION LOCAL  DEFAULT    5 
+     6: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS ata.c
+     7: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS ccp.c
+     8: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS clock.c
+     9: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS console.c
+    10: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS cpustate.asm
+    11: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS device.c
+    12: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS drive.c
+    13: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS elf64.c
+    14: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS error.c
+    15: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS ex.c
+    16: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS fat.c
+    17: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS floppy.c
+    18: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS gdt.asm
+    19: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  ABS GDT_LIMIT_LOW
+    20: 0000000000000002     0 NOTYPE  LOCAL  DEFAULT  ABS GDT_BASE_LOW
+    21: 0000000000000004     0 NOTYPE  LOCAL  DEFAULT  ABS GDT_BASE_MIDDLE
+    22: 0000000000000005     0 NOTYPE  LOCAL  DEFAULT  ABS GDT_ACCESS
+    23: 0000000000000006     0 NOTYPE  LOCAL  DEFAULT  ABS GDT_FLAGS
+    24: 0000000000000007     0 NOTYPE  LOCAL  DEFAULT  ABS GDT_BASE_HIGH
+    25: ffffff000010ce0b     0 NOTYPE  LOCAL  DEFAULT    1 gdt_is_ok
+    26: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS getfullpath.c
+    27: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS init.asm
+    28: 0000000000001000     0 NOTYPE  LOCAL  DEFAULT  ABS ROOT_PML4
+    29: 0000000000003000     0 NOTYPE  LOCAL  DEFAULT  ABS ROOT_PDPT
+    30: 0000000000004000     0 NOTYPE  LOCAL  DEFAULT  ABS ROOT_PAGEDIR
+    31: 0000000000005000     0 NOTYPE  LOCAL  DEFAULT  ABS ROOT_PAGETABLE
+    32: 0000000000008000     0 NOTYPE  LOCAL  DEFAULT  ABS DMA_BUFFER_SIZE
+    33: 000000000000000a     0 NOTYPE  LOCAL  DEFAULT  ABS GDT_LIMIT
+    34: 0000000000000001     0 NOTYPE  LOCAL  DEFAULT  ABS PAGE_PRESENT
+    35: 0000000000000002     0 NOTYPE  LOCAL  DEFAULT  ABS PAGE_RW
+    36: 0000000000001000     0 NOTYPE  LOCAL  DEFAULT  ABS PAGE_SIZE
+    37: ffffff0000000000     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_HIGH
+    38: 0000000000100000     0 NOTYPE  LOCAL  DEFAULT  ABS phys_start_address
+    39: 0000000000000008     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_CODE_SELECTOR
+    40: 0000000000000010     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_DATA_SELECTOR
+    41: 000000000000001b     0 NOTYPE  LOCAL  DEFAULT  ABS USER_CODE_SELECTOR
+    42: 0000000000000023     0 NOTYPE  LOCAL  DEFAULT  ABS USER_DATA_SELECTOR
+    43: 0000000000000028     0 NOTYPE  LOCAL  DEFAULT  ABS TSS_SELECTOR
+    44: 00000000000000ac     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_PHYSICAL_DRIVE
+    45: 00000000000000ad     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_DRIVE
+    46: 00000000000000ae     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_CURSOR_ROW
+    47: 00000000000000af     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_CURSOR_COL
+    48: 00000000000000b0     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_KERNEL_START
+    49: 00000000000000b4     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_KERNEL_SIZE
+    50: 00000000000000b8     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_INITRD_START
+    51: 00000000000000bc     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_INITRD_SIZE
+    52: 00000000000000c0     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_SYMBOL_START
+    53: 00000000000000c4     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_SYMBOL_SIZE
+    54: 00000000000000c8     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_NUM_SYMBOLS
+    55: 00000000000000cc     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_MEMORY_SIZE
+    56: 00000000000000d0     0 NOTYPE  LOCAL  DEFAULT  ABS BOOT_INFO_BOOT_DRIVE_STAR
+    57: ffffff000010d394     0 NOTYPE  LOCAL  DEFAULT    1 output16
+    58: ffffff000010d394     0 NOTYPE  LOCAL  DEFAULT    1 next_char
+    59: ffffff000010d39f     0 NOTYPE  LOCAL  DEFAULT    1 over
+    60: ffffff000010d3b4     0 NOTYPE  LOCAL  DEFAULT    1 ..@31.a20
+    61: ffffff000010d3be     0 NOTYPE  LOCAL  DEFAULT    1 ..@32.a20
+    62: ffffff000010d3c8     0 NOTYPE  LOCAL  DEFAULT    1 ..@33.a202
+    63: ffffff000010d3d2     0 NOTYPE  LOCAL  DEFAULT    1 ..@34.a20
+    64: ffffff000010d3dc     0 NOTYPE  LOCAL  DEFAULT    1 ..@35.a20
+    65: ffffff000010d3e8     0 NOTYPE  LOCAL  DEFAULT    1 ..@36.a20
+    66: ffffff000010d3f2     0 NOTYPE  LOCAL  DEFAULT    1 ..@37.a20
+    67: ffffff000010d3f8     0 NOTYPE  LOCAL  DEFAULT    1 a20done
+    68: ffffff000010d41c     0 NOTYPE  LOCAL  DEFAULT    1 not_long_mode
+    69: ffffff000010d429     0 NOTYPE  LOCAL  DEFAULT    1 long_mode_supported
+    70: ffffff000010d509     0 NOTYPE  LOCAL  DEFAULT    1 map_next_page
+    71: ffffff000010d566     0 NOTYPE  LOCAL  DEFAULT    1 longmode
+    72: ffffff000010d572     0 NOTYPE  LOCAL  DEFAULT    1 higher_half
+    73: ffffff000010d70b     0 NOTYPE  LOCAL  DEFAULT    1 gdtinfo_64
+    74: ffffff000010d7af     0 NOTYPE  LOCAL  DEFAULT    1 starting_ccp
+    75: ffffff000010d7c1     0 NOTYPE  LOCAL  DEFAULT    1 no_long_mode
+    76: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS initrd.c
+    77: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS interrupts.asm
+    78: 0000000000000008     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_CODE_SELECTOR
+    79: 0000000000000010     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_DATA_SELECTOR
+    80: 000000000000001b     0 NOTYPE  LOCAL  DEFAULT  ABS USER_CODE_SELECTOR
+    81: 0000000000000023     0 NOTYPE  LOCAL  DEFAULT  ABS USER_DATA_SELECTOR
+    82: 0000000000000028     0 NOTYPE  LOCAL  DEFAULT  ABS TSS_SELECTOR
+    83: ffffff0000000000     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_HIGH
+    84: 0000000000100000     0 NOTYPE  LOCAL  DEFAULT  ABS phys_start_address
+    85: ffffff000010e40e     0 NOTYPE  LOCAL  DEFAULT    1 set_interrupt_number_is_o
+    86: ffffff000010e447     0 NOTYPE  LOCAL  DEFAULT    1 end_set_interrupt
+    87: ffffff000010e60e     0 NOTYPE  LOCAL  DEFAULT    1 exit_exception
+    88: ffffff000010e64c     0 NOTYPE  LOCAL  DEFAULT    1 iretq_error
+    89: ffffff000010e64e     0 NOTYPE  LOCAL  DEFAULT    1 idt
+    90: ffffff000010e658     0 NOTYPE  LOCAL  DEFAULT    1 idttable
+    91: ffffff000010f658     0 NOTYPE  LOCAL  DEFAULT    1 idt_end
+    92: ffffff000010f658     0 NOTYPE  LOCAL  DEFAULT    1 tempone
+    93: ffffff000010f660     0 NOTYPE  LOCAL  DEFAULT    1 temptwo
+    94: ffffff000010f668     0 NOTYPE  LOCAL  DEFAULT    1 intnumber
+    95: ffffff000010f670     0 NOTYPE  LOCAL  DEFAULT    1 regbuf
+    96: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS keyb.c
+    97: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS kprintf_direct.c
+    98: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS memorymanager.c
+    99: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS memorymap.c
+   100: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS module.c
+   101: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS multitasking.c
+   102: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS mutex.c
+   103: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS null.c
+   104: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS page.c
+   105: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS partition.c
+   106: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS pci.c
+   107: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS pic_inthandler_x86_64.asm
+   108: 0000000000000008     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_CODE_SELECTOR
+   109: 0000000000000010     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_DATA_SELECTOR
+   110: 000000000000001b     0 NOTYPE  LOCAL  DEFAULT  ABS USER_CODE_SELECTOR
+   111: 0000000000000023     0 NOTYPE  LOCAL  DEFAULT  ABS USER_DATA_SELECTOR
+   112: 0000000000000028     0 NOTYPE  LOCAL  DEFAULT  ABS TSS_SELECTOR
+   113: ffffff0000116a42     0 NOTYPE  LOCAL  DEFAULT    1 irq
+   114: ffffff0000116a7d     0 NOTYPE  LOCAL  DEFAULT    1 nslave
+   115: ffffff0000116a91     0 NOTYPE  LOCAL  DEFAULT    1 irqnumber
+   116: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS picx86_64.c
+   117: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS pit.c
+   118: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS port.c
+   119: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS process.c
+   120: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS sched.asm
+   121: 0000000000000008     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_CODE_SELECTOR
+   122: 0000000000000010     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_DATA_SELECTOR
+   123: 000000000000001b     0 NOTYPE  LOCAL  DEFAULT  ABS USER_CODE_SELECTOR
+   124: 0000000000000023     0 NOTYPE  LOCAL  DEFAULT  ABS USER_DATA_SELECTOR
+   125: 0000000000000028     0 NOTYPE  LOCAL  DEFAULT  ABS TSS_SELECTOR
+   126: ffffff000011a2c5     0 NOTYPE  LOCAL  DEFAULT    1 multitasking_enabled
+   127: ffffff000011a2fb     0 NOTYPE  LOCAL  DEFAULT    1 task_time_slice_finished
+   128: ffffff000011a30e     0 NOTYPE  LOCAL  DEFAULT    1 no_debug
+   129: ffffff000011a322     0 NOTYPE  LOCAL  DEFAULT    1 have_descriptor
+   130: ffffff000011a365     0 NOTYPE  LOCAL  DEFAULT    1 save_rsp
+   131: ffffff000011a36d     0 NOTYPE  LOCAL  DEFAULT    1 save_rax
+   132: ffffff000011a375     0 NOTYPE  LOCAL  DEFAULT    1 save_descriptor
+   133: ffffff000011a37d     0 NOTYPE  LOCAL  DEFAULT    1 saverip
+   134: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS serialio.c
+   135: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS stack.asm
+   136: 0000000000000008     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_CODE_SELECTOR
+   137: 0000000000000010     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_DATA_SELECTOR
+   138: 000000000000001b     0 NOTYPE  LOCAL  DEFAULT  ABS USER_CODE_SELECTOR
+   139: 0000000000000023     0 NOTYPE  LOCAL  DEFAULT  ABS USER_DATA_SELECTOR
+   140: 0000000000000028     0 NOTYPE  LOCAL  DEFAULT  ABS TSS_SELECTOR
+   141: 0000000000030000     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_STACK_SIZE
+   142: 0000000000050000     0 NOTYPE  LOCAL  DEFAULT  ABS INITIAL_KERNEL_STACK_ADDR
+   143: ffffff000011bacd     0 NOTYPE  LOCAL  DEFAULT    1 temprip
+   144: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS string.c
+   145: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS timedate.c
+   146: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS tss.asm
+   147: ffffff0000000000     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_HIGH
+   148: 0000000000100000     0 NOTYPE  LOCAL  DEFAULT  ABS phys_start_address
+   149: 0000000000000008     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_CODE_SELECTOR
+   150: 0000000000000010     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_DATA_SELECTOR
+   151: 000000000000001b     0 NOTYPE  LOCAL  DEFAULT  ABS USER_CODE_SELECTOR
+   152: 0000000000000023     0 NOTYPE  LOCAL  DEFAULT  ABS USER_DATA_SELECTOR
+   153: 0000000000000028     0 NOTYPE  LOCAL  DEFAULT  ABS TSS_SELECTOR
+   154: 0000000000000005     0 NOTYPE  LOCAL  DEFAULT  ABS TSS_GDT_ENTRY
+   155: ffffff0000121640     0 NOTYPE  LOCAL  DEFAULT    2 tss
+   156: ffffff0000121640     0 NOTYPE  LOCAL  DEFAULT    2 reserved
+   157: ffffff0000121641     0 NOTYPE  LOCAL  DEFAULT    2 iopb
+   158: ffffff0000121642     0 NOTYPE  LOCAL  DEFAULT    2 rsp0
+   159: ffffff000012164a     0 NOTYPE  LOCAL  DEFAULT    2 rsp1
+   160: ffffff0000121652     0 NOTYPE  LOCAL  DEFAULT    2 rsp2
+   161: ffffff000012165a     0 NOTYPE  LOCAL  DEFAULT    2 reserved2
+   162: ffffff000012165e     0 NOTYPE  LOCAL  DEFAULT    2 reserved3
+   163: ffffff0000121662     0 NOTYPE  LOCAL  DEFAULT    2 ist1
+   164: ffffff000012166a     0 NOTYPE  LOCAL  DEFAULT    2 ist2
+   165: ffffff0000121672     0 NOTYPE  LOCAL  DEFAULT    2 ist3
+   166: ffffff000012167a     0 NOTYPE  LOCAL  DEFAULT    2 ist4
+   167: ffffff0000121682     0 NOTYPE  LOCAL  DEFAULT    2 ist5
+   168: ffffff000012168a     0 NOTYPE  LOCAL  DEFAULT    2 ist6
+   169: ffffff0000121692     0 NOTYPE  LOCAL  DEFAULT    2 ist7
+   170: ffffff000012169a     0 NOTYPE  LOCAL  DEFAULT    2 end_tss
+   171: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS usermode.asm
+   172: 0000000000000008     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_CODE_SELECTOR
+   173: 0000000000000010     0 NOTYPE  LOCAL  DEFAULT  ABS KERNEL_DATA_SELECTOR
+   174: 000000000000001b     0 NOTYPE  LOCAL  DEFAULT  ABS USER_CODE_SELECTOR
+   175: 0000000000000023     0 NOTYPE  LOCAL  DEFAULT  ABS USER_DATA_SELECTOR
+   176: 0000000000000028     0 NOTYPE  LOCAL  DEFAULT  ABS TSS_SELECTOR
+   177: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS vfs.c
+   178: ffffff0000108c3c  1127 FUNC    GLOBAL DEFAULT    1 fat_update_fat
+   179: ffffff000010279a   466 FUNC    GLOBAL DEFAULT    1 add_character_device
+   180: ffffff000010e3ed     0 NOTYPE  GLOBAL DEFAULT    1 load_idt
+   181: ffffff000011727c    26 FUNC    GLOBAL DEFAULT    1 inb
+   182: ffffff0000102441   328 FUNC    GLOBAL DEFAULT    1 console_ioctl
+   183: ffffff000011a26a     0 NOTYPE  GLOBAL DEFAULT    1 yield
+   184: ffffff000010e498     0 NOTYPE  GLOBAL DEFAULT    1 int4_handler
+   185: ffffff000010c155   142 FUNC    GLOBAL DEFAULT    1 floppy_get_status
+   186: ffffff00001088a9   915 FUNC    GLOBAL DEFAULT    1 fat_get_next_block
+   187: ffffff000011ead6   447 FUNC    GLOBAL DEFAULT    1 ioctl
+   188: ffffff0000123608     8 OBJECT  GLOBAL DEFAULT    4 externalmodulesymbols
+   189: ffffff000011d25e     0 NOTYPE  GLOBAL DEFAULT    1 initialize_tss
+   190: ffffff0000120ea0   696 OBJECT  GLOBAL DEFAULT    2 scancodes_unshifted
+   191: ffffff000011a242    11 FUNC    GLOBAL DEFAULT    1 GetVersion
+   192: ffffff00001122f2    64 FUNC    GLOBAL DEFAULT    1 alloc
+   193: ffffff000011b147    54 FUNC    GLOBAL DEFAULT    1 read_com2
+   194: ffffff000010dff3   410 FUNC    GLOBAL DEFAULT    1 load_modules_from_initrd
+   195: ffffff0000123690     8 OBJECT  GLOBAL DEFAULT    4 prdt
+   196: ffffff00001a6dc0     8 OBJECT  GLOBAL DEFAULT    4 signalno
+   197: ffffff000011985b   338 FUNC    GLOBAL DEFAULT    1 sendsignal
+   198: ffffff0000114152   203 FUNC    GLOBAL DEFAULT    1 getnameofsymbol
+   199: ffffff0000114f7b    56 FUNC    GLOBAL DEFAULT    1 removepage
+   200: ffffff0000127560     8 OBJECT  GLOBAL DEFAULT    4 b
+   201: ffffff0000103652    99 FUNC    GLOBAL DEFAULT    1 callirqhandlers
+   202: ffffff0000119c6b    55 FUNC    GLOBAL DEFAULT    1 save_kernel_stack_pointer
+   203: ffffff000010e470     0 NOTYPE  GLOBAL DEFAULT    1 int2_handler
+   204: ffffff0000123620     8 OBJECT  GLOBAL DEFAULT    4 multitaskingenabled
+   205: ffffff00001196dc   112 FUNC    GLOBAL DEFAULT    1 getprocessfilename
+   206: ffffff000011a206    60 FUNC    GLOBAL DEFAULT    1 kwait
+   207: ffffff0000116204   125 FUNC    GLOBAL DEFAULT    1 pci_put_command
+   208: ffffff0000116597    52 FUNC    GLOBAL DEFAULT    1 pci_get_secondary_bus
+   209: ffffff00001151f1  1143 FUNC    GLOBAL DEFAULT    1 findfreevirtualpage
+   210: ffffff0000120960    16 OBJECT  GLOBAL DEFAULT    2 cmos_rtc_offsets
+   211: ffffff000010d390     0 NOTYPE  GLOBAL DEFAULT    1 _asm_init
+   212: ffffff000010bdc6    88 FUNC    GLOBAL DEFAULT    1 floppy_motor_off
+   213: ffffff000011fb11   179 FUNC    GLOBAL DEFAULT    1 touch
+   214: ffffff000011bf7b   138 FUNC    GLOBAL DEFAULT    1 reverse
+   215: ffffff000011a1a5    49 FUNC    GLOBAL DEFAULT    1 increment_tick_count
+   216: ffffff000010ce5f  1328 FUNC    GLOBAL DEFAULT    1 getfullpath
+   217: ffffff000010e5a1     0 NOTYPE  GLOBAL DEFAULT    1 int18_handler
+   218: ffffff000011bdfd   137 FUNC    GLOBAL DEFAULT    1 strncmpi
+   219: ffffff0000119e8b    51 FUNC    GLOBAL DEFAULT    1 get_next_process_pointer
+   220: ffffff0000108053  2134 FUNC    GLOBAL DEFAULT    1 fat_get_start_block
+   221: ffffff0000116a0e     0 NOTYPE  GLOBAL DEFAULT    1 irq12
+   222: ffffff00001090a3   559 FUNC    GLOBAL DEFAULT    1 fat_detect_change
+   223: ffffff00001a6dd0    16 OBJECT  GLOBAL DEFAULT    4 process_mutex
+   224: ffffff000010e4d4     0 NOTYPE  GLOBAL DEFAULT    1 int7_handler
+   225: ffffff0000119c51    26 FUNC    GLOBAL DEFAULT    1 getenv
+   226: ffffff0000116381    52 FUNC    GLOBAL DEFAULT    1 pci_get_revisionid
+   227: ffffff000011469c   134 FUNC    GLOBAL DEFAULT    1 find_next_process_to_swit
+   228: ffffff00001169f4     0 NOTYPE  GLOBAL DEFAULT    1 irq10
+   229: ffffff0000116413    47 FUNC    GLOBAL DEFAULT    1 pci_get_bar2
+   230: ffffff0000116442    47 FUNC    GLOBAL DEFAULT    1 pci_get_bar3
+   231: ffffff000011bac7     0 NOTYPE  GLOBAL DEFAULT    1 get_kernel_stack_size
+   232: ffffff000011fbc4   254 FUNC    GLOBAL DEFAULT    1 gethandle
+   233: ffffff0000116a28     0 NOTYPE  GLOBAL DEFAULT    1 irq14
+   234: ffffff000011962b    47 FUNC    GLOBAL DEFAULT    1 getpid
+   235: ffffff0000119b78   217 FUNC    GLOBAL DEFAULT    1 unblockprocess
+   236: ffffff00001235f0     8 OBJECT  GLOBAL DEFAULT    4 dmabuf
+   237: ffffff000010d849   817 FUNC    GLOBAL DEFAULT    1 initrd_find
+   238: ffffff0000114640    73 FUNC    GLOBAL DEFAULT    1 init_multitasking
+   239: ffffff0000120334   604 FUNC    GLOBAL DEFAULT    1 writepipe
+   240: ffffff00001235a0     8 OBJECT  GLOBAL DEFAULT    4 ata_irq14done
+   241: ffffff00001038f7  1095 FUNC    GLOBAL DEFAULT    1 load_elf64
+   242: ffffff0000120cc0   128 OBJECT  GLOBAL DEFAULT    2 regnames
+   243: ffffff0000102f7f   246 FUNC    GLOBAL DEFAULT    1 update_block_device
+   244: ffffff000011fef8   279 FUNC    GLOBAL DEFAULT    1 updatehandle
+   245: ffffff00001126d7  1216 FUNC    GLOBAL DEFAULT    1 realloc_int
+   246: ffffff000011ce55   396 FUNC    GLOBAL DEFAULT    1 tooctal
+   247: ffffff000011ef04   200 FUNC    GLOBAL DEFAULT    1 shut
+   248: ffffff000011c46f    55 FUNC    GLOBAL DEFAULT    1 strtrunc
+   249: ffffff00001033cc   111 FUNC    GLOBAL DEFAULT    1 allocatedrive
+   250: ffffff00001169da     0 NOTYPE  GLOBAL DEFAULT    1 irq8
+   251: ffffff0000123640     8 OBJECT  GLOBAL DEFAULT    4 processes
+   252: ffffff000011bcca    95 FUNC    GLOBAL DEFAULT    1 memcpy
+   253: ffffff000011477d    49 FUNC    GLOBAL DEFAULT    1 timer_increment
+   254: ffffff000010e57f     0 NOTYPE  GLOBAL DEFAULT    1 int16_handler
+   255: ffffff00001235a8     8 OBJECT  GLOBAL DEFAULT    4 ata_irq15done
+   256: ffffff00001235e9     1 OBJECT  GLOBAL DEFAULT    4 keyboardledflags
+   257: ffffff00001123ea    60 FUNC    GLOBAL DEFAULT    1 kernelfree
+   258: ffffff00001001f8  1802 FUNC    GLOBAL DEFAULT    1 ata_pio
+   259: ffffff000011a1d6    48 FUNC    GLOBAL DEFAULT    1 get_max_tick_count
+   260: ffffff0000114832    24 FUNC    GLOBAL DEFAULT    1 unlock_mutex
+   261: ffffff000011b255    54 FUNC    GLOBAL DEFAULT    1 write_com4
+   262: ffffff000010e524     0 NOTYPE  GLOBAL DEFAULT    1 int11_handler
+   263: ffffff000011f255    90 FUNC    GLOBAL DEFAULT    1 dup2
+   264: ffffff000011619d    53 FUNC    GLOBAL DEFAULT    1 pci_get_status
+   265: ffffff0000105356    33 FUNC    GLOBAL DEFAULT    1 fat_rmdir
+   266: ffffff0000123600     8 OBJECT  GLOBAL DEFAULT    4 dmabufsize
+   267: ffffff0000101e34   319 FUNC    GLOBAL DEFAULT    1 clock_io_internal
+   268: ffffff000010a737    73 FUNC    GLOBAL DEFAULT    1 fat_create_long_filename_
+   269: ffffff0000112eea  4712 FUNC    GLOBAL DEFAULT    1 load_kernel_module
+   270: ffffff000010d71f     0 NOTYPE  GLOBAL DEFAULT    1 gdt
+   271: ffffff00001a6de0     8 OBJECT  GLOBAL DEFAULT    4 entrypoint
+   272: ffffff000011445d   111 FUNC    GLOBAL DEFAULT    1 get_external_module_symbo
+   273: ffffff00001167b5   419 FUNC    GLOBAL DEFAULT    1 add_pci_device
+   274: ffffff0000116318    53 FUNC    GLOBAL DEFAULT    1 pci_get_subclass
+   275: ffffff000011f2af   468 FUNC    GLOBAL DEFAULT    1 register_filesystem
+   276: ffffff000011b4ec   212 FUNC    GLOBAL DEFAULT    1 com4_irq_handler
+   277: ffffff00001161d2    50 FUNC    GLOBAL DEFAULT    1 pci_get_command
+   278: ffffff00001a6588     1 OBJECT  GLOBAL DEFAULT    4 cyl
+   279: ffffff00001a6e00  2040 OBJECT  GLOBAL DEFAULT    4 tempfilename
+   280: ffffff000011bed5   166 FUNC    GLOBAL DEFAULT    1 itoa
+   281: ffffff00001a7e10    16 OBJECT  GLOBAL DEFAULT    4 vfs_mutex
+   282: ffffff0000123610     8 OBJECT  GLOBAL DEFAULT    4 kernelmodules
+   283: ffffff0000114880   221 FUNC    GLOBAL DEFAULT    1 null_init
+   284: ffffff00001036b5   271 FUNC    GLOBAL DEFAULT    1 driver_init
+   285: ffffff0000117233    46 FUNC    GLOBAL DEFAULT    1 pit_write
+   286: ffffff000011e073   280 FUNC    GLOBAL DEFAULT    1 rmdir
+   287: ffffff0000116a01     0 NOTYPE  GLOBAL DEFAULT    1 irq11
+   288: ffffff00001164cf    47 FUNC    GLOBAL DEFAULT    1 pci_get_cardbus_cis_point
+   289: ffffff0000123668     8 OBJECT  GLOBAL DEFAULT    4 saveenv
+   290: ffffff000011efcc   559 FUNC    GLOBAL DEFAULT    1 dup_internal
+   291: ffffff00001041e3    46 FUNC    GLOBAL DEFAULT    1 fat_findfirst
+   292: ffffff000010caf5   120 FUNC    GLOBAL DEFAULT    1 floppy_send_command
+   293: ffffff0000100000   504 FUNC    GLOBAL DEFAULT    1 ata_init
+   294: ffffff0000127580 0x7f008 OBJECT  GLOBAL DEFAULT    4 path_tokens
+   295: ffffff000010c1e3  1373 FUNC    GLOBAL DEFAULT    1 floppy_sector_io
+   296: ffffff0000119ac0   184 FUNC    GLOBAL DEFAULT    1 blockprocess
+   297: ffffff0000114689    19 FUNC    GLOBAL DEFAULT    1 is_multitasking_enabled
+   298: ffffff0000116f21   157 FUNC    GLOBAL DEFAULT    1 enableirq
+   299: ffffff00001235d8     8 OBJECT  GLOBAL DEFAULT    4 irq6done
+   300: ffffff00001235e0     8 OBJECT  GLOBAL DEFAULT    4 readcount
+   301: ffffff000010c740   808 FUNC    GLOBAL DEFAULT    1 floppy_io
+   302: ffffff000010e56e     0 NOTYPE  GLOBAL DEFAULT    1 int15_handler
+   303: ffffff0000101ae8    93 FUNC    GLOBAL DEFAULT    1 irq15_handler
+   304: ffffff00001169b0     0 NOTYPE  GLOBAL DEFAULT    1 irq5
+   305: ffffff000010d7a7     0 NOTYPE  GLOBAL DEFAULT    1 gdt_end
+   306: ffffff000010f710   410 FUNC    GLOBAL DEFAULT    1 keyb_init
+   307: ffffff000011a385  2722 FUNC    GLOBAL DEFAULT    1 serialio_init
+   308: ffffff000011a162    48 FUNC    GLOBAL DEFAULT    1 reset_current_process_tic
+   309: ffffff00001a75f8     8 OBJECT  GLOBAL DEFAULT    4 tickcount
+   310: ffffff000011c262   122 FUNC    GLOBAL DEFAULT    1 tolowercase
+   311: ffffff000011a35a     0 NOTYPE  GLOBAL DEFAULT    1 end_switch
+   312: ffffff0000120dc0     8 OBJECT  GLOBAL DEFAULT    2 floppy_parameters
+   313: ffffff000011ba40     0 NOTYPE  GLOBAL DEFAULT    1 initializestack
+   314: ffffff000011e251   215 FUNC    GLOBAL DEFAULT    1 chmod
+   315: ffffff000011a192    19 FUNC    GLOBAL DEFAULT    1 get_tick_count
+   316: ffffff0000123650     8 OBJECT  GLOBAL DEFAULT    4 currentprocess
+   317: ffffff00001a7600  2040 OBJECT  GLOBAL DEFAULT    4 tempargs
+   318: ffffff00001201aa   394 FUNC    GLOBAL DEFAULT    1 pipe
+   319: ffffff000010db7a   383 FUNC    GLOBAL DEFAULT    1 initrd_read
+   320: ffffff0000119e5c    28 FUNC    GLOBAL DEFAULT    1 update_current_process_po
+   321: ffffff000010e546     0 NOTYPE  GLOBAL DEFAULT    1 int13_handler
+   322: ffffff0000101fc7   315 FUNC    GLOBAL DEFAULT    1 console_init
+   323: ffffff00001172cf    24 FUNC    GLOBAL DEFAULT    1 outd
+   324: ffffff0000116fbe   319 FUNC    GLOBAL DEFAULT    1 pit_init
+   325: ffffff00001068e3  3037 FUNC    GLOBAL DEFAULT    1 fat_write
+   326: ffffff000011c2dc   403 FUNC    GLOBAL DEFAULT    1 wildcard_rename
+   327: ffffff0000101b45   242 FUNC    GLOBAL DEFAULT    1 ata_ioctl
+   328: ffffff000010e590     0 NOTYPE  GLOBAL DEFAULT    1 int17_handler
+   329: ffffff00001197d1    51 FUNC    GLOBAL DEFAULT    1 getreturncode
+   330: ffffff000010e5b0     0 NOTYPE  GLOBAL DEFAULT    1 int_common
+   331: ffffff00001172b3    28 FUNC    GLOBAL DEFAULT    1 inw
+   332: ffffff000010d715     0 NOTYPE  GLOBAL DEFAULT    1 gdtinfo_high_64
+   333: ffffff000011de08   297 FUNC    GLOBAL DEFAULT    1 rename
+   334: ffffff00001162e3    53 FUNC    GLOBAL DEFAULT    1 pci_get_class_code
+   335: ffffff000010b60a   246 FUNC    GLOBAL DEFAULT    1 fat_entry_to_filename
+   336: ffffff00001235f8     8 OBJECT  GLOBAL DEFAULT    4 dmaptr
+   337: ffffff000010e55a     0 NOTYPE  GLOBAL DEFAULT    1 int14_handler
+   338: ffffff0000101a8b    93 FUNC    GLOBAL DEFAULT    1 irq14_handler
+   339: ffffff0000103225   423 FUNC    GLOBAL DEFAULT    1 remove_character_device
+   340: ffffff0000123638     8 OBJECT  GLOBAL DEFAULT    4 last_error_no_process
+   341: ffffff0000120885   216 FUNC    GLOBAL DEFAULT    1 closepipe
+   342: ffffff000010e535     0 NOTYPE  GLOBAL DEFAULT    1 int12_handler
+   343: ffffff000011e6f5   993 FUNC    GLOBAL DEFAULT    1 write
+   344: ffffff00001a7e20     8 OBJECT  GLOBAL DEFAULT    4 old
+   345: ffffff000010df34   191 FUNC    GLOBAL DEFAULT    1 initrd_io
+   346: ffffff000011965a    71 FUNC    GLOBAL DEFAULT    1 setlasterror
+   347: ffffff0000103d3e    28 FUNC    GLOBAL DEFAULT    1 kstrerr
+   348: ffffff00001172e7    25 FUNC    GLOBAL DEFAULT    1 ind
+   349: ffffff00001235b8     8 OBJECT  GLOBAL DEFAULT    4 characterdevs
+   350: ffffff000010423f  3617 FUNC    GLOBAL DEFAULT    1 fat_find
+   351: ffffff0000115668   101 FUNC    GLOBAL DEFAULT    1 loadpagetable
+   352: ffffff0000117f27   629 FUNC    GLOBAL DEFAULT    1 kill
+   353: ffffff00001156cd   310 FUNC    GLOBAL DEFAULT    1 getphysicaladdress
+   354: ffffff0000101d30   260 FUNC    GLOBAL DEFAULT    1 clock_init
+   355: ffffff00001169c0     0 NOTYPE  GLOBAL DEFAULT    1 irq6
+   356: ffffff0000101f9d    42 FUNC    GLOBAL DEFAULT    1 clockio_write
+   357: ffffff0000116970     0 NOTYPE  GLOBAL DEFAULT    1 irq1
+   358: ffffff00001144cc   324 FUNC    GLOBAL DEFAULT    1 unload_kernel_module
+   359: ffffff00001165cb   113 FUNC    GLOBAL DEFAULT    1 pci_read_word
+   360: ffffff00001147ae    19 FUNC    GLOBAL DEFAULT    1 get_timer_count
+   361: ffffff000011cc6e   487 FUNC    GLOBAL DEFAULT    1 tohex
+   362: ffffff00001a7e28     0 NOTYPE  GLOBAL DEFAULT    4 end
+   363: ffffff0000119437   500 FUNC    GLOBAL DEFAULT    1 chdir
+   364: ffffff000011663c   123 FUNC    GLOBAL DEFAULT    1 pci_write_word
+   365: ffffff000010e484     0 NOTYPE  GLOBAL DEFAULT    1 int3_handler
+   366: ffffff000011fa31   224 FUNC    GLOBAL DEFAULT    1 tell
+   367: ffffff000010e45c     0 NOTYPE  GLOBAL DEFAULT    1 int1_handler
+   368: ffffff00001a7df8     8 OBJECT  GLOBAL DEFAULT    4 stackinit
+   369: ffffff00001053c3  1133 FUNC    GLOBAL DEFAULT    1 fat_create_int
+   370: ffffff0000119a4e   114 FUNC    GLOBAL DEFAULT    1 processmanager_init
+   371: ffffff000011634d    52 FUNC    GLOBAL DEFAULT    1 pci_get_progif
+   372: ffffff000011b1e9    54 FUNC    GLOBAL DEFAULT    1 write_com3
+   373: ffffff000011d127   145 FUNC    GLOBAL DEFAULT    1 get_time_date
+   374: ffffff0000117300  3111 FUNC    GLOBAL DEFAULT    1 exec
+   375: ffffff00001164a0    47 FUNC    GLOBAL DEFAULT    1 pci_get_bar5
+   376: ffffff0000116471    47 FUNC    GLOBAL DEFAULT    1 pci_get_bar4
+   377: ffffff0000117205    46 FUNC    GLOBAL DEFAULT    1 pit_read
+   378: ffffff000011d2c0     0 NOTYPE  GLOBAL DEFAULT    1 switch_to_usermode_and_ca
+   379: ffffff000010e4c0     0 NOTYPE  GLOBAL DEFAULT    1 int6_handler
+   380: ffffff000010ca68    24 FUNC    GLOBAL DEFAULT    1 irq6_handler
+   381: ffffff00001182e0   193 FUNC    GLOBAL DEFAULT    1 wait
+   382: ffffff0000106281  1634 FUNC    GLOBAL DEFAULT    1 fat_read
+   383: ffffff0000123618     8 OBJECT  GLOBAL DEFAULT    4 kernel_module_end
+   384: ffffff00001034f9   345 FUNC    GLOBAL DEFAULT    1 setirqhandler
+   385: ffffff0000116530    50 FUNC    GLOBAL DEFAULT    1 pci_get_subsytem_vendor_i
+   386: ffffff0000115839    54 FUNC    GLOBAL DEFAULT    1 addpage_system
+   387: ffffff0000116009   301 FUNC    GLOBAL DEFAULT    1 pci_init
+   388: ffffff0000119838    35 FUNC    GLOBAL DEFAULT    1 signal
+   389: ffffff000011e328   973 FUNC    GLOBAL DEFAULT    1 read
+   390: ffffff000011f483   513 FUNC    GLOBAL DEFAULT    1 detect_filesystem
+   391: ffffff0000127520    16 OBJECT  GLOBAL DEFAULT    4 characterdevice_mutex
+   392: ffffff0000112b97   851 FUNC    GLOBAL DEFAULT    1 initialize_memory_map
+   393: ffffff00001235c8     8 OBJECT  GLOBAL DEFAULT    4 irq_handlers
+   394: ffffff000011b111    54 FUNC    GLOBAL DEFAULT    1 write_com1
+   395: ffffff00001169e7     0 NOTYPE  GLOBAL DEFAULT    1 irq9
+   396: ffffff000011bd8e   111 FUNC    GLOBAL DEFAULT    1 strncmp
+   397: ffffff000011c1e8   122 FUNC    GLOBAL DEFAULT    1 touppercase
+   398: ffffff00001164fe    50 FUNC    GLOBAL DEFAULT    1 pci_get_subsystemid
+   399: ffffff0000112155   413 FUNC    GLOBAL DEFAULT    1 free_internal
+   400: ffffff0000119e78    19 FUNC    GLOBAL DEFAULT    1 get_current_process_point
+   401: ffffff000011bb96   132 FUNC    GLOBAL DEFAULT    1 strncpy
+   402: ffffff000011dcf0   280 FUNC    GLOBAL DEFAULT    1 unlink
+   403: ffffff0000100ffa  2705 FUNC    GLOBAL DEFAULT    1 ata_dma
+   404: ffffff0000123658     8 OBJECT  GLOBAL DEFAULT    4 executableformats
+   405: ffffff0000112696    65 FUNC    GLOBAL DEFAULT    1 realloc_user
+   406: ffffff000011c005   483 FUNC    GLOBAL DEFAULT    1 wildcard
+   407: ffffff0000123678     8 OBJECT  GLOBAL DEFAULT    4 openfiles_last
+   408: ffffff00001215e0    96 OBJECT  GLOBAL DEFAULT    2 parityvals
+   409: ffffff000011df31   322 FUNC    GLOBAL DEFAULT    1 create
+   410: ffffff000011bab5     0 NOTYPE  GLOBAL DEFAULT    1 get_initial_kernel_stack_
+   411: ffffff0000101f73    42 FUNC    GLOBAL DEFAULT    1 clockio_read
+   412: ffffff00001166b7   254 FUNC    GLOBAL DEFAULT    1 pci_find_device
+   413: ffffff000011b0db    54 FUNC    GLOBAL DEFAULT    1 read_com1
+   414: ffffff000010be1e   823 FUNC    GLOBAL DEFAULT    1 initialize_floppy
+   415: ffffff0000104060   387 FUNC    GLOBAL DEFAULT    1 fat_init
+   416: ffffff000011236e    60 FUNC    GLOBAL DEFAULT    1 free_physical
+   417: ffffff000011cfe1   267 FUNC    GLOBAL DEFAULT    1 tokenize_line
+   418: ffffff0000102d66   231 FUNC    GLOBAL DEFAULT    1 getblockdevice
+   419: ffffff000011bd29   101 FUNC    GLOBAL DEFAULT    1 memcmp
+   420: ffffff000010b954   328 FUNC    GLOBAL DEFAULT    1 fat_update_free_block_cou
+   421: ffffff000011d250     0 NOTYPE  GLOBAL DEFAULT    1 set_tss_rsp0
+   422: ffffff00001147c1   113 FUNC    GLOBAL DEFAULT    1 lock_mutex
+   423: ffffff000010944c  2210 FUNC    GLOBAL DEFAULT    1 fat_read_long_filename
+   424: ffffff00001142e4   377 FUNC    GLOBAL DEFAULT    1 add_external_module_symbo
+   425: ffffff000011bc1a   176 FUNC    GLOBAL DEFAULT    1 strncat
+   426: ffffff000010343b    72 FUNC    GLOBAL DEFAULT    1 freedrive
+   427: ffffff000011f684   779 FUNC    GLOBAL DEFAULT    1 filemanager_init
+   428: ffffff0000117261    27 FUNC    GLOBAL DEFAULT    1 outb
+   429: ffffff0000116a1b     0 NOTYPE  GLOBAL DEFAULT    1 irq13
+   430: ffffff000010cb6d    26 FUNC    GLOBAL DEFAULT    1 wait_for_irq6
+   431: ffffff000011d3af   215 FUNC    GLOBAL DEFAULT    1 findnext
+   432: ffffff000011b5c0  1151 FUNC    GLOBAL DEFAULT    1 serial_ioctl
+   433: ffffff00001a6da0    16 OBJECT  GLOBAL DEFAULT    4 memmanager_mutex
+   434: ffffff0000114610    24 FUNC    GLOBAL DEFAULT    1 disablemultitasking
+   435: ffffff000011c611  1629 FUNC    GLOBAL DEFAULT    1 ksnprintf
+   436: ffffff0000105377    38 FUNC    GLOBAL DEFAULT    1 fat_mkdir
+   437: ffffff0000103483   118 FUNC    GLOBAL DEFAULT    1 devicemanager_init
+   438: ffffff0000121420     8 OBJECT  GLOBAL DEFAULT    2 PAGE_SIZE
+   439: ffffff0000119da5    19 FUNC    GLOBAL DEFAULT    1 get_processes_pointer
+   440: ffffff000011be86    79 FUNC    GLOBAL DEFAULT    1 memset
+   441: ffffff0000121428     8 OBJECT  GLOBAL DEFAULT    2 processpaging
+   442: ffffff0000102e4d   306 FUNC    GLOBAL DEFAULT    1 getdevicebyname
+   443: ffffff0000100000     0 NOTYPE  GLOBAL DEFAULT  ABS kernel_begin
+   444: ffffff0000121410     8 OBJECT  GLOBAL DEFAULT    2 keybuf
+   445: ffffff0000115803    54 FUNC    GLOBAL DEFAULT    1 addpage_user
+   446: ffffff0000116980     0 NOTYPE  GLOBAL DEFAULT    1 irq2
+   447: ffffff000011979e    51 FUNC    GLOBAL DEFAULT    1 getppid
+   448: ffffff0000112426    64 FUNC    GLOBAL DEFAULT    1 kernelalloc_nopaging
+   449: ffffff0000105d5d   620 FUNC    GLOBAL DEFAULT    1 fat_create_subdirectory_e
+   450: ffffff000012000f   411 FUNC    GLOBAL DEFAULT    1 seek
+   451: ffffff000011b1b3    54 FUNC    GLOBAL DEFAULT    1 read_com3
+   452: ffffff0000120d40   112 OBJECT  GLOBAL DEFAULT    2 flagsname
+   453: ffffff0000120c20   152 OBJECT  GLOBAL DEFAULT    2 exp
+   454: ffffff0000111c0e  1351 FUNC    GLOBAL DEFAULT    1 alloc_int
+   455: ffffff0000119d08    51 FUNC    GLOBAL DEFAULT    1 get_kernel_stack_top
+   456: ffffff000010a780   953 FUNC    GLOBAL DEFAULT    1 fat_unlink_long_filename
+   457: ffffff00001a65a0  2048 OBJECT  GLOBAL DEFAULT    4 keybbuf
+   458: ffffff00001181c9   279 FUNC    GLOBAL DEFAULT    1 shutdown
+   459: ffffff000010d7a7     0 NOTYPE  GLOBAL DEFAULT    1 MEMBUF_START
+   460: ffffff000011b28b   185 FUNC    GLOBAL DEFAULT    1 com1_irq_handler
+   461: ffffff0000115dba   591 FUNC    GLOBAL DEFAULT    1 gpt_hd_init
+   462: ffffff000011bb1d   121 FUNC    GLOBAL DEFAULT    1 strlen_unicode
+   463: ffffff000011f1fb    90 FUNC    GLOBAL DEFAULT    1 dup
+   464: ffffff0000120970     1 OBJECT  GLOBAL DEFAULT    2 color
+   465: ffffff0000116e80   161 FUNC    GLOBAL DEFAULT    1 disableirq
+   466: ffffff000010dcf9   571 FUNC    GLOBAL DEFAULT    1 initrd_init
+   467: ffffff0000119350   231 FUNC    GLOBAL DEFAULT    1 getcwd
+   468: ffffff000011b418   212 FUNC    GLOBAL DEFAULT    1 com3_irq_handler
+   469: ffffff000010ca80   117 FUNC    GLOBAL DEFAULT    1 floppy_reset_controller
+   470: ffffff000011fd89   367 FUNC    GLOBAL DEFAULT    1 splitname
+   471: ffffff0000120de0   192 OBJECT  GLOBAL DEFAULT    2 fdparams
+   472: ffffff0000120980   656 OBJECT  GLOBAL DEFAULT    2 errors
+   473: ffffff0000119db8    74 FUNC    GLOBAL DEFAULT    1 findfirstprocess
+   474: ffffff0000110837  5079 FUNC    GLOBAL DEFAULT    1 kprintf_direct
+   475: ffffff00001170fd   264 FUNC    GLOBAL DEFAULT    1 pit_io
+   476: ffffff0000109cee  2088 FUNC    GLOBAL DEFAULT    1 fat_update_long_filename
+   477: ffffff0000103d5a   774 FUNC    GLOBAL DEFAULT    1 exception
+   478: ffffff000011ba54     0 NOTYPE  GLOBAL DEFAULT    1 initializekernelstack
+   479: ffffff0000101c37   249 FUNC    GLOBAL DEFAULT    1 kernel
+   480: ffffff0000121440   416 OBJECT  GLOBAL DEFAULT    2 ports
+   481: ffffff0000116a99   999 FUNC    GLOBAL DEFAULT    1 pic_init
+   482: ffffff00001199ad    36 FUNC    GLOBAL DEFAULT    1 set_critical_error_handle
+   483: ffffff00001a6589     1 OBJECT  GLOBAL DEFAULT    4 st0
+   484: ffffff00001236a0 16000 OBJECT  GLOBAL DEFAULT    4 scrollbuf
+   485: ffffff00001235d0     8 OBJECT  GLOBAL DEFAULT    4 irq_handlers_end
+   486: ffffff0000120978     8 OBJECT  GLOBAL DEFAULT    2 lastdrive
+   487: ffffff000010bd78    78 FUNC    GLOBAL DEFAULT    1 floppy_motor_on
+   488: ffffff000011484a    54 FUNC    GLOBAL DEFAULT    1 initialize_mutex
+   489: ffffff000010539d    38 FUNC    GLOBAL DEFAULT    1 fat_create
+   490: ffffff000010e3eb     0 NOTYPE  GLOBAL DEFAULT    1 disable_interrupts
+   491: ffffff00001169cd     0 NOTYPE  GLOBAL DEFAULT    1 irq7
+   492: ffffff000011fcc2   199 FUNC    GLOBAL DEFAULT    1 getfilesize
+   493: ffffff000011d2d8   215 FUNC    GLOBAL DEFAULT    1 findfirst
+   494: ffffff00001235c0     4 OBJECT  GLOBAL DEFAULT    4 drive_bitmap
+   495: ffffff000011d1b8   145 FUNC    GLOBAL DEFAULT    1 set_time_date
+   496: ffffff00001124fe    92 FUNC    GLOBAL DEFAULT    1 memorymanager_init
+   497: ffffff00001037c4   307 FUNC    GLOBAL DEFAULT    1 elf64_init
+   498: ffffff000010e510     0 NOTYPE  GLOBAL DEFAULT    1 int10_handler
+   499: ffffff00001092d2   378 FUNC    GLOBAL DEFAULT    1 fat_convert_filename
+   500: ffffff0000119804    52 FUNC    GLOBAL DEFAULT    1 increment_process_ticks
+   501: ffffff000011b344   212 FUNC    GLOBAL DEFAULT    1 com2_irq_handler
+   502: ffffff000010d81b    46 FUNC    GLOBAL DEFAULT    1 initrd_findnext
+   503: ffffff0000119ca2    51 FUNC    GLOBAL DEFAULT    1 get_kernel_stack_pointer
+   504: ffffff000010236d   212 FUNC    GLOBAL DEFAULT    1 movecursor
+   505: ffffff0000117296    29 FUNC    GLOBAL DEFAULT    1 outw
+   506: ffffff0000100d50   682 FUNC    GLOBAL DEFAULT    1 ata_ident
+   507: ffffff000011a034   302 FUNC    GLOBAL DEFAULT    1 load_executable
+   508: ffffff000011616b    50 FUNC    GLOBAL DEFAULT    1 pci_get_vendor
+   509: ffffff0000114722    91 FUNC    GLOBAL DEFAULT    1 is_current_process_ready_
+   510: ffffff000011b17d    54 FUNC    GLOBAL DEFAULT    1 write_com2
+   511: ffffff0000114970   900 FUNC    GLOBAL DEFAULT    1 addpage_int
+   512: ffffff00001163e4    47 FUNC    GLOBAL DEFAULT    1 pci_get_bar1
+   513: ffffff000010cde0     0 NOTYPE  GLOBAL DEFAULT    1 set_gdt
+   514: ffffff0000116960     0 NOTYPE  GLOBAL DEFAULT    1 irq0
+   515: ffffff000010259c   510 FUNC    GLOBAL DEFAULT    1 add_block_device
+   516: ffffff00001196a1    59 FUNC    GLOBAL DEFAULT    1 getlasterror
+   517: ffffff0000105830  1325 FUNC    GLOBAL DEFAULT    1 fat_create_entry
+   518: ffffff000011255a   251 FUNC    GLOBAL DEFAULT    1 initialize_dma_buffer
+   519: ffffff000011495d    19 FUNC    GLOBAL DEFAULT    1 nul
+   520: ffffff0000102590     0 NOTYPE  GLOBAL DEFAULT    1 halt
+   521: ffffff000010f95c  3803 FUNC    GLOBAL DEFAULT    1 readkey
+   522: ffffff0000123630     8 OBJECT  GLOBAL DEFAULT    4 processpaging_end
+   523: ffffff0000123680     8 OBJECT  GLOBAL DEFAULT    4 filesystems
+   524: ffffff000010b7fe   342 FUNC    GLOBAL DEFAULT    1 get_block_data_area_relat
+   525: ffffff000010f8aa   178 FUNC    GLOBAL DEFAULT    1 readconsole
+   526: ffffff000010e3fb     0 NOTYPE  GLOBAL DEFAULT    1 set_interrupt
+   527: ffffff000010ba9c   732 FUNC    GLOBAL DEFAULT    1 floppy_init
+   528: ffffff0000119d3b    51 FUNC    GLOBAL DEFAULT    1 get_kernel_stack_base
+   529: ffffff00001163b5    47 FUNC    GLOBAL DEFAULT    1 pci_get_bar0
+   530: ffffff000010a516   545 FUNC    GLOBAL DEFAULT    1 fat_create_short_name
+   531: ffffff000011b21f    54 FUNC    GLOBAL DEFAULT    1 read_com4
+   532: ffffff0000114fb3   574 FUNC    GLOBAL DEFAULT    1 freepages
+   533: ffffff000011819c    45 FUNC    GLOBAL DEFAULT    1 exit
+   534: ffffff000010cb87   598 FUNC    GLOBAL DEFAULT    1 floppy_check_status
+   535: ffffff000011ae27   692 FUNC    GLOBAL DEFAULT    1 comport
+   536: ffffff0000116281    98 FUNC    GLOBAL DEFAULT    1 pci_put_status
+   537: ffffff0000127540     8 OBJECT  GLOBAL DEFAULT    4 flags
+   538: ffffff0000119e02    90 FUNC    GLOBAL DEFAULT    1 findnextprocess
+   539: ffffff000010296c   779 FUNC    GLOBAL DEFAULT    1 blockio
+   540: ffffff0000112655    65 FUNC    GLOBAL DEFAULT    1 realloc_kernel
+   541: ffffff000010b700   254 FUNC    GLOBAL DEFAULT    1 fat_is_long_filename
+   542: ffffff00001123aa    64 FUNC    GLOBAL DEFAULT    1 kernelalloc
+   543: ffffff00001074c0   652 FUNC    GLOBAL DEFAULT    1 fat_chmod
+   544: ffffff0000102591     0 NOTYPE  GLOBAL DEFAULT    1 restart
+   545: ffffff000011c4a6   363 FUNC    GLOBAL DEFAULT    1 atoi
+   546: ffffff0000123660     8 OBJECT  GLOBAL DEFAULT    4 highest_pid_used
+   547: ffffff000011974c    82 FUNC    GLOBAL DEFAULT    1 getprocessargs
+   548: ffffff0000105fc9   696 FUNC    GLOBAL DEFAULT    1 fat_unlink
+   549: ffffff000010e190     0 NOTYPE  GLOBAL DEFAULT    1 initialize_interrupts
+   550: ffffff0000105060   758 FUNC    GLOBAL DEFAULT    1 fat_rename
+   551: ffffff0000123670     8 OBJECT  GLOBAL DEFAULT    4 openfiles
+   552: ffffff000011babb     0 NOTYPE  GLOBAL DEFAULT    1 get_initial_kernel_stack_
+   553: ffffff0000114cf4   647 FUNC    GLOBAL DEFAULT    1 page_init
+   554: ffffff00001a658a     7 OBJECT  GLOBAL DEFAULT    4 st
+   555: ffffff000011586f    85 FUNC    GLOBAL DEFAULT    1 signextend
+   556: ffffff000010e448     0 NOTYPE  GLOBAL DEFAULT    1 int0_handler
+   557: ffffff000010b5ba    80 FUNC    GLOBAL DEFAULT    1 lfn_pad_bytes
+   558: ffffff000011bad5    72 FUNC    GLOBAL DEFAULT    1 strlen
+   559: ffffff0000103075   432 FUNC    GLOBAL DEFAULT    1 remove_block_device
+   560: ffffff000011d486  2154 FUNC    GLOBAL DEFAULT    1 open
+   561: ffffff0000121160   688 OBJECT  GLOBAL DEFAULT    2 scancodes_shifted
+   562: ffffff00001a6598     8 OBJECT  GLOBAL DEFAULT    4 floppybuf
+   563: ffffff0000102102   619 FUNC    GLOBAL DEFAULT    1 outputconsole
+   564: ffffff0000102c77   239 FUNC    GLOBAL DEFAULT    1 findcharacterdevice
+   565: ffffff00001235e8     1 OBJECT  GLOBAL DEFAULT    4 keyboardflags
+   566: ffffff0000119d6e    55 FUNC    GLOBAL DEFAULT    1 set_kernel_stack_base
+   567: ffffff0000104211    46 FUNC    GLOBAL DEFAULT    1 fat_findnext
+   568: ffffff0000112466   152 FUNC    GLOBAL DEFAULT    1 dma_alloc
+   569: ffffff0000116a35     0 NOTYPE  GLOBAL DEFAULT    1 irq15
+   570: ffffff000010e3e9     0 NOTYPE  GLOBAL DEFAULT    1 enable_interrupts
+   571: ffffff0000107b3e  1301 FUNC    GLOBAL DEFAULT    1 fat_find_free_block
+   572: ffffff0000116562    53 FUNC    GLOBAL DEFAULT    1 pci_get_header_type
+   573: ffffff0000114628    24 FUNC    GLOBAL DEFAULT    1 enablemultitasking
+   574: ffffff0000127530    16 OBJECT  GLOBAL DEFAULT    4 blockdevice_mutex
+   575: ffffff000010e613     0 NOTYPE  GLOBAL DEFAULT    1 d_lowlevel
+   576: ffffff000011f98f   162 FUNC    GLOBAL DEFAULT    1 init_console_device
+   577: ffffff000010d7ed    46 FUNC    GLOBAL DEFAULT    1 initrd_findfirst
+   578: ffffff0000116a69     0 NOTYPE  GLOBAL DEFAULT    1 irq_exit
+   579: ffffff00001a7e00     8 OBJECT  GLOBAL DEFAULT    4 thisprocess
+   580: ffffff00001235b0     8 OBJECT  GLOBAL DEFAULT    4 blockdevices
+   581: ffffff0000123688     8 OBJECT  GLOBAL DEFAULT    4 highest_handle
+   582: ffffff0000123628     8 OBJECT  GLOBAL DEFAULT    4 timer_count
+   583: ffffff000010e4fc     0 NOTYPE  GLOBAL DEFAULT    1 int9_handler
+   584: ffffff00001158c4  1270 FUNC    GLOBAL DEFAULT    1 partitions_init
+   585: ffffff00001183a1  4015 FUNC    GLOBAL DEFAULT    1 dispatchhandler
+   586: ffffff000011e18b   198 FUNC    GLOBAL DEFAULT    1 mkdir
+   587: ffffff0000123648     8 OBJECT  GLOBAL DEFAULT    4 processes_end
+   588: ffffff000011a250     0 NOTYPE  GLOBAL DEFAULT    1 switch_task_process_descr
+   589: ffffff000010774c  1010 FUNC    GLOBAL DEFAULT    1 fat_set_file_time_date
+   590: ffffff0000121418     8 OBJECT  GLOBAL DEFAULT    2 keylast
+   591: ffffff0000119ebe   374 FUNC    GLOBAL DEFAULT    1 register_executable_forma
+   592: ffffff000011ec95   623 FUNC    GLOBAL DEFAULT    1 close
+   593: ffffff000011a2af     0 NOTYPE  GLOBAL DEFAULT    1 switch_task
+   594: ffffff0000120590   757 FUNC    GLOBAL DEFAULT    1 readpipe
+   595: ffffff000011d0ec    59 FUNC    GLOBAL DEFAULT    1 ipow
+   596: ffffff000011421d   199 FUNC    GLOBAL DEFAULT    1 getkernelsymbol
+   597: ffffff000010ab39  2689 FUNC    GLOBAL DEFAULT    1 fat_create_long_filename
+   598: ffffff00001169a0     0 NOTYPE  GLOBAL DEFAULT    1 irq4
+   599: ffffff0000116990     0 NOTYPE  GLOBAL DEFAULT    1 irq3
+   600: ffffff0000116136    53 FUNC    GLOBAL DEFAULT    1 pci_get_deviceid
+   601: ffffff000010e4e8     0 NOTYPE  GLOBAL DEFAULT    1 int8_handler
+   602: ffffff0000112332    60 FUNC    GLOBAL DEFAULT    1 free
+   603: ffffff00001199d1   125 FUNC    GLOBAL DEFAULT    1 call_critical_error_handl
+   604: ffffff0000100902  1102 FUNC    GLOBAL DEFAULT    1 ata_chs
+   605: ffffff0000119cd5    51 FUNC    GLOBAL DEFAULT    1 get_usermode_stack_pointe
+   606: ffffff000010e4ac     0 NOTYPE  GLOBAL DEFAULT    1 int5_handler
+
+No version information found in this file.

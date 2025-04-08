@@ -108,7 +108,7 @@ size_t fat_get_start_block(size_t drive,char *name);							// TESTED
 size_t fat_get_next_block(size_t drive,uint64_t block);							// TESTED
 size_t fat_update_fat(size_t drive,uint64_t block,uint16_t block_high_word,uint16_t block_low_word);	// TESTED - MORE
 size_t fat_detect_change(size_t drive);									// TESTED
-size_t fat_convert_filename(char *filename,char *outname);						// TESTED
+void fat_convert_filename(char *filename,char *outname);						// TESTED
 size_t fat_read_long_filename(size_t drive,uint64_t block,size_t entryno,FILERECORD *n);		// TESTED
 size_t fat_update_long_filename(size_t type,size_t drive,uint64_t block,size_t entryno,FILERECORD *new);// TESTED
 size_t fat_create_short_name(char *filename,char *out);							// TESTED

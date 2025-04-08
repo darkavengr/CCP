@@ -37,19 +37,23 @@ use64
 ;
 switch_to_usermode_and_call_process:
 
-; Create a stack frame to transfer to user-mode
+mov	ax,USER_DATA_SELECTOR			; load user-mode selector
+mov	ds,ax
+mov	es,ax
+mov	fs,ax
+mov	gs,ax
 
-mov	rax,qword USER_DATA_SELECTOR		; user ss
-push	rax
-mov	rax,rsp
-push	rax					; user esp
+; Create a stack frame to transfer to user-mode
 
 pushfq						; user rflags
 pop	rax
 or	rax,200h				; enable interrupts
 push	rax
 
-push	USER_CODE_SELECTOR			; user cs
+push	qword USER_DATA_SELECTOR
+push	rsp
+push	rax
+push	qword USER_CODE_SELECTOR
 push	rdi					; user rip
 iretq
 

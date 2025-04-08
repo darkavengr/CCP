@@ -1,44 +1,32 @@
-ASM=@asm@
-CC=@cc@
-LD=@cc@
+ASM=nasm
+CC=@arch@-elf-gcc
+LD=@arch@-elf-gcc
 
-all: ex.o partition.o port.o sched.o mutex.o interrupts.o stack.o  aainit.o usermode.o  cpustate.o tss.o gdt.o page.o @cc_opt_obj_files@
-ex-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 ex.c -oex-hwdep.o
+CFILES=ex.c mutex.c page.c port.c partition.c
+ASMFILES=cpustate.asm gdt.asm interrupts.asm sched.asm stack.asm tss.asm usermode.asm
 
-partition-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 ../i386/partition.c -opartition-hwdep.o
+COBJFILES=$(addsuffix .o,$(basename $(notdir $(CFILES))))
+ASMOBJFILES=$(addsuffix .o,$(basename $(notdir $(ASMFILES))))
 
-port-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 port.c -oport-hwdep.o
+CCOPTS=-I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
+ASMOPTS=-felf64 -I@buildroot@/kernel/hwdep/@arch@/
 
-sched-hwdep.o:
-		$(ASM) @asm_opts@ sched.asm -osched-hwdep.o
+all: hwdep
+	echo $(COBJFILES)
+	
 
-`mutex-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 mutex.c -omutex-hwdep.o
+hwdep: aainit.o $(COBJFILES) $(ASMOBJFILES)
 
-aainit-hwdep.o:
-		$(ASM) @asm_opts@ init.asm -oaainit-hwdep.o
+#
+# Recipe to make modules
+#
 
-stack-hwdep.o:
-		$(ASM) @asm_opts@ stack.asm -ostack-hwdep.o
+aainit.o:
+	$(ASM) $(ASMOPTS) init.asm -o @buildroot@/obj/@arch@/aainit.o
 
-tss-hwdep.o:
-		$(ASM) @asm_opts@ tss.asm -otss-hwdep.o
+$(COBJFILES): %.o: %.c
+	$(CC) @cc_opts@ $(CCOPTS) $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 
-cpustate-hwdep.o:
-		$(ASM) @asm_opts@ cpustate.asm -ocpustate-hwdep.o
-
-interrupts-hwdep.o:
-		$(ASM) @asm_opts@ interrupts.asm -ointerrupts-hwdep.o
-
-gdt-hwdep.o:
-		$(ASM) @asm_opts@ gdt.asm -ogdt-hwdep.o
-
-usermode-hwdep.o:
-		$(ASM) @asm_opts@ usermode.asm -ousermode-hwdep.o
-
-page-hwdep.o:
-		$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64 page.c -opage-hwdep.o
+$(ASMOBJFILES): %.o: %.asm
+		$(ASM) $(ASMOPTS) $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 

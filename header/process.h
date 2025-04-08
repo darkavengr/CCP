@@ -62,7 +62,7 @@ void shutdown(size_t shutdown_status);
 PROCESS *findfirstprocess(PROCESS *processbuf);
 PROCESS *findnextprocess(PROCESS *previousprocess,PROCESS *processbuf);
 size_t wait(size_t pid);
-size_t dispatchhandler(size_t ignored1,size_t ignored2,size_t ignored3,size_t ignored4,void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone);
+size_t dispatchhandler(void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone);
 size_t getcwd(char *dir);
 size_t chdir(char *dirname);
 size_t getpid(void);

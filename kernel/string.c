@@ -158,7 +158,9 @@ size_t count=0;
 x=s;
 y=d;
 
-while(count++ < c) *y++=*x++;
+while(count++ < c) {
+	*y++=*x++;
+}
 
 return(d);   
 }
@@ -251,9 +253,7 @@ return(strncmp(sourcetemp,desttemp,size));
 
 void memset(void *buf,char i,size_t size) {
 size_t count=0;
-char *b;
- 
-b=buf;					/* point to buffer */
+char *b=buf;
 
 for(count=0;count<size;count++) {
 	*b++=i;				/* put byte */
@@ -592,7 +592,6 @@ int num;
 double d;
 char *z[MAX_SIZE];
 char *bufptr;
-size_t paramsize=4;		/* default size is 4 bytes */
 size_t count=0;
 
 bufptr=buf;
@@ -610,10 +609,6 @@ while(*b != 0) {
 		c=*++b;
  
 		switch(c) {
-
-		case 'l':				/* long parameter */
-			paramsize=8;
-			b++;
 
 		/* fall through */
 
@@ -673,7 +668,7 @@ while(*b != 0) {
    		case 'x':				/*  lowercase x */
    		case 'X':
 			num=va_arg(args,size_t);
-			tohex(num,z,paramsize);
+			tohex(num,z);
  
 			strncat(bufptr,z,size-count);
 			count += size;
@@ -718,7 +713,7 @@ va_end(args);
  * Returns nothing
  */
 
-void tohex(size_t hex,char *buf,size_t bytecount) {
+void tohex(size_t hex,char *buf) {
 size_t count;
 size_t h;
 size_t shiftamount;
@@ -728,13 +723,13 @@ size_t found_start=FALSE;
 char *b;
 char *hexbuf[] = {"0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"};
 
-mask=(size_t) ((size_t) 0xf << ((size_t) bytecount*8)-4);
+mask=(size_t) ((size_t) 0xf << ((size_t) sizeof(size_t)*8)-4);
 
-shiftamount=(bytecount*8)-4;
+shiftamount=(sizeof(size_t)*8)-4;
 
 b=buf;
 
-for(count=0;count<(bytecount*2);count++) {
+for(count=0;count<(sizeof(size_t)*2);count++) {
 	h=((hex & mask) >> shiftamount);	/* shift nibbles to end */
 
 	if(h != 0) found_start=TRUE;		/* don't include trailing zeroes */

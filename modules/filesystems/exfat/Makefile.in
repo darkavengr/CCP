@@ -5,5 +5,5 @@ FILES=exfat.c
 OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
 $(OBJFILES): %.o: %.c
-	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 

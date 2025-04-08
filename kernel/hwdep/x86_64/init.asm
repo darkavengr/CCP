@@ -197,7 +197,7 @@ jmp 	$
 	
 long_mode_supported:
 ;
-; create tables
+; create paging tables
 ;
 mov	edi,ROOT_PML4
 xor	eax,eax
@@ -260,7 +260,7 @@ add	ecx,eax
 shr	eax,12					; number of page table entries
 
 mov	edi,ROOT_PAGETABLE
-mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
+mov	eax,0 | PAGE_PRESENT | PAGE_RW	; page+flags
 
 cld
 
@@ -355,12 +355,14 @@ mov	rdi,MEMBUF_START
 mov	[rdi],rdx
 
 call	get_initial_kernel_stack_top
-mov	rcx,KERNEL_HIGH
+mov	rcx,qword KERNEL_HIGH
 add	rax,rcx
 mov	rsp,rax					; temporary stack
 
 call	get_initial_kernel_stack_base
+mov	rcx,qword KERNEL_HIGH
 add	rax,rcx
+mov	rbp,rax
 
 ; Unmap lower half
 
@@ -456,25 +458,22 @@ out	dx,al
 
 ;call	init_multitasking
 
-call	driver_init				; initialize built-in drivers and filesystems
+call	driver_init				; initialize built-in modules
 call	initrd_init
 
+call	initialize_tss					; initialize TSS
+
 call	get_initial_kernel_stack_top
+
 mov	rcx,qword KERNEL_HIGH
 add	rax,rcx
-mov	rsp,rax					; temporary stack
-
-push	rsp
+mov	rdi,rax
 call	set_tss_rsp0
-
-call	initialize_tss					; initialize tss
 
 call	load_modules_from_initrd
 
 sti
-
-; jump to highlevel code
-jmp	kernel
+jmp	kernel		; jump to high g7level code
 
 
 ; 64-bit GDT
@@ -494,7 +493,6 @@ db 0
 db 0,0
 db 0
 
-; intial gdt
 ; ring 0 segments
 
 dw 0xFFFF					; low word of limit
@@ -506,7 +504,7 @@ db 0						; last byte of base
 dw 0xFFFF					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 0x92,0x0CF					; Data segment
+db 0x92,0xCF					; Data segment
 db 0						; last byte of base
 
 ; ring 3 segments
@@ -526,6 +524,6 @@ times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0	; extra entries for TSS and
 gdt_end:
 
 MEMBUF_START dq 0
-starting_ccp db "Starting CCP...",10,13,0
-no_long_mode db "This version of CCP requires a x86-64 CPU",10,13,0
+starting_ccp db 10,13,"Starting CCP...",10,13,0
+no_long_mode db 10,13,"This version of CCP requires a x86-64 CPU",10,13,0
 

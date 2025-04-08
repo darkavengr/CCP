@@ -62,6 +62,8 @@ next=blockdevices;
 	
 while(next != NULL) {
 	 if(strncmpi(next->name,device->name,MAX_PATH) == 0) {		/* block device exists */
+		unlock_mutex(&blockdevice_mutex);			/* lock mutex */
+
 	 	setlasterror(FILE_EXISTS);
 		return(-1);
 	 }
@@ -72,7 +74,11 @@ while(next != NULL) {
 
 if(blockdevices == NULL) {				/* if empty allocate struct */
 	blockdevices=kernelalloc(sizeof(BLOCKDEVICE));
-	if(blockdevices == NULL) return(-1);
+	if(blockdevices == NULL) {
+		unlock_mutex(&blockdevice_mutex);			/* lock mutex */
+
+		return(-1);
+	}
 
 	memset(blockdevices,0,sizeof(BLOCKDEVICE));
 	last=blockdevices;
@@ -80,7 +86,11 @@ if(blockdevices == NULL) {				/* if empty allocate struct */
 else
 {
 	last->next=kernelalloc(sizeof(BLOCKDEVICE)); /* add to struct */
-	if(last->next == NULL) return(-1);
+	if(last->next == NULL) {
+		unlock_mutex(&blockdevice_mutex);			/* lock mutex */
+
+		return(-1);
+	}
 
 	last=last->next;
 	memset(last,0,sizeof(BLOCKDEVICE));
@@ -93,6 +103,7 @@ last->next=NULL;
 last->superblock=NULL;
 
 unlock_mutex(&blockdevice_mutex);		/* unlock mutex */
+
 setlasterror(NO_ERROR);
 return(NO_ERROR);
 }
@@ -109,13 +120,19 @@ size_t add_character_device(CHARACTERDEVICE *device) {
 CHARACTERDEVICE *charnext;
 CHARACTERDEVICE *charlast;
 
+lock_mutex(&characterdevice_mutex);			/* lock mutex */
+
 charnext=characterdevs;
 
 /* find device */
 
 if(characterdevs == NULL) {				/* if empty allocate struct */
 	characterdevs=kernelalloc(sizeof(CHARACTERDEVICE));
-	if(characterdevs == NULL) return(-1);
+	if(characterdevs == NULL) {
+		unlock_mutex(&characterdevice_mutex);			/* unlock mutex */
+
+		return(-1);
+	}
 
 	memset(characterdevs,0,sizeof(CHARACTERDEVICE));
 	charnext=characterdevs;
@@ -125,7 +142,9 @@ else
 	charnext=characterdevs;
 
 	do {
-		if(strncmpi(device->name,charnext->name,MAX_PATH) == 0) {		 		/* already loaded */
+		if(strncmpi(device->name,charnext->name,MAX_PATH) == 0) {	/* device exists */
+			unlock_mutex(&characterdevice_mutex);			/* unlock mutex */
+
 	 		setlasterror(FILE_EXISTS);
 			return(-1);
 		}
@@ -135,17 +154,22 @@ else
 	} while(charnext != NULL);
 
 charlast->next=kernelalloc(sizeof(CHARACTERDEVICE)); /* add to struct */
-if(charlast->next == NULL) return(-1);
+if(charlast->next == NULL) {
+	unlock_mutex(&characterdevice_mutex);			/* unlock mutex */
+
+	return(-1);
+}
 
 charnext=charlast->next;
-memset(charnext,0,sizeof(CHARACTERDEVICE));
-	
+memset(charnext,0,sizeof(CHARACTERDEVICE));	
 }
 
 /* at end here */
 memcpy(charnext,device,sizeof(CHARACTERDEVICE));
 
 charnext->next=NULL;
+
+unlock_mutex(&characterdevice_mutex);			/* unlock mutex */
 
 setlasterror(NO_ERROR);
 return(NO_ERROR);
@@ -206,23 +230,25 @@ for(count=0;count<next->sectorsperblock;count++) {
 	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {
 		lasterr=getlasterror();
 
+		/* handle any critical errors */
+
 		if((lasterr == WRITE_PROTECT_ERROR) || (lasterr == DRIVE_NOT_READY) || (lasterr == INVALID_CRC) \
 		|| (lasterr == GENERAL_FAILURE) || (lasterr == READ_FAULT) || (lasterr == WRITE_FAULT)) { 
 	
 	  		error=call_critical_error_handler(next->name,drive,(op | 0x80000000),lasterr);	/* call exception handler */
 
-	  		if(error == CRITICAL_ERROR_ABORT) {
-	   			unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
-	   			exit(0);	/* abort */
+	  		if(error == CRITICAL_ERROR_ABORT) {			/* abort */
+	   			unlock_mutex(&blockdevice_mutex);
+	   			exit(0);
 	  		}
-	  		else if(error == CRITICAL_ERROR_RETRY) {		/* RETRY */
+	  		else if(error == CRITICAL_ERROR_RETRY) {		/* retry */
 				continue;
 	  		}
-	  		else if((error == CRITICAL_ERROR_FAIL) || (error == -1)) {
-	   			next->flags ^= DEVICE_LOCKED;				/* unlock drive */
+	  		else if((error == CRITICAL_ERROR_FAIL) || (error == -1)) {	/* fail */
+	   			next->flags ^= DEVICE_LOCKED;			/* unlock drive */
 
 	   			unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
-	   			return(-1);	/* FAIL */
+	   			return(-1);
 	  		}
 	 	}
 		else
@@ -246,8 +272,8 @@ return(NO_ERROR);
 /*
  * Get information about a character device
  *
- * In: char *name		Name of device
-	      CHARACTERDEVICE *buf	Buffer to hold information about device
+ * In: name	Name of device
+       buf	Buffer to hold information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -280,8 +306,8 @@ return(-1);
 /*
  * Get information about a block device using drive number
  *
- * In: size_t drive		Drive number
-	      BLOCKDEVICE *buf		Buffer to hold information about device
+ * In: drive	Drive number
+       buf	Buffer to hold information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -319,8 +345,8 @@ return(-1);
 /*
  * Get information about a character device using it's name
  *
- * In: char *name		Name of device
-	      CHARACTERDEVICE *buf	Buffer to hold information about device
+ * In: name	Name of device
+       buf	Buffer to hold information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -361,8 +387,8 @@ return(-1);
 /*
  * Update block device information
  *
- * In: size_t drive		Drive
-	      BLOCKDEVICE *buf		information about device
+ * In: drive	Drive
+       buf	information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -381,6 +407,8 @@ while(next != NULL) {
 	if(next->drive == drive) {		 		/* already loaded */
 		save_next=next->next;
 
+//		asm("xchg %bx,%bx");
+
 		memcpy(next,driver,sizeof(BLOCKDEVICE));		/* update struct */
 
 		next->next=save_next;
@@ -391,8 +419,10 @@ while(next != NULL) {
 		return(0);
 	}
 
-next=next->next;
+	next=next->next;
 }
+
+unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 	
 setlasterror(INVALID_DRIVE);
 return(-1);
@@ -422,6 +452,8 @@ while(next != NULL) {
 	 if(strncmpi(next->name,name,MAX_PATH) == 0) {		 		/* already loaded */
 
 		if(gethandle(name,&buf) == 0) {		/* file is open */
+		 	unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
+
 			setlasterror(FILE_IN_USE);
 			return(-1);
 		}
@@ -457,7 +489,7 @@ return(-1);
  * Remove character device
  *
  * In: name		Name of device
-	buf		Buffer to hold information about device
+       buf		Buffer to hold information about device
  *
  * Returns 0 on success, -1 otherwise
  * 
@@ -479,6 +511,8 @@ while(next != NULL) {
 	 if(strncmpi(next->name,name,MAX_PATH) == 0) {		/* device found */
 
 		if(gethandle(name,&buf) == 0) {		/* device is in use */
+			unlock_mutex(&characterdevice_mutex);	/* unlock mutex */
+
 			setlasterror(FILE_IN_USE);
 			return(-1);
 		}
@@ -515,7 +549,7 @@ return(-1);
  *
  * In: nothing
  *
- * Returns next drive number or -1 on error
+ * Returns: next drive number or -1 on error
  * 
  */
 
@@ -531,6 +565,7 @@ size_t drivenumber=2;
 for(count=4;count<67108864;count *= 2) {
 	if((drive_bitmap & count) == 0) {		/* found free drive */
 		drive_bitmap |= count;		/* allocate drive */
+
 		return(drivenumber);
 	}
 

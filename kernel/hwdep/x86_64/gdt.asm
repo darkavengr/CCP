@@ -48,7 +48,6 @@ ret
 gdt_is_ok:
 ; put base
 
-xchg	bx,bx
 mov	rax,rsi
 and	rax,0xffff
 mov	[rdi+GDT_BASE_LOW],ax
@@ -67,7 +66,6 @@ mov	[rdi+GDT_BASE_HIGH],al
 mov	rax,rdx
 and	rax,0xffff
 mov	[rdi+GDT_LIMIT_LOW],ax
-
 
 ; put flags
 

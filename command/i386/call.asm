@@ -102,6 +102,7 @@ setfiletimedate:
 mov	ebx,[esp+4]
 mov	ecx,[esp+8]
 mov	edx,[esp+12]
+mov	esi,[esi+16]
 
 mov	eax,0x5701
 int	0x21
@@ -263,34 +264,28 @@ ret
 
 findnextprocess:
 mov	edx,[esp+4]			; buffer
-mov	edx,[esp+8]		; handle
+mov	ebx,[esp+8]		; handle
 
 mov	eax,0x700A
 int	0x21
 ret
 
 addblockdevice:
-mov	edi,[esp+4]
-mov	esi,[esp+8]
-mov	ebx,[esp+12]
-mov	edx,[esp+16]
+mov	ebx,[esp+4]
 
 mov	eax,0x700B
 int	0x21
 ret
 
 addcharacterdevice:
-mov	edi,[esp+4]
-mov	esi,[esp+8]
-mov	ebx,[esp+12]
-mov	edx,[esp+16]
+mov	ebx,[esp+4]
 
 mov	eax,0x700C
 int	0x21
 ret
 
 switchtonextprocess:
-mov	 ax,0x7011
+mov	ax,0x7011
 int	0x21
 ret
 

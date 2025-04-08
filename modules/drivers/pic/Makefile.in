@@ -9,8 +9,8 @@ ASMOBJFILES=$(addsuffix .o,$(basename $(notdir $(ASMFILES))))
 all: $(COBJFILES) $(ASMOBJFILES)
 
 $(COBJFILES): %.o: %.c
-	$(CC) -c -w -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 
 $(ASMOBJFILES): %.o: %.asm
-	$(ASM) -felf32 -I@buildroot@/kernel/hwdep/@arch@/ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
+	$(ASM) @asm_opts@ -I@buildroot@/kernel/hwdep/@arch@/ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
 
