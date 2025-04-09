@@ -96,4 +96,7 @@ void reset_current_process_ticks(void);
 size_t get_tick_count(void);
 size_t increment_tick_count(void);
 size_t GetVersion(void);
+size_t get_usermode_stack_base(void);
+size_t get_usermode_stack_top(void);
+void set_usermode_stack_base(void *base);
 

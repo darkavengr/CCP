@@ -48,11 +48,11 @@
 #define	INVALID_TSS		10
 #define SEGMENT_NOTPRESENT 11
 #define STACK_FAULT	12
-#define GPF		14
-#define PAGE_FAULT	15
-#define COPROCESSOR_FAULT 16
-#define ALIGN_CHECK_EXCEPTION 17
-#define MACHINE_CHECK_EXCEPTION 18
+#define GPF		13
+#define PAGE_FAULT	14
+#define COPROCESSOR_FAULT 15
+#define ALIGN_CHECK_EXCEPTION 16
+#define MACHINE_CHECK_EXCEPTION 17
 
 void enable_interrupts(void);
 void exception(uint64_t *regs,uint64_t e);
@@ -81,13 +81,31 @@ char *regnames[] = { "RIP","RSP","RAX","RBX","RCX","RDX","RSI","RDI","RBP","R10"
 
 char *flagsname[]= { "","Overflow"," Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
 
-void exception(uint64_t *regs,uint64_t e) {
 size_t count;
 uint64_t flagsmask;
 char *b;
 char processname[MAX_PATH];
 size_t shiftcount;
 size_t rowcount;
+uint64_t faultaddress;
+uint64_t stackbase;
+
+void exception(uint64_t *regs,uint64_t e) {
+
+/* If there was a page fault, check if it was a stack overflow */
+
+if(e == PAGE_FAULT) {
+	asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
+
+	if(faultaddress < get_usermode_stack_base()) {		/* stack overflow */
+		alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,faultaddress-PROCESS_STACK_SIZE); /* extend stack downwards */
+		return;	
+	}
+}
+
+/* If here, it's a fatal exception */
+
+/* Display fault type and address */
 
 if(regs[0] >= KERNEL_HIGH) {
 	kprintf_direct("\nKernel panic [%s] at address %016X\n",exp[e],regs[0]);
@@ -96,8 +114,10 @@ else
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %016X in %s\n",exp[e],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %016X in %s\n",exp[e],regs[0],processname);
 }
+
+/* display registers */
 
 count=0;
 rowcount=0;
@@ -115,11 +135,10 @@ while(regnames[count] != NULL) {							/* dump registers */
 	count++;
 }
 
+/* display flags */
 flagsmask=4096;						/* mask to get flags */
 count=0;
 shiftcount=12;
-
-/* dump flags */
 
 do {
 	if(flagsname[count] == "$") break;
@@ -133,6 +152,9 @@ do {
 } while(flagsname[count] != "$");
 
 asm("xchg %bx,%bx");
+
+/* kill faulting process or shut down system if there are no processes */
+
 if(get_current_process_pointer() == NULL) {
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);

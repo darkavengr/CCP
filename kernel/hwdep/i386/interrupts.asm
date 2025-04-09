@@ -490,6 +490,13 @@ call	exception
 add	esp,12
 
 exit_exception:
+mov	eax,[regbuf+8]
+mov	ebx,[regbuf+12]
+mov	ecx,[regbuf+16]
+mov	edx,[regbuf+20]
+mov	esi,[regbuf+24]
+mov	edi,[regbuf+28]
+mov	ebp,[regbuf+32]
 iret
 
 end_process:

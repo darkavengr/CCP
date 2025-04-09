@@ -1320,6 +1320,34 @@ return(currentprocess->stackpointer);
 }
 
 /*
+* Get user-mode stack pointer for current process
+*
+* In:  Nothing
+*
+* Returns:  stack pointer or NULL if there are no processes running
+*
+*/
+size_t get_usermode_stack_base(void) {
+if(currentprocess == NULL) return(NULL);
+
+return(currentprocess->stackbase);
+}
+
+/*
+* Set user-mode stack base for current process
+*
+* In:  New user-mode stack base
+*
+* Returns:  Nothing
+*
+*/
+void set_usermode_stack_base(void *base) {
+if(currentprocess == NULL);
+
+currentprocess->stackbase=base;
+}
+
+/*
 * Get top of kernel stack
 *
 * In:  Nothing

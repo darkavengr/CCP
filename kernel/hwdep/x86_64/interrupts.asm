@@ -71,13 +71,13 @@ call	set_interrupt
 
 %macro inthandler_noerr 1
 int%1_handler:
+push	rdi
 push	rax
 push	rbx
-push	rsi
-push	rdi
 
-mov	rdi,qword regbuf	; point to register buffer
-mov	rsi,%1			; interrupt number
+mov	rbx,qword exception_number	; save exception number
+mov	rax,%1				; exception number
+mov	[rbx],rax
 
 mov	rax,[rsp+32]		; get rip from stack
 mov	rbx,[rsp+32+16]		; get rflags from stack
@@ -87,13 +87,18 @@ jmp	int_common
 
 %macro inthandler_err 1
 int%1_handler:
+push	rdi
 push	rax
 push	rbx
-push	rsi
-push	rdi
 
-mov	rdi,qword regbuf	; point to register buffer
-mov	rsi,%1			; interrupt number
+mov	rbx,qword exception_number	; save exception number
+mov	rax,%1				; exception number
+mov	[rbx],rax
+
+mov	rbx,[rsp+32+32]			; save error code
+mov	rax,qword error_code
+mov	[rbx],rax
+
 mov	rax,[rsp+32+8]		; get rip from stack
 mov	rbx,[rsp+32+24]		; get rflags from stack
 
@@ -255,10 +260,14 @@ inthandler_noerr 31
 
 int_common:
 ; save other registers into buffer to pass to exception handler
+
+mov	rdi,qword regbuf
+
 mov	[rdi],rax			; save eip
 mov	[rdi+8],rsp
 mov	[rdi+32],rcx
 mov	[rdi+40],rdx
+mov	[rdi+48],rsi
 mov	[rdi+64],rbp
 mov	[rdi+72],r10
 mov	[rdi+80],r11
@@ -272,18 +281,53 @@ pop	rax				; get rax from stack
 mov	[rdi+16],rax
 pop	rax				; get rbx from stack
 mov	[rdi+24],rax
-pop	rax				; get rsi from stack
-mov	[rdi+48],rax
 pop	rax				; get rdi from stack
 mov	[rdi+56],rax
 
+mov	rdi,rax
+
+mov	r11,qword exception_number
+mov	rsi,[r11]			; exception number
 call	exception			; call exception handler
-add	rsp,16
+
+;  exceptions 8, 10, 11, 12, 13,14,17,21,29 and 30 push an error code
+
+mov	rdx,qword exception_number
+mov	rdx,[rdx]
+
+mov	rsi,qword error_number_exceptions
+mov	rcx,10
+
+next_check_exeception_number:
+lodsq
+
+cmp	rax,rdx
+je	skip_pushed_error_number
+
+jmp	short next_check_exeception_number
+
+jmp	exit_exception
+
+skip_pushed_error_number:
+add	rsp,8
 
 exit_exception:
-xchg	bx,bx
-iretq
+mov	rdi,qword regbuf
 
+mov	rax,[rdi+16]			; restore registers
+mov	rbx,[rdi+24]
+mov	rcx,[rdi+32]
+mov	rdx,[rdi+40]
+mov	rsi,[rdi+48]
+mov	r11,[rdi+64]
+mov	r12,[rdi+72]
+mov	r13,[rdi+80]
+mov	r14,[rdi+88]
+mov	r15,[rdi+96]
+mov	rbp,[rdi+64]
+mov	rdi,[rdi+56]
+iretq
+;
 ; low level dispatcher
 ;
 ;
@@ -343,8 +387,12 @@ idttable:
 times 256 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 idt_end:
 
+error_number_exceptions dq 8,10,11,12,13,14,17,21,29,30
+end_error_number_exceptions:
 tempone dq 0
 temptwo dq 0
 intnumber dq 0
+exception_number dq 0
+error_code dq 0
 regbuf times 120 dq 0
 

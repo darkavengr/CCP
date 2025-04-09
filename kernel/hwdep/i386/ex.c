@@ -85,6 +85,21 @@ char *processname[MAX_PATH];
 uint32_t shiftcount;
 size_t rowcount;
 
+/* If there was a page fault, check if it was a stack overflow */
+
+if(e == PAGE_FAULT) {
+	asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
+
+	if(faultaddress < get_usermode_stack_base()) {		/* stack overflow */
+		alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,faultaddress-PROCESS_STACK_SIZE); /* extend stack downwards */
+	//	asm("xchg %bx,%bx");
+
+		return;	
+	}
+}
+
+/* If here, it's a fatal exception */
+
 if(regs[0] >= KERNEL_HIGH) {
 	kprintf_direct("\nKernel panic [%s] at address %08X\n\n",exp[e],regs[0]);
 }
