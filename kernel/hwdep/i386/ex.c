@@ -77,14 +77,15 @@ char *regnames[] = { "EIP", "ESP", "EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EB
 
 char *flagsname[]= { "","Overflow", " Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
 
-void exception(uint32_t *regs,uint32_t e,uint32_t dummy) {
 size_t count;
 uint32_t flagsmask;
 char *b;
 char *processname[MAX_PATH];
 uint32_t shiftcount;
 size_t rowcount;
+size_t faultaddress;
 
+void exception(uint32_t *regs,uint32_t e,uint32_t dummy) {
 /* If there was a page fault, check if it was a stack overflow */
 
 if(e == PAGE_FAULT) {
@@ -92,8 +93,6 @@ if(e == PAGE_FAULT) {
 
 	if(faultaddress < get_usermode_stack_base()) {		/* stack overflow */
 		alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,faultaddress-PROCESS_STACK_SIZE); /* extend stack downwards */
-	//	asm("xchg %bx,%bx");
-
 		return;	
 	}
 }

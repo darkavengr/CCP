@@ -522,16 +522,16 @@ ret
 ; Returns: Nothing
 ;
 d_lowlevel:
+push	ds
+push	es
+push	fs
+push	gs
 push	eax
 push	ebx
 push	ecx
 push	edx
 push	esi
 push	edi
-push	ds
-push	es
-push	fs
-push	gs
 
 mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
 mov 	ds,ax
@@ -549,10 +549,6 @@ call	enablemultitasking
 
 mov	[tempone],eax
 
-pop	gs
-pop	fs
-pop	es
-pop	ds
 pop	edi
 pop	esi
 pop	edx
@@ -560,6 +556,10 @@ pop	ecx
 pop	ebx
 pop	eax
 
+pop	gs
+pop	fs
+pop	es
+pop	ds
 cmp	eax,0xffffffff					; if error ocurred
 je	iret_error
 
