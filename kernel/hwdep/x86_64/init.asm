@@ -65,7 +65,9 @@ extern load_modules_from_initrd					; load modules from initial RAM disk
 extern get_initial_kernel_stack_base				; get initial kernel stack base
 extern get_initial_kernel_stack_top				; get initial kernel stack top
 extern get_kernel_stack_size					; get kernel stack size
+extern set_initial_process_paging_end				; set initial process paging end
 
+;
 ; globals
 ;
 global _asm_init
@@ -373,6 +375,8 @@ mov	[rsi],rax
 call	initialize_interrupts		; initialize interrupts
 call	load_idt			; load interrupts
 
+call	set_initial_process_paging_end ; set initial processpaging end to
+
 call	processmanager_init		; intialize process manager
 call	devicemanager_init		; intialize device manager
 
@@ -473,6 +477,7 @@ call	set_tss_rsp0
 call	load_modules_from_initrd
 
 sti
+
 jmp	kernel		; jump to high g7level code
 
 

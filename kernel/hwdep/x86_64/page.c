@@ -74,6 +74,8 @@ uint64_t *ptptr;
 uint64_t c;
 uint64_t addr;
 uint64_t *v;
+uint64_t savepml4entry;
+struct ppt *remap;
 
 next=processpaging;					/* find process page directory */
 
@@ -98,7 +100,7 @@ pdptptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30
 pdptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) pml4_of << 21) | ((uint64_t) pdpt_of << 12),47);
 ptptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) pml4_of << 30) | ((uint64_t) pdpt_of << 21) | ((uint64_t) pd << 12),47);
 
-if(pml4ptr[pml4_of] == 0) {			/* if pml4 empty */
+if(pml4ptr[pml4_of] == 0) {			/* if PML4 empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
 	if(c == NULL) {					/* allocation error */
 		setlasterror(NO_MEM);
@@ -108,7 +110,7 @@ if(pml4ptr[pml4_of] == 0) {			/* if pml4 empty */
 	pml4ptr[pml4_of]=(c & 0xfffffffffffff000) | PAGE_RW | PAGE_USER | PAGE_PRESENT;
 }
 
-if(pdptptr[pdpt_of] == 0) {					/* if pdpt empty */
+if(pdptptr[pdpt_of] == 0) {					/* if PDPT empty */
 	c=kernelalloc_nopaging(PAGE_SIZE);
 
 	if(c == NULL) {					/* allocation error */
@@ -135,8 +137,28 @@ if(pdptr[pd] == 0) {				/* if page directory empty */
 addr=physaddr;
 
 v=((size_t) ptptr | (pml4_of << 30) | (pdpt_of << 21) | (pd << 12));
-
 v[pt]=(size_t) (addr & 0xfffffffffffff000) | mode;			/* page table */
+
+/* map page into all address spaces if it is a kernel page */
+
+if(page > KERNEL_HIGH) {
+	remap=processpaging;
+
+	while(remap != NULL) {
+		if(remap->process != process) {
+			savepml4entry=next->pml4[512];	/* kludge */
+
+			next->pml4[512]=remap->pml4[512];
+
+			v[pt]=(size_t) (addr & 0xfffffffffffff000) | mode;			/* page table */
+
+			next->pml4[512]=savepml4entry;	
+		}
+
+		remap=remap->next;
+	}
+
+}
 
 return(0);
 }
@@ -151,8 +173,6 @@ return(0);
 */
 
 size_t page_init(size_t process) {
-struct ppt *p;
-struct ppt *last;
 uint64_t oldvirtaddress;
 uint64_t virtaddress;
 uint64_t oldpp;
@@ -182,11 +202,11 @@ for(count=0;count<(size/PAGE_SIZE)+1;count++) {
 }
 
 /* Important: make sure that is processpaging_end == processpaging. This most be done in the paging intialization code */
-
 if(processpaging_end == NULL) processpaging_end=processpaging; /* do it anyway */
 
 processpaging_end->next=oldvirtaddress;					/* add link to list */
 processpaging_end=processpaging_end->next;		/* point to end */
+
 processpaging_end->pml4phys=oldpp;			/* physical address of PML4 */
 processpaging_end->process=process;
 
@@ -196,15 +216,16 @@ for(count=0;count != 256;count++) {
 	pp=kernelalloc_nopaging(PAGE_SIZE);
 	if(pp == NULL) return(-1);
 
-	last->pml4[count]=pp | PAGE_PRESENT;
+	processpaging_end->pml4[count]=pp | PAGE_PRESENT;
 
 	addpage_system(pp+KERNEL_HIGH,0,(void *) pp);
 }
 
-last->pml4[510]=processpaging->pml4[510];		/* copy top-half PML4 */
-last->pml4[511]=oldpp | PAGE_PRESENT;		/* map last PML4 to PML4 */
+processpaging_end->pml4[510]=processpaging->pml4[510];		/* copy top-half PML4 */
+processpaging_end->pml4[511]=oldpp | PAGE_PRESENT;		/* map last PML4 to PML4 */
+processpaging_end->next=NULL;
 
-last->next=NULL;
+//kprintf_direct("end of page_init()\n");
 return(0);
 }
 
@@ -481,7 +502,7 @@ do {
 	}
 		
 	next=next->next;
-} while(next->next != NULL);
+} while(next != NULL);
 
 return(-1);
 }
@@ -536,3 +557,8 @@ for(signextendcount=0;signextendcount != (sizeof(num)*8)-bitnum;signextendcount+
 
 return((size_t) num);
 }
+
+void set_initial_process_paging_end(void) {
+processpaging_end=processpaging;
+}
+

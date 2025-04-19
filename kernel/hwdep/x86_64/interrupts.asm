@@ -79,8 +79,8 @@ mov	rbx,qword exception_number	; save exception number
 mov	rax,%1				; exception number
 mov	[rbx],rax
 
-mov	rax,[rsp+32]		; get rip from stack
-mov	rbx,[rsp+32+16]		; get rflags from stack
+mov	rax,[rsp+24]		; get rip from stack
+mov	rbx,[rsp+24+16]		; get rflags from stack
 
 jmp	int_common
 %endmacro
@@ -95,12 +95,12 @@ mov	rbx,qword exception_number	; save exception number
 mov	rax,%1				; exception number
 mov	[rbx],rax
 
-mov	rbx,[rsp+32+32]			; save error code
+mov	rbx,[rsp+24+32]			; save error code
 mov	rax,qword error_code
 mov	[rbx],rax
 
-mov	rax,[rsp+32+8]		; get rip from stack
-mov	rbx,[rsp+32+24]		; get rflags from stack
+mov	rax,[rsp+24+8]		; get rip from stack
+mov	rbx,[rsp+24+24]		; get rflags from stack
 
 jmp	int_common
 %endmacro
@@ -284,7 +284,7 @@ mov	[rdi+24],rax
 pop	rax				; get rdi from stack
 mov	[rdi+56],rax
 
-mov	rdi,rax
+mov	rdi,qword regbuf
 
 mov	r11,qword exception_number
 mov	rsi,[r11]			; exception number
@@ -302,13 +302,13 @@ next_check_exeception_number:
 lodsq
 
 cmp	rax,rdx
-je	skip_pushed_error_number
+je	found_pushed_error_number
 
 jmp	short next_check_exeception_number
 
 jmp	exit_exception
 
-skip_pushed_error_number:
+found_pushed_error_number:
 add	rsp,8
 
 exit_exception:
@@ -327,6 +327,7 @@ mov	r15,[rdi+96]
 mov	rbp,[rdi+64]
 mov	rdi,[rdi+56]
 iretq
+
 ;
 ; low level dispatcher
 ;
@@ -342,21 +343,21 @@ mov	r8,rbx
 mov	rsi,rbx
 mov	rdi,rax
 
-;push	rax
-;push	rbx
-;push	rcx
-;push	rdx
-;push	rsi
-;push	rdi
+push	rax
+push	rbx
+push	rcx
+push	rdx
+push	rsi
+push	rdi
 
-;call	disablemultitasking
+call	disablemultitasking
 
-;pop	rdi
-;pop	rsi
-;pop	rdx
-;pop	rcx
-;pop	rbx
-;pop	rax
+pop	rdi
+pop	rsi
+pop	rdx
+pop	rcx
+pop	rbx
+pop	rax
 
 sti
 

@@ -3,7 +3,7 @@ global seek
 global getfileattributes
 global chmod
 global getfiletimedate
-global setfiletimedate
+global touch
 global close
 global create
 global delete
@@ -36,11 +36,7 @@ global writeconsole
 global exec
 global open
 global getfilesize
-global outputrrdir
-global inputrrdir
 global kill
-global loaddriver
-global setconsolecolour
 global tell
 global set_critical_error_handler
 global set_signal_handler
@@ -79,7 +75,7 @@ mov	rax,0x4300
 int	0x21
 ret
 
-setfileattributes:
+chmod:
 mov	rdx,rdi
 
 mov	rax,0x4301
@@ -101,8 +97,7 @@ mov	rax,0x5700
 int	0x21
 ret
  
-
-setfiletimedate:
+touch:
 mov	r11,rdi
 mov	r12,rsi
 mov	r14,rdx
@@ -250,12 +245,6 @@ mov	rbx,rdi
 int	0x21
 ret
 
-localalloc:
-mov	rax,0x4801
-mov	rbx,rdi
-int	0x21
-ret
-
 free:
 mov	rdx,rdi
 mov	rax,0x4900
@@ -306,7 +295,7 @@ mov	rax,0x700C
 int	0x21
 ret
 
-switchtonextprocess:
+yield:
 mov	ax,0x7011
 int	0x21
 ret
@@ -333,12 +322,6 @@ kill:
 mov	rbx,rdi
 
 mov	rax,0x7019
-int	0x21
-ret
-
-setconsolecolour:
-mov	rax,0x7020
-mov	rbx,rdi
 int	0x21
 ret
 

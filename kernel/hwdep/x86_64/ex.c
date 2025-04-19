@@ -95,7 +95,7 @@ void exception(uint64_t *regs,uint64_t e) {
 /* If there was a page fault, check if it was a stack overflow */
 
 if(e == PAGE_FAULT) {
-	asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
+	asm volatile ("mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
 	if(faultaddress < get_usermode_stack_base()) {		/* stack overflow */
 		alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,faultaddress-PROCESS_STACK_SIZE); /* extend stack downwards */

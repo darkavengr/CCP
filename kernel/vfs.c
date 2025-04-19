@@ -1003,10 +1003,17 @@ size_t count;
 lock_mutex(&vfs_mutex);
 
 blockbuf=kernelalloc(VFS_MAX);
-if(blockbuf == NULL) return(-1);
+if(blockbuf == NULL) {
+	unlock_mutex(&vfs_mutex);
+	return(-1);
+}
 
+if(blockio(DEVICE_READ,drive,(uint64_t) 0,blockbuf) == -1) {	/* read block */
+	kernelfree(blockbuf);
+	unlock_mutex(&vfs_mutex);
 
-if(blockio(0,drive,(uint64_t) 0,blockbuf) == -1) return(-1);		/* read block */
+	return(-1);
+}
 
 /* check magic number */
 
@@ -1014,10 +1021,19 @@ next=filesystems;
 
 while(next != NULL) {
 	for(count=0;count<next->magic_count;count++) {
-		blockptr=blockbuf;			/* point to magic data location in superblock */
+		blockptr=blockbuf;			/* point to magic number location in superblock */	
 		blockptr += next->magicbytes[count].location;
 
 		if(memcmp(blockptr,&next->magicbytes[count].magicnumber,next->magicbytes[count].size) == 0) {	/* if magic number matches */
+
+			if(getpid() > 0) {			kprintf_direct("blockptr=%X\n",blockptr);
+				kprintf_direct("buf=%X\n",buf);
+
+				kprintf_direct("next=%X %X\n",next,getphysicaladdress(getpid(),next));
+				kprintf_direct("size=%X\n",sizeof(FILESYSTEM));
+				asm("xchg %bx,%bx");
+			}
+
 			memcpy(buf,next,sizeof(FILESYSTEM));
 
 			kernelfree(blockbuf);
