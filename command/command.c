@@ -210,7 +210,7 @@ struct psp {
 
 kprintf_direct(commandbanner,COMMAND_VERSION_MAJOR,COMMAND_VERSION_MINOR);
 
-argcount=tokenize_line(psp->commandline,commandlinearguments," \t");		/* tokenize command line arguments */
+/*argcount=tokenize_line(psp->commandline,commandlinearguments," \t");
 
 if(argcount >= 2) {
 	for(count=1;count<argcount;count++) {
@@ -251,7 +251,7 @@ if(argcount >= 2) {
 			}
 		}
 	}
-}
+}*/
 
 set_critical_error_handler(&critical_error_handler);		/* set critical error handler */
 set_signal_handler(signalhandler);			/* set signal handler */
@@ -319,9 +319,13 @@ if(strncmp(command,"\n",MAX_PATH) == 0) return(0);	/* blank line */
 b=command+strlen(command)-1;
 if(*b == '\n') *b=0;		/* remove newline */
 
-memset(parsebuf,0,COMMAND_TOKEN_COUNT*MAX_PATH);
-
 tc=tokenize_line(command,parsebuf," \t");	
+
+kprintf_direct("command=%s\n",command);
+
+for(count=0;count<tc;count++) {
+	 kprintf_direct("%s\n",parsebuf[count]);
+}
 
 touppercase(parsebuf[0],parsebuf[0]);		/* convert to uppercase */
 	
@@ -945,8 +949,8 @@ size_t isnewline=TRUE;
 size_t starttoken=1;
 
 if(tc == 1) {
-	kprintf_direct("%s\n",kstrerr(getlasterror()));
-	return(-1);
+	kprintf_direct("\n");
+	return(0);
 }
 
 if(strncmp(parsebuf[1],"-n",MAX_PATH) == 0) {		/* no newline */

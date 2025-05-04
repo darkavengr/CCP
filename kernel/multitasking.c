@@ -128,7 +128,7 @@ return(NULL);
  */
 
 size_t is_current_process_ready_to_switch(void) { 
-if(get_processes_pointer() == NULL) return(FALSE);
+//if(get_processes_pointer() == NULL) return(FALSE);
 
 if(increment_tick_count() < get_max_tick_count()) return(FALSE);
 

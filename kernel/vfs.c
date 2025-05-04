@@ -223,18 +223,15 @@ if(access & O_TRUNC) {			/* truncate file */
 	if(create(fullname) == -1) return(-1);	/* recreate it */
 }
 
-if(findfirst(fullname,&dirent) == -1) {			/* check if file exists */
-	if(access & O_CREAT) {		/* if O_CREAT is set, create file if it does not exist */
-		if(create(fullname) == -1) return(-1);
-
+if(access & O_CREAT) {		/* if O_CREAT is set, create file if it does not exist */
+	if(findfirst(fullname,&dirent) == -1) if(create(fullname) == -1) return (-1);	/* create if file does not exist */
+}
+else
+{
+	if(findfirst(fullname,&dirent) == -1) {			/* check if file exists */
 		unlock_mutex(&vfs_mutex);
-
-		setlasterror(NO_ERROR);
-		return(NO_ERROR);
+		return(-1);
 	}
-
-	unlock_mutex(&vfs_mutex);
-	return(-1);
 }
 
 /* check if file can be opened */
@@ -250,7 +247,7 @@ if(openfiles == NULL) {
 	openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
 	next=openfiles;
 }
-else
+else	
 {
 	last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
 	next=last->next;
@@ -1025,14 +1022,6 @@ while(next != NULL) {
 		blockptr += next->magicbytes[count].location;
 
 		if(memcmp(blockptr,&next->magicbytes[count].magicnumber,next->magicbytes[count].size) == 0) {	/* if magic number matches */
-
-			if(getpid() > 0) {			kprintf_direct("blockptr=%X\n",blockptr);
-				kprintf_direct("buf=%X\n",buf);
-
-				kprintf_direct("next=%X %X\n",next,getphysicaladdress(getpid(),next));
-				kprintf_direct("size=%X\n",sizeof(FILESYSTEM));
-				asm("xchg %bx,%bx");
-			}
 
 			memcpy(buf,next,sizeof(FILESYSTEM));
 

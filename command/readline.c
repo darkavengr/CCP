@@ -47,21 +47,22 @@ while(1) {
 		return(-1);
 	}
 
-	if(*bufptr == 0x8) {			/* if backspace, erase character */
-		*bufptr=0;
-		*--bufptr=0;
-		count--;
-	}
+	if(((unsigned char) *bufptr) == 0x8) {			/* if backspace, erase character */
+		*bufptr--=0;
 
-	if(*bufptr == '\n') {			/* if newline, return */
+		if((count - 1) > 0) count--;
+	}
+	else if(((unsigned char) *bufptr) == '\n') {			/* if newline, return */
 		*++bufptr=0;
 		break;
 	}
+	else
+	{
+		bufptr++;
+		count++;
+	}
 
-	bufptr++;
-
-
-	if(count++ >= size) return(size);
+	if(count >= size) return(size);
 }
 
 return(size);

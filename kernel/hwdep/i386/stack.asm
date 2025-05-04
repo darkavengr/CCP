@@ -71,9 +71,11 @@ mov	ebp,ebx
 jmp	[tempeip]					; return without using stack
 
 ;
-; Initialize kernel-mode stack
+; Initialize kernel-mode stack for process
 ;
-; In:	Stack pointer address
+; In:	esi=Kernel stack top
+;	edx=Process entry point
+;	ecx=Kernel stack bottom
 ;
 ; Returns: Nothing
 ;
@@ -82,28 +84,26 @@ mov	esi,[esp+4]				; kernel stack top
 mov	edx,[esp+8]				; entry point
 mov	ecx,[esp+12]				; kernel stack bottom
 
-mov	dword [esi],irq_exit
-mov	dword [esi+4],0xAAAAAAAA		; edi
-mov	dword [esi+8],0xBBBBBBBB		; esi
-mov	[esi+12],ecx				; ebp
-mov	[esi+16],esi				; esp
-mov	dword [esi+20],0xCCCCCCCC		; ebx
-mov	dword [esi+24],0xDDDDDDDD		; edx
-mov	dword [esi+28],0xEEEEEEEE		; ecx
-mov	dword [esi+32],0xFFFFFFFF		; eax
-mov	[esi+36],edx				; eip
-mov	dword [esi+40],KERNEL_CODE_SELECTOR	; cs
-mov	dword [esi+44],0x200			; eflags
-mov	[esi+48],ebx				; esp
+mov	dword [esi],0x200			; eflags
+mov	dword [esi-4],KERNEL_CODE_SELECTOR	; cs
+mov	[esi-8],edx				; eip
+mov	dword [esi-12],0xFFFFFFFF		; eax
+mov	dword [esi-16],0xEEEEEEEE		; ecx
+mov	dword [esi-20],0xDDDDDDDD		; edx
+mov	dword [esi-24],0xCCCCCCCC		; ebx
+mov	[esi-28],esi				; esp
+mov	[esi-32],ecx				; ebp
+mov	dword [esi-36],0xBBBBBBBB		; esi
+mov	dword [esi-40],0xAAAAAAAA		; edi
+mov	dword [esi-44],irq_exit			; return address
 
 ;
-; Adjust kernel stack pointer
-; so it points to intial values
+; Adjust kernel stack pointer to point to intial values
 ;
-call	get_kernel_stack_top
-sub	eax,17*4
 
-push	eax
+sub	esi,11*4
+
+push	esi
 call	save_kernel_stack_pointer
 add	esp,4
 
@@ -131,41 +131,6 @@ mov	eax,INITIAL_KERNEL_STACK_ADDRESS
 add	eax,KERNEL_STACK_SIZE
 ret
 
-updatekernelstack:
-push	edi
-push	edx
-push	ecx
-
-; updatekernelstack(oldprocess->kernelstackpointer,oldprocess->stackpointer,&&end_exec);
-
-mov	edi,[esp+4+12]				; kernel stack pointer
-mov	ecx,[esp+8+12]				; user stack pointer
-mov	edx,[esp+12+12]				; entry point
-
-mov	dword [edi],irq_exit
-mov	[edi+8],esi				; esi
-mov	[edi+12],ebp				; ebp
-mov	[edi+16],esp				; esp
-mov	[edi+20],ebx				; ebx
-mov	[edi+32],eax				; eax
-mov	[edi+36],edx				; eip
-mov	dword [edi+40],KERNEL_CODE_SELECTOR	; cs
-
-pushf
-pop	eax
-mov	[edi+44],eax				; eflags
-
-call	get_usermode_stack_pointer
-mov	[edi+48],eax				; esp
-
-pop	ecx
-pop	edx
-pop	edi
-
-mov	[edi+4],edi				; edi
-mov	[edi+24],edx				; edx
-mov	[edi+28],ecx				; ecx
-ret
 
 tempeip dd 0
 

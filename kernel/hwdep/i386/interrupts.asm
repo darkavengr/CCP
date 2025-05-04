@@ -522,10 +522,10 @@ ret
 ; Returns: Nothing
 ;
 d_lowlevel:
-push	ds
-push	es
-push	fs
-push	gs
+;push	ds
+;push	es
+;push	fs
+;push	gs
 push	eax
 push	ebx
 push	ecx
@@ -533,11 +533,11 @@ push	edx
 push	esi
 push	edi
 
-mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
-mov 	ds,ax
-mov 	es,ax
-mov 	fs,ax
-mov 	gs,ax
+;mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
+;mov 	ds,ax
+;mov 	es,ax
+;mov 	fs,ax
+;mov 	gs,ax
 
 call	disablemultitasking
 sti
@@ -556,10 +556,10 @@ pop	ecx
 pop	ebx
 pop	eax
 
-pop	gs
-pop	fs
-pop	es
-pop	ds
+;pop	gs
+;pop	fs
+;pop	es
+;pop	ds
 cmp	eax,0xffffffff					; if error ocurred
 je	iret_error
 

@@ -110,7 +110,6 @@ readcount=0;
 
 do {	
 	if(readcount > size) readcount=0;
-
 }  while(readcount < size);
 
 memcpy(buf,keybbuf,size);				
@@ -120,7 +119,7 @@ return;
 }
 
 /*
- * Keyboard irq handler
+ * Keyboard IRQ handler
  *
  * In: nothing
  *
@@ -200,7 +199,16 @@ switch(keycode) {								/* control characters */
 		return;
 
 	case KEY_BACK:
-		*keybuf=8;
+		
+		*keybuf++=8;		/* put backspace character into buffer */
+
+		if((bootinfo->cursor_col-1) > 1) {	
+			movecursor(bootinfo->cursor_row,--bootinfo->cursor_col);
+
+			write(stdout," ",1);
+			movecursor(bootinfo->cursor_row,--bootinfo->cursor_col);
+		}
+
 		return;							
 	
 	case KEY_SCROLL_LOCK:

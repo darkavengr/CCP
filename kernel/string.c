@@ -797,11 +797,8 @@ size_t tokenize_line(char *linebuf,char *tokens[MAX_SIZE][MAX_SIZE],char *split)
 char *token;
 size_t tc=0;
 size_t count;
-char c;
 char *d;
 char *splitptr;
-
-tc=0;
 
 memset(tokens,0,MAX_SIZE);
 
@@ -809,23 +806,19 @@ token=linebuf;
 
 d=tokens[0];
 
-while(*token != 0) { 		
-	if(*token == 0 ) break;
-
-	c=-1;
+while(*token != 0) {
 	splitptr=split;
 
-	while(c != 0) {
-		c=*splitptr++;
-   	
-		if(*token == c) {
+	while(*splitptr != 0) {
+
+		if(*token == *splitptr++) {
 			token++;
 			tc++;
 			d=tokens[tc];
    		}
  	 }	
 
-  *d++=*token++;
+	 *d++=*token++;
  }
 
 tc++;

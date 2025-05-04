@@ -40,7 +40,6 @@ extern get_current_process_pointer
 extern get_processes_pointer
 extern enablemultitasking
 extern disablemultitasking
-extern getphysicaladdress
 
 %define offset
 
@@ -99,11 +98,11 @@ push	dword [save_eip]			; eip
 pusha						; save registers
 push	dword end_yield
 
-push	esp
+push	esp  
 call	switch_task				; switch to next task
 
-add	esp,4
 end_yield:
+add	esp,4
 
 popa						; restore registers
 iret
@@ -140,20 +139,16 @@ jnz	multitasking_enabled
 jmp	no_stack_switch
 
 multitasking_enabled:
-push	dword [save_esp]			; save current task's stack pointer
-call	save_kernel_stack_pointer
-add	esp,4
+;inc	byte [0x800b8000]
 
-inc	byte [0x800b8000]
+;call	is_current_process_ready_to_switch
+;test	eax,eax					; return if process is not ready to switch
+;jnz	task_time_slice_finished
 
-call	is_current_process_ready_to_switch
-test	eax,eax					; return if process is not ready to switch
-jnz	task_time_slice_finished
+;jmp	no_stack_switch
 
-jmp	no_stack_switch
-
-task_time_slice_finished:
-call	reset_current_process_ticks
+;task_time_slice_finished:
+;call	reset_current_process_ticks
 
 ;
 ; Switch to next process

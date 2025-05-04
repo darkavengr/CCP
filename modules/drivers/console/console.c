@@ -117,6 +117,8 @@ if((size_t) consolepos % 2 == 1) consolepos++;
 			*consolepos++=color;
 		}
 
+		movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
+
 		if(bootinfo->cursor_row >= 24) {					/* scroll */
 			//asm("xchg %bx,%bx");
 
@@ -134,8 +136,6 @@ if((size_t) consolepos % 2 == 1) consolepos++;
 
 		
 	}
-
-movecursor(bootinfo->cursor_row,bootinfo->cursor_col);
 
 return(size);
 }

@@ -153,7 +153,6 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 
 next->kernelstackbase=next->kernelstacktop;
 next->kernelstacktop += PROCESS_STACK_SIZE;			/* top of kernel stack */
-next->kernelstackpointer=next->kernelstacktop-(12*sizeof(size_t));			/* intial kernel stack address */
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -187,8 +186,6 @@ page_init(highest_pid_used);				/* intialize page directory */
 loadpagetable(highest_pid_used);			/* load page table */
 
 currentprocess=next;					/* use new process */
-
-initializekernelstack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
 if(oldprocess == NULL) currentprocess->lasterror=last_error_no_process;	/* get no-process last error */
 
@@ -258,6 +255,8 @@ if(entrypoint == -1) {					/* can't load executable */
 	enable_interrupts();
 	return(-1);
 }
+
+initializekernelstack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
 /* create psp */ 
 
