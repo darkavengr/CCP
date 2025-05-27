@@ -114,6 +114,54 @@ call	set_tss_esp0
 add	esp,4
 ret
 
+updatekernelstack:
+push	edi
+push	edx
+push	ecx
+
+; updatekernelstack(oldprocess->kernelstackpointer,oldprocess->stackpointer,&&end_exec);
+
+mov	edi,[esp+4+12]				; kernel stack pointer
+mov	ecx,[esp+8+12]				; user stack pointer
+mov	edx,[esp+12+12]				; entry point
+
+mov	dword [edi],irq_exit
+mov	[edi+8],esi				; esi
+mov	[edi+12],ebp				; ebp
+mov	[edi+16],esp				; esp
+mov	[edi+20],ebx				; ebx
+mov	[edi+32],eax				; eax
+mov	[edi+36],edx				; eip
+mov	dword [edi+40],KERNEL_CODE_SELECTOR	; cs
+
+pushf
+pop	eax
+mov	[edi+44],eax				; eflags
+
+call	get_usermode_stack_pointer
+mov	[edi+48],eax				; esp
+
+pop	ecx
+pop	edx
+pop	edi
+
+mov	[edi+4],edi				; edi
+mov	[edi+24],edx				; edx
+mov	[edi+28],ecx				; ecx
+
+sub	edi,11*4
+
+push	edi
+call	save_kernel_stack_pointer
+add	esp,4
+
+; Set tss esp0 to ensure that the kernel stack is switched to next time the CPU switches to ring 0.
+
+push	edi
+call	set_tss_esp0
+add	esp,4
+ret
+
 get_kernel_stack_size:
 mov	eax,KERNEL_STACK_SIZE
 ret

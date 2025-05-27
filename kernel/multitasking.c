@@ -106,16 +106,17 @@ newprocess=get_current_process_pointer();
 
 /* find next process */
 
-while(newprocess != NULL) {
+//while(newprocess != NULL) {
 	newprocess=newprocess->next;
 
 	if(newprocess == NULL) newprocess=get_processes_pointer();	/* if at end, loop back to start */
 
-	if((newprocess->flags & PROCESS_BLOCKED) == 0) return(newprocess);		/* found process */
+//	if((newprocess->flags & PROCESS_BLOCKED) == 0) return(newprocess);		/* found process */
 
-}
+//}
 
-return(NULL);
+return(newprocess);
+//return(NULL);
 }
 
 /*
@@ -128,7 +129,7 @@ return(NULL);
  */
 
 size_t is_current_process_ready_to_switch(void) { 
-//if(get_processes_pointer() == NULL) return(FALSE);
+if(get_processes_pointer() == NULL) return(FALSE);
 
 if(increment_tick_count() < get_max_tick_count()) return(FALSE);
 

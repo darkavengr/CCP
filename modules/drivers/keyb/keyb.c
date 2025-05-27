@@ -110,6 +110,7 @@ readcount=0;
 
 do {	
 	if(readcount > size) readcount=0;
+
 }  while(readcount < size);
 
 memcpy(buf,keybbuf,size);				

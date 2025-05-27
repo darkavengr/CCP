@@ -479,7 +479,7 @@ mov	[regbuf+24],esi
 mov	[regbuf+28],edi
 mov	[regbuf+32],ebp
 
-mov	eax,[esp+8]			; get eip of interrupt handler from stack
+mov	eax,[esp+8]			; get interrupt handler EIP from stack
 mov	[regbuf],eax			; save it
 
 mov	eax,[esp+12]			; get flags
@@ -522,10 +522,10 @@ ret
 ; Returns: Nothing
 ;
 d_lowlevel:
-;push	ds
-;push	es
-;push	fs
-;push	gs
+push	ds
+push	es
+push	fs
+push	gs
 push	eax
 push	ebx
 push	ecx
@@ -533,19 +533,19 @@ push	edx
 push	esi
 push	edi
 
-;mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
-;mov 	ds,ax
-;mov 	es,ax
-;mov 	fs,ax
-;mov 	gs,ax
+mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
+mov 	ds,ax
+mov 	es,ax
+mov 	fs,ax
+mov 	gs,ax
 
-call	disablemultitasking
+;call	disablemultitasking
 sti
 
 call	dispatchhandler
 
 cli
-call	enablemultitasking
+;call	enablemultitasking
 
 mov	[tempone],eax
 
@@ -555,11 +555,10 @@ pop	edx
 pop	ecx
 pop	ebx
 pop	eax
-
-;pop	gs
-;pop	fs
-;pop	es
-;pop	ds
+pop	gs
+pop	fs
+pop	es
+pop	ds
 cmp	eax,0xffffffff					; if error ocurred
 je	iret_error
 

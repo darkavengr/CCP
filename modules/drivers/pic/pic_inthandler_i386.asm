@@ -93,7 +93,7 @@ jmp	irq
 irq:
 pusha						; save registers
 mov	eax,esp
-sub	eax,8					; minus 2 dword callirqhandlers() parameters
+sub	eax,12					; minus 2 dword callirqhandlers() parameters and return eip
 
 push	eax					; stack parameters
 push	dword [irqnumber]			; IRQ number

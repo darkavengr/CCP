@@ -137,6 +137,8 @@ int	0x21
 ret
 
 exec:
+xchg	bx,bx
+
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 

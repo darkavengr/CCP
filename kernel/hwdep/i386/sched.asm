@@ -50,13 +50,13 @@ extern disablemultitasking
 ;
 
 switch_task_process_descriptor:
-mov	[save_eax],eax
+push	eax
 
 mov	eax,[esp+4]				; get process descriptor
 mov	[save_descriptor],eax
-mov	eax,[save_eax]
+pop	eax
 
-; fall through to yield
+; fall through to yield()
 
 ;
 ; Force switch to next process
@@ -111,17 +111,17 @@ iret
 ; Switch task
 ;
 ; The caller is expected to save the registers onto the stack and call switch_task().
-; After returning from switch_task(), the caller function will then restore the registers and return,
+; After returning from switch_task() the caller function will then restore the registers and return,
 ; transferring control to the new process.
 ;
-; You are not expected to understand this
+; You are not expected to understand this.
 ;
 
 ; void switch_task(size_t *regs);
 
 switch_task:
 mov	eax,[esp+4]				; get pointer to saved context
-mov	[save_esp],eax
+mov	[ContextPointer],eax
 
 ; return if there are no processes
 
@@ -132,6 +132,13 @@ jnz	have_processes
 jmp	no_stack_switch
 
 have_processes:
+call	get_current_process_pointer
+test	eax,eax
+jnz	have_current_process
+
+jmp	no_stack_switch
+
+have_current_process:
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled
@@ -139,16 +146,26 @@ jnz	multitasking_enabled
 jmp	no_stack_switch
 
 multitasking_enabled:
-;inc	byte [0x800b8000]
+inc	byte [0x800b8000]
 
-;call	is_current_process_ready_to_switch
-;test	eax,eax					; return if process is not ready to switch
-;jnz	task_time_slice_finished
+call	is_current_process_ready_to_switch
+test	eax,eax					; return if process is not ready to switch
+jnz	task_time_slice_finished
 
-;jmp	no_stack_switch
+jmp	no_stack_switch
 
-;task_time_slice_finished:
-;call	reset_current_process_ticks
+task_time_slice_finished:
+call	getpid
+test	eax,eax
+jz	no_debug
+
+xchg	bx,bx
+no_debug:
+push	dword [ContextPointer]
+call	save_kernel_stack_pointer		; save kernel stack pointer
+add	esp,4
+
+call	reset_current_process_ticks		; reset number of process quantum ticks
 
 ;
 ; Switch to next process
@@ -157,14 +174,6 @@ multitasking_enabled:
 ;mov	eax,[save_descriptor]				; get descriptor
 ;test	eax,eax						; if not switching to a specific process
 ;jnz	have_descriptor					; update process now
-
-call	getpid
-
-test	eax,eax
-jz	no_debug
-
-xchg	bx,bx
-no_debug:
 
 call	find_next_process_to_switch_to			; get pointer to next process
 
@@ -189,6 +198,7 @@ call	set_tss_esp0
 add	esp,4
 
 call	get_kernel_stack_pointer
+;xchg	bx,bx
 mov	esp,eax						; switch kernel stack
 
 no_stack_switch:
@@ -196,8 +206,7 @@ no_stack_switch:
 ;mov	[save_descriptor],eax				; clear descriptor
 ret
 
-save_esp dd 0
-save_eax dd 0
+ContextPointer dd 0
 save_descriptor dd 0
 save_eip dd 0
 

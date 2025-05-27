@@ -39,6 +39,8 @@ size_t last_error_no_process=0;
 PROCESS *processes=NULL;
 PROCESS *processes_end=NULL;
 PROCESS *currentprocess=NULL;
+PROCESS *blockedprocesses=NULL;
+PROCESS *blockedprocesses_end=NULL;
 EXECUTABLEFORMAT *executableformats=NULL;
 size_t highest_pid_used=0;
 size_t signalno;
@@ -54,7 +56,7 @@ size_t *stackinit;
 /*
 * Execute program
 *
-* In: filename	Filename of file to execute
+* In: filename	Filename
       argsx	Arguments
       flags	Flags
 *
@@ -73,6 +75,7 @@ char *fullpath[MAX_PATH];
 size_t *stackptr;
 
 disable_interrupts();
+disablemultitasking();
 
 oldprocess=currentprocess;					/* save current process pointer */
 
@@ -86,6 +89,7 @@ if(processes == NULL) {  					/* first process */
 		freepages(highest_pid_used);	
 
 		enable_interrupts();
+		enablemultitasking();
 		return(-1);
 	}
 
@@ -104,6 +108,7 @@ else								/* not first process */
 		setlasterror(NO_MEM);
 
 		enable_interrupts();
+		enablemultitasking();
 		return(-1);
 	}
 
@@ -148,6 +153,7 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	processes_end=lastprocess;
 
 	enable_interrupts();
+	enablemultitasking();
 	return(-1);
 }
 
@@ -176,6 +182,7 @@ if(currentprocess != NULL) {
 		processes_end=lastprocess;
 
 		enable_interrupts();
+		enablemultitasking();
 		return(-1);
 	}
 
@@ -186,14 +193,14 @@ page_init(highest_pid_used);				/* intialize page directory */
 loadpagetable(highest_pid_used);			/* load page table */
 
 currentprocess=next;					/* use new process */
-
 if(oldprocess == NULL) currentprocess->lasterror=last_error_no_process;	/* get no-process last error */
 
 highest_pid_used++;
 
-/* Part two of enviroment variables duplication */
-
-/* allocate enviroment block at the highest user program address minus enviroment size */
+/* Part two of enviroment variables duplication
+ *
+ * allocate enviroment block at the highest user program address minus enviroment size
+ */
 
 currentprocess->envptr=alloc_int(ALLOC_NORMAL,getpid(),ENVIROMENT_SIZE,END_OF_LOWER_HALF-ENVIROMENT_SIZE);
 
@@ -205,7 +212,6 @@ if(saveenv != NULL) {
 /* allocate user mode stack below enviroment variables */
 
 stackp=alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,(END_OF_LOWER_HALF-PROCESS_STACK_SIZE-ENVIROMENT_SIZE));
-
 if(stackp == NULL) {
 	currentprocess=oldprocess;	/* restore current process pointer */
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
@@ -219,6 +225,7 @@ if(stackp == NULL) {
 	freepages(highest_pid_used);
 
 	enable_interrupts();
+	enablemultitasking();
 	return(-1);
 }
 
@@ -253,12 +260,16 @@ if(entrypoint == -1) {					/* can't load executable */
 	loadpagetable(getpid());
 
 	enable_interrupts();
+	enablemultitasking();
 	return(-1);
 }
 
+
+if(oldprocess != NULL) updatekernelstack(oldprocess->kernelstacktop,oldprocess->stackpointer,irq_exit);
+
 initializekernelstack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
-/* create psp */ 
+/* create Program Segment Prefix */ 
 
 ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
 
@@ -272,9 +283,8 @@ if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 	enablemultitasking();
 	enable_interrupts();
 
-	yield();
-
 	enable_interrupts();
+	enablemultitasking();
 	return(0);
 }
 else
@@ -286,6 +296,7 @@ else
 	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
 }
 
+enablemultitasking();
 return(0);
 }
 
@@ -938,10 +949,10 @@ splitname(fullpath,&split);
 strncpy(savecwd,currentprocess->currentdirectory,MAX_PATH);		/* save current directory */
 memcpy(currentprocess->currentdirectory,fullpath,3);		/* get new path */
 
-/* check if directory exists */
-
 if(findfirst(fullpath,&chdir_file_record) == -1) {		/* path doesn't exist */
 	strncpy(currentprocess->currentdirectory,savecwd,MAX_PATH);		/* restore old current directory */
+
+	setlasterror(PATH_NOT_FOUND);
 	return(-1);		
 }
 
@@ -953,6 +964,8 @@ if((strncmp(split.dirname,"\\",MAX_PATH) != 0) && ((chdir_file_record.flags & FI
 }
 
 strncpy(currentprocess->currentdirectory,fullpath,MAX_PATH);	/* set directory */
+
+kprintf_direct("currentprocess->currentdirectory=%s\n",currentprocess->currentdirectory);
 
 setlasterror(NO_ERROR);  
 return(NO_ERROR);				/* no error */
@@ -1205,15 +1218,46 @@ initialize_mutex(&process_mutex);
 
 size_t blockprocess(size_t pid) {
 PROCESS *next;
+PROCESS *blockednext;
+PROCESS *last;
 
 next=processes;
 	
 while(next != NULL) {
-	if(next->pid == pid) {			/* found process */
-		next->flags |= PROCESS_BLOCKED;			/* block process */
-	
-		next->blockedprocess=currentprocess;	/* save process descriptor */
+	last=next;
 
+	if(next->pid == pid) {			/* found process */
+		/* add to list of blocked processes */
+
+		if(blockedprocesses == NULL) {
+			blockedprocesses=kernelalloc(sizeof(PROCESS));
+			if(blockedprocesses == NULL) {
+				setlasterror(NO_MEM);
+				return(-1);
+			}
+
+			blockednext=blockedprocesses;
+			blockedprocesses_end=blockedprocesses;
+		}
+		else
+		{
+			blockedprocesses_end->next=kernelalloc(sizeof(PROCESS));
+			if(blockedprocesses_end->next == NULL) {
+				setlasterror(NO_MEM);
+				return(-1);
+			}
+
+			blockedprocesses_end=blockedprocesses_end->next;
+		}
+
+		memcpy(blockedprocesses_end,next,sizeof(PROCESS));	/* copy to blocked process list */
+
+		/* remove process from processes list */
+		last->next=next->next;
+		kernelfree(next);
+
+		setlasterror(NO_ERROR);
+	
 		if(pid == getpid()) yield();		/* switch to next process if blocking current process */
 		return(0);
 	}
@@ -1236,23 +1280,33 @@ return(-1);
 
 size_t unblockprocess(size_t pid) {
 PROCESS *next;
-PROCESS *bp;
+PROCESS *last;
 
-next=processes;
+next=blockedprocesses;
 	
 while(next != NULL) {
+	last=next;
+
 	if(next->pid == pid) {			/* found process */
-		next->flags &= ~PROCESS_BLOCKED;			/* unblock process */
+		/* copy to end of processes list */
 
-		if((pid != getpid()) && (next->blockedprocess != NULL)) {
-			bp=next->blockedprocess;
-			next->blockedprocess=NULL;
-
-			switch_task_process_descriptor(bp);		/* switch to blocked process */
-	
-			return;
+		processes_end->next=kernelalloc(sizeof(PROCESS));
+		if(processes_end->next == NULL) {
+			setlasterror(NO_MEM);
+			return(-1);
 		}
 
+		processes_end=processes_end->next;
+	
+		memcpy(processes_end,next,sizeof(PROCESS));	/* copy to blocked process list */
+
+		/* remove process from processes list */
+		last->next=next->next;
+		kernelfree(next);
+	
+		setlasterror(NO_ERROR);	
+
+		switch_task_process_descriptor(processes_end);		/* switch to unblocked process */
 		return(0);
 	}
 	

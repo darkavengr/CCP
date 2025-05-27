@@ -39,7 +39,7 @@
 #define FILE_EXISTS		0x50
 #define DIR_ENTRY_CREATE_ERROR	0x52
 
-#define LAST_ERROR_NUMBER	0x50
+#define LAST_ERROR_NUMBER	0x52
 
 #define TRUE	1
 #define FALSE	0

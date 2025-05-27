@@ -807,14 +807,18 @@ token=linebuf;
 d=tokens[0];
 
 while(*token != 0) {
-	splitptr=split;
+	splitptr=split;			/* point to split characters */
 
 	while(*splitptr != 0) {
 
-		if(*token == *splitptr++) {
+		if(*token == *splitptr++) {	/* end of token */
 			token++;
 			tc++;
+
+			*d=0;		/* put null at end of token */
+
 			d=tokens[tc];
+			break;
    		}
  	 }	
 
@@ -822,9 +826,7 @@ while(*token != 0) {
  }
 
 tc++;
-
-d=tokens[tc];
-*d=0;
+*tokens[tc]=0;
 
 return(tc);
 }
