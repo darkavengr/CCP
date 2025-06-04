@@ -3,10 +3,8 @@
 #include "errors.h"
 #include "mutex.h"	
 #include "device.h"
-#include "vfs.h"
 #include "bootinfo.h"
 #include "debug.h"
-#include "memorymanager.h"
 #include "string.h"
 
 /*

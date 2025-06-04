@@ -18,6 +18,8 @@
 
 #define MAX_PATH	255
 
+#ifndef DEVICE_H
+#define DEVICE_H
 typedef struct {
 	char *name[MAX_PATH];
 	size_t (*charioread)(void *,size_t);			/* function pointer */
@@ -53,6 +55,7 @@ typedef struct {
 	size_t refnumber;		/* to distinguish between IRQs */
 	struct IRQ_HANDLER *next;
 } IRQ_HANDLER;
+#endif
 
 size_t add_block_device(BLOCKDEVICE *driver);
 size_t add_char_device(CHARACTERDEVICE *device);

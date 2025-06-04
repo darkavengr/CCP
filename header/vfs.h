@@ -1,7 +1,10 @@
 #include <stddef.h>
 #include "errors.h"
 #include "time.h"
+#include "device.h"
 
+#ifndef VFS_H
+#define VFS_H
 #define	NULL			0
 #define TRUE			1
 #define FALSE 			0
@@ -105,6 +108,7 @@ typedef struct {
 	PIPE *pipereadptr;
 	struct FILERECORD *next;		
 } __attribute__((packed)) FILERECORD;
+#endif
 
 size_t findfirst(char *name,FILERECORD *buf);
 size_t findnext(char *name,FILERECORD *buf);

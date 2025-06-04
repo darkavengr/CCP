@@ -3,7 +3,7 @@ global seek
 global getfileattributes
 global chmod
 global getfiletimedate
-global setfiletimedate
+global touch
 global close
 global create
 global delete
@@ -97,7 +97,7 @@ mov	eax,0x5700
 int	0x21
 ret
  
-setfiletimedate:
+touch:
 mov	ebx,[esp+4]
 mov	ecx,[esp+8]
 mov	edx,[esp+12]
@@ -137,8 +137,6 @@ int	0x21
 ret
 
 exec:
-xchg	bx,bx
-
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 

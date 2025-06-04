@@ -23,7 +23,6 @@
 #include "kernelhigh.h"
 #include "errors.h"
 #include "mutex.h"
-#include "device.h"
 #include "vfs.h"
 #include "memorymanager.h"
 #include "process.h"
@@ -305,76 +304,80 @@ return(0);
 *
 * In: process	Process ID
 *
-* Returns -1 on error doesn't return on success
+* Returns -1 on error.Returns 0 on success.
 *
 */
 
 size_t kill(size_t process) {
 PROCESS *last;
 PROCESS *next;
-PROCESS *nextprocess;
-char *b;
 size_t oldprocess;
-
-disablemultitasking();
+size_t process_found=FALSE;
 
 lock_mutex(&process_mutex);			/* lock mutex */
 
-shut();						/* close open files for process */
-
 oldprocess=getpid();				/* save current process ID */
+
+/* search through processes then blocked processes */
 
 next=processes;
 last=next;
 	
 while(next != NULL) {
 
-	if(next->pid == process) break;
-	last=next;
+	if(next->pid == process) {		/* found process */
+		process_found=TRUE;
+		break;
+	}
+
 	next=next->next;
 }
+		
+if(process_found == FALSE) {
+	next=blockedprocesses;
+	last=next;
+	
+	while(next != NULL) {
 
-if(next == NULL) {				/* return if process was not found */
+		if(next->pid == process) {		/* found process */
+			process_found=TRUE;
+			break;
+		}
+
+		next=next->next;
+	}
+}
+
+
+if(process_found == FALSE) {		/* process not found */
 	setlasterror(INVALID_PROCESS);
-
-	unlock_mutex(&process_mutex);			/* unlock mutex */
-
-	enablemultitasking();
 	return(-1);
 }
 
-if(processes == NULL) {
-	enable_interrupts();
-	shutdown(0);
-}
-
-while((next->flags & PROCESS_BLOCKED) != 0) ;;		/* process is being waited on */
+/* remove process */
 
 if(next == processes) {			/* start */
 	processes=next->next;
 }
 else if(next->next == NULL) {		/* end */
-	 last->next=NULL;
+	last->next=NULL;
 }
 else						/* middle */
 {
-	 last->next=next->next;	
-}
+	last->next=next->next;	
+}		
+
+kernelfree(next);		/* free process entry */
+freepages(oldprocess);		/* release paging structures */
 
 if(processes == NULL) {		/* no processes */
 	kprintf_direct("kernel: No more processes running, system will shut down\n");
 	shutdown(_SHUTDOWN);
 }
-else
-{
-	kernelfree(next);
-	freepages(oldprocess);
-}
-
 
 unlock_mutex(&process_mutex);			/* unlock mutex */
 
-if(process == oldprocess) {
+if(process == oldprocess) {	/* killing current process */
 	currentprocess->ticks=currentprocess->maxticks+1;	/* force task to end of timeslot */
 
 	enablemultitasking();
@@ -383,8 +386,8 @@ if(process == oldprocess) {
 
 }
 
-enablemultitasking();
-return;
+setlasterror(NO_ERROR);
+return(0);
 }
 
 /*
@@ -1699,4 +1702,5 @@ while(get_tick_count() < newticks) ;;			/* until tickcount is at last tick */
 size_t GetVersion(void) {
 return((CCP_MAJOR_VERSION << 24) | (CCP_MINOR_VERSION << 16) | (CCP_RELEASE_VERSION << 8));
 }
+
 

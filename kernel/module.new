@@ -1,4 +1,4 @@
-7/*  CCP Version 0.0.1
+/*  CCP Version 0.0.1
 	 (C) Matthew Boote 2020-2023
 
 	 This file is part of CCP.
@@ -32,14 +32,21 @@
 #include "module.h"
 #include "memorymanager.h"
 #include "string.h"
-
 #include <elf.h>
 
 size_t load_kernel_module(char *filename,char *argsx);
-size_t getnameofsymbol(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name);
+size_t getnameofsymbol32(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name);
+size_t getnameofsymbol64(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf64_Sym *symtab,Elf64_Shdr *sectionptr,size_t which,char *name);
 size_t getkernelsymbol(char *name);
 size_t add_external_module_symbol(char *name,size_t val);
 size_t get_external_module_symbol(char *name);
+size_t unload_kernel_module(char *filename);
+size_t get_section_pointers32(Elf32_Ehdr *elf_header,char *modulestartaddress,char *symtab,char *strtab,char *codestart,char *rodata,size_t common_data_section_size);
+size_t get_section_pointers64(Elf64_Ehdr *elf_header,char *modulestartaddress,char *symtab,char *strtab,char *codestart,char *rodata,size_t common_data_section_size);
+size_t getnameofsymbol32(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name);
+size_t getnameofsymbol64(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf64_Sym *symtab,Elf64_Shdr *sectionptr,size_t which,char *name);
+Elf32_Shdr *GetModuleReference32(char *modulestartaddress,Elf32_Ehdr *elf_header,Elf32_Shdr *shptr);
+Elf64_Shdr *GetModuleReference64(char *modulestartaddress,Elf64_Ehdr *elf_header,Elf64_Shdr *shptr);
 
 SYMBOL_TABLE_ENTRY *externalmodulesymbols=NULL;
 KERNELMODULE *kernelmodules=NULL;
@@ -62,6 +69,8 @@ char *name[MAX_PATH];
 size_t count;
 char *modulestartaddress;
 char *bufptr;
+Elf64_Ehdr *elf_header64;
+
 Elf32_Ehdr *elf_header32;
 Elf32_Shdr *shptr;
 Elf32_Shdr *rel_shptr;
@@ -742,7 +751,7 @@ for(count=0;count < number_of_section_headers;count++)
 				/* update reference in section */
 			
 				if(symtype == R_386_NONE) {
-				;
+					;;
 				}
 				else if(symtype == R_386_32) {
 					*ref=DO_386_32(symval,*ref);

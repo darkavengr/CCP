@@ -1,5 +1,8 @@
 #include <stddef.h>
 
+
+#ifndef INITRD_H
+#define INITRD_H
 #define TAR_BLOCK_SIZE	512
 #define INITRD_MAGIC_SIZE 6
 
@@ -21,4 +24,5 @@ typedef struct {
 	char devminor[8];
 	char prefix[155];
 } TAR_HEADER;
+#endif
 

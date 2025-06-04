@@ -20,7 +20,6 @@
 #include <stdint.h>
 #include "kernelhigh.h"
 #include "mutex.h"
-#include "device.h"
 #include "vfs.h"
 #include "initrd.h"
 #include "errors.h"

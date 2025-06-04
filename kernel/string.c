@@ -21,7 +21,6 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include "mutex.h"
-#include "device.h"
 #include "vfs.h"
 #include "string.h"
 #include "debug.h"

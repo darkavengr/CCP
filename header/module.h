@@ -1,3 +1,5 @@
+#ifndef MODULE_H
+#define MODULE_H
 #define DO_386_32(S, A)	((S) + (A))
 #define DO_386_PC32(S, A, P)	((S) + (A) - (P))
 
@@ -13,4 +15,5 @@ typedef struct {
 	char *commondata;
 	struct KERNELMODULE *next;
 } KERNELMODULE;
+#endif
 

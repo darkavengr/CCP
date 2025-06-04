@@ -23,7 +23,6 @@
 
 #include <stdint.h>
 #include "mutex.h"
-#include "device.h"
 #include "vfs.h"
 #include "errors.h"
 #include "bootinfo.h"

@@ -4,7 +4,9 @@ make 2>out
 
 if [ $? == 0 ]; then
 	sudo ./installccp-$1 $2
-	bochs -q &
+	if [ $? == 0 ]; then 
+		bochs -q &
+	fi
 else
 	grep -i "error:" out
 fi

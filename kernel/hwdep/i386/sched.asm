@@ -102,7 +102,7 @@ push	esp
 call	switch_task				; switch to next task
 
 end_yield:
-add	esp,4
+add	esp,8
 
 popa						; restore registers
 iret

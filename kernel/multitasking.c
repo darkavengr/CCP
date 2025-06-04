@@ -17,9 +17,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "mutex.h"
-#include "device.h"
 #include "vfs.h"
-#include "memorymanager.h"
 #include "process.h"
 #include "string.h"
 #include "multitasking.h"

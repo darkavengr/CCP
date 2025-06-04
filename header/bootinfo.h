@@ -3,6 +3,8 @@
 
 #define BOOT_INFO_ADDRESS		0xAC
 
+#ifndef BOOTINFO_H
+#define BOOTINFO_H
 typedef struct {
 	uint8_t physicaldrive;
 	uint8_t drive;
@@ -18,4 +20,4 @@ typedef struct {
 	uint64_t memorysize;
 	uint32_t boot_drive_start_lba;	/* Used by the loader */
 } __attribute__((packed)) BOOT_INFO;
-
+#endif

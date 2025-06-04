@@ -1,3 +1,6 @@
+#ifndef PROCESS_H
+#define PROCESS_H
+
 #define PROCESS_NEW	0
 #define	PROCESS_READY	1
 #define PROCESS_RUNNING	2
@@ -54,6 +57,7 @@ typedef struct {
 	 size_t (*callexec)(char *);
 	 struct EXECUTABLEFORMAT *next;
 } EXECUTABLEFORMAT;
+#endif
 
 size_t exec(char *filename,char *argsx,size_t flags);
 size_t kill(size_t process);

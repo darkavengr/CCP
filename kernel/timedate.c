@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "mutex.h"
-#include "device.h"
 #include "vfs.h"
 #include "string.h"
 
