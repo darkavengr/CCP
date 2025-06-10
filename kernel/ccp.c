@@ -47,6 +47,9 @@ void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
 
+kprintf_direct("load_kernel_module() returned %d\n",load_kernel_module("A:\\TEST.O",""));
+asm("xchg %bx,%bx");
+
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);
 }

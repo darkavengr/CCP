@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include "mutex.h"
+#include "device.h"
 #include "vfs.h"
 #include "errors.h"
 #include "bootinfo.h"
@@ -31,14 +32,17 @@
 #include "module.h"
 #include "memorymanager.h"
 #include "string.h"
-
 #include <elf.h>
 
 size_t load_kernel_module(char *filename,char *argsx);
-size_t getnameofsymbol(char *strtab,char *sectionheader_strptr,char *buf,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name);
+size_t getnameofsymbol32(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name);
+size_t getnameofsymbol64(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf64_Sym *symtab,Elf64_Shdr *sectionptr,size_t which,char *name);
 size_t getkernelsymbol(char *name);
 size_t add_external_module_symbol(char *name,size_t val);
 size_t get_external_module_symbol(char *name);
+size_t unload_kernel_module(char *filename);
+Elf32_Shdr *GetModuleReference32(char *modulestartaddress,Elf32_Ehdr *elf_header,Elf32_Shdr *shptr);
+Elf64_Shdr *GetModuleReference64(char *modulestartaddress,Elf64_Ehdr *elf_header,Elf64_Shdr *shptr);
 
 SYMBOL_TABLE_ENTRY *externalmodulesymbols=NULL;
 KERNELMODULE *kernelmodules=NULL;
@@ -59,18 +63,26 @@ size_t handle;
 char *fullname[MAX_PATH];
 char *name[MAX_PATH];
 size_t count;
-char *buf;
+char *modulestartaddress;
 char *bufptr;
-Elf32_Ehdr *elf_header;
-Elf32_Shdr *shptr;
-Elf32_Shdr *rel_shptr;
-Elf32_Shdr *symsection;
-Elf32_Rel *relptr;
-Elf32_Rela *relptra;
+Elf64_Ehdr *elf_header64;
+Elf32_Ehdr *elf_header32;
+Elf32_Shdr *shptr32;
+Elf32_Shdr *rel_shptr32;
+Elf32_Shdr *symsection32;
+Elf32_Rel *relptr32;
+Elf32_Rela *relptra32;
+Elf32_Sym *symtab32=NULL;
+Elf32_Sym *symptr32=NULL;
+Elf64_Shdr *shptr64;
+Elf64_Shdr *rel_shptr64;
+Elf64_Shdr *symsection64;
+Elf64_Rel *relptr64;
+Elf64_Rela *relptra64;
+Elf64_Sym *symtab64=NULL;
+Elf64_Sym *symptr64=NULL;
 size_t whichsym;
 size_t symtype;
-Elf32_Sym *symtab=NULL;
-Elf32_Sym *symptr=NULL;
 char *strtab;
 char *strptr;
 size_t *ref;
@@ -87,6 +99,12 @@ KERNELMODULE *kernelmodulenext;
 KERNELMODULE *kernelmodulelast;
 char *commondataptr;
 size_t common_data_section_size;
+size_t elf_type;
+size_t number_of_section_headers;
+size_t number_of_reloc_headers;
+size_t sectiontype;
+size_t stval;
+size_t stsize;
 
 disablemultitasking();
 
@@ -114,8 +132,8 @@ if(handle == -1) {
 	return(-1);		/* can't open */
 }
 
-buf=kernelalloc(getfilesize(handle));		/* allocate memory for module */
-if(buf == NULL) {
+modulestartaddress=kernelalloc(getfilesize(handle));		/* allocate memory for module */
+if(modulestartaddress == NULL) {
 	close(handle);	
 
 	enablemultitasking();
@@ -124,10 +142,10 @@ if(buf == NULL) {
 
 /* The entire module file is read into memory to allow fast cross-referencing */
 
-if(read(handle,buf,getfilesize(handle)) == -1) {			/* read module into buffer */
+if(read(handle,modulestartaddress,getfilesize(handle)) == -1) {			/* read module into buffer */
 	close(handle);
 
-	kernelfree(buf);
+	kernelfree(modulestartaddress);
 
 	enablemultitasking();	
 	return(-1);
@@ -135,34 +153,62 @@ if(read(handle,buf,getfilesize(handle)) == -1) {			/* read module into buffer */
 
 close(handle);
 
-elf_header=buf;
+elf_header32=modulestartaddress;
+elf_header64=modulestartaddress;
 
-if(elf_header->e_ident[0] != 0x7F && elf_header->e_ident[1] != 0x45 && elf_header->e_ident[2] != 0x4C && elf_header->e_ident[3] != 0x46) {	/* not elf */
+if(elf_header32->e_ident[0] != 0x7F && 
+   elf_header32->e_ident[1] != 0x45 &&
+   elf_header32->e_ident[2] != 0x4C &&
+   elf_header32->e_ident[3] != 0x46) {	/* not an ELF object file */
 
 	kprintf_direct("module loader: Module %s is not a valid ELF object file\n",fullname);
 
 	setlasterror(INVALID_EXECUTABLE);
-	kernelfree(buf);
+	kernelfree(modulestartaddress);
 
 	enablemultitasking();
 	return(-1);
 }
 
-if(elf_header->e_type != ET_REL) {	
+elf_type=elf_header32->e_ident[4];		/* get ELF type; 32 or 64-bit */
+
+if( ((elf_type == ELFCLASS32) && (elf_header32->e_type != ET_REL)) || 
+    ((elf_type == ELFCLASS64) && (elf_header64->e_type != ET_REL)) ) {	
 	kprintf_direct("module loader: Module %s is not relocatable an ELF object file\n",fullname);
 
 	setlasterror(INVALID_EXECUTABLE);
-	kernelfree(buf);
+	kernelfree(modulestartaddress);
 
 	enablemultitasking();
 	return(-1);
 }
 
-if(elf_header->e_shnum == 0) {	
+if( ((elf_type == ELFCLASS32) && (elf_header32->e_shnum == 0)) ||
+    ((elf_type == ELFCLASS64) && (elf_header64->e_shnum == 0))) {
 	kprintf_direct("module loader: No section headers found in module %s\n",fullname);
 
 	setlasterror(INVALID_EXECUTABLE);
-	kernelfree(buf);
+	kernelfree(modulestartaddress);
+
+	enablemultitasking();
+	return(-1);
+}
+
+if((elf_type == ELFCLASS32) && (sizeof(size_t) != 4)) {
+	kprintf_direct("module loader: Can't load 32-bit module on 64-bit systems\n");
+
+	setlasterror(INVALID_EXECUTABLE);
+	kernelfree(modulestartaddress);
+
+	enablemultitasking();
+	return(-1);
+}
+
+if((elf_type == ELFCLASS64) && (sizeof(size_t) != 8)) {
+	kprintf_direct("module loader: Can't load 32-bit module on 64-bit systems\n");
+
+	setlasterror(INVALID_EXECUTABLE);
+	kernelfree(modulestartaddress);
 
 	enablemultitasking();
 	return(-1);
@@ -170,50 +216,97 @@ if(elf_header->e_shnum == 0) {
 
 /* find the location of the section header string table, it will be used to find the string table */
 
-shptr=(size_t) buf+elf_header->e_shoff+(elf_header->e_shstrndx*sizeof(Elf32_Shdr));	/* find string section in table */
-sectionheader_strptr=(buf+shptr->sh_offset)+1;		/* point to section header string table */
+if(elf_type == ELFCLASS32) {
+	shptr32=(size_t) modulestartaddress+elf_header32->e_shoff+(elf_header32->e_shstrndx*sizeof(Elf32_Shdr));	/* find string section in table */
+	sectionheader_strptr=(modulestartaddress+shptr32->sh_offset)+1;		/* point to section header string table */
+}
+if(elf_type == ELFCLASS64) {
+	shptr64=(size_t) modulestartaddress+elf_header64->e_shoff+(elf_header64->e_shstrndx*sizeof(Elf64_Shdr));	/* find string section in table */
+	sectionheader_strptr=(modulestartaddress+shptr64->sh_offset)+1;		/* point to section header string table */
+}
 
 /* find the symbol table,string table, text, data and rodata sections from section header table */
 
-shptr=buf+elf_header->e_shoff;
+if(elf_type == ELFCLASS32) {
+	shptr32=modulestartaddress+elf_header32->e_shoff;
 
-for(count=0;count < elf_header->e_shnum;count++) {
-	if(shptr->sh_type == SHT_SYMTAB && symtab == NULL) symtab=buf+shptr->sh_offset;
+	number_of_section_headers=elf_header32->e_shnum;
+}
+if(elf_type == ELFCLASS64) {
+	shptr64=modulestartaddress+elf_header64->e_shoff;
 
-	if(shptr->sh_type == SHT_STRTAB) {		/* string table */
-		bufptr=sectionheader_strptr+shptr->sh_name;	/* point to section header string table */
+	number_of_section_headers=elf_header64->e_shnum;
+}
 
-		if(strncmp(bufptr,"strtab",MAX_PATH) == 0) strtab=buf+shptr->sh_offset+1;		/* string table */
- 	}
+for(count=0;count < number_of_section_headers;count++) {
 
-	bufptr=sectionheader_strptr+shptr->sh_name;	/* point to section header string table */
+	if(elf_type == ELFCLASS32) {
+		if(shptr32->sh_type == SHT_SYMTAB && symtab32 == NULL) symtab32=modulestartaddress+shptr32->sh_offset;
 
-	if(strncmp(bufptr,"text",MAX_PATH) == 0) codestart=buf+shptr->sh_offset;	/* found code section */ 	
+		if(shptr32->sh_type == SHT_STRTAB) {		/* string table */
+			bufptr=sectionheader_strptr+shptr32->sh_name;	/* point to section header string table */
 
-	if(strncmp(bufptr,"rodata",MAX_PATH) == 0) {
-		rodata=buf+shptr->sh_offset;	/* found rodata section */ 		
-		next_free_address_rodata=rodata;
+			if(strncmp(bufptr,"strtab",MAX_PATH) == 0) strtab=modulestartaddress+shptr32->sh_offset+1;		/* string table */
+	 	}
 
-		if(shptr->sh_size > common_data_section_size) common_data_section_size=shptr->sh_size;
+		bufptr=sectionheader_strptr+shptr32->sh_name;	/* point to section header string table */
+
+		if(strncmp(bufptr,"text",MAX_PATH) == 0) codestart=modulestartaddress+shptr32->sh_offset; /* found code section */ 	
+
+		if(strncmp(bufptr,"rodata",MAX_PATH) == 0) {
+			rodata=modulestartaddress+shptr32->sh_offset;	/* found rodata section */ 		
+			next_free_address_rodata=rodata;
+
+			if(shptr32->sh_size > common_data_section_size) common_data_section_size=shptr32->sh_size;
+		}
+
+		if(strncmp(bufptr,"data",MAX_PATH) == 0) {
+			data=modulestartaddress+shptr32->sh_offset;		/* found data section */ 
+			next_free_address_data=data;		/* get next free pointers */
+
+			if(shptr32->sh_size > common_data_section_size) common_data_section_size=shptr32->sh_size;
+		}
+
+		shptr32++;
+	}
+	else if(elf_type == ELFCLASS64) {
+		if(shptr64->sh_type == SHT_SYMTAB && symtab64 == NULL) symtab64=modulestartaddress+shptr64->sh_offset;
+
+		if(shptr64->sh_type == SHT_STRTAB) {		/* string table */
+			bufptr=sectionheader_strptr+shptr64->sh_name;	/* point to section header string table */
+			if(strncmp(bufptr,"strtab",MAX_PATH) == 0) strtab=modulestartaddress+shptr64->sh_offset+1;		/* string table */
+	 	}
+
+		bufptr=sectionheader_strptr+shptr64->sh_name;	/* point to section header string table */
+
+		if(strncmp(bufptr,"text",MAX_PATH) == 0) codestart=modulestartaddress+shptr64->sh_offset;	/* found code section */ 	
+
+		if(strncmp(bufptr,"rodata",MAX_PATH) == 0) {
+			rodata=modulestartaddress+shptr64->sh_offset;	/* found rodata section */ 		
+			next_free_address_rodata=rodata;
+
+			if(shptr64->sh_size > common_data_section_size) common_data_section_size=shptr64->sh_size;
+		}
+
+		if(strncmp(bufptr,"data",MAX_PATH) == 0) {
+			data=modulestartaddress+shptr64->sh_offset;		/* found data section */ 
+			next_free_address_data=data;		/* get next free pointers */
+
+			if(shptr64->sh_size > common_data_section_size) common_data_section_size=shptr64->sh_size;
+		}
+
+		shptr64++;
 	}
 
-	if(strncmp(bufptr,"data",MAX_PATH) == 0) {
-		data=buf+shptr->sh_offset;		/* found data section */ 
-		next_free_address_data=data;		/* get next free pointers */
-
-		if(shptr->sh_size > common_data_section_size) common_data_section_size=shptr->sh_size;
-	}
-
-	shptr++;
 }
 
 /* check if symbol and string table present */
 
-if(symtab == NULL) {
+if(((elf_type == ELFCLASS32) && (symtab32 == NULL)) || ((elf_type == ELFCLASS64) && (symtab64 == NULL))  ) {
 	kprintf_direct("module loader: Module has no symbol section(s)\n");
 
 	setlasterror(INVALID_EXECUTABLE);
-	kernelfree(buf);
+	kernelfree(modulestartaddress);
 	kernelfree(kernel_module_end->commondata);
 
 	enablemultitasking();
@@ -222,7 +315,7 @@ if(symtab == NULL) {
 
 if(strtab == NULL) {
 	kprintf_direct("module loader: Module has no string section(s)\n");
-	kernelfree(buf);
+	kernelfree(modulestartaddress);
 	kernelfree(kernel_module_end->commondata);
 
 	setlasterror(INVALID_EXECUTABLE);
@@ -236,7 +329,7 @@ if(strtab == NULL) {
 if(kernelmodules == NULL) {			/* first in list */
 	kernelmodules=kernelalloc(sizeof(KERNELMODULE));
 	if(kernelmodules == NULL) {
-		kernelfree(buf);
+		kernelfree(modulestartaddress);
 		kernelfree(kernel_module_end->commondata);
 
 		enablemultitasking();	
@@ -249,7 +342,7 @@ else
 {
 	kernel_module_end->next=kernelalloc(sizeof(KERNELMODULE));
 	if(kernel_module_end->next == NULL) {
-		kernelfree(buf);
+		kernelfree(modulestartaddress);
 		kernelfree(kernel_module_end->commondata);
 
 		enablemultitasking();	
@@ -260,202 +353,293 @@ else
 }
 
 strncpy(kernel_module_end->filename,fullname,MAX_PATH);
+
 kernel_module_end->next=NULL;
 
-kernel_module_end->commondata=kernelalloc(common_data_section_size);
+kernel_module_end->commondata=kernelalloc(common_data_section_size);		/* allocate buffer for data section */
 if(kernel_module_end->commondata == NULL) {
-	kernelfree(buf);
+	kernelfree(modulestartaddress);
 	kernelfree(kernel_module_end->commondata);
 	kernelfree(kernelmodulelast->next);
 	
-	setlasterror(INVALID_EXECUTABLE);
 	enablemultitasking();
 	return(-1);
 }
 
 commondataptr=kernel_module_end->commondata;
 
-shptr=buf+elf_header->e_shoff;
-
 /* Relocate elf references
 
 	The relocation is done by:
 	  Searching through section table to find SHT_REL or SHL_RELA sections 
 	  Processing each of the relocation entries in that section. The entries are relative to the start of the section.
-	  The section is referenced in the relocation by adding the relocation address to the start of the entry.		
+	  The section is referenced in0 the relocation by adding the relocation address to the start of the entry.		
 */
 
-for(count=0;count<elf_header->e_shnum;count++) {
+/* find string section in table */
+if(elf_type == ELFCLASS32) {
+	strptr=(size_t) modulestartaddress+elf_header32->e_shoff+(elf_header32->e_shstrndx*sizeof(Elf32_Shdr));
 
-	if((shptr->sh_type == SHT_REL) || (shptr->sh_type == SHT_RELA)) {					/* found section */
+	shptr32=modulestartaddress+elf_header32->e_shoff;
+}
+if(elf_type == ELFCLASS64) {
+	strptr=(size_t) modulestartaddress+elf_header64->e_shoff+(elf_header64->e_shstrndx*sizeof(Elf64_Shdr));
+
+	shptr64=modulestartaddress+elf_header64->e_shoff;
+}
+
+for(count=0;count<(number_of_section_headers-1);count++) {
+
+	if(elf_type == ELFCLASS32) {
+		sectiontype=shptr32->sh_type;			/* get section type */
+	}
+	else if(elf_type == ELFCLASS64) {
+		sectiontype=shptr64->sh_type;			/* get section type */
+	}
+
+	if(  (elf_type == ELFCLASS32 && shptr32->sh_type == SHT_REL) ||
+	     (elf_type == ELFCLASS32 && shptr32->sh_type == SHT_RELA) ||
+	     (elf_type == ELFCLASS64 && shptr64->sh_type == SHT_REL) ||
+	     (elf_type == ELFCLASS64 && shptr64->sh_type == SHT_RELA)) { 
 		/* perform relocations using relocation table in section */
  
-		if(shptr->sh_type == SHT_REL) {
-			relptr=buf+shptr->sh_offset;
+		if((elf_type == ELFCLASS32) && ((shptr32->sh_type == SHT_REL) || (shptr32->sh_type == SHT_RELA))) {
+			if(shptr32->sh_type == SHT_REL) {
+				relptr32=modulestartaddress+shptr32->sh_offset;
+			}
+			else if(shptr32->sh_type == SHT_RELA) {
+				relptra32=modulestartaddress+shptr32->sh_offset;
+			}
+
+			number_of_reloc_headers=(shptr32->sh_size/sizeof(Elf32_Rel));
 		}
-		else if(shptr->sh_type == SHT_RELA) {
-			relptra=buf+shptr->sh_offset;
+		else if((elf_type == ELFCLASS64) && ((shptr64->sh_type == SHT_REL) || (shptr64->sh_type == SHT_RELA))) {
+			if(shptr64->sh_type == SHT_REL) {
+				relptr64=modulestartaddress+shptr64->sh_offset;
+			}
+			else if(shptr64->sh_type == SHT_RELA) {
+				relptra64=modulestartaddress+shptr64->sh_offset;
+			}
+
+			number_of_reloc_headers=(shptr64->sh_size/sizeof(Elf64_Rel));
 		}
-		
+
 		/* perform relocations for each entry */
 
-		for(reloc_count=0;reloc_count < (shptr->sh_size/sizeof(Elf32_Rel));reloc_count++) {
+		for(reloc_count=0;reloc_count < number_of_reloc_headers;reloc_count++) {
 
-				rel_shptr=(buf+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr));
+			if((elf_type == ELFCLASS32) && ((shptr32->sh_type == SHT_REL) || (shptr32->sh_type == SHT_RELA))) {
+				rel_shptr32=(modulestartaddress+elf_header32->e_shoff)+(shptr32->sh_info*sizeof(Elf32_Shdr));
 				
-				if(shptr->sh_type == SHT_REL) {			
-			  		whichsym=relptr->r_info >> 8;			/* which symbol */
-					symtype=relptr->r_info & 0xff;		/* symbol type */
+				if(shptr32->sh_type == SHT_REL) {
+			  		whichsym=relptr32->r_info >> 8;			/* which symbol */
+					symtype=relptr32->r_info & 0xff;		/* symbol type */
 
-					ref=(buf+rel_shptr->sh_offset)+relptr->r_offset;
+					ref=(modulestartaddress+rel_shptr32->sh_offset)+relptr32->r_offset;
+
 				}
-				else if(shptr->sh_type == SHT_RELA) { 
+				else if(shptr32->sh_type == SHT_RELA) { 
+			  		whichsym=relptra32->r_info >> 8;			/* which symbol */
+					symtype=relptra32->r_info & 0xff;			/* symbol type */
 
-			  		whichsym=relptra->r_info >> 8;			/* which symbol */
-					symtype=relptra->r_info & 0xff;		/* symbol type */
-
-		  			ref=(buf+rel_shptr->sh_offset)+relptra->r_offset;
+		  			ref=(modulestartaddress+rel_shptr32->sh_offset)+relptra32->r_offset;
   				}
-										
 
-				/* Get the value to place at the location ref into symval */
+				symptr32=(size_t) symtab32+(whichsym*sizeof(Elf32_Sym)); /* Get the value to place at the location ref into symval */
+			
+				stval=symptr32->st_value;
+				stsize=symptr32->st_size;
 
-				symptr=(size_t) symtab+(whichsym*sizeof(Elf32_Sym));
+				getnameofsymbol32(strtab,sectionheader_strptr,modulestartaddress,symtab32,\
+				       (modulestartaddress+elf_header32->e_shoff)+(symptr32->st_shndx*sizeof(Elf32_Shdr)),whichsym,name);	/* get name of symbol */				
+			}
+			else if((elf_type == ELFCLASS64) && ((shptr64->sh_type == SHT_REL) || (shptr64->sh_type == SHT_RELA))) {
+				rel_shptr64=(modulestartaddress+elf_header64->e_shoff)+(shptr64->sh_info*sizeof(Elf64_Shdr));
+				
+				if(shptr64->sh_type == SHT_REL) {			
+			  		whichsym=relptr64->r_info >> 8;			/* which symbol */
+					symtype=relptr64->r_info & 0xff;		/* symbol type */
 
-				/* get symbol value */
-
-				getnameofsymbol(strtab,sectionheader_strptr,buf,symtab,\
-					       (buf+elf_header->e_shoff)+(symptr->st_shndx*sizeof(Elf32_Shdr)),whichsym,name);	/* get name of symbol */				
-
-				if(symptr->st_shndx == SHN_UNDEF) {	/* external symbol */							
-					symval=getkernelsymbol(name);
-
-					if(symval == -1) {	/* if it's not a kernel symbol, check if it is a external module symbol */
-				 		symval=get_external_module_symbol(name);
-						if(symval == -1) symval=symptr->st_value;
-					}
-		
-					add_external_module_symbol(name,symval+KERNEL_HIGH);		/* add external symbol to list */
+					ref=(modulestartaddress+rel_shptr64->sh_offset)+relptr64->r_offset;
 				}
-				else
-				{								
-					if((symtype == STT_FUNC) || ((symptr->st_info  & 0xf) == STT_FUNC) || (strncmpi(name,"text",MAX_PATH) == 0)) {	/* code symbol */						
-						if(strncmp(name,"rodata",MAX_PATH) == 0) {
-							symval=rodata+symptr->st_value;			
-						}
-						else if(strncmp(name,"data",MAX_PATH) == 0) {
-							symval=data+symptr->st_value;			
+				else if(shptr64->sh_type == SHT_RELA) { 
+
+			  		whichsym=relptra64->r_info >> 8;			/* which symbol */
+					symtype=relptra64->r_info & 0xff;			/* symbol type */
+
+		  			ref=(modulestartaddress+rel_shptr64->sh_offset)+relptra64->r_offset;
+  				}
+
+				symptr64=(size_t) symtab64+(whichsym*sizeof(Elf64_Sym)); /* Get the value to place at the location ref into symval */
+			
+				stval=symptr64->st_value;
+				stsize=symptr64->st_size;
+
+				getnameofsymbol64(strtab,sectionheader_strptr,modulestartaddress,symtab64,\
+				       (modulestartaddress+elf_header64->e_shoff)+(symptr64->st_shndx*sizeof(Elf64_Shdr)),whichsym,name);	/* get name of symbol */				
+			}					
+
+			kprintf_direct("module 11\n");
+
+			/* external symbol */							
+			if( ((elf_type == ELFCLASS32) && (symptr32->st_shndx == SHN_UNDEF)) || ((elf_type == ELFCLASS64) && (symptr64->st_shndx == SHN_UNDEF))) {
+				symval=getkernelsymbol(name);
+
+				if(symval == -1) {	/* if it's not a kernel symbol, check if it is a external module symbol */
+					symval=get_external_module_symbol(name);
+					if(symval == -1) symval=stval;
+				}
+		
+				add_external_module_symbol(name,symval+KERNEL_HIGH);		/* add external symbol to list */
+			}
+			else
+			{	
+				if(  (symtype == STT_FUNC) || 
+				     ((elf_type == ELFCLASS32) && ((symptr32->st_info  & 0xf) == STT_FUNC)) ||
+				     ((elf_type == ELFCLASS64) && ((symptr64->st_info  & 0xf) == STT_FUNC)) ||
+				     (strncmpi(name,"text",MAX_PATH) == 0)) {	/* code symbol */						
+
+					if(strncmp(name,"rodata",MAX_PATH) == 0) {
+						symval=rodata+stval;
+					}
+					else if(strncmp(name,"data",MAX_PATH) == 0) {
+						symval=data+stval;
+					}
+					else
+					{
+						symval=codestart+stval;
+					}
+				}
+				else if((symtype == STT_OBJECT) || 
+					((elf_type == ELFCLASS32) && (symptr32->st_shndx == SHN_COMMON)) ||
+					((elf_type == ELFCLASS32) && ((symptr32->st_info  & 0xf) == STT_FUNC)) ||
+					((elf_type == ELFCLASS64) && (symptr64->st_shndx == SHN_COMMON)) ||
+					((elf_type == ELFCLASS64) && ((symptr64->st_info  & 0xf) == STT_FUNC))) { /* data symbol */
+
+					if(strncmp(name,"rodata",MAX_PATH) == 0) {
+						if(stval == 0) {
+							next_free_address_rodata += stsize;
+							symval=next_free_address_rodata;
+
+							if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= stsize;
+
+							next_free_address_rodata += stsize;
 						}
 						else
 						{
-							symval=codestart+symptr->st_value;							
+							symval=rodata+stval;		
 						}
-					}
-					else if((symtype == STT_OBJECT) || (symptr->st_shndx == SHN_COMMON) || ((symptr->st_info  & 0xf) == STT_FUNC)) {		/* data symbol */
-						if(strncmp(name,"rodata",MAX_PATH) == 0) {
-							if(symptr->st_value == 0) {
-								next_free_address_rodata += symptr->st_size;
-								symval=next_free_address_rodata;
-
-								if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= symptr->st_size;
-
-								next_free_address_rodata += symptr->st_size;
-
-							}
-							else
-							{
-								symval=rodata+symptr->st_value;			
-							}
 						
+					}
+					else
+					{	
+						if( ((elf_type == ELFCLASS32) && (symptr32->st_shndx == SHN_COMMON)) ||
+						    ((elf_type == ELFCLASS64) && (symptr64->st_shndx == SHN_COMMON))) {
+
+							symval=get_external_module_symbol(name);
+							if(symval == -1) {
+								next_free_address_data += stsize;
+								symval=next_free_address_data;
+	
+								add_external_module_symbol(name,symval);
+							}
 						}
 						else
-						{	
-							if(symptr->st_shndx == SHN_COMMON) {
+						{
+							/* point to section name for symbol */
+
+							if(elf_type == ELFCLASS32) {
+								symsection32=(modulestartaddress+elf_header32->e_shoff)+(symptr32->st_shndx*sizeof(Elf32_Shdr));	
+								bufptr=sectionheader_strptr+symsection32->sh_name;			
+							}
+							else if(elf_type == ELFCLASS64) {
+								symsection64=(modulestartaddress+elf_header64->e_shoff)+(symptr64->st_shndx*sizeof(Elf64_Shdr));	
+								bufptr=sectionheader_strptr+symsection64->sh_name;			
+							}
+
+							if(strncmp(bufptr,"data",MAX_PATH) == 0) {									
+								symval=get_external_module_symbol(name);
+
+								if(symval == -1) {
+									symval=data+stval;
+										
+									add_external_module_symbol(name,symval);	
+								}
+							}
+							else if(strncmp(bufptr,"bss",MAX_PATH) == 0) {
 								symval=get_external_module_symbol(name);
 								if(symval == -1) {
-									next_free_address_data += symptr->st_size;
-									symval=next_free_address_data;
-		
+									symval=commondataptr+stval;
+
 									add_external_module_symbol(name,symval);
-								}
-							}
-							else
-							{
-								/* point to section name for symbol */
-								symsection=(buf+elf_header->e_shoff)+(symptr->st_shndx*sizeof(Elf32_Shdr));
-
-								bufptr=sectionheader_strptr+symsection->sh_name;			
-
-								if(strncmp(bufptr,"data",MAX_PATH) == 0) {									
-									symval=get_external_module_symbol(name);
-
-									if(symval == -1) {
-										symval=data+symptr->st_value;			
-											
-										add_external_module_symbol(name,symval);	
-									}
-								}
-								else if(strncmp(bufptr,"bss",MAX_PATH) == 0) {
-									symval=get_external_module_symbol(name);
-									if(symval == -1) {
-										symval=commondataptr+symptr->st_value;
-
-										add_external_module_symbol(name,symval);
-									}	
-								}
+								}	
 							}
 						}
+					}
 				
 					
-					}	
+				}	
 							
-				}
+			}
 
-				/* update reference in section */
+			/* update reference in section */
 			
-				if(symtype == R_386_NONE) {
-				;
+			if(symtype == R_386_NONE) {
+			;
+			}
+			else if(symtype == R_386_32) {
+				*ref=DO_386_32(symval,*ref);
+			}
+		 	else if(symtype == R_386_PC32) {
+				if(sectiontype == SHT_REL) {
+					*ref=DO_386_PC32(symval,*ref,(size_t) ref);
 				}
-				else if(symtype == R_386_32) {
-					*ref=DO_386_32(symval,*ref);
+				else if(sectiontype == SHT_RELA) {
+  					*ref=DO_386_PC32(symval,*ref,symval);
 				}
-			 	else if(symtype == R_386_PC32) {
+			}
+			else
+			{
+				kprintf_direct("module loader: unknown relocation type %d in module %s\n",symtype,filename);
+		
+				kernelfree(modulestartaddress);
+				kernelfree(kernel_module_end->commondata);
+				kernelfree(kernelmodulelast->next);
 
-					if(shptr->sh_type == SHT_REL) {
-						*ref=DO_386_PC32(symval,*ref,(size_t) ref);
-					}
-					else if(shptr->sh_type == SHT_RELA) {
-	  					*ref=DO_386_PC32(symval,*ref,symval);
-					}
-				}
-				else
-				{
-					kprintf_direct("module loader: unknown relocation type %d in module %s\n",symtype,filename);
-			
-					kernelfree(buf);
-					kernelfree(kernel_module_end->commondata);
-					kernelfree(kernelmodulelast->next);
+				enablemultitasking();
+				setlasterror(INVALID_EXECUTABLE);
+				return(-1);
+			}
 
-					enablemultitasking();
-
-					setlasterror(INVALID_EXECUTABLE);
-					return(-1);
+			if(sectiontype == SHT_REL) {	
+				if(elf_type == ELFCLASS32) {
+					relptr32++;
 				}
-
-				if(shptr->sh_type == SHT_REL) {	  				
-					relptr++;
+				else if(elf_type == ELFCLASS64) {
+					relptr32++;
 				}
-				else if(shptr->sh_type == SHT_RELA) {
-					relptra++;
+			}
+			else if(sectiontype == SHT_RELA) {
+				if(elf_type == ELFCLASS32) {
+					relptra64++;
 				}
+				else if(elf_type == ELFCLASS64) {
+					relptra64++;
+				}
+			}
 
 		}		
  	}
-		
-	shptr++;
-}
+	
 
-//if(strncmpi(filename,"Z:\\SERIALIO.O",MAX_PATH) == 0) asm("xchg %bx,%bx");
+	if(elf_type == ELFCLASS32) {
+		shptr32++;
+	}
+	else if(elf_type == ELFCLASS64) {
+		shptr64++;
+	}	
+	
+}
 
 /* call module entry point */
 entry=codestart;
@@ -465,11 +649,11 @@ return(entry(argsx));
 }
 
 /*
- * Get name of symbol from kernel module
+ * Get name of 32-bit symbol from kernel module
  *
  * In:  strtab		     Pointer to ELF string table
 	sectionheader_strptr Section header string table
-	buf		     Pointer to start of module
+	modulestartaddress   Pointer to start of module
 	symtab		     Symbol table
 	sectionptr	     Section header
 	which		     Symbol index
@@ -479,13 +663,50 @@ return(entry(argsx));
  * 
  */
 
-size_t getnameofsymbol(char *strtab,char *sectionheader_strptr,char *buf,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name) {
+size_t getnameofsymbol32(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name) {
 size_t count;
 char *strptr=strtab;
 Elf32_Sym *symptr;
 char *shptr;
 
 symptr=(size_t) symtab+(sizeof(Elf32_Sym)*which);		/* point to symbol table entry */
+
+strncpy(name,(strtab+symptr->st_name)-1,MAX_PATH);
+
+if(strncmp(name,"",MAX_PATH) == 0) {		/* not a symbol table entry */
+	shptr=sectionheader_strptr;
+	shptr += sectionptr->sh_name;	
+	
+	strncpy(name,shptr,MAX_PATH);
+	return(0);
+}
+	
+return(0);
+}
+
+
+/*
+ * Get name of 64-bit symbol from kernel module
+ *
+ * In:  strtab		     Pointer to ELF string table
+	sectionheader_strptr Section header string table
+	modulestartaddress   Pointer to start of module
+	symtab		     Symbol table
+	sectionptr	     Section header
+	which		     Symbol index
+	name		     Symbol name buffer
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
+
+size_t getnameofsymbol64(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf64_Sym *symtab,Elf64_Shdr *sectionptr,size_t which,char *name) {
+size_t count;
+char *strptr=strtab;
+Elf64_Sym *symptr;
+char *shptr;
+
+symptr=(size_t) symtab+(sizeof(Elf64_Sym)*which);		/* point to symbol table entry */
 
 strncpy(name,(strtab+symptr->st_name)-1,MAX_PATH);
 
@@ -642,4 +863,12 @@ enablemultitasking();
 
 setlasterror(FILE_NOT_FOUND);
 return(-1);
+}
+
+Elf32_Shdr *GetModuleReference32(char *modulestartaddress,Elf32_Ehdr *elf_header,Elf32_Shdr *shptr) {
+return((modulestartaddress+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr)));
+}
+
+Elf64_Shdr *GetModuleReference64(char *modulestartaddress,Elf64_Ehdr *elf_header,Elf64_Shdr *shptr) {
+return((modulestartaddress+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf64_Shdr)));
 }
