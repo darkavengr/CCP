@@ -124,7 +124,7 @@ size_t write(size_t handle,void *addr,size_t size);
 size_t close(size_t handle); 
 size_t dup(size_t handle);
 size_t dup2(size_t oldhandle,size_t newhandle);
-size_t dup_internal(size_t handle,size_t desthandle,size_t sourcepid,size_t destpid);
+size_t dup_internal(size_t handle,size_t newhandle,size_t sourcepid,size_t destpid);
 size_t seek(size_t handle,size_t pos,size_t whence);
 size_t tell(size_t handle);
 size_t touch(char *filename,TIME *create_time_date,TIME *last_modified_time_date,TIME *last_accessed_time_date);

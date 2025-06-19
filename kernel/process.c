@@ -196,6 +196,14 @@ if(oldprocess == NULL) currentprocess->lasterror=last_error_no_process;	/* get n
 
 highest_pid_used++;
 
+/* duplicate stdin, stdout and stderr */
+
+if(getpid() != 0) {
+	dup_internal(stdin,-1,getppid(),getpid());
+	dup_internal(stdout,-1,getppid(),getpid());
+	dup_internal(stderr,-1,getppid(),getpid());
+}
+
 /* Part two of enviroment variables duplication
  *
  * allocate enviroment block at the highest user program address minus enviroment size
@@ -230,14 +238,6 @@ if(stackp == NULL) {
 
 next->stackbase=stackp;					/* add user mode stack base and pointer to new process entry */
 next->stackpointer=stackp+PROCESS_STACK_SIZE;
-
-/* duplicate stdin, stdout and stderr */
-
-if(getpid() != 0) {
-	dup_internal(stdin,-1,getppid(),getpid());
-	dup_internal(stdout,-1,getppid(),getpid());
-	dup_internal(stderr,-1,getppid(),getpid());
-}
 
 processes_end=next;						/* save last process address */
 

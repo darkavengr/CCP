@@ -120,6 +120,8 @@ iret
 ; void switch_task(size_t *regs);
 
 switch_task:
+ret
+
 mov	eax,[esp+4]				; get pointer to saved context
 mov	[ContextPointer],eax
 

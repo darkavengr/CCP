@@ -739,6 +739,8 @@ for(count=0;count<(sizeof(size_t)*2);count++) {
 	if(found_start == TRUE) strncpy(b++,hexbuf[h],MAX_SIZE);	/* copy hex digit */
 }
 
+if(found_start == FALSE) strncpy(buf,hexbuf[0],MAX_SIZE);		/* all zeroes */
+
 return;
 }
 
@@ -778,6 +780,8 @@ for(count=shiftvalue;count != 0;count -= 3) {
 	if(foundstart == TRUE) strncat(out,digits[(oct & mask) >> count],MAX_SIZE);
 	mask=mask >> 3;
 }
+
+if(foundstart == FALSE) strncpy(out,digits[0],MAX_SIZE);		/* all zeroes */
 
 return;
 }

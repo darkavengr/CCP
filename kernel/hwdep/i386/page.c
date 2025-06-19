@@ -70,14 +70,11 @@ struct ppt *processpaging_end;
 * 
 */
 size_t addpage_int(size_t mode,size_t process,uint32_t page,void *physaddr) { 
-size_t count;
 struct ppt *next;
-uint32_t pd;
-uint32_t pt;
-uint32_t p;
-uint32_t *v;
-uint32_t c;
-uint32_t temp;
+uint32_t pagedir_entry_number;
+uint32_t pagetable_entry_number;
+uint32_t *pagetableptr;
+uint32_t newpagedirentry;
 struct ppt *remap;
 
 next=processpaging;
@@ -90,37 +87,41 @@ while(next != NULL) {					/* find process */
 
 if(next == NULL) return(-1);
 
-pd=(page >> 22) & 0x3ff;				/* page directory offset */
-pt=(page >> 12) & 0x3ff;				/* page table offset */
-p=page & 0xFFF;
+pagedir_entry_number=(page >> 22) & 0x3ff;				/* page directory offset */
+pagetable_entry_number=(page >> 12) & 0x3ff;				/* page table offset */
 
-if(next->pagedir[pd] == 0) {				/* if page directory empty */	
-	c=kernelalloc_nopaging(PAGE_SIZE);
-	if(c == NULL) return(-1);
+if(next->pagedir[pagedir_entry_number] == 0) {				/* if page directory empty */	
+	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
+	if(newpagedirentry == NULL) return(-1);
 
-	next->pagedir[pd]=(uint32_t) c | PAGE_USER | PAGE_RW | PAGE_PRESENT;	/* page directory entry */
+	next->pagedir[pagedir_entry_number]=(uint32_t) newpagedirentry | PAGE_USER | PAGE_RW | PAGE_PRESENT;	/* page directory entry */
 
-	v=(uint32_t *) 0xffc00000 + (pd*1024);
+	pagetableptr=(uint32_t *) 0xffc00000 + (pagedir_entry_number*1024);
 
-	memset(v,0,PAGE_SIZE);
+	memset(pagetableptr,0,PAGE_SIZE);
 }
 
 /* page tables are mapped at 0xffc00000 via recursive paging */
 
-v=(uint32_t *) 0xffc00000 + (pd*1024);
-v[pt]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
+pagetableptr=(uint32_t *) 0xffc00000 + (pagedir_entry_number*1024);
+pagetableptr[pagetable_entry_number]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
 
 /* map page into all address spaces if it is a kernel page */
 
-if(page > KERNEL_HIGH) {
+if(page >= KERNEL_HIGH) {
 	remap=processpaging;
 
 	while(remap != NULL) {
 		if(remap->process != process) {
-			next->pagedir[1022]=remap->pagedir[1023];
-			v=(uint32_t *) 0xFF800000 + (pd*1024);
+			if(remap->pagedir[pagedir_entry_number] == 0) {				/* if page directory empty */	
+				remap->pagedir[pagedir_entry_number]=(uint32_t) newpagedirentry | PAGE_USER | PAGE_RW | PAGE_PRESENT;	/* page directory entry */
+			}
 
-			v[pt]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
+			next->pagedir[1022]=remap->pagedir[1023];
+			pagetableptr=(uint32_t *) 0xFF800000 + (pagedir_entry_number*1024);
+
+		
+			pagetableptr[pagetable_entry_number]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
 		}
 
 		remap=remap->next;
@@ -142,8 +143,8 @@ return(0);
 size_t page_init(size_t process) {
 uint32_t oldvirtaddress;
 uint32_t virtaddress;
-uint32_t oldpp;
-uint32_t pp;
+uint32_t old_pagingentryptr_phys;
+uint32_t pagingentryptr_phys;
 size_t count;
 size_t size;
 
@@ -151,20 +152,20 @@ if(process == 0) return(0);
 
 /* get a physical address and manually map it to a virtual address, the physical addres of p->pagedir is needed to fill cr3 */
 
-size=(sizeof(struct ppt) & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round */
+size=(sizeof(struct ppt) & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round up size to multiple of PAGE_SIZE */
 
-pp=kernelalloc_nopaging(size);					/* get the physical address of the new paging entry */
-if(pp == NULL) return(-1);
+pagingentryptr_phys=kernelalloc_nopaging(size);					/* get the physical address of the new paging entry */
+if(pagingentryptr_phys == NULL) return(-1);
 
 virtaddress=findfreevirtualpage(size,ALLOC_KERNEL,0);		/* find free virtual address */
 
 oldvirtaddress=virtaddress;
-oldpp=pp;
+old_pagingentryptr_phys=pagingentryptr_phys;
 
 for(count=0;count<(size/PAGE_SIZE)+1;count++) {
-	addpage_system(virtaddress,0,(void *) pp);
+	addpage_system(virtaddress,0,(void *) pagingentryptr_phys);
 
-	pp += PAGE_SIZE;
+	pagingentryptr_phys += PAGE_SIZE;
 	virtaddress += PAGE_SIZE;
 }
 
@@ -174,7 +175,7 @@ if(processpaging_end == NULL) processpaging_end=processpaging; /* do it anyway *
 
 processpaging_end->next=oldvirtaddress;					/* add link to list */
 processpaging_end=processpaging_end->next;		/* point to end */
-processpaging_end->pagedirphys=oldpp;						/* physical address of page directory */
+processpaging_end->pagedirphys=old_pagingentryptr_phys;						/* physical address of page directory */
 processpaging_end->process=process;
 
 memcpy(&processpaging_end->pagedir[512],&processpaging->pagedir[512],PAGE_SIZE/2);		/* copy higher half of page directory */
@@ -209,7 +210,7 @@ struct ppt *next;
 struct ppt *last;
 size_t pagecount;
 size_t entrycount;
-size_t *v;
+size_t *pagetableptr;
 size_t physaddress=0;
 
 next=processpaging;
@@ -229,17 +230,17 @@ if(next == NULL) return(-1);
 for(pagecount=0;pagecount<512;pagecount++) {
 
 	if(next->pagedir[pagecount] != 0) {
-		v=(uint32_t *) 0xffc00000 + (pagecount*1024);		/* point to location of page directory */
+		pagetableptr=(uint32_t *) 0xffc00000 + (pagecount*1024);		/* point to location of page directory */
 
 		for(entrycount=0;entrycount<1023;entrycount++) {    
 
 		//      asm("xchg %bx,%bx");
-		//      if(v[entrycount] != 0) free_physical(v[entrycount]);
+		//      if(pagetableptr[entrycount] != 0) free_physical(pagetableptr[entrycount]);
 	 	}
 
 	}
 
-	v++;
+	pagetableptr++;
 
 }
 
@@ -269,7 +270,7 @@ size_t start;
 size_t end;
 size_t count;
 size_t countx;
-uint32_t *v;
+uint32_t *pagetableptr;
 size_t sz;
 size_t last;
 struct ppt *next;
@@ -304,10 +305,10 @@ for(count=start;count<end;count++) {			/* page directories */
 
 		s=0;
 
-		v=(uint32_t *) 0xffc00000 + (count*1024);
+		pagetableptr=(uint32_t *) 0xffc00000 + (count*1024);
 
 		for(countx=0;countx<1022;countx++) {      
-			if(v[countx] == 0) {
+			if(pagetableptr[countx] == 0) {
 	        		if(s == 0) last=countx;
 
 				if(s > size) return((count << 22)+(last << 12)); /* found enough */
@@ -372,16 +373,11 @@ return(-1);
 * 
 */
 size_t getphysicaladdress(size_t process,uint32_t virtaddr) {
-size_t count;
 struct ppt *next;
-struct ppt *remap;
-struct ppt *current;
-uint32_t pd;
-uint32_t pt;
-uint32_t p;
-uint32_t *v;
-uint32_t c;
-	
+uint32_t pagedir_entry_number;
+uint32_t pagetable_entry_number;
+uint32_t *pagetableptr;
+
 next=processpaging;					/* find process page directory */
 
 do {
@@ -390,15 +386,14 @@ do {
 	next=next->next;
 } while(next != NULL);
 
-pd=(virtaddr >> 22) & 0x3ff;				/* page directory offset */
-pt=(virtaddr >> 12) & 0x3ff;				/* page table offset */
-p=(virtaddr & 0xfff);
+pagedir_entry_number=(virtaddr >> 22) & 0x3ff;				/* page directory offset */
+pagetable_entry_number=(virtaddr >> 12) & 0x3ff;				/* page table offset */
 
-v=(uint32_t *) 0xffc00000 + (pd*1024);
+pagetableptr=(uint32_t *) 0xffc00000 + (pagedir_entry_number*1024);
 
-if((v[pt] & PAGE_PRESENT) == 0) return(-1);	/* page not present */
+if((pagetableptr[pagetable_entry_number] & PAGE_PRESENT) == 0) return(-1);	/* page not present */
 
-return(v[pt] & 0xfffff000);				/* return physical address */
+return(pagetableptr[pagetable_entry_number] & 0xfffff000);				/* return physical address */
 }
 /*
 * Add user page
@@ -411,7 +406,7 @@ return(v[pt] & 0xfffff000);				/* return physical address */
 * 
 */
 size_t addpage_user(uint32_t page,size_t process,void *physaddr) { 
- return(addpage_int(PAGE_USER+PAGE_RW+PAGE_PRESENT,process,page,physaddr));
+return(addpage_int(PAGE_USER+PAGE_RW+PAGE_PRESENT,process,page,physaddr));
 }
 
 /*
@@ -425,7 +420,7 @@ size_t addpage_user(uint32_t page,size_t process,void *physaddr) {
 * 
 */
 size_t addpage_system(uint32_t page,size_t process,void *physaddr) { 
- return(addpage_int(PAGE_SYSTEM+PAGE_RW+PAGE_PRESENT,process,page,physaddr));
+return(addpage_int(PAGE_SYSTEM+PAGE_RW+PAGE_PRESENT,process,page,physaddr));
 }
 
 

@@ -586,6 +586,7 @@ lock_mutex(&vfs_mutex);
 next=openfiles;
 while(next != NULL) {
 	if((next->handle == handle) && (next->owner_process == getpid())) break;
+
 	next=next->next;
 }
 
@@ -743,57 +744,43 @@ lock_mutex(&vfs_mutex);
 next=openfiles;
 
 while(next != NULL) {					/* find filename in struct */
-	if(next->handle == handle) {
+	if((next->handle == handle) && (next->owner_process == getpid())) {
 
-		if(next->owner_process != getpid()) {		/* if file is owned by process */
-			unlock_mutex(&vfs_mutex);
+		if((next->flags & FILE_FIFO)) closepipe(next);		/* if closing pipe */
 
-			setlasterror(ACCESS_DENIED);
-			return(-1);
+		if(next == openfiles) {			/* first entry */
+			last=openfiles;			/* save pointer to start */
+
+			openfiles=last->next;		/* set new beginning of list */
+			if(last != NULL) kernelfree(last);		/* free old beginning */
+
+			if(last->next == NULL) openfiles_last=next;		/* save last */
+		}
+		else if(next->next == NULL) {		/* last entry */	
+			kernelfree(last->next);		/* free last */
+			last->next=NULL;		/* remove from end of list */
+
+			openfiles_last=last;		/* save last */
+		}
+		else
+		{
+			last->next=next->next;		/* remove from list */
+
+			if(next->next == NULL) openfiles_last=next;		/* save last */
+
+			kernelfree(next);
 		}
 
-		break;
+		setlasterror(NO_ERROR);
+		return(0);
 	}
-
 	last=next;
 	next=next->next;
 }
 
-if(next == NULL) {			/* invalid handle */
-	setlasterror(INVALID_HANDLE);
-	return(-1);
-}
 
-if((next->flags & FILE_FIFO)) closepipe(next);		/* if closing pipe */
-
-if(next == openfiles) {			/* first entry */
-	last=openfiles;			/* save pointer to start */
-
-	openfiles=last->next;		/* set new beginning of list */
-	
-	if(last != NULL) kernelfree(last);		/* free old beginning */
-
-	if(last->next == NULL) openfiles_last=next;		/* save last */
-}
-else if(next->next == NULL) {		/* last entry */	
-	kernelfree(last->next);		/* free last */
-	last->next=NULL;		/* remove from end of list */
-
-	openfiles_last=next;		/* save last */
-}
-else
-{
-	last->next=next->next;		/* remove from list */
-
-	if(next->next == NULL) openfiles_last=next;		/* save last */
-
-	kernelfree(next);
-}
-
-unlock_mutex(&vfs_mutex);
-
-setlasterror(NO_ERROR);  
-return(NO_ERROR);
+setlasterror(INVALID_HANDLE);
+return(-1);
 }
 
 /*
@@ -833,19 +820,16 @@ return(-1);
  * Duplicate handle for process
  *
  * In:  handle		File handle
+ *	newhandle	New file handle to assign. Use -1 to keep handle number.
  *	sourcepid	Process ID to create new file handle from
- *	destpid		Process ID to assign to new handle
+ *	destpid		Process ID to create new file handle for
  *
  * Returns: -1 on error, 0 on success
  *
  */
 
-size_t dup_internal(size_t handle,size_t desthandle,size_t sourcepid,size_t destpid) {
-FILERECORD *source=NULL;
-FILERECORD *dest=NULL;
+size_t dup_internal(size_t handle,size_t newhandle,size_t sourcepid,size_t destpid) {
 FILERECORD *next;
-FILERECORD *saveend;
-size_t count=0;
 
 lock_mutex(&vfs_mutex);
 
@@ -853,45 +837,56 @@ lock_mutex(&vfs_mutex);
 next=openfiles;
 	
 while(next != NULL) {					/* find handle in list */
-	if((next->handle == handle) && (next->owner_process == sourcepid)) source=next;
-	if((next->handle == desthandle) && (next->owner_process == destpid)) dest=next;		/* if desthandle == -1, it will not match any */
-												/* in the list */
-	next=next->next;
-	count++;
-}
+	if((next->handle == handle) && (next->owner_process == sourcepid)) {
+		if(openfiles == NULL) {
+			openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+			if(openfiles == NULL) {
+				unlock_mutex(&vfs_mutex);
+				setlasterror(NO_MEM);
+				return(-1);
+			}
 
-if(source == NULL) {
-	unlock_mutex(&vfs_mutex);
+			openfiles_last=openfiles;
+		}
+		else
+		{
+			openfiles_last->next=kernelalloc(sizeof(FILERECORD));
+			if(openfiles_last->next == NULL) {
+				unlock_mutex(&vfs_mutex);
+				setlasterror(NO_MEM);
+				return(-1);
+			}
 
-	setlasterror(INVALID_HANDLE);
-	return(-1);
-}
+			openfiles_last=openfiles_last->next;		/* point to new end */
+		}
 
-if(desthandle == -1) {				/* if desthandle == -1, add to end */
-	openfiles_last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+		memcpy(openfiles_last,next,sizeof(FILERECORD));		/* copy file handle */
 
-	if(openfiles_last->next == NULL) {
+		if(newhandle == -1) {			/* assign handle */
+			openfiles_last->handle=next->handle;
+		}
+		else
+		{
+			openfiles_last=++highest_handle;
+		}
+
+		openfiles_last->owner_process=destpid;
+		openfiles_last->next=NULL;
+
 		unlock_mutex(&vfs_mutex);
-		setlasterror(NO_MEM);				/* out of memory */
-		return(-1);
+		setlasterror(NO_ERROR);
+
+		return(openfiles_last->handle);
 	}
-
-	openfiles_last=openfiles_last->next;		/* point to new end */
-
-	dest=openfiles_last;
+	
+	next=next->next;
 }
 
-memcpy(dest,source,sizeof(FILERECORD));		/* copy file handle */
 
-dest->owner_process=destpid;
-dest->next=NULL;
-
-//if(desthandle == -1) dest->handle=++highest_handle;		/* set handle of destination */
 
 unlock_mutex(&vfs_mutex);
-
-setlasterror(NO_ERROR);
-return(count);
+setlasterror(INVALID_HANDLE);
+return(-1);
 }
 
 /*

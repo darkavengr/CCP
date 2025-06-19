@@ -1,5 +1,5 @@
 /*  CCP Version 0.0.1
-	  (C) Matthew Boote 2020-2022
+	  (newpagedirentry) Matthew Boote 2020-2022
 
 	  This file is part of CCP.
 
@@ -20,13 +20,13 @@
 
 XXAAAAAAAAABBBBBBBBBCCCCCCCCCCCC
 
-/* XX     AAAAAAAAA        BBBBBBBBB	    	    CCCCCCCCCCCC
-	 PDPT	| page 	directory| | page table|	    | 4k page  |  */
-/*	  1GB			2MB			4KB */
+/* XX     AAAAAAAAA          BBBBBBBBB	    	    CCCCCCCCCCCC
+   PDPT	| page 	directory| | page table|	    | 4k page  |  */
+/* 1GB	       2MB		4KB */
 
 //PDPT=11		0x3
-//PD=000000000		0x0
-//PT= 110011110		0x19E
+//pagedir_entry_number=000000000		0x0
+//pagetable_entry_number= 110011110		0x19E
 //PAGE= 110011110100	0xCF4
 
 //33222222222211111111110000000000
@@ -42,9 +42,6 @@ XXAAAAAAAAABBBBBBBBBCCCCCCCCCCCC
 #include "debug.h"
 #include "memorymanager.h"
 #include "string.h"
-
-extern end(void);
-extern kernel_begin(void);
 
 size_t PAGE_SIZE=4096;
 size_t paging_type=2;
@@ -74,11 +71,11 @@ struct ppt *processpaging_end;
 
 size_t addpage_int(uint32_t mode,size_t process,uint32_t page,void *physaddr) { 
 struct ppt *next;
-size_t pdpt_of;
-size_t pd;
-size_t pt;
-uint64_t *v;
-uint64_t c;
+size_t pdpt_entry_number;
+size_t pagedir_entry_number;
+size_t pagetable_entry_number;
+uint64_t *pagetableptr;
+uint64_t newpagedirentry;
 uint32_t addr;
 
 next=processpaging;					/* find process page directory */
@@ -92,43 +89,43 @@ do {
 //10987654321098765432109876543210
 //11000000011000000010000000000000
 
-pdpt_of=page >> 30;			/*  directory pointer table */
-pd=(page & 0x3FE00000) >> 21;
-pt=(page & 0x1FF000) >> 12;
+pdpt_entry_number=page >> 30;			/*  directory pointer table */
+pagedir_entry_number=(page & 0x3FE00000) >> 21;
+pagetable_entry_number=(page & 0x1FF000) >> 12;
 
-/* if pdpt empty, add page directory to it, the page tables in the page directory will appear at 0xc0000000+(pd*512) */
+/* if pdpt empty, add page directory to it, the page tables in the page directory will appear at 0xc0000000+(pagedir_entry_number*512) */
 
-if(next->pdpt[pdpt_of] == 0) {			/* if pdpt empty */
-	c=kernelalloc_nopaging(PAGE_SIZE);
-	if(c == -1) {					/* allocation error */
+if(next->pdpt[pdpt_entry_number] == 0) {			/* if pdpt empty */
+	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
+	if(newpagedirentry == NULL) {					/* allocation error */
 		setlasterror(NO_MEM);
 		return(-1);
 	}
 
 
-	next->pdpt[pdpt_of]=(c & 0xfffff000) | PAGE_PRESENT;
+	next->pdpt[pdpt_entry_number]=(newpagedirentry & 0xfffff000) | PAGE_PRESENT;
 }
 
-v=KERNEL_HIGH+(next->pdpt[pdpt_of] & 0xfffff000);
+pagetableptr=KERNEL_HIGH+(next->pdpt[pdpt_entry_number] & 0xfffff000);
 
-if(v[pd] == 0) {				/* if page directory empty */
-	c=kernelalloc_nopaging(PAGE_SIZE);
+if(pagetableptr[pagedir_entry_number] == 0) {				/* if page directory empty */
+	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
 
-	if(c == -1) {					/* allocation error */
+	if(newpagedirentry == NULL) {					/* allocation error */
 		setlasterror(NO_MEM);
 		return(-1);
 	}
 
-	v[pd]=c | PAGE_USER | PAGE_RW | PAGE_PRESENT;
+	pagetableptr[pagedir_entry_number]=newpagedirentry | PAGE_USER | PAGE_RW | PAGE_PRESENT;
 }
 	
 /* page tables are mapped at 0xc0000000 via recursive paging */
 
-v=0xc0000000+(pdpt_of << 21) | (pd << 12);
+pagetableptr=0xc0000000+(pdpt_entry_number << 21) | (pagedir_entry_number << 12);
 
 addr=physaddr;
 
-v[pt]=(addr & 0xfffff000)+mode;			/* page table */
+pagetableptr[pagetable_entry_number]=(addr & 0xfffff000)+mode;			/* page table */
 return(0);
 }
 
@@ -224,7 +221,7 @@ size_t freepages(size_t process) {
 struct ppt *next;
 size_t count;
 size_t countx;
-size_t *v;
+size_t *pagetableptr;
 struct ppt *last;
 uint64_t *pagedir;
 size_t pdptcount;
@@ -238,20 +235,20 @@ while(next != NULL) {					/* find process */
 	next=next->next;
 }
 
-v=0xc0000000;
+pagetableptr=0xc0000000;
 
 for(count=0;count != 512 ;count++) {				/* page directories */
 
-	v=(uint64_t)pagedir[count] & 0xfffffffffffff000;			/* point to page table */   
+	pagetableptr=(uint64_t)pagedir[count] & 0xfffffffffffff000;			/* point to page table */   
 
-	if(v != 0) {							/* in use */
+	if(pagetableptr != 0) {							/* in use */
 
-		v += KERNEL_HIGH;
+		pagetableptr += KERNEL_HIGH;
 
 		for(countx=0;countx<511;countx++) {
-			if(v[countx] != 0) {					/* free page table  */
-			     kernelfree(v[countx] & 0xfffffffffffff000);
-			     removepage(v[countx] & 0xfffffffffffff000,getpid());
+			if(pagetableptr[countx] != 0) {					/* free page table  */
+			     kernelfree(pagetableptr[countx] & 0xfffffffffffff000);
+			     removepage(pagetableptr[countx] & 0xfffffffffffff000,getpid());
 			}	 
 	  	}
 	}
@@ -424,11 +421,10 @@ return(-1);
 */
 uint32_t getphysicaladdress(size_t process,uint32_t virtaddr) {
 struct ppt *next;
-uint64_t pdpt_of;
-uint64_t pd;
-uint64_t pt;
-uint64_t *p;
-uint64_t *v;
+uint64_t pdpt_entry_number;
+uint64_t pagedir_entry_number;
+uint64_t pagetable_entry_number;
+uint64_t *pagetableptr;
 
 next=processpaging;					/* find process page directory */
 
@@ -438,13 +434,12 @@ do {
 	next=next->next;
 } while(next->next != NULL);
 
-pdpt_of=(virtaddr & 0xC0000000) >> 30;			/*  directory pointer table */
-pd=(virtaddr & 0x3FE00000) >> 21;
-pt=(virtaddr & 0x1FF000) >> 12;
+pdpt_entry_number=(virtaddr & 0xC0000000) >> 30;			/*  directory pointer table */
+pagedir_entry_number=(virtaddr & 0x3FE00000) >> 21;
 
-v=0xc0000000+(pdpt_of << 21+(pdpt_of*PAGE_SIZE))+(pd << 12);
+pagetableptr=0xc0000000+(pdpt_entry_number << 21+(pdpt_entry_number*PAGE_SIZE))+(pagedir_entry_number << 12);
 
-return(v[pt] & 0xfffff000);				/* return physical address */
+return(pagetableptr[pagetable_entry_number] & 0xfffff000);				/* return physical address */
 }
 
 /*

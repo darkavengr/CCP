@@ -101,9 +101,10 @@ mov	dword [esi-44],irq_exit			; return address
 ; Adjust kernel stack pointer to point to intial values
 ;
 
-sub	esi,11*4
+mov	eax,esi
+sub	eax,11*4
 
-push	esi
+push	eax
 call	save_kernel_stack_pointer
 add	esp,4
 
