@@ -7,8 +7,10 @@ extern set_gdt
 %define offset
 %include "init.inc"
 %include "kernelselectors.inc"
+%include "gdtflags.inc"
 
 TSS_GDT_ENTRY equ 5
+TSS_SELECTOR 		equ	TSS_GDT_ENTRY * GDT_ENTRY_SIZE			; TSS selector
 
 [BITS 32]
 use32
@@ -33,7 +35,7 @@ ret
 ;
 ; Returns: top of kernel mode stack
 ;
-get_stack_top:
+get_tss_esp0:
 mov	eax,[tss_esp0]
 ret
 
@@ -45,9 +47,8 @@ ret
 ; Returns: Nothing
 ;
 initialize_tss:
-;xchg	bx,bx
-push	dword 0						; granularity
-push	dword 0xE9					; access
+push	dword 0						; granularity							; access
+push	SEGMENT_PRESENT | RING3_SEGMENT | TSS_SEGMENT | SEGMENT_32BIT_TSS_AVALIABLE
 push	(offset end_tss-offset tss)+offset tss		; limit
 push	offset tss					; base
 push	dword TSS_GDT_ENTRY				; gdt entry
@@ -63,7 +64,7 @@ mov	[reg_gs],eax
 mov	[reg_cs],eax
 mov	[tss_ss0],eax
 
-mov	ax,TSS_SELECTOR + 3				; load tss for interrupt calls from ring 3
+mov	ax,TSS_SELECTOR + 3				; load TSS for interrupt calls from ring 3
 ltr	ax
 ret
 

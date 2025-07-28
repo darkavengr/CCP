@@ -1108,15 +1108,13 @@ return(0);
 size_t ps_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
 size_t findresult;
 PROCESS pbuf;
-PROCESS *handle;
 
-handle=findfirstprocess(&pbuf);				/* find first process */
+findfirstprocess(&pbuf);				/* find first process */
 
 do {
-	kprintf_direct("%u\n",pbuf.pid);
+	kprintf_direct("% 4u %s\n",pbuf.pid,pbuf.filename);
 
-	handle=findnextprocess(handle,&pbuf);		/* get next process */
-} while(handle != NULL);
+} while(findnextprocess(&pbuf) == 0);
 
 return(0);
 }

@@ -1,4 +1,3 @@
-#include <elf.h>
 #include <stdint.h>
 #include <stddef.h>
 #include "kernelhigh.h"
@@ -19,7 +18,6 @@
 extern PROCESS *processes;
 extern PROCESS *currentprocess;
 extern size_t highest_pid_used;
-extern irq_exit;
 extern size_t PAGE_SIZE;
 
 PROCESS *processes_end;
@@ -40,7 +38,7 @@ size_t *stackptr;
 
 oldprocess=currentprocess;					/* save current process pointer */
 
-/* add process to process list and find process id */
+/* add process to process list and find process ID */
 
 if(processes == NULL) {  					/* first process */
 	processes=kernelalloc(sizeof(PROCESS));			/* add entry to beginning of list */
@@ -103,9 +101,10 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 
 next->kernelstackbase=next->kernelstacktop;
 next->kernelstacktop += PROCESS_STACK_SIZE;			/* top of kernel stack */
-next->kernelstackpointer=next->kernelstacktop;		/* initial kernel stack address */
 
-initializekernelstack(next->kernelstacktop,ENTRY_POINT,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
+currentprocess=next;		/* kludge */
+
+initialize_current_process_kernel_stack(next->kernelstacktop,ENTRY_POINT,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
 page_init(highest_pid_used);				/* intialize page directory */	
 loadpagetable(highest_pid_used);			/* load page table */
@@ -165,8 +164,7 @@ currentprocess=processes;
 
 loadpagetable(0);
 
-initializestack(processes->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
-initializekernelstack(processes->kernelstacktop,ENTRY_POINT,processes->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
+initialize_current_process_user_mode_stack(processes->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
 
 enablemultitasking(); 
 

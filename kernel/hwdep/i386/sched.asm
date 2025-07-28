@@ -120,8 +120,6 @@ iret
 ; void switch_task(size_t *regs);
 
 switch_task:
-ret
-
 mov	eax,[esp+4]				; get pointer to saved context
 mov	[ContextPointer],eax
 
@@ -134,13 +132,13 @@ jnz	have_processes
 jmp	no_stack_switch
 
 have_processes:
-call	get_current_process_pointer
-test	eax,eax
-jnz	have_current_process
+;call	get_current_process_pointer
+;test	eax,eax
+;jnz	have_current_process
 
-jmp	no_stack_switch
+;jmp	no_stack_switch
 
-have_current_process:
+;have_current_process:
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled
@@ -157,23 +155,23 @@ jnz	task_time_slice_finished
 jmp	no_stack_switch
 
 task_time_slice_finished:
+push	dword [ContextPointer]
+call	save_kernel_stack_pointer		; save kernel stack pointer
+add	esp,4
+
 call	getpid
 test	eax,eax
 jz	no_debug
 
 xchg	bx,bx
 no_debug:
-push	dword [ContextPointer]
-call	save_kernel_stack_pointer		; save kernel stack pointer
-add	esp,4
-
 call	reset_current_process_ticks		; reset number of process quantum ticks
 
 ;
 ; Switch to next process
 ;
 
-;mov	eax,[save_descriptor]				; get descriptor
+;mov	eax,[save_descriptor]				; get pointer to process entry
 ;test	eax,eax						; if not switching to a specific process
 ;jnz	have_descriptor					; update process now
 
@@ -200,7 +198,6 @@ call	set_tss_esp0
 add	esp,4
 
 call	get_kernel_stack_pointer
-;xchg	bx,bx
 mov	esp,eax						; switch kernel stack
 
 no_stack_switch:

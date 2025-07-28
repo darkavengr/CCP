@@ -137,8 +137,6 @@ int	0x21
 ret
 
 exec:
-;xchg	bx,bx
-
 mov	edx,[esp+4]
 mov	ebx,[esp+8]
 
@@ -263,7 +261,6 @@ ret
 
 findnextprocess:
 mov	edx,[esp+4]			; buffer
-mov	ebx,[esp+8]		; handle
 
 mov	eax,0x700A
 int	0x21

@@ -82,14 +82,14 @@ global get_kernel_stack_size
 %include "init.inc"
 %include "kernelselectors.inc"
 %include "bootinfo.inc"
-
+%include "gdtflags.inc"
 
 _asm_init:
 ;
 ; 16-bit initialisation code
 ;
 ; Here the computer is still in real mode,
-; the kernel will enable the a20 line, detect memory
+; the kernel will enable the A20 line, detect memory
 ; load gdt and idt and jump to long mode.
 ;
 ; From here to jump_high, the code is located in the lower
@@ -115,6 +115,7 @@ section .text
 
 [BITS 16]
 use16
+cli
 jmp	over
 
 output16:
@@ -137,7 +138,7 @@ mov	es,ax
 mov	ss,ax
 
 mov	esi,(starting_ccp-_asm_init)+phys_start_address
-call	output16				; display using bios
+call	output16				; display using BIOS
 
 ;
 ; enable a20 line
@@ -191,7 +192,7 @@ jnz	long_mode_supported
 ;
 not_long_mode:
 mov	esi,(no_long_mode-_asm_init)+phys_start_address
-call	output16				; display using bios
+call	output16				; display using BIOS
 
 cli
 hlt
@@ -255,11 +256,12 @@ mov	esi,BOOT_INFO_MEMORY_SIZE			; memory map size
 mov	eax,[esi]
 and	eax,0xfffff000
 
-shr	eax,12					; number of pages
-shl	eax,3					; number of 8-byte entries
+shr	eax,12
+shl	eax,8
 
 add	ecx,eax
-shr	eax,12					; number of page table entries
+
+shr	ecx,12					; number of page table entries
 
 mov	edi,ROOT_PAGETABLE
 mov	eax,0 | PAGE_PRESENT | PAGE_RW	; page+flags
@@ -267,15 +269,17 @@ mov	eax,0 | PAGE_PRESENT | PAGE_RW	; page+flags
 cld
 
 mov	edx,PAGE_SIZE
+xor	ebx,ebx
 
 map_next_page:
 mov	[edi],eax			; low dword
+mov	[edi+4],ebx			; high dword
 
 add	edi,8
 add	eax,edx				; point to next page
 loop	map_next_page
 
-mov	eax,cr4				; enable pae paging
+mov	eax,cr4				; enable PAE paging
 or	eax,(1 << 5)
 mov	cr4,eax
 
@@ -460,7 +464,7 @@ xor	al,al
 mov	dx,0xA1
 out	dx,al
 
-;call	init_multitasking
+call	init_multitasking
 
 call	driver_init				; initialize built-in modules
 call	initrd_init
@@ -495,34 +499,48 @@ dq gdt
 gdt dw 0
 dw 0
 db 0
-db 0,0
+db 0
+db 0
 db 0
 
-; ring 0 segments
+; ring 0 code segment
 
 dw 0xFFFF					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 0x9A,0xAF					; Code segment
+						; access byte
+db SEGMENT_PRESENT | RING0_SEGMENT | CODE_OR_DATA_SEGMENT | EXECUTABLE_SEGMENT | CODE_SEGMENT_NON_CONFORMING | CODE_SEGMENT_READABLE
+db FLAG_GRANULARITY_PAGE | FLAG_LONG_MODE | 0xF ; Flags (High nibble) and low four bits of limit (low nibble)
 db 0						; last byte of base
+
+; ring 0 data segment
 
 dw 0xFFFF					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 0x92,0xCF					; Data segment
+						; access byte
+db SEGMENT_PRESENT | RING0_SEGMENT | CODE_OR_DATA_SEGMENT | NON_EXECUTABLE_SEGMENT | DATA_SEGMENT_GROWS_UP | DATA_SEGMENT_WRITEABLE
+db FLAG_GRANULARITY_PAGE | FLAG_32BIT_SEGMENT | 0xF ; Flags (High nibble) and low four bits of limit (low nibble)
 db 0						; last byte of base
 
-; ring 3 segments
+; ring 3 code segment
+
 dw 0xFFFF					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 0xFA,0xAF					; Code segment
+						; access byte
+db SEGMENT_PRESENT | RING3_SEGMENT | CODE_OR_DATA_SEGMENT | EXECUTABLE_SEGMENT | CODE_SEGMENT_NON_CONFORMING | CODE_SEGMENT_READABLE
+db FLAG_GRANULARITY_PAGE | FLAG_LONG_MODE | 0xF ; Flags (High nibble) and low four bits of limit (low nibble)
 db 0						; last byte of base
+
+; ring 3 data segment
 
 dw 0xFFFF					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 0xF2,0xCF					; Data segment
+						; access byte
+db SEGMENT_PRESENT | RING3_SEGMENT | CODE_OR_DATA_SEGMENT | NON_EXECUTABLE_SEGMENT | DATA_SEGMENT_GROWS_UP | DATA_SEGMENT_WRITEABLE
+db FLAG_GRANULARITY_PAGE | FLAG_32BIT_SEGMENT | 0xF ; Flags (High nibble) and low four bits of limit (low nibble)
 db 0						; last byte of base
 
 times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0	; extra entries for TSS and other things

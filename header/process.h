@@ -12,12 +12,10 @@
 #define _SHUTDOWN	 		0
 #define _RESET				1
 #define PROCESS_STACK_SIZE 65536
-#define DEFAULT_QUANTUM_COUNT 250
+#define DEFAULT_QUANTUM_COUNT 100
 
 #define SHUTDOWN_WAIT 10
 #define SIGNAL_COUNT 256
-
-#define MAX_REGS 256
 
 #define ENVIROMENT_SIZE 32768
 
@@ -63,8 +61,8 @@ size_t exec(char *filename,char *argsx,size_t flags);
 size_t kill(size_t process);
 size_t exit(size_t val);
 void shutdown(size_t shutdown_status); 
-PROCESS *findfirstprocess(PROCESS *processbuf);
-PROCESS *findnextprocess(PROCESS *previousprocess,PROCESS *processbuf);
+size_t findfirstprocess(PROCESS *processbuf);
+size_t findnextprocess(PROCESS *processbuf);
 size_t wait(size_t pid);
 size_t dispatchhandler(void *argsix,void *argfive,void *argfour,void *argthree,void *argtwo,size_t argone);
 size_t getcwd(char *dir);

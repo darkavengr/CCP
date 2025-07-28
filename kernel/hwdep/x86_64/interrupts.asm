@@ -23,6 +23,15 @@
 
 %include "kernelselectors.inc"
 %include "init.inc"
+%include "idtflags.inc"
+
+IDT_ENTRY_OFFSET1	equ 0
+IDT_ENTRY_SELECTOR	equ 2
+IDT_ENTRY_IST		equ 4
+IDT_ENTRY_FLAGS		equ 5
+IDT_ENTRY_OFFSET2	equ 6
+IDT_ENTRY_OFFSET3	equ 8
+IDT_ZERO		equ 12
 
 global disable_interrupts				; disable interrupts
 global enable_interrupts				; enable interrupts
@@ -30,25 +39,6 @@ global set_interrupt					; set interrupt
 global get_interrupt					; get interrupt
 global load_idt
 global initialize_interrupts
-global int0_handler
-global int1_handler
-global int2_handler
-global int3_handler
-global int4_handler
-global int5_handler
-global int6_handler
-global int7_handler
-global int8_handler
-global int9_handler
-global int10_handler
-global int11_handler
-global int12_handler
-global int13_handler
-global int14_handler
-global int15_handler
-global int16_handler
-global int17_handler
-global int18_handler
 global int_common
 global d_lowlevel
 
@@ -61,16 +51,9 @@ extern disablemultitasking
 [BITS 64]
 use64
 
-%macro initializeinterrupt 4
-mov	rdi,qword %1			; flags
-mov	rsi,qword %2			; selector
-mov	rdx,qword %3			; address
-mov	rcx,qword %4			; interrupt number
-call	set_interrupt
-%endmacro
-
 %macro inthandler_noerr 1
 int%1_handler:
+xchg	bx,bx
 push	rdi
 push	rax
 push	rbx
@@ -87,6 +70,7 @@ jmp	int_common
 
 %macro inthandler_err 1
 int%1_handler:
+xchg	bx,bx
 push	rdi
 push	rax
 push	rbx
@@ -95,8 +79,8 @@ mov	rbx,qword exception_number	; save exception number
 mov	rax,%1				; exception number
 mov	[rbx],rax
 
-mov	rbx,[rsp+24+32]			; save error code
-mov	rax,qword error_code
+mov	rbx,qword error_code
+mov	rax,[rsp+24+32]			; save error code
 mov	[rbx],rax
 
 mov	rax,[rsp+24+8]		; get rip from stack
@@ -117,26 +101,163 @@ initialize_interrupts:
 
 ; Initialize exception interrupts
 
-initializeinterrupt 0x8e00,8,int0_handler,0		; Divide by zero
-initializeinterrupt 0x8e00,8,int1_handler,1		; Debug exception
-initializeinterrupt 0x8e00,8,int2_handler,2		; Non-maskable interrupt
-initializeinterrupt 0x8e00,8,int3_handler,3		; Breakpoint exception
-initializeinterrupt 0x8e00,8,int4_handler,4		;'Into detected overflow'
-initializeinterrupt 0x8e00,8,int5_handler,5		; Out of bounds exception
-initializeinterrupt 0x8e00,8,int6_handler,6		; Invalid opcode exception
-initializeinterrupt 0x8e00,8,int7_handler,7		; No coprocessor exception
-initializeinterrupt 0x8e00,8,int8_handler,8		; Double fault
-initializeinterrupt 0x8e00,8,int9_handler,9		; Coprocessor segment overrun
-initializeinterrupt 0x8e00,8,int10_handler,10		; Invalid TSS
-initializeinterrupt 0x8e00,8,int11_handler,11		; Segment not present
-initializeinterrupt 0x8e00,8,int12_handler,12		; Stack fault
-initializeinterrupt 0x8e00,8,int13_handler,13		; General protection fault
-initializeinterrupt 0x8e00,8,int14_handler,14		; Page fault
-initializeinterrupt 0x8e00,8,int15_handler,15		; Unknown interrupt exception
-initializeinterrupt 0x8e00,8,int16_handler,16		; Coprocessor fault
-initializeinterrupt 0x8e00,8,int17_handler,17		; Alignment check exception
-initializeinterrupt 0x8e00,8,int18_handler,18		; Machine check exception
-initializeinterrupt 0xee00,8,d_lowlevel,0x21		; Syscall interrupt
+; Divide by zero
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int0_handler		; handler
+xor	rcx,rcx				; interrupt number
+call	set_interrupt
+
+; Debug exception
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int1_handler		; handler
+mov	rcx,qword 1			; interrupt number
+call	set_interrupt
+
+; Non-maskable interrupt
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int2_handler		; handler
+mov	rcx,qword 2			; interrupt number
+call	set_interrupt
+
+; Breakpoint exception
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int3_handler		; handler
+mov	rcx,qword 3			; interrupt number
+call	set_interrupt
+
+;'Into detected overflow'
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int4_handler		; handler
+mov	rcx,qword 4			; interrupt number
+call	set_interrupt
+
+; Out of bounds exception
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int5_handler		; handler
+mov	rcx,qword 5			; interrupt number
+call	set_interrupt
+
+;  Invalid opcode exception
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int6_handler		; handler
+mov	rcx,qword 6			; interrupt number
+call	set_interrupt
+
+; No coprocessor exception
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int7_handler		; handler
+mov	rcx,qword 7			; interrupt number
+call	set_interrupt
+
+; Double fault
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int8_handler		; handler
+mov	rcx,qword 8			; interrupt number
+call	set_interrupt
+
+; Coprocessor segment overrun
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int9_handler		; handler
+mov	rcx,qword 9			; interrupt number
+call	set_interrupt
+
+; Invalid TSS
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int10_handler		; handler
+mov	rcx,qword 10			; interrupt number
+call	set_interrupt
+
+; Segment not present
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int11_handler		; handler
+mov	rcx,qword 11			; interrupt number
+call	set_interrupt
+
+; Stack fault
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int12_handler		; handler
+mov	rcx,qword 12			; interrupt number
+call	set_interrupt
+
+; General protection fault
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int13_handler		; handler
+mov	rcx,qword 13			; interrupt number
+call	set_interrupt
+
+; Page fault
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int14_handler		; handler
+mov	rcx,qword 14			; interrupt number
+call	set_interrupt
+
+; Invalid interrupt exception
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int15_handler		; handler
+mov	rcx,qword 15			; interrupt number
+call	set_interrupt
+
+; Coprocessor fault
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int16_handler		; handler
+mov	rcx,qword 16			; interrupt number
+call	set_interrupt
+
+; Alignment check exception
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int17_handler		; handler
+mov	rcx,qword 17			; interrupt number
+call	set_interrupt
+
+; Machine check exception
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword int18_handler		; handler
+mov	rcx,qword 18			; interrupt number
+call	set_interrupt
+
+;
+; Set syscall interrupt
+;
+
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING3 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword d_lowlevel		; handler
+mov	rcx,qword 0x21			; interrupt number
+call	set_interrupt
 ret
 
 ;
@@ -200,20 +321,22 @@ mov	rbx,qword idttable		; point to IDT
 add	rax,rbx				; point to IDT entry
 
 xor	ebx,ebx
-mov	[rax+12],ebx			; put 0
+mov	[rax+IDT_ZERO],ebx		; put 0
+;mov	[rax+IDT_ENTRY_IST],bl
 
-mov	[rax],dx			; bits 0-15
+mov	[rax+IDT_ENTRY_OFFSET1],dx	; bits 0-15
 
 shr	rdx,16				; get bits 16-31
-mov	[rax+6],dx
+mov	[rax+IDT_ENTRY_OFFSET2],dx
 
 shr	rdx,16				; get bits 32-63
-mov	[rax+8],edx
+mov	[rax+IDT_ENTRY_OFFSET3],edx
 
 mov	rbx,rsi
-mov	[rax+2],bx			; put selector
+mov	[rax+IDT_ENTRY_SELECTOR],bx	; put selector
 
-mov	[rax+4],di			; put flags
+mov	rbx,rdi
+mov	[rax+IDT_ENTRY_FLAGS],bl	; put flags
 
 xor	rax,rax				; return success
 

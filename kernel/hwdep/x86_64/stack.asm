@@ -24,8 +24,8 @@
 KERNEL_STACK_SIZE equ  65536*5			; size of initial kernel stack
 INITIAL_KERNEL_STACK_ADDRESS equ 0x20000		; intial kernel stack address
 
-global initializestack
-global initializekernelstack
+global initialize_current_process_user_mode_stack
+global initialize_current_process_kernel_stack
 global create_initial_stack_entries
 global get_initial_kernel_stack_base
 global get_initial_kernel_stack_top
@@ -48,7 +48,7 @@ use64
 ;
 ; Returns: Nothing
 ;
-initializestack:
+initialize_current_process_user_mode_stack:
 mov	r11,[rsp]					; get RIP
 
 mov	rax,rdi
@@ -69,11 +69,11 @@ jmp	r11					; return without using stack
 
 ; Returns: Nothing
 ;
-initializekernelstack:
+initialize_current_process_kernel_stack:
 mov	r11,rdi
 sub	r11,16*8				; space for initial stack frame
 
-mov	rax,irq_exit
+mov	rax,qword initial_exit			; return address
 mov	[r11],rax
 
 ; fill in zeroes for rax,rbx,rcx,rdx,rsi,rdi,r10,r11,r12,r13,r14,r15
@@ -110,6 +110,21 @@ call	save_kernel_stack_pointer
 mov	rdi,rax
 call	set_tss_rsp0
 ret
+
+initial_exit:
+pop	r15
+pop	r14
+pop	r13
+pop	r12
+pop	r11
+pop	r10
+pop	rdi
+pop	rsi
+pop	rdx
+pop	rcx
+pop	rbx
+pop	rax
+iretq
 
 get_initial_kernel_stack_base:
 mov	rax,INITIAL_KERNEL_STACK_ADDRESS

@@ -17,7 +17,6 @@
 	along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <elf.h>
 #include <stdint.h>
 #include <stddef.h>
 #include "kernelhigh.h"
@@ -31,8 +30,6 @@
 #include "debug.h"
 #include "version.h"
 #include "string.h"
-
-extern irq_exit;
 
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
@@ -50,7 +47,8 @@ size_t tickcount;
 size_t entrypoint;
 char *tempfilename[MAX_PATH];
 char *tempargs[MAX_PATH];
-size_t *stackinit;
+PROCESS *oldprocess;
+size_t multitasking_was_enabled=FALSE;
 
 /*
 * Execute program
@@ -66,15 +64,16 @@ size_t *stackinit;
 size_t exec(char *filename,char *argsx,size_t flags) {
 void *kernelstackbase;
 PROCESS *next;
-PROCESS *oldprocess;
 size_t stackp;
 PROCESS *lastprocess;
 PSP *psp=NULL;
 char *fullpath[MAX_PATH];
 size_t *stackptr;
 
-disable_interrupts();
-disablemultitasking();
+//disable_interrupts();
+
+multitasking_was_enabled=is_multitasking_enabled();
+if(multitasking_was_enabled == TRUE) disablemultitasking();
 
 oldprocess=currentprocess;					/* save current process pointer */
 
@@ -86,9 +85,6 @@ if(processes == NULL) {  					/* first process */
 	if(processes == NULL) {					/* return if can't allocate */
 		loadpagetable(getppid());
 		freepages(highest_pid_used);	
-
-		enable_interrupts();
-		enablemultitasking();
 		return(-1);
 	}
 
@@ -105,9 +101,6 @@ else								/* not first process */
 		freepages(highest_pid_used);
 
 		setlasterror(NO_MEM);
-
-		enable_interrupts();
-		enablemultitasking();
 		return(-1);
 	}
 
@@ -151,8 +144,8 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
 
-	enable_interrupts();
-	enablemultitasking();
+	
+	
 	return(-1);
 }
 
@@ -179,9 +172,6 @@ if(currentprocess != NULL) {
 
 		lastprocess->next=NULL;		/* remove process */
 		processes_end=lastprocess;
-
-		enable_interrupts();
-		enablemultitasking();
 		return(-1);
 	}
 
@@ -203,7 +193,7 @@ if(getpid() != 0) {
 	dup_internal(stdout,-1,getppid(),getpid());
 	dup_internal(stderr,-1,getppid(),getpid());
 }
-
+	
 /* Part two of enviroment variables duplication
  *
  * allocate enviroment block at the highest user program address minus enviroment size
@@ -231,8 +221,8 @@ if(stackp == NULL) {
 	loadpagetable(getpid());
 	freepages(highest_pid_used);
 
-	enable_interrupts();
-	enablemultitasking();
+	
+	
 	return(-1);
 }
 
@@ -242,7 +232,6 @@ next->stackpointer=stackp+PROCESS_STACK_SIZE;
 processes_end=next;						/* save last process address */
 
 enable_interrupts();
-
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
@@ -258,17 +247,14 @@ if(entrypoint == -1) {					/* can't load executable */
 
 	loadpagetable(getpid());
 
-	enable_interrupts();
-	enablemultitasking();
+	
+	
 	return(-1);
 }
 
+initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
-if(oldprocess != NULL) updatekernelstack(oldprocess->kernelstacktop,oldprocess->stackpointer,irq_exit);
-
-initializekernelstack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
-
-/* create Program Segment Prefix */ 
+	/* create Program Segment Prefix */ 
 
 ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
 
@@ -279,23 +265,25 @@ if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
 
 	loadpagetable(getpid());
 
-	enablemultitasking();
-	enable_interrupts();
-
-	enable_interrupts();
-	enablemultitasking();
+	
+	
 	return(0);
 }
 else
 {
-	initializestack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
+	if(getpid() == 0) {
+	//	kprintf_direct("kernel stack pointer=%X\n",get_kernel_stack_pointer());
+	//	asm("xchg %bx,%bx");
+	}
 
-	enablemultitasking();
+	initialize_current_process_user_mode_stack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
+	
+	
 
 	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
 }
 
-enablemultitasking();
+
 return(0);
 }
 
@@ -351,6 +339,8 @@ if(process_found == FALSE) {
 
 if(process_found == FALSE) {		/* process not found */
 	setlasterror(INVALID_PROCESS);
+
+	unlock_mutex(&process_mutex);			/* unlock mutex */
 	return(-1);
 }
 
@@ -380,13 +370,15 @@ unlock_mutex(&process_mutex);			/* unlock mutex */
 if(process == oldprocess) {	/* killing current process */
 	currentprocess->ticks=currentprocess->maxticks+1;	/* force task to end of timeslot */
 
-	enablemultitasking();
+	
 
 	yield();			/* switch to next process if killing current process */
 
 }
 
 setlasterror(NO_ERROR);
+
+unlock_mutex(&process_mutex);			/* unlock mutex */
 return(0);
 }
 
@@ -770,7 +762,7 @@ switch(argone) {
 			return(-1);
 		}
 
-		return(findnextprocess((PROCESS *) argfour,(PROCESS *) argtwo));
+		return(findnextprocess((PROCESS *) argfour));
 
 	case 0x700B:			/* add block device */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
@@ -968,8 +960,6 @@ if((strncmp(split.dirname,"\\",MAX_PATH) != 0) && ((chdir_file_record.flags & FI
 
 strncpy(currentprocess->currentdirectory,fullpath,MAX_PATH);	/* set directory */
 
-kprintf_direct("currentprocess->currentdirectory=%s\n",currentprocess->currentdirectory);
-
 setlasterror(NO_ERROR);  
 return(NO_ERROR);				/* no error */
 }
@@ -1150,7 +1140,7 @@ if(next->signalhandler != NULL) {		/* if the process has a signal handler */
 	next->signalhandler(signalno);		/* call signal handler */
 	loadpagetable(thisprocess);		/* switch back to original address space */
 
-	enablemultitasking();
+	
 }
 
 setlasterror(NO_ERROR);
@@ -1467,28 +1457,28 @@ return(processes);
 *
 */
 
-PROCESS *findfirstprocess(PROCESS *processbuf) {
+size_t findfirstprocess(PROCESS *processbuf) {
+if(processes == NULL) return(-1);
+
 memcpy(processbuf,processes,sizeof(PROCESS));		/* get first process */
 
-return(processes->next);
+return(0);
 }
 
 /*
 * Find next process
 *
-* In: previousprocess	Pointer to previous process returned from call to get_processes_pointer() or findnextprocess()
-*     processbuf	Pointer to buffer to hold process information
+* In: processbuf	Pointer to buffer to hold process information
 *
 * Returns NULL on error or pointer to next process on success
 *
 */
 
-PROCESS *findnextprocess(PROCESS *previousprocess,PROCESS *processbuf) { 
-if(previousprocess->next == NULL) return(NULL);		/* end of processes */
+size_t findnextprocess(PROCESS *processbuf) { 
+if(processbuf->next == NULL) return(-1);		/* end of processes */
 
-memcpy(processbuf,previousprocess->next,sizeof(PROCESS));		/* get next process */
-
-return(previousprocess->next);
+memcpy(processbuf,processbuf->next,sizeof(PROCESS));		/* get next process */
+return(0);
 }
 
 /*

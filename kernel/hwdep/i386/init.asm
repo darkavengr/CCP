@@ -67,6 +67,7 @@ GDT_LIMIT equ 5
 %include "init.inc"
 %include "kernelselectors.inc"
 %include "bootinfo.inc"
+%include "gdtflags.inc"
 
 _asm_init:
 ;
@@ -97,7 +98,6 @@ jz    %%a202
 
 [BITS 16]
 use16
-
 cli
 mov	sp,0xE000				; temporary stack
 
@@ -339,6 +339,8 @@ sti
 jmp	kernel
 
 
+; GDT
+
 gdtinfo:
 dw offset gdt_end - offset gdt-1
 dd offset gdt-KERNEL_HIGH
@@ -354,32 +356,42 @@ db 0
 db 0,0
 db 0
 
-; intial gdt
-; ring 0 segments
+; ring 0 code segment
 
 dw 0xFFFF					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 0x9A,0xCF					; Code segment
+						; access byte
+db SEGMENT_PRESENT | RING0_SEGMENT | CODE_OR_DATA_SEGMENT | EXECUTABLE_SEGMENT | CODE_SEGMENT_NON_CONFORMING | CODE_SEGMENT_READABLE
+db FLAG_GRANULARITY_PAGE | FLAG_32BIT_SEGMENT | 0xF	; Flags (High nibble) and low four bits of limit (low nibble)
 db 0						; last byte of base
+
+; ring 0 data segment
 
 dw 0xFFFF					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 0x92,0xCF					; Data segment
+						; access byte
+db SEGMENT_PRESENT | RING0_SEGMENT | CODE_OR_DATA_SEGMENT | NON_EXECUTABLE_SEGMENT | DATA_SEGMENT_GROWS_UP | DATA_SEGMENT_WRITEABLE
+db FLAG_GRANULARITY_PAGE | FLAG_32BIT_SEGMENT | 0xF	; Flags (High nibble) and low four bits of limit (low nibble)
 db 0						; last byte of base
 
-; ring 3 segments
+; ring 3 code segment
 dw 0xFFFF					; low word of limit
 dw 0						; low word of base
 db 0						; middle byte of base
-db 0xFA,0xCF					; Code segment
+						; access byte
+db SEGMENT_PRESENT | RING3_SEGMENT | CODE_OR_DATA_SEGMENT | EXECUTABLE_SEGMENT | CODE_SEGMENT_NON_CONFORMING | CODE_SEGMENT_READABLE
+db FLAG_GRANULARITY_PAGE | FLAG_32BIT_SEGMENT | 0xF	; Flags (High nibble) and low four bits of limit (low nibble)
 db 0						; last byte of base
 
-dw 0ffffh					; low word of limit
+; ring 3 data segment
+dw 0xFFFF					; low word of limit
 dw 0		 				; low word of base
 db 0	 					; middle byte of base
-db 0xF2,0xCF					; Data segment
+						; access byte
+db SEGMENT_PRESENT | RING3_SEGMENT | CODE_OR_DATA_SEGMENT | NON_EXECUTABLE_SEGMENT | DATA_SEGMENT_GROWS_UP | DATA_SEGMENT_WRITEABLE
+db FLAG_GRANULARITY_PAGE | FLAG_32BIT_SEGMENT | 0xF	; Flags (High nibble) and low four bits of limit (low nibble)
 db 0						; last byte of base
 
 times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0		; extra entries for TSS and other things

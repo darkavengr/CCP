@@ -21,5 +21,4 @@ KERNEL_CODE_SELECTOR	equ	0x8			; kernel code selector
 KERNEL_DATA_SELECTOR	equ	0x10			; kernel data selector
 USER_CODE_SELECTOR	equ	0x1B			; user code selector
 USER_DATA_SELECTOR	equ	0x23			; user data selector
-TSS_SELECTOR 		equ	0x28			; tss selector
 

@@ -99,6 +99,8 @@ if(e == PAGE_FAULT) {
 
 	if(faultaddress < get_usermode_stack_base()) {		/* stack overflow */
 		alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,faultaddress-PROCESS_STACK_SIZE); /* extend stack downwards */
+
+		asm("xchg %bx,%bx");
 		return;	
 	}
 }
