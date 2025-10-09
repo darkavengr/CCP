@@ -24,7 +24,6 @@
 #include "debug.h"
 
 size_t multitaskingenabled=FALSE;
-size_t timer_count=0;
 
 extern void switch_task(void *regs);
 
@@ -67,9 +66,6 @@ void init_multitasking(void) {
 multitaskingenabled=FALSE;
 
 setirqhandler(0,'SCHD',&switch_task);		/* Register task switcher */
-//setirqhandler(0,'TIMR',&timer_increment);		/* Register timer */
-
-timer_count=0;
 return;
 }
 
@@ -103,18 +99,11 @@ if(get_current_process_pointer() == NULL) return(get_processes_pointer());
 newprocess=get_current_process_pointer();
 
 /* find next process */
+newprocess=newprocess->next;
 
-//while(newprocess != NULL) {
-	newprocess=newprocess->next;
-
-	if(newprocess == NULL) newprocess=get_processes_pointer();	/* if at end, loop back to start */
-
-//	if((newprocess->flags & PROCESS_BLOCKED) == 0) return(newprocess);		/* found process */
-
-//}
+if(newprocess == NULL) newprocess=get_processes_pointer();	/* if at end, loop back to start */
 
 return(newprocess);
-//return(NULL);
 }
 
 /*
@@ -129,32 +118,9 @@ return(newprocess);
 size_t is_current_process_ready_to_switch(void) { 
 if(get_processes_pointer() == NULL) return(FALSE);
 
-if(increment_tick_count() < get_max_tick_count()) return(FALSE);
+if(timer_increment() < get_process_max_tick_count()) return(FALSE);
 
 return(TRUE);
 }
 
-/*
- * Increment timer count
- *
- * In: nothing
- *
- * Returns: noting
- * 
- */
-size_t timer_increment(void) {
-return(++timer_count);
-}
-
-/*
- * Get timer count
- *
- * In: nothing
- *
- * Returns: Timer count
- * 
- */
-size_t get_timer_count(void) {
-return(timer_count);
-}
 

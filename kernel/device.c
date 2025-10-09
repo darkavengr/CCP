@@ -212,22 +212,23 @@ if(next == NULL) {					/* bad drive */
 	 return(-1);
 }
 
-unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 b=buf;
 
 if(next->sectorsperblock == 0) next->sectorsperblock=1;
 
-if(next->blockio == NULL) {				/* no handler defined */
+if(next->blockio == NULL) {				/* no I/O handler defined */
 	kprintf_direct("debug: No blockio() handler defined\n");
 	asm("xchg %bx,%bx");
+
+	unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
 	setlasterror(NOT_IMPLEMENTED);
 	return(-1);
 }
 
 
-for(count=0;count<next->sectorsperblock;count++) {
-	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {
+for(count=0;count < next->sectorsperblock;count++) {
+	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {		/* call I/O handler */
 		lasterr=getlasterror();
 
 		/* handle any critical errors */
@@ -296,8 +297,10 @@ while(next != NULL) {
 		return(NO_ERROR);
 	}
 
-next=next->next;
+	next=next->next;
 }
+
+unlock_mutex(&characterdevice_mutex);			/* unlock mutex */
 
 setlasterror(FILE_NOT_FOUND);
 return(-1);
@@ -398,9 +401,9 @@ size_t update_block_device(size_t drive,BLOCKDEVICE *driver) {
 BLOCKDEVICE *next;
 BLOCKDEVICE *save_next;
 
-/* find device */
 lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
+/* find device */
 next=blockdevices;
 
 while(next != NULL) {
@@ -557,8 +560,8 @@ size_t allocatedrive(void) {
 size_t count;
 size_t drivenumber=2;
 
-/* loop through bitmap to find free drive
-	  starts at bit 2 to skip first two drives which are reserved */
+/* Loop through bitmap to find free drive.
+   Starts at bit 2 to skip first two drives which are reserved */
 
 /* from 2**2 to 2**26 */
 
@@ -654,10 +657,11 @@ return(0);
 void callirqhandlers(size_t irqnumber,void *stackparams) {
 IRQ_HANDLER *next=irq_handlers;
 
-while(next != NULL) {
-	//kprintf_direct("IRQ=%X %X\n",next->irqnumber,next->handler);
-	
+while(next != NULL) {	
 	if((next->irqnumber == irqnumber) && (next->handler != NULL)) {
+		//kprintf_direct("IRQ=%X %X %X\n",next->irqnumber,next->handler,next->refnumber);
+
+		//if(next->refnumber == 'TIMR') asm("xchg %bx,%bx");
 		next->handler(stackparams);		/* call handler */
 	}
 

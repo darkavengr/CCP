@@ -1,4 +1,5 @@
 %include "kernelselectors.inc"
+%include "pic.inc"
 
 extern callirqhandlers
 
@@ -111,16 +112,14 @@ mov	rsi,qword buf					; stack parameter pointer
 call	callirqhandlers				; call irq handler
 
 irq_exit:
-nop
-mov	al,0x20				        ; reset master
-out	0x20,al
+mov	al,PIC_EOI			        ; reset PIC
+out	PIC_MASTER_COMMAND,al			; reset PIC master
 
 mov	ebx,[rel irqnumber]		        ; get IRQ number
 cmp	ebx,7			     	        ; if slave IRQ
 jle	nslave				        ; continue if not
-
-mov	al,0x20				        ; reset slave			     
-out	0xA0,al
+			     
+out	PIC_SLAVE_COMMAND,al			; reset PIC slave
 
 nslave:
 pop	r15						; restore registers

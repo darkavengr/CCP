@@ -429,7 +429,11 @@ for(retrycount=0;retrycount < FLOPPY_RETRY_COUNT;retrycount++) {
 #endif
 
 	irq6done=FALSE;
-	wait_for_irq6();	/* until ready */
+
+	if(wait_for_irq6() == -1) {	/* wait for IRQ 6 */
+		floppy_motor_off(drive);
+		return(-1);
+	}
 
 #ifdef FLOPPY_DEBUG
 	kprintf_direct("floppy debug: Sector I/O: Read I/O status\n"); 
@@ -624,20 +628,40 @@ outb(DATA_REGISTER,c);				/* write data */
  *
  */
 
-void wait_for_irq6(void) {
+size_t wait_for_irq6(void) {
+size_t irq6_timeout_end;
+size_t flags_register;
 
 #ifdef FLOPPY_DEBUG
 	kprintf_direct("floppy debug: Waiting for IRQ 6\n");
 #endif
 
-while(irq6done == FALSE) ;;
+/* check if interrupts are enabled */
+
+if((get_cpu_flags_register() & 0x200) == 0) {		/* if bit 9 (interrupt flag) is clear */
+	kprintf_direct("floppy: Can't receive IRQ 6 because interrupts are disabled\n");
+
+	setlasterror(GENERAL_FAILURE);
+	return(-1);
+}
+
+/* wait for IRQ 6 */
+irq6_timeout_end=get_timer_count()+FLOPPY_IRQ_TIMEOUT;
+
+while(irq6done == FALSE) {
+	if(get_timer_count() > irq6_timeout_end) {		/* timed out waiting for IRQ 6 */
+		kprintf_direct("floppy: Timed out waiting for IRQ 6\n");
+		
+		setlasterror(GENERAL_FAILURE);
+		return(-1);
+	}
+}
 
 #ifdef FLOPPY_DEBUG
 	kprintf_direct("floppy debug: Received IRQ 6\n");
 #endif
 
-return;
-	
+return(0);
 }
 
 /*
@@ -688,9 +712,6 @@ if((st[1] & 0x80) || (st[1] & 0x20) || (st[1] & 0x10) || (st[1] & 0x10) || (st[1
 	}
 #endif
 
-	kprintf_direct("DMA buffer=%X\n",floppybuf+KERNEL_HIGH);		
-	asm("xchg %bx,%bx");
-
 	setlasterror(GENERAL_FAILURE);
 	return(-1);
 }
@@ -717,10 +738,6 @@ if((st[2] & 0x40) || (st[2] & 0x20) || (st[2] & 0x10) || (st[2] & 0x4) || (st[2]
 	}
 #endif
 
-
-	kprintf_direct("DMA buffer=%X\n",floppybuf+KERNEL_HIGH);		
-	asm("xchg %bx,%bx");	
-
 	setlasterror(GENERAL_FAILURE);
 	return(-1);
 }
@@ -729,10 +746,6 @@ if((st[2] & 0x2)) {
 #ifdef FLOPPY_DEBUG
 	kprintf_direct("floppy: Write protect error\n");
 #endif
-
-
-	kprintf_direct("DMA buffer=%X\n",floppybuf+KERNEL_HIGH);		
-	asm("xchg %bx,%bx");
 
 	setlasterror(WRITE_PROTECT_ERROR);
 	return(-1);

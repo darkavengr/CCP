@@ -3,8 +3,6 @@ global set_gdt
 extern gdt
 extern gdt_end
 
-%define offset
-
 GDT_LIMIT_LOW	equ 0
 GDT_BASE_LOW	equ 2
 GDT_BASE_MIDDLE equ 4
@@ -36,9 +34,9 @@ mov	ebx,[esp+16]					; get access
 mov	eax,[esp+20]					; get granularity
 
 shl	edi,3						; multiply by size of gdt entry (8)
-add	edi,offset gdt					; point to gdt entry
+add	edi,gdt					; point to gdt entry
 
-cmp	edi,offset gdt_end				; check if past end of GDT
+cmp	edi,gdt_end				; check if past end of GDT
 jl	gdt_is_ok
 
 mov	eax,0xffffffff					; return error

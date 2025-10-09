@@ -41,12 +41,10 @@ extern get_processes_pointer
 extern enablemultitasking
 extern disablemultitasking
 
-%define offset
-
 %include "kernelselectors.inc"
 ;
 ; The functions switch_task_process_descriptor() and yield() should not be called from 
-; an interrupt handler. Instead, call switch_task().
+; an interrupt handler. Call switch_task() instead.
 ;
 
 switch_task_process_descriptor:
@@ -110,7 +108,7 @@ iret
 ;
 ; Switch task
 ;
-; The caller is expected to save the registers onto the stack and call switch_task().
+; The caller is expected to save the registers onto the stack, push the stack address and call switch_task().
 ; After returning from switch_task() the caller function will then restore the registers and return,
 ; transferring control to the new process.
 ;
@@ -121,7 +119,7 @@ iret
 
 switch_task:
 mov	eax,[esp+4]				; get pointer to saved context
-mov	[ContextPointer],eax
+mov	[OldContextPointer],eax
 
 ; return if there are no processes
 
@@ -132,17 +130,11 @@ jnz	have_processes
 jmp	no_stack_switch
 
 have_processes:
-;call	get_current_process_pointer
-;test	eax,eax
-;jnz	have_current_process
-
-;jmp	no_stack_switch
-
-;have_current_process:
 call	is_multitasking_enabled			
 test	eax,eax 				; return if multitasking is disabled
 jnz	multitasking_enabled
 
+;xchg	bx,bx
 jmp	no_stack_switch
 
 multitasking_enabled:
@@ -155,8 +147,10 @@ jnz	task_time_slice_finished
 jmp	no_stack_switch
 
 task_time_slice_finished:
-push	dword [ContextPointer]
-call	save_kernel_stack_pointer		; save kernel stack pointer
+;xchg	bx,bx
+
+push	dword [OldContextPointer]
+call	save_kernel_stack_pointer		; save kernel stack pointer for current process
 add	esp,4
 
 call	getpid
@@ -197,15 +191,16 @@ push	eax
 call	set_tss_esp0
 add	esp,4
 
+; switch kernel stack
 call	get_kernel_stack_pointer
-mov	esp,eax						; switch kernel stack
+mov	esp,eax
 
 no_stack_switch:
 ;xor	eax,eax
 ;mov	[save_descriptor],eax				; clear descriptor
 ret
 
-ContextPointer dd 0
+OldContextPointer dd 0
 save_descriptor dd 0
 save_eip dd 0
 

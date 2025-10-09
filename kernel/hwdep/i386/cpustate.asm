@@ -23,6 +23,7 @@
 ;
 global halt
 global restart
+global get_cpu_flags_register
 
 [BITS 32]
 use32
@@ -44,12 +45,25 @@ hlt
 ; Returns: Nothing
 ;
 restart:
-in	al,64h					; get status
+in	al,0x64					; get status
 
 and	al,2					; get keyboard buffer status
 jnz	restart
 
-mov	al,0feh					; reset
-out 	64h,al
+mov	al,0xFE					; reset
+out 	0x64,al
+ret
+
+;
+; Get CPU flags register
+;
+; In: Nothing
+;
+; Returns: CPU flags register
+;
+
+get_cpu_flags_register:
+pushf
+pop	eax
 ret
 

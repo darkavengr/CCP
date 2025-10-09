@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
+#include "mutex.h"
 
 #define DEVICE_LOCKED			1
 #define DEVICE_FIXED			2

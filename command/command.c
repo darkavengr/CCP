@@ -210,7 +210,7 @@ struct psp {
 
 kprintf_direct(commandbanner,COMMAND_VERSION_MAJOR,COMMAND_VERSION_MINOR);
 
-/*argcount=tokenize_line(psp->commandline,commandlinearguments," \t");
+argcount=tokenize_line(psp->commandline,commandlinearguments," \t");
 
 if(argcount >= 2) {
 	for(count=1;count<argcount;count++) {
@@ -251,7 +251,7 @@ if(argcount >= 2) {
 			}
 		}
 	}
-}*/
+}
 
 set_critical_error_handler(&critical_error_handler);		/* set critical error handler */
 set_signal_handler(signalhandler);			/* set signal handler */

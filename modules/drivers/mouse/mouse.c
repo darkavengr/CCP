@@ -99,7 +99,7 @@ if(add_character_device(&device) == -1) {	/* add character device */
 	return(-1);
 }
 
-mouse_click_timestamp=get_tick_count();		/* get first timestamp for doubleclick */
+mouse_click_timestamp=get_timer_count();		/* get first timestamp for doubleclick */
 
 if(init != NULL) {			/* args found */
 	tc=tokenize_line(init,tokens," ");	/* tokenize line */
@@ -174,13 +174,13 @@ if(mreadcount == 3 && (mousestatus & MOUSE_DATA_READY_READ) == 0) {
 	 mouseinfo.mousey += my;
 
 	 if(mousepacket[0] & MOUSE_LEFT_BUTTON_MASK) {
-	 	if(get_tick_count() < (mouse_click_timestamp+MOUSE_DOUBLECLICK_INTERVAL)) {		/* double click */    
+	 	if(get_timer_count() < (mouse_click_timestamp+MOUSE_DOUBLECLICK_INTERVAL)) {		/* double click */    
 
 		mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_DOUBLECLICK;
 	}
 	else
 	{
-		mouse_click_timestamp=get_tick_count()+MOUSE_DOUBLECLICK_INTERVAL;
+		mouse_click_timestamp=get_timer_count()+MOUSE_DOUBLECLICK_INTERVAL;
 		mouseinfo.mousebuttons |= MOUSE_LEFT_BUTTON_MASK;
 	}
 }

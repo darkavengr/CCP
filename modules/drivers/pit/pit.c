@@ -38,9 +38,9 @@
 size_t pit_init(char *init) {
 CHARACTERDEVICE device;
 
-outb(0x43,0x34);				/* set PIT timer interval */
-outb(0x40,PIT_VAL & 0xFF);
-outb(0x40,((PIT_VAL >> 8) & 0xFF));
+outb(PIT_COMMAND_REGISTER,0x34);				/* set PIT timer interval */
+outb(PIT_CHANNEL_0_REGISTER,PIT_VAL & 0xFF);
+outb(PIT_CHANNEL_0_REGISTER,((PIT_VAL >> 8) & 0xFF));
 
 strncpy(device.name,"TIMER",MAX_PATH);
 device.charioread=&pit_read;
@@ -73,24 +73,24 @@ size_t pit_io(size_t op,size_t *buf,size_t ignored) {
 size_t val;
 
 if(op == DEVICE_READ) {
-	outb(0x43,0x34);
+	outb(PIT_COMMAND_REGISTER,0x34);
 
-	val=(inb(0x40) << 8)+inb(0x40);		/* read pit */ 
+	val=(inb(PIT_CHANNEL_0_REGISTER) << 8)+inb(PIT_CHANNEL_0_REGISTER);		/* read PIT */ 
 	*buf=val;
 
 	return(0);
 }
-
-if(op == DEVICE_WRITE) {
+else if(op == DEVICE_WRITE) {
 	val=*buf;
 
-	outb(0x43,0x34);
-	outb(0x40,val & 0xFF);
-	outb(0x40,((val >> 8) & 0xFF));
+	outb(PIT_COMMAND_REGISTER,0x34);
+	outb(PIT_CHANNEL_0_REGISTER,val & 0xFF);	/* send low byte */
+	outb(PIT_CHANNEL_0_REGISTER,((val >> 8) & 0xFF));	/* send high byte */
 
 	return(0);
 }
- 
+
+setlasterror(INVALID_PARAMETER);
 return(-1);
 }
 

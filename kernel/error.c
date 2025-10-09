@@ -40,7 +40,7 @@ char *errors[] = {
 "Invalid process",\
 "Invalid drive specified",\
 "Attempt to remove current directory",\
-"Can't rename across drives",\
+"Attempt to rename file or directory across drives",\
 "End of directory",\
 "Write-protect error",\
 "Invalid device",\

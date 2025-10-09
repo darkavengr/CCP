@@ -17,15 +17,13 @@
     along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "processmanager/mutex.h"
+#include "mutex.h"
 #include "device.h"
 #include "vfs.h"
 #include "string.h"
+#include "speaker.h"
 
 #define MODULE_INIT speaker_io
-
-size_t speaker_init(char *initstring);
-size_t speaker_io_write(size_t *buf,size_t len);
 
 /*
  * Intialize speaker
@@ -72,29 +70,29 @@ size_t lencount;
 size_t count;
 
 for(count=0;count<len;count++) {
-	 frequency=1193180 / (uint32_t) *buf++;
+	 frequency=SPEAKER_DIVISOR / (uint32_t) *buf++;
 	 notelen=*buf++;
 
 /* configure pit to interrupt speaker output; this will create the sound */
 
-	 outb(0x43,0xB6);
-	 outb(0x40,frequency & 0xFF);
-	 outb(0x40,frequency >> 8);
+	 outb(PIT_COMMAND_REGISTER,0xB6);
+	 outb(PIT_CHANNEL_0_REGISTER,frequency & 0xFF);
+	 outb(PIT_CHANNEL_0_REGISTER,frequency >> 8);
 
 	/* wait for sound to end */
 
-	 lencount=get_tick_count()+notelen;
+	 lencount=get_timer_count()+notelen;		/* get end of note */
 	 
-	 while( get_tick_count() < lencount) {
-	 	sound=inb(0x61);
+	 while( get_timer_count() < lencount) {
+	 	sound=inb(SPEAKER_PORT);
 
-  	 	if(sound != (sound | 3)) outb(0x61, sound | 3);
+  	 	if(sound != (sound | 3)) outb(SPEAKER_PORT, sound | 3);		/* play note */
 	 }
 
-	 outb(0x61,inb(0x61) & 0xfc);
+	 outb(SPEAKER_PORT,inb(SPEAKER_PORT) & 0xFC);	/* silence speaker */
   }
 
-return(0);
+return(len);
 }
 
 

@@ -29,7 +29,6 @@
 
 %define TRUE 1
 %define FALSE 0
-%define offset
 
 extern kernel							; high-level kernel
 extern kernel_begin						; start of kernel in memory
@@ -157,7 +156,7 @@ out   0x64,al
 a20wait
 		
 a20done:
-mov 	edi,offset gdtinfo
+mov 	edi,gdtinfo
 sub	edi,KERNEL_HIGH
 db	0x66
 lgdt 	[ds:edi]			; load gdt
@@ -168,7 +167,7 @@ mov  	cr0,eax
 
 db	0x66				; jmp dword 0x8:pmode
 db	0xEA
-dd	offset pmode-KERNEL_HIGH
+dd	pmode-KERNEL_HIGH
 dw	8
 
 [BITS 32]
@@ -334,7 +333,6 @@ mov	esp,eax					; temporary stack
 call	load_modules_from_initrd
 
 sti
-
 ; jump to highlevel code
 jmp	kernel
 
@@ -342,12 +340,12 @@ jmp	kernel
 ; GDT
 
 gdtinfo:
-dw offset gdt_end - offset gdt-1
-dd offset gdt-KERNEL_HIGH
+dw gdt_end - gdt-1
+dd gdt-KERNEL_HIGH
 
 gdt_high:
-dw offset gdt_end - offset gdt-1
-dd offset gdt
+dw gdt_end - gdt-1
+dd gdt
 
 ; null entries, don't modify
 gdt dw 0
@@ -398,5 +396,5 @@ times GDT_LIMIT-4 db 0,0,0,0,0,0,0,0		; extra entries for TSS and other things
 
 gdt_end:
 
-MEMBUF_START dd offset end
+MEMBUF_START dd end
 

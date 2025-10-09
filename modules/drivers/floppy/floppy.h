@@ -1,37 +1,37 @@
-#define	  FLOPPY_RETRY_COUNT	      3
-#define	  FD_DELAY	     	20*6000
+#define	FLOPPY_RETRY_COUNT	    3
+#define FLOPPY_IRQ_TIMEOUT	    300	   /* milliseconds to wait for IRQ 6 to arrive */
 
-#define   READ_TRACK                  2	     /* generates IRQ 6 */
-#define   SPECIFY                     3      /* set drive parameters */
-#define   SENSE_DRIVE_STATUS          4
-#define   WRITE_DATA                  5      /* write to disk */
-#define   READ_DATA                   6      /* read from disk */
-#define   RECALIBRATE                 7      /* seek to cylinder 0 */
-#define   SENSE_INTERRUPT             8      /* acknowledge IRQ 6 get status of last command */
-#define   WRITE_DELETED_DATA          9
-#define   READ_ID                     10     /* generates IRQ 6 */
-#define   READ_DELETED_DATA           12
-#define   FORMAT_TRACK                13     /* fomat track */
-#define   SEEK                        15     /* seek both heads to cylinder X */
-#define   VERSION                     16     /* used during initialization once */
-#define   SCAN_EQUAL                  17
-#define   PERPENDICULAR_MODE          18     
-#define   CONFIGURE                   19     /* set controller parameters */
-#define   LOCK                        20     /* protect controller params from a reset */
-#define   VERIFY                      22     /* verify track */
-#define   SCAN_LOW_OR_EQUAL           25     /* scan low */
-#define   SCAN_HIGH_OR_EQUAL          29
+#define READ_TRACK                  2	     /* generates IRQ 6 */
+#define SPECIFY                     3      /* set drive parameters */
+#define SENSE_DRIVE_STATUS          4
+#define WRITE_DATA                  5      /* write to disk */
+#define READ_DATA                   6      /* read from disk */
+#define RECALIBRATE                 7      /* seek to cylinder 0 */
+#define SENSE_INTERRUPT             8      /* acknowledge IRQ 6 get status of last command */
+#define WRITE_DELETED_DATA          9
+#define READ_ID                     10     /* generates IRQ 6 */
+#define READ_DELETED_DATA           12
+#define FORMAT_TRACK                13     /* fomat track */
+#define SEEK                        15     /* seek both heads to cylinder X */
+#define VERSION                     16     /* used during initialization once */
+#define SCAN_EQUAL                  17
+#define PERPENDICULAR_MODE          18     
+#define CONFIGURE                   19     /* set controller parameters */
+#define LOCK                        20     /* protect controller params from a reset */
+#define VERIFY                      22     /* verify track */
+#define SCAN_LOW_OR_EQUAL           25     /* scan low */
+#define SCAN_HIGH_OR_EQUAL          29
 
-#define   DATA_REGISTER	              0x3F0  
-#define   STATUS_REGISTER_A           0x3F0  
-#define   STATUS_REGISTER_B           0x3F1 
-#define   DIGITAL_OUTPUT_REGISTER     0x3F2
-#define   TAPE_DRIVE_REGISTER         0x3F3
-#define   MAIN_STATUS_REG	      0x3F4
-#define   DATARATE_SELECT_REGISTER    0x3F4 
-#define   DATA_REGISTER               0x3F5
-#define   DIGITAL_INPUT_REGISTER      0x3F7
-#define   CONFIGURATION_CONTROL_REGISTER 0x3F7
+#define DATA_REGISTER	              0x3F0  
+#define STATUS_REGISTER_A           0x3F0  
+#define STATUS_REGISTER_B           0x3F1 
+#define DIGITAL_OUTPUT_REGISTER     0x3F2
+#define TAPE_DRIVE_REGISTER         0x3F3
+#define MAIN_STATUS_REG	      0x3F4
+#define DATARATE_SELECT_REGISTER    0x3F4 
+#define DATA_REGISTER               0x3F5
+#define DIGITAL_INPUT_REGISTER      0x3F7
+#define CONFIGURATION_CONTROL_REGISTER 0x3F7
 
 #define	RQM				0x80
 #define DIO				0x40
@@ -82,6 +82,6 @@ size_t floppy_io(size_t op,size_t drive,uint64_t block,char *buf);
 void irq6_handler(void);
 void floppy_reset_controller(size_t drive);
 void floppy_send_command(size_t drive,uint8_t c);
-void wait_for_irq6(void); 
+size_t wait_for_irq6(void); 
 size_t floppy_check_status(void);
 

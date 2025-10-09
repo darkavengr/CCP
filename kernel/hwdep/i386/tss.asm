@@ -4,7 +4,6 @@ global get_stack_top
 
 extern set_gdt
 
-%define offset
 %include "init.inc"
 %include "kernelselectors.inc"
 %include "gdtflags.inc"
@@ -49,8 +48,8 @@ ret
 initialize_tss:
 push	dword 0						; granularity							; access
 push	SEGMENT_PRESENT | RING3_SEGMENT | TSS_SEGMENT | SEGMENT_32BIT_TSS_AVALIABLE
-push	(offset end_tss-offset tss)+offset tss		; limit
-push	offset tss					; base
+push	(end_tss-tss)+tss		; limit
+push	tss					; base
 push	dword TSS_GDT_ENTRY				; gdt entry
 call	set_gdt
 add	esp,20

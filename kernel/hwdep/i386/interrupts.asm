@@ -21,8 +21,6 @@
 ; Interrupt functions
 ;
 
-%define offset
-
 %include "kernelselectors.inc"
 
 global disable_interrupts				; disable interrupts
@@ -61,7 +59,7 @@ initialize_interrupts:
 ; Divide by zero
 
 push	0				; interrupt number
-push	offset int0_handler		; handler
+push	int0_handler			; handler
 push	KERNEL_CODE_SELECTOR		; selector
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE				; flags
 call	set_interrupt
@@ -70,7 +68,7 @@ add	esp,16				; fix stack pointer
 ; Debug exception
 
 push	1
-push	offset int1_handler
+push	int1_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -79,7 +77,7 @@ add	esp,16
 ; Non-maskable interrupt
 
 push	2
-push	offset int2_handler
+push	int2_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -88,7 +86,7 @@ add	esp,16
 ; Breakpoint exception
 
 push	3
-push	offset int3_handler
+push	int3_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -97,7 +95,7 @@ add	esp,16
 ;'Into detected overflow'
 
 push	4
-push	offset int4_handler
+push	int4_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -106,7 +104,7 @@ add	esp,16
 ; Out of bounds exception
 
 push	5
-push	offset int5_handler
+push	int5_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -115,7 +113,7 @@ add	esp,16
 ;  Invalid opcode exception
 
 push	6
-push	offset int6_handler
+push	int6_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -124,7 +122,7 @@ add	esp,16
 ; No coprocessor exception
 
 push	7
-push	offset int7_handler
+push	int7_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -133,7 +131,7 @@ add	esp,16
 ; Double fault
 
 push	8
-push	offset int8_handler
+push	int8_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -142,7 +140,7 @@ add	esp,16
 ; Coprocessor segment overrun
 
 push	9
-push	offset int9_handler
+push	int9_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -151,7 +149,7 @@ add	esp,16
 ; Invalid TSS
 
 push	10
-push	offset int10_handler
+push	int10_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -160,7 +158,7 @@ add	esp,16
 ; Segment not present
 
 push	11
-push	offset int11_handler
+push	int11_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -169,7 +167,7 @@ add	esp,16
 ; Stack fault
 
 push	12
-push	offset int12_handler
+push	int12_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -178,7 +176,7 @@ add	esp,16
 ; General protection fault
 
 push	13
-push	offset int13_handler
+push	int13_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -187,7 +185,7 @@ add	esp,16
 ; Page fault
 
 push	14
-push	offset int14_handler
+push	int14_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -196,7 +194,7 @@ add	esp,16
 ; Unknown interrupt exception
 
 push	15
-push	offset int15_handler
+push	int15_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -205,7 +203,7 @@ add	esp,16
 ; Coprocessor fault
 
 push	16
-push	offset int16_handler
+push	int16_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -214,7 +212,7 @@ add	esp,16
 ; Alignment check exception
 
 push	17
-push	offset int17_handler
+push	int17_handler
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -223,7 +221,7 @@ add	esp,16
 ; Machine check exception
 
 push	18
-push	offset int18_handler
+push	int18_handler
 push	KERNEL_CODE_SELECTOR
 push	1
 call	set_interrupt
@@ -233,7 +231,7 @@ add	esp,16
 ; Set syscall interrupt
 ;
 push	0x21
-push	offset d_lowlevel
+push	d_lowlevel
 push	KERNEL_CODE_SELECTOR
 push	IDT_ENTRY_PRESENT | IDT_RING3 | IDT_32BIT_64BIT_INTERRUPT_GATE
 call	set_interrupt
@@ -308,7 +306,7 @@ jmp	end_set_interrupt
 set_interrupt_number_is_ok:
 shl	edx,3				; each interrupt is eight bytes long
 mov	edi,edx
-add	edi,offset idttable
+add	edi,IDT_table
 
 mov	[edi],ax			; write low word
 mov	[edi+2],cx			; put selector
@@ -320,7 +318,7 @@ mov	[edi+5],bl			; put flags
 shr	eax,16
 mov	[edi+6],ax			; put high word
 
-;lidt	[idttable]
+;lidt	[IDT_table]
 
 xor	eax,eax				; return success
 
@@ -362,7 +360,7 @@ get_interrupt_number_is_ok:
 mov	eax,8				; each interrupt is eight bytes long
 mul	ebx
 
-add	ebx,offset idttable
+add	ebx,IDT_table
 
 xor	eax,eax
 mov	ax,[ebx+6]
@@ -489,7 +487,7 @@ mov	[regbuf],eax			; save it
 mov	eax,[esp+12]			; get flags
 mov	[regbuf+40],eax			; save flags
 
-push	offset regbuf			; call exception handler
+push	regbuf			; call exception handler
 call	exception
 add	esp,12
 
@@ -519,7 +517,7 @@ mov	eax,ebp
 ret
 
 ;
-; low level dispatcher
+; Low level dispatcher
 ;
 ; In: Nothing
 ;
@@ -537,34 +535,16 @@ push	edx
 push	esi
 push	edi
 
-mov 	ax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
-mov 	ds,ax
-mov 	es,ax
-mov 	fs,ax
-mov 	gs,ax
+mov 	eax,KERNEL_DATA_SELECTOR				; load the kernel data segment descriptor
+mov 	ds,eax
+mov 	es,eax
+mov 	fs,eax
+mov 	gs,eax
 
-call	is_multitasking_enabled
-mov	[multitasking_was_enabled],eax
-
-test	eax,eax
-jz	no_disable_multitasking
-
-xchg	bx,bx
-call	disablemultitasking
-
-no_disable_multitasking:
 sti
-
 call	dispatchhandler
-
 cli
 
-cmp	dword [multitasking_was_enabled],0
-je	no_enable_multitasking
-
-call	enablemultitasking
-
-no_enable_multitasking:
 pop	edi
 pop	esi
 pop	edx
@@ -575,19 +555,15 @@ pop	gs
 pop	fs
 pop	es
 pop	ds
-
-iret_error:
 iret  
 
 idt:
-dw 0x3FFF					; limit
-dd offset idttable				; base
+dw 0x3FFF				; limit
+dd IDT_table				; base
 
-idttable:
+IDT_table:
 times 256 db 0,0,0,0,0,0,0,0
-idt_end:
 
-multitasking_was_enabled dd 0
 tempone dd 0
 temptwo dd 0
 intnumber dd 0

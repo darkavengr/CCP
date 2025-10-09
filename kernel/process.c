@@ -48,7 +48,6 @@ size_t entrypoint;
 char *tempfilename[MAX_PATH];
 char *tempargs[MAX_PATH];
 PROCESS *oldprocess;
-size_t multitasking_was_enabled=FALSE;
 
 /*
 * Execute program
@@ -70,10 +69,7 @@ PSP *psp=NULL;
 char *fullpath[MAX_PATH];
 size_t *stackptr;
 
-//disable_interrupts();
-
-multitasking_was_enabled=is_multitasking_enabled();
-if(multitasking_was_enabled == TRUE) disablemultitasking();
+disablemultitasking();
 
 oldprocess=currentprocess;					/* save current process pointer */
 
@@ -119,12 +115,13 @@ strncpy(next->filename,fullpath,MAX_PATH);	/* process executable filename */
 strncpy(next->args,argsx,MAX_PATH);		/* process arguments */
 
 getcwd(next->currentdirectory);		/* current directory */
+
 next->maxticks=DEFAULT_QUANTUM_COUNT;	/* maximum number of ticks for this process */
 next->ticks=0;				/* start at 0 for number of ticks */
 next->parentprocess=getpid();		/* parent process ID */
 next->pid=highest_pid_used;		/* process ID */
 next->errorhandler=NULL;		/* error handler, NULL for now */
-next->signalhandler=NULL;		/* signal handle, NULL for now */
+next->signalhandler=NULL;		/* signal handler, NULL for now */
 next->childprocessreturncode=0;		/* return code from child process */
 next->flags=flags;			/* process flags */
 next->lasterror=0;			/* last error */
@@ -136,7 +133,7 @@ next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);	/* allocate stack */
 if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	currentprocess=oldprocess;	/* restore current process pointer */
 
-	loadpagetable(getpid());
+	loadpagetable(getppid());
 	freepages(highest_pid_used);
 
 	kernelfree(lastprocess->next);	/* remove process from list */
@@ -144,8 +141,6 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
 
-	
-	
 	return(-1);
 }
 
@@ -165,7 +160,7 @@ if(currentprocess != NULL) {
 	if(saveenv == NULL) {
 		currentprocess=oldprocess;	/* restore current process pointer */
 
-		loadpagetable(getpid());
+		loadpagetable(getppid());
 		freepages(highest_pid_used);
 
 		if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
@@ -181,8 +176,10 @@ if(currentprocess != NULL) {
 page_init(highest_pid_used);				/* intialize page directory */	
 loadpagetable(highest_pid_used);			/* load page table */
 
-currentprocess=next;					/* use new process */
-if(oldprocess == NULL) currentprocess->lasterror=last_error_no_process;	/* get no-process last error */
+lastprocess=currentprocess;
+currentprocess=next;					/* switch to new process descriptor */
+
+if(oldprocess == NULL) currentprocess->lasterror=last_error_no_process;	/* get no-process last error if it's the first process */
 
 highest_pid_used++;
 
@@ -193,7 +190,7 @@ if(getpid() != 0) {
 	dup_internal(stdout,-1,getppid(),getpid());
 	dup_internal(stderr,-1,getppid(),getpid());
 }
-	
+
 /* Part two of enviroment variables duplication
  *
  * allocate enviroment block at the highest user program address minus enviroment size
@@ -218,10 +215,8 @@ if(stackp == NULL) {
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
 
-	loadpagetable(getpid());
+	loadpagetable(getppid());
 	freepages(highest_pid_used);
-
-	
 	
 	return(-1);
 }
@@ -232,8 +227,11 @@ next->stackpointer=stackp+PROCESS_STACK_SIZE;
 processes_end=next;						/* save last process address */
 
 enable_interrupts();
+
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
+
+//if(getpid() != 0) asm("xchg %bx,%bx");
 
 if(entrypoint == -1) {					/* can't load executable */
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
@@ -245,44 +243,38 @@ if(entrypoint == -1) {					/* can't load executable */
 
 	currentprocess=lastprocess;	/* restore current process */
 
-	loadpagetable(getpid());
+	loadpagetable(getppid());
 
-	
-	
+	freepages(highest_pid_used);	
 	return(-1);
 }
 
 initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
-	/* create Program Segment Prefix */ 
+/* create Program Segment Prefix */ 
 
 ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
 
-if((flags & PROCESS_FLAG_BACKGROUND)) {			/* run process in background */
+if(flags & PROCESS_FLAG_BACKGROUND) {			/* run process in background */
 	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
 
 	loadpagetable(getpid());
 
-	
-	
+	freepages(highest_pid_used);
 	return(0);
 }
 else
 {
-	if(getpid() == 0) {
-	//	kprintf_direct("kernel stack pointer=%X\n",get_kernel_stack_pointer());
-	//	asm("xchg %bx,%bx");
-	}
-
 	initialize_current_process_user_mode_stack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
 	
+	kprintf_direct("kernel stack pointer=%X\n",currentprocess->kernelstackpointer);
 	
+	enablemultitasking();
 
 	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
 }
-
 
 return(0);
 }
@@ -292,7 +284,7 @@ return(0);
 *
 * In: process	Process ID
 *
-* Returns -1 on error.Returns 0 on success.
+* Returns -1 on error or 0 on success.
 *
 */
 
@@ -1589,7 +1581,7 @@ size_t handle;
 /* read magic number */
 
 handle=open(filename,O_RDONLY);		/* open file */
-if(handle == -1) return(-1);		/* can't open */
+if(handle == -1) return(-1);		/* can't open file */
 
 if(read(handle,buffer,MAX_PATH) == -1) {
 	close(handle);
@@ -1628,30 +1620,6 @@ currentprocess->ticks=0;
 }
 
 /*
-* Get process tick count
-*
-* In:  Nothing
-*
-* Returns: Process tick count
-*
-*/
-size_t get_tick_count(void) {
- return(tickcount);
-}
-
-/*
-* Increment process tick counter
-*
-* In:  Nothing
-*
-* Returns: New tick count
-*
-*/
-size_t increment_tick_count(void) {
-return(++tickcount);
-}
-
-/*
 * Get process quantum
 *
 * In:  Nothing
@@ -1659,7 +1627,7 @@ return(++tickcount);
 * Returns: Process quantum
 *
 */
-size_t get_max_tick_count(void) {
+size_t get_process_max_tick_count(void) {
 if(currentprocess == NULL) return(0);
 
 return(currentprocess->maxticks);
@@ -1676,9 +1644,9 @@ return(currentprocess->maxticks);
 void kwait(size_t ticks) {
 size_t newticks;
 
-newticks=get_tick_count()+ticks;			/* Get last tick */
+newticks=get_timer_count()+ticks;			/* Get last tick */
 
-while(get_tick_count() < newticks) ;;			/* until tickcount is at last tick */
+while(get_timer_count() < newticks) ;;			/* until tickcount is at last tick */
 }
 
 /*

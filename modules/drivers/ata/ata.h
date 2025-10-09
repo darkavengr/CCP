@@ -47,6 +47,8 @@
 
 #define IOCTL_ATA_IDENTIFY 0
 
+#define ATA_IRQ_TIMEOUT	    300	   /* milliseconds to wait for IRQ 14 or 15 to arrive */
+
 typedef struct {
 	uint16_t general_configuration;		//0			
 	uint16_t obsolete1;				//1
@@ -165,4 +167,5 @@ size_t ata_dma(size_t op,size_t physdrive,uint64_t block,uint16_t *buf);
 size_t irq14_handler(void);
 size_t irq15_handler(void);
 size_t ata_ioctl(size_t handle,unsigned long request,char *buffer);
-
+size_t ata_irq_handler_internal(size_t irqnumber);
+size_t wait_for_ata_irq(size_t irqnumber);

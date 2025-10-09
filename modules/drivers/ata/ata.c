@@ -324,7 +324,10 @@ while(atastatus == ATA_BUSY) {					/* wait for data to be ready */
 	 atastatus=inb(controller+ATA_COMMAND_PORT) & ATA_BUSY;						/* get status */
 
 	if((atastatus & ATA_DRIVE_FAULT) || (atastatus & ATA_ERROR) || (atastatus & ATA_RDY)) {			/* controller returned error */
-		kprintf_direct("kernel: drive returned error\n");
+
+		#ifdef ATA_DEBUG
+			kprintf_direct("ata: Drive returned I/O error\n");
+		#endif
 
 		if(op == DEVICE_READ) {
 			setlasterror(READ_FAULT);
@@ -455,6 +458,7 @@ barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_C
 if(barfour == -1) {
 	kprintf_direct("ata: Unable to get PCI configuration for BAR #4\n");
 
+	setlasterror(GENERAL_FAILURE);
 	return(-1);
 }
 
@@ -465,7 +469,9 @@ barfour &= 0xFFFFFFFC;			/* clear bottom two bits */
 
 /* create prdt */
 
-kprintf_direct("ata_debug: setup PRDT\n");
+#ifdef ATA_DEBUG
+	kprintf_direct("ata_debug: setup PRDT\n");
+#endif
 
 prdt_virtual=(size_t) prdt+KERNEL_HIGH;			/* get virtual address */
 
@@ -478,7 +484,9 @@ prdt_virtual->size=512;
 if((physdrive == 0x80) || (physdrive == 0x81)) {			/* primary controller */
 	ata_irq14done=FALSE;
 
-	kprintf_direct("Primary ATA PRDT\n");
+	#ifdef ATA_DEBUG
+		kprintf_direct("Primary ATA PRDT\n");
+	#endif
 
 	outb(barfour+PRDT_STATUS_PRIMARY,4);
 
@@ -488,7 +496,9 @@ if((physdrive == 0x80) || (physdrive == 0x81)) {			/* primary controller */
 else if((physdrive == 0x82) || (physdrive == 0x83)) {			/* secondary controller */
 	ata_irq15done=FALSE;
 
-	kprintf_direct("Secondary ATA PRDT\n");
+	#ifdef ATA_DEBUG
+		kprintf_direct("Secondary ATA PRDT\n");
+	#endif
 
 	outb(barfour+PRDT_STATUS_SECONDARY,0);
 	outb(barfour+PRDT_COMMAND_SECONDARY,8 | 1); 		/* read/write */
@@ -531,7 +541,9 @@ else
 	ata_irq15done=FALSE;
 }
 
-kprintf_direct("is_lba=%d\n",islba);
+#ifdef ATA_DEBUG
+	kprintf_direct("is_lba=%d\n",islba);
+#endif
 
 if(islba == 28) {						/* use lba28 */
 
@@ -612,13 +624,14 @@ if(islba == 48) {						/* use lba48 */
 
 if(controller == 0x1f0) {			/* wait for IRQ 14 */
 	kprintf_direct("waiting for irq 14\n");
-	while(ata_irq14done == FALSE) ;;
+
+	wait_for_ata_irq(14);
 }
 
 if(controller == 0x370) {			/* wait for IRQ 15 */
 	kprintf_direct("waiting for irq 15\n");
 
-	while(ata_irq15done == FALSE) ;;
+	wait_for_ata_irq(15);
 }
 
 count=0;				/*clear start bit */
@@ -640,9 +653,11 @@ if((inb(ATA_ERROR_PORT) & 1) == 1) {	/* error occurred */
 	}
 	return(-1);
 }
-	
-kprintf_direct("dma buf=%X\n",prdt_virtual->address+KERNEL_HIGH);	
-kprintf_direct("buf=%X\n",buf);
+
+#ifdef ATA_DEBUG	
+	kprintf_direct("dma buf=%X\n",prdt_virtual->address+KERNEL_HIGH);	
+	kprintf_direct("buf=%X\n",buf);
+#endif
 
 memcpy(buf,prdt_virtual->address+KERNEL_HIGH,prdt_virtual->size);
 
@@ -658,16 +673,7 @@ return(NO_ERROR);
  *
  */	
 size_t irq14_handler(void) {
-uint16_t barfour;
-
-#ifdef ATA_DEBUG
-	kprintf_direct("ata: received IRQ 14\n");
-#endif
-
-//asm("xchg %bx,%bx");
-
-barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
-outb(barfour+PRDT_COMMAND_PRIMARY,0); 			/* clear read/write bit */
+ata_irq_handler_internal(14);
 
 ata_irq14done=TRUE;
 return;
@@ -681,11 +687,19 @@ return;
  *  Returns nothing
  *
  */	
+
 size_t irq15_handler(void) {
+ata_irq_handler_internal(15);
+
+ata_irq15done=TRUE;
+return;
+}
+
+size_t ata_irq_handler_internal(size_t irqnumber) {
 uint16_t barfour;
 
 #ifdef ATA_DEBUG
-	kprintf_direct("ata: received IRQ 15\n");
+	kprintf_direct("ata: received IRQ %d\n",irqnumber);
 #endif
 
 barfour=pci_get_bar4(0,CLASS_MASS_STORAGE_CONTROLLER,SUBCLASS_MASS_STORAGE_IDE_CONTROLLER);
@@ -732,3 +746,23 @@ switch(request) {
 return(-1);
 }
 
+size_t wait_for_ata_irq(size_t irqnumber) {
+size_t ata_irq_timeout_end;
+
+#ifdef ATA_DEBUG
+	kprintf_direct("ata debug: Waiting for IRQ %d\n",irqnumber);
+#endif
+
+ata_irq_timeout_end=get_timer_count()+ATA_IRQ_TIMEOUT;
+
+while((irqnumber == 14 && ata_irq14done == FALSE) || (irqnumber == 15 && ata_irq15done == FALSE)) {
+	if(get_timer_count() > ata_irq_timeout_end) {		/* timed out waiting for IRQ 6 */
+		kprintf_direct("ata: Timed out waiting for IRQ %d\n",irqnumber);
+		
+		setlasterror(GENERAL_FAILURE);
+		return(-1);
+	}
+}
+
+return(0);
+}

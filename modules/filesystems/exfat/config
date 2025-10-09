@@ -1,9 +1,0 @@
-name=ExFAT filesystem
-description=ExFAT filesystem. Use this driver to access ExFAT-formatted media.
-compile_opt=m
-compile_external_module=y
-
-
-
-
-
