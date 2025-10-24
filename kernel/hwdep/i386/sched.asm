@@ -118,6 +118,8 @@ iret
 ; void switch_task(size_t *regs);
 
 switch_task:
+inc	byte [0x800b8000]
+
 mov	eax,[esp+4]				; get pointer to saved context
 mov	[OldContextPointer],eax
 
@@ -138,8 +140,6 @@ jnz	multitasking_enabled
 jmp	no_stack_switch
 
 multitasking_enabled:
-inc	byte [0x800b8000]
-
 call	is_current_process_ready_to_switch
 test	eax,eax					; return if process is not ready to switch
 jnz	task_time_slice_finished

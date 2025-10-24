@@ -140,12 +140,12 @@ switch(signal) {
 		break;
 
 	case SIGSEGV:
-		kprintf_direct("command: Caught signal SIGHUP. Terminating\n");
+		kprintf_direct("command: Segmentation fault. Terminating\n");
 		exit(0);
 		break;
 
 	case SIGPIPE:
-		kprintf_direct("command: Caught signal SIGPIPE.\n");
+		kprintf_direct("command: Broken pipe.\n");
 		break;
 
 	case SIGALRM:
@@ -254,7 +254,7 @@ if(argcount >= 2) {
 }
 
 set_critical_error_handler(&critical_error_handler);		/* set critical error handler */
-set_signal_handler(signalhandler);			/* set signal handler */
+set_signal_handler(&signalhandler);			/* set signal handler */
 
 set_batch_mode(FALSE);			/* set batch mode */
 
@@ -529,7 +529,7 @@ if(tc > 1) {						/* copy args if any */
 
 /* run program or script in current directory */
 
-if(runcommand(parsebuf[0],temp,backg) != -1) return(0);	/* run ok */
+if(runcommand(parsebuf[0],temp,backg) != -1) return(0);
 
 /* prepend each directory in PATH to filename in turn and execute */
 

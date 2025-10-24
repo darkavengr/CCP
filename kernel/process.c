@@ -43,7 +43,6 @@ size_t signalno;
 MUTEX process_mutex;
 size_t thisprocess;
 char *saveenv=NULL;
-size_t tickcount;
 size_t entrypoint;
 char *tempfilename[MAX_PATH];
 char *tempargs[MAX_PATH];
@@ -67,13 +66,12 @@ size_t stackp;
 PROCESS *lastprocess;
 PSP *psp=NULL;
 char *fullpath[MAX_PATH];
-size_t *stackptr;
 
 disablemultitasking();
 
 oldprocess=currentprocess;					/* save current process pointer */
 
-/* add process to process list and find process id */
+/* add process to process list and find process ID */
 
 if(processes == NULL) {  					/* first process */
 	processes=kernelalloc(sizeof(PROCESS));			/* add entry to beginning of list */
@@ -227,11 +225,9 @@ next->stackpointer=stackp+PROCESS_STACK_SIZE;
 processes_end=next;						/* save last process address */
 
 enable_interrupts();
-
+	
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
-
-//if(getpid() != 0) asm("xchg %bx,%bx");
 
 if(entrypoint == -1) {					/* can't load executable */
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
@@ -268,9 +264,7 @@ if(flags & PROCESS_FLAG_BACKGROUND) {			/* run process in background */
 else
 {
 	initialize_current_process_user_mode_stack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
-	
-	kprintf_direct("kernel stack pointer=%X\n",currentprocess->kernelstackpointer);
-	
+
 	enablemultitasking();
 
 	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
@@ -1238,8 +1232,25 @@ while(next != NULL) {
 		memcpy(blockedprocesses_end,next,sizeof(PROCESS));	/* copy to blocked process list */
 
 		/* remove process from processes list */
-		last->next=next->next;
-		kernelfree(next);
+
+		if(next == processes) {			/* at start of list */
+			processes=processes->next;
+
+			currentprocess=processes->next;
+		}
+		else if(next->next == NULL) {		/* at end of list */
+			kernelfree(last->next);
+
+			last->next=NULL;
+
+			currentprocess=last;
+		}
+		else {
+			last->next=next->next;
+			kernelfree(next);
+
+			currentprocess=last->next;
+		}
 
 		setlasterror(NO_ERROR);
 	
@@ -1258,7 +1269,7 @@ return(-1);
 * Unblock process
 *
 * In: pid		PID of process to unblock
-*
+*b
 * Returns -1 on error or 0 on success
 *
 */
@@ -1646,7 +1657,7 @@ size_t newticks;
 
 newticks=get_timer_count()+ticks;			/* Get last tick */
 
-while(get_timer_count() < newticks) ;;			/* until tickcount is at last tick */
+while(get_timer_count() < newticks) ;;			/* until tick count is at last tick */
 }
 
 /*
@@ -1660,5 +1671,4 @@ while(get_timer_count() < newticks) ;;			/* until tickcount is at last tick */
 size_t GetVersion(void) {
 return((CCP_MAJOR_VERSION << 24) | (CCP_MINOR_VERSION << 16) | (CCP_RELEASE_VERSION << 8));
 }
-
 

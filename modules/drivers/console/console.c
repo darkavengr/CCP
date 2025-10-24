@@ -90,13 +90,13 @@ return(0);
 size_t outputconsole(char *s,size_t size) {
 char *consolepos;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
-size_t count;
+size_t count=size;
 
 consolepos=KERNEL_HIGH+0xB8000+(((bootinfo->cursor_row*CONSOLE_MAX_X)+bootinfo->cursor_col)*2);	/* address to write to */
 
 if((size_t) consolepos % 2 == 1) consolepos++;
 	 
-	while(size-- > 0) {
+	while(count-- > 0) {
 		if(bootinfo->cursor_col++ >= CONSOLE_MAX_X) {
 			bootinfo->cursor_col=0;						/* wrap round */
 			bootinfo->cursor_row++;

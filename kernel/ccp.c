@@ -35,6 +35,8 @@
 
 void halt(void);
 
+extern FILESYSTEM *filesystems;
+
 /*
  * High-level kernel initalization
  *
@@ -56,9 +58,8 @@ else
 }
 
 if(returnvalue ==  -1) {
-	kprintf_direct("Missing or corrupt command interpreter, system halted, (error 0x%X:%s)",getlasterror(),kstrerr(getlasterror()));
+	kprintf_direct("Error executing command interpreter, system halted. Error 0x%X:%s",getlasterror(),kstrerr(getlasterror()));
 
-	asm("xchg %bx,%bx");
 	halt();
 	while(1) ;;
 }

@@ -14,7 +14,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with CCP	  If not, see <https://www.gnu.org/licenses/>.
+    along with CCP. If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <stdint.h>
@@ -59,6 +59,7 @@ char *errors[] = {
 "Lock violation",\
 "Invalid disk change",\
 "Not a directory",\
+"Is a directory",\
 "",\
 "",\
 "",\
@@ -110,9 +111,9 @@ char *errors[] = {
 
 
 /*
- * Display error
+ * Get error string from error code
  *
- * In:  nothing
+ * In: Error number
  *
  * Returns pointer to error message
  */
@@ -120,3 +121,4 @@ char *errors[] = {
 char *kstrerr(size_t error) {
 return(errors[error]);
 }
+

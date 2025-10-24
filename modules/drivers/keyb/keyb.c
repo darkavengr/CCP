@@ -120,14 +120,13 @@ return;
 }
 
 /*
- * Keyboard IRQ handler
+ * Read key
  *
  * In: nothing
  *
  *  Returns nothing
  *
- * called by irq1 handler see init.asm  */
-
+ */
 void readkey(void) {
 uint8_t keycode;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
@@ -272,185 +271,58 @@ switch(keycode) {								/* control characters */
 		return;
 }
 
-if((keyboardflags & CTRL_PRESSED)) { 							/* control characters */
-
-switch(keycode) {
-	case KEY_SINGQUOTE_AT:
-		*keybuf++=CTRL_AT;
-		write(stdout,"^@",1);
-
-		return;
-
-	case KEY_A:
-		*keybuf++=CTRL_A;
-		write(stdout,"^A",1);
-
-		return;
-	  
-	case KEY_B:
-		*keybuf++=CTRL_B;
-		write(stdout,"^B",1);
-
-	return;
-
-	case KEY_C:
-		write(stdout,"^C",1);
-
-		sendsignal(getpid(),SIGTERM);		/* send signal to terminate signal */
-		return;
-
-	case KEY_D:
-		*keybuf++=CTRL_D;
-		write(stdout,"^D",1);
-	 	return;
-
-	case KEY_E:
-		*keybuf++=CTRL_E;
-		write(stdout,"^E",1);
-		return;
-
-	case KEY_F:
-		*keybuf++=CTRL_F;
-		write(stdout,"^F",1);
-
-		return;
-
-	case KEY_G:
-		*keybuf++=CTRL_G;
-		write(stdout,"^G",1);
-
-		return;
-
-
-	case KEY_I:								/* tab */
-	 	*keybuf++="\t";
-		write(stdout,"\t",1);
-	  	return;
-
-	case KEY_J:
-		*keybuf++=CTRL_J;
-		write(stdout,"^J",1);
-
-	 	return;
-
-	case KEY_K:
-		*keybuf++=CTRL_K;
-		write(stdout,"^K",1);
-
-	 	return;
-
-	case KEY_L:
-		*keybuf++=CTRL_L;
-	  	write(stdout,"^L",1);
-
-	  	return;
-
-	case KEY_M:
-		*keybuf++=CTRL_M;
-		write(stdout,"^M",1);
-		return;
-
-	case KEY_N:
-		*keybuf++=CTRL_N;
-		write(stdout,"^N",1);
-		return;
-
-	case KEY_O:
-		*keybuf++=CTRL_O;
-		write(stdout,"^O",1);
-		return;
-
-	case KEY_P:
-		*keybuf++=CTRL_P;
-		write(stdout,"^P",1);
-		return;
-
-	case KEY_Q:
-		*keybuf++=CTRL_Q;
-		write(stdout,"^Q",1);
-		return;
-
-	case KEY_R:
-		*keybuf++=CTRL_R;
-		write(stdout,"^R",1);
-		return;
-
-	case KEY_S:
-		*keybuf++=CTRL_S;
-		write(stdout,"^S",1);
-		return;
-
-	case KEY_T:
-		*keybuf++=CTRL_T;
-		write(stdout,"^T",1);
-		return;
-
-	case KEY_V:
-		*keybuf++=CTRL_V;
-		write(stdout,"^V",1);
-		return;
-
-	case KEY_W:
-		*keybuf++=CTRL_W;
-		write(stdout,"^W",1);
-		return;
-
-	case KEY_X:
-		*keybuf++=CTRL_X;
-	  	write(stdout,"^X",1);
-	  	return;
-
-	case KEY_Y:
-		*keybuf++=CTRL_Y;
-		write(stdout,"^Y",1);
-		return;
-
-	case KEY_Z:
-		*keybuf++=CTRL_Z;
-		return;
-	}
-
-}
-
-if((keyboardflags & CTRL_PRESSED) && (keyboardflags & ALT_PRESSED) && keycode == KEY_DEL) {	/* press ctrl-alt-del */
-	shutdown(1);
-}
-
-/* if caps lock is on only shift letters */
-
-if((keyboardflags & CAPS_LOCK_PRESSED)) {
-	keychar=*scancodes_shifted[keycode];		/* get character */
-
- 	if(((keychar >= 'A') && (keychar <= 'Z')) && ((keyboardflags & SHIFT_PRESSED) == 0)) {
-		keychar += 32;				/* to lowercase */
-
-		*keybuf++=keychar;
-
-		write(stdout,scancodes_shifted[keycode],1);
-		return;
-	}
-
-	if(((keychar >= 'A') && (keychar <= 'Z')) && (keyboardflags & SHIFT_PRESSED)) {
-		*keybuf++=keychar;
-
-		write(stdout,scancodes_unshifted[keycode],1);
-		return;
-	}
-
-}
-	
-/* If capslock is off, use uppercase letters if shift pressed. Use lowercase letters otherwise */
-
-if((keyboardflags & SHIFT_PRESSED)) {
+if((keyboardflags & CTRL_PRESSED)) {							/* control characters */
+	/* display ^X character */
+	write(stdout,"^",1);
 	write(stdout,scancodes_shifted[keycode],1);
 
-	*keybuf++=*scancodes_shifted[keycode];
+	*keybuf++=(uint8_t) scancodes_shifted[keycode]-'@';		/* put ASCII character for control */
+
+	if(keychar == 'C') {		/* special case for ctrl-C */
+		sendsignal(getpid(),SIGINT);		/* send SIGINT signal */
+	}
+
+}
+else if((keyboardflags & CTRL_PRESSED) && (keyboardflags & ALT_PRESSED) && keycode == KEY_DEL) {	/* pressed ctrl-alt-del */
+	shutdown(1);
 }
 else
 {
-	write(stdout,scancodes_unshifted[keycode],1);
+	/* if caps lock is on only shift letters */
 
-	*keybuf++=*scancodes_unshifted[keycode];	
+	if((keyboardflags & CAPS_LOCK_PRESSED)) {
+		keychar=*scancodes_shifted[keycode];		/* get character */
+
+ 		if(((keychar >= 'A') && (keychar <= 'Z')) && ((keyboardflags & SHIFT_PRESSED) == 0)) {
+			keychar += 32;				/* to lowercase */
+
+			*keybuf++=keychar;
+
+			write(stdout,scancodes_shifted[keycode],1);
+			return;
+		}
+
+		if(((keychar >= 'A') && (keychar <= 'Z')) && (keyboardflags & SHIFT_PRESSED)) {
+			*keybuf++=keychar;
+
+			write(stdout,scancodes_unshifted[keycode],1);
+			return;
+		}
+
+	}
+	
+	/* If capslock is off, use uppercase letters if shift pressed. Use lowercase letters otherwise */
+
+	if((keyboardflags & SHIFT_PRESSED)) {
+		write(stdout,scancodes_shifted[keycode],1);
+
+		*keybuf++=*scancodes_shifted[keycode];
+	}
+	else
+	{
+		write(stdout,scancodes_unshifted[keycode],1);
+		*keybuf++=*scancodes_unshifted[keycode];	
+	}
 }
 
 return;

@@ -33,7 +33,6 @@ FILERECORD *openfiles_last=NULL;
 FILESYSTEM *filesystems=NULL;
 MUTEX vfs_mutex;
 size_t highest_handle=0;
-char *old;
 
 /*
  * Find first file in directory
@@ -138,7 +137,7 @@ while(next != NULL) {					/* return error if open */
 		if((next->access & O_SHARED) == 0) {		/* reopening file with exclusive access */
 			unlock_mutex(&vfs_mutex);
 
-			setlasterror(ACCESS_DENIED);
+			setlasterror(LOCK_VIOLATION);
 			return(-1);
 		}
 	}
@@ -217,16 +216,17 @@ if(findcharacterdevice(filename,&chardevice) == 0) {
 
 getfullpath(filename,fullname);				/* get full path of file */
 
-if(access & O_TRUNC) {			/* truncate file */
+if(access & O_TRUNC) {			/* if O_TRUNC is set, truncate file */
 	if(unlink(fullname) == -1) return(-1);	/* delete it */
 	if(create(fullname) == -1) return(-1);	/* recreate it */
 }
-
-if(access & O_CREAT) {		/* if O_CREAT is set, create file if it does not exist */
+else if(access & O_CREAT) {		/* if O_CREAT is set, create file if it does not exist */
 	if(findfirst(fullname,&dirent) == -1) if(create(fullname) == -1) return (-1);	/* create if file does not exist */
 }
 else
 {
+	if(getpid() != 0) asm("xchg %bx,%bx");
+
 	if(findfirst(fullname,&dirent) == -1) {			/* check if file exists */
 		unlock_mutex(&vfs_mutex);
 		return(-1);
@@ -238,7 +238,7 @@ else
 if((dirent.flags & FILE_DIRECTORY) == FILE_DIRECTORY) {
 	unlock_mutex(&vfs_mutex);
 
-	setlasterror(ACCESS_DENIED);			/* can't open directory */
+	setlasterror(IS_DIRECTORY);			/* can't open directory */
 	return(-1);
 }
 
@@ -317,15 +317,15 @@ return(fs.unlink(name));
  * Returns: -1 on error, 0 on success
  *
  */
-size_t rename(char *olname,char *newname) {
+size_t rename(char *oldname,char *newname) {
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
 SPLITBUF splitbuf;
 char *fullname[MAX_PATH];
 
-getfullpath(olname,fullname);
+getfullpath(oldname,fullname);
 
-splitname(olname,&splitbuf);				/* split name */
+splitname(oldname,&splitbuf);				/* split name */
 
 if(detect_filesystem(splitbuf.drive,&fs) == -1) return(-1);	/* detect filesystem */
 
@@ -338,7 +338,7 @@ if(fs.rename == NULL) {			/* not implemented */
 	return(-1);
 }
 
-return(fs.rename(olname,newname));
+return(fs.rename(oldname,newname));
 }
 
 /*

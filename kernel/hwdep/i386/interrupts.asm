@@ -39,6 +39,7 @@ extern enableirq
 extern disableirq
 extern getpid
 extern is_multitasking_enabled
+extern getlasterror
 
 %include "idtflags.inc"
 
@@ -541,10 +542,26 @@ mov 	es,eax
 mov 	fs,eax
 mov 	gs,eax
 
+;call	is_multitasking_enabled	
+;test	eax,eax
+;jz	no_disable_multitasking
+
+;mov	dword [multitasking_was_enabled],1
+
+;call	disablemultitasking
+
+;no_disable_multitasking:
+
 sti
 call	dispatchhandler
 cli
 
+;cmp	dword [multitasking_was_enabled],1
+;jnz	no_enable_multitasking
+
+;call	enablemultitasking
+
+;no_enable_multitasking:
 pop	edi
 pop	esi
 pop	edx
@@ -567,5 +584,6 @@ times 256 db 0,0,0,0,0,0,0,0
 tempone dd 0
 temptwo dd 0
 intnumber dd 0
+multitasking_was_enabled dd 0
 regbuf times 20 dd 0
 

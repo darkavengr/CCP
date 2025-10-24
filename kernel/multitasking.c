@@ -36,8 +36,8 @@ extern void switch_task(void *regs);
  * 
  */
 void disablemultitasking(void) {
-multitaskingenabled=FALSE;
-return;
+//multitaskingenabled=FALSE;
+//return;
 }
 
 /*
@@ -49,7 +49,7 @@ return;
  * 
  */
 void enablemultitasking(void) {
-multitaskingenabled=TRUE;
+//multitaskingenabled=TRUE;
 return;
 }
 
@@ -65,7 +65,7 @@ return;
 void init_multitasking(void) {
 multitaskingenabled=FALSE;
 
-setirqhandler(0,'SCHD',&switch_task);		/* Register task switcher */
+//setirqhandler(0,'SCHD',&switch_task);		/* Register task switcher */
 return;
 }
 
@@ -122,5 +122,4 @@ if(timer_increment() < get_process_max_tick_count()) return(FALSE);
 
 return(TRUE);
 }
-
 

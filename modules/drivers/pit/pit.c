@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "pit.h"
+#include "../pit/pit.h"
 #include "mutex.h"
 #include "device.h"
 #include "vfs.h"

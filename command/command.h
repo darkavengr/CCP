@@ -68,6 +68,6 @@ void write_error(void);
 unsigned long runcommand(char *filename,char *args,unsigned long backg);
 char *get_buf_pointer(void);
 size_t get_batch_mode(void);
-size_t set_batch_mode(size_t bm);
+void set_batch_mode(size_t bm);
 void set_current_batchfile_pointer(char *b);
 

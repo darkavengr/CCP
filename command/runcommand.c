@@ -152,7 +152,7 @@ if(handle == -1) return(-1);
 
 parsecount=tokenize_line(args,parsebuf," \t");
 
-/* get name of batchfile */
+/* get name of batch file */
 
 getfullpath(filename,buf);
 setvar("%0",buf);
@@ -187,7 +187,7 @@ while(*batchfileptr != 0) {
 	c=*batchfileptr;
 	*bufptr++=*batchfileptr++;
 
-	if(c == 0x0a) {			/* if at end of line */
+	if(c == 0xA) {			/* if at end of line */
 		doline(buf);
 
 		if(get_batch_mode() == TERMINATING) {	/* batch job was killed */
@@ -234,12 +234,12 @@ return(batchmode);
 /*
  * Set batch mode status
  *
- * In: batch mode status (true or FALSE)
+ * In: batch mode status (TRUE or FALSE)
  *
  *  Returns nothing
  *
  */
-size_t set_batch_mode(size_t bm) {
+void set_batch_mode(size_t bm) {
 batchmode=bm;
 }
 
