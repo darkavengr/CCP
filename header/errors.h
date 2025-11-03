@@ -37,7 +37,6 @@
 #define NOT_DEVICE		0x24
 #define NOT_DIRECTORY		0x25
 #define IS_DIRECTORY		0x26
-
 #define FILE_EXISTS		0x50
 #define DIR_ENTRY_CREATE_ERROR	0x52
 

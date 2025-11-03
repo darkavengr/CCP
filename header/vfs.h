@@ -23,7 +23,7 @@
 #define O_WRONLY 		2
 #define O_CREAT			4
 #define O_NONBLOCK		8
-#define O_SHARED		16
+#define O_EXCLUSIVE		16
 #define O_TRUNC			32
 #define O_RDWR 			O_RDONLY | O_WRONLY
 
@@ -79,6 +79,14 @@ typedef struct {
 	struct PIPE *next;
 } PIPE;
 
+typedef struct FILELOCK {
+	size_t start;
+	size_t end;
+	size_t ownerprocess;
+	struct FILELOCK *next;
+} FILELOCK;
+#endif
+
 typedef struct {
 	uint8_t filename[MAX_PATH];
 	size_t attribs;
@@ -106,9 +114,10 @@ typedef struct {
 	PIPE *pipereadprevious;
 	PIPE *pipelast;
 	PIPE *pipereadptr;
+	FILELOCK *filelocklist;
 	struct FILERECORD *next;		
 } __attribute__((packed)) FILERECORD;
-#endif
+
 
 size_t findfirst(char *name,FILERECORD *buf);
 size_t findnext(char *name,FILERECORD *buf);
@@ -142,4 +151,7 @@ size_t pipe(void);
 size_t writepipe(FILERECORD *entry,void *addr,size_t size);
 size_t readpipe(FILERECORD *entry,char *addr,size_t size);
 void closepipe(FILERECORD *entry);
+size_t is_file_open(char *filename);
+size_t flock(size_t handle,size_t start,size_t end);
+size_t funlock(size_t handle,size_t start,size_t end);
 

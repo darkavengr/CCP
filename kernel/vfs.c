@@ -121,57 +121,68 @@ lock_mutex(&vfs_mutex);
 	 handle exists and is not owned by the called and is not opened for exclusive access. Return error if it is.
 */
 
-next=openfiles;
-handle=0;
 
-while(next != NULL) {					/* return error if open */
-	last=next;
+if(openfiles == NULL) {
+	openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+	if(openfiles == NULL) return(-1);
 
-	if(strncmpi(filename,next->filename,MAX_PATH) == 0) {	/* found filename */
+	next=openfiles;
+}
+else
+{
+	next=openfiles;
+
+	while(next != NULL) {					/* return error if open */
+		last=next;
+
+		if(strncmpi(filename,next->filename,MAX_PATH) == 0) {	/* found filename */
 	
-		if(next->owner_process == getpid()) {
-			unlock_mutex(&vfs_mutex);
-			return(next->handle);	/* opening by owner process */
+			if(next->owner_process == getpid()) {
+				unlock_mutex(&vfs_mutex);
+				return(next->handle);	/* opening by owner process */
+			}
+
+			if(next->access & O_EXCLUSIVE) {		/* not owner and reopening file with exclusive access */
+				unlock_mutex(&vfs_mutex);
+
+				setlasterror(LOCK_VIOLATION);
+				return(-1);
+			}
+
+			break;		/* fall through to below to add extra entry */
 		}
 
-		if((next->access & O_SHARED) == 0) {		/* reopening file with exclusive access */
-			unlock_mutex(&vfs_mutex);
-
-			setlasterror(LOCK_VIOLATION);
-			return(-1);
-		}
+		next=next->next;
 	}
 
-	next=next->next;
+	openfiles_last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
+	if(openfiles_last->next == NULL) return(-1);
+
+	next=openfiles_last->next;
 }
+
+/* add common information */
+
+next->owner_process=getpid();
+next->handle=++highest_handle;
+next->access=access;
+next->currentblock=0;
+next->currentpos=0;
+next->pipe=NULL;
+next->pipereadprevious=NULL;
+next->pipelast=NULL;
+next->pipereadptr=NULL;
+next->filelocklist=NULL;
+next->next=NULL;
 
 /* If opening block device */
 
 if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
-	if(openfiles == NULL) {
-		openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
-		next=openfiles;
-	}
-	else
-	{
-		last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
-		next=last->next;
-	}
-
 	strncpy(next->filename,blockdevice.name,MAX_PATH);
-
-	next->currentblock=0;
-	next->currentpos=0;
-	next->owner_process=getpid();
 	next->flags=FILE_BLOCK_DEVICE;
-	next->handle=++highest_handle;
-	next->access=access;
 
 	memcpy(&next->blockdevice,&blockdevice,sizeof(BLOCKDEVICE));	/* copy device information */
-	next->next=NULL;
 	
-	openfiles_last=next;				/* save pointer to end */
-
 	unlock_mutex(&vfs_mutex);
 
 	setlasterror(NO_ERROR);
@@ -180,31 +191,13 @@ if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
 
 /* If opening character device */
 
-if(findcharacterdevice(filename,&chardevice) == 0) {	
-	if(openfiles == NULL) {
-		openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
-		next=openfiles;
-	}
-	else
-	{
-		last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
-		next=last->next;
-	}
-
+if(findcharacterdevice(filename,&chardevice) == 0) {
 	strncpy(next->filename,chardevice.name,MAX_PATH);
 
 	next->charioread=chardevice.charioread;
 	next->chariowrite=chardevice.chariowrite;
 	next->ioctl=chardevice.ioctl;
 	next->flags=FILE_CHARACTER_DEVICE;
-	next->currentpos=0;
-	next->access=access;
-	next->owner_process=getpid();		/* owner process */
-	next->handle=++highest_handle;
-	next->currentblock=0;
-	next->next=NULL;
-
-	openfiles_last=next;				/* save pointer to end */
 
 	unlock_mutex(&vfs_mutex);
 
@@ -233,8 +226,6 @@ else
 	}
 }
 
-/* check if file can be opened */
-
 if((dirent.flags & FILE_DIRECTORY) == FILE_DIRECTORY) {
 	unlock_mutex(&vfs_mutex);
 
@@ -242,32 +233,22 @@ if((dirent.flags & FILE_DIRECTORY) == FILE_DIRECTORY) {
 	return(-1);
 }
 
-if(openfiles == NULL) {
-	openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
-	next=openfiles;
-}
-else	
-{
-	last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
-	next=last->next;
-}
-
 getfullpath(filename,fullname);
 
-memset(next,0,sizeof(FILERECORD));
-memcpy(next,&dirent,sizeof(FILERECORD));  /* copy data */
+/* copy file information */
+strncpy(next->filename,fullname,MAX_PATH);
+next->attribs=dirent.attribs;
 
-strncpy(next->filename,fullname,MAX_PATH);	/* copy full filename */
-
-next->currentpos=0;			/* set position to start of file */
-next->access=access;			/* access mode */
+memcpy(&next->create_time_date,&dirent.create_time_date,sizeof(TIME));
+memcpy(&next->last_written_time_date,&dirent.last_written_time_date,sizeof(TIME));
+memcpy(&next->last_accessed_time_date,&dirent.last_accessed_time_date,sizeof(TIME));
+next->filesize=dirent.filesize;
+next->startblock=dirent.startblock;
+next->dirent=dirent.dirent;
+next->findlastblock=dirent.findlastblock;
+next->findentry=dirent.findentry;
 next->flags=FILE_REGULAR;		/* file information flags */
-next->handle=++highest_handle;		/* file handle */
-next->owner_process=getpid();		/* owner process */
 next->currentblock=next->startblock;
-next->next=NULL;
-	
-openfiles_last=next;				/* save pointer to end */
 
 setlasterror(NO_ERROR);
 unlock_mutex(&vfs_mutex);
@@ -291,6 +272,11 @@ SPLITBUF splitbuf;
 char *fullname[MAX_PATH];
 
 getfullpath(name,fullname);
+
+if(is_file_open(fullname) == TRUE) {		/* file is open */
+	setlasterror(FILE_IN_USE);
+	return(-1);
+}
 
 splitname(name,&splitbuf);				/* split name */
 
@@ -480,6 +466,7 @@ FILESYSTEM fs;
 FILERECORD *next;
 SPLITBUF splitbuf;
 BLOCKDEVICE *blockdevice;
+size_t readcount;
 
 lock_mutex(&vfs_mutex);
 
@@ -558,9 +545,21 @@ if(fs.read == NULL) {			/* not implemented */
 	return(-1);
 }
 
+if(flock(handle,next->currentpos,(next->currentpos+size)) == -1) {	/* lock read area */
+	unlock_mutex(&vfs_mutex);
+	return(-1);
+}
+
 unlock_mutex(&vfs_mutex);
 
-return(fs.read(handle,addr,size));
+readcount=fs.read(handle,addr,size);
+
+if(funlock(handle,next->currentpos,(next->currentpos+size)) == -1) {	/* unlock read area */
+	unlock_mutex(&vfs_mutex);
+	return(-1);
+}
+
+return(readcount);
 }
 
 /*
@@ -580,6 +579,7 @@ BLOCKDEVICE blockdevice;
 FILERECORD *next;
 SPLITBUF splitbuf;
 char *newbuf;
+size_t writecount;
 
 lock_mutex(&vfs_mutex);
 
@@ -660,7 +660,21 @@ if(fs.write == NULL) {			/* not implemented */
 
 unlock_mutex(&vfs_mutex);
 
-return(fs.write(handle,addr,size));
+if(flock(handle,next->currentpos,(next->currentpos+size)) == -1) {	/* lock write area */
+	unlock_mutex(&vfs_mutex);
+	return(-1);
+}
+
+unlock_mutex(&vfs_mutex);
+
+writecount=fs.write(handle,addr,size);
+
+if(funlock(handle,next->currentpos,(next->currentpos+size)) == -1) {	/* unlock write area */
+	unlock_mutex(&vfs_mutex);
+	return(-1);
+}
+
+return(writecount);
 }
 
 
@@ -1596,7 +1610,7 @@ lock_mutex(&entry->pipe->mutex);		/* lock mutex */
 
 next=entry->pipe;			/* point to first entry */
 
-/* loop through entries, freeing buffers and removing pipe entries */
+/* loop through entries freeing buffers and removing pipe entries */
 
 while(next != NULL) {
 	if(next->buffer != NULL) kernelfree(next->buffer);	/* free buffer */
@@ -1616,5 +1630,194 @@ entry->pipereadprevious=NULL;
 entry->pipereadptr=NULL;
 
 return;
+}
+
+/*
+ * Return if file is open or not
+ *
+ * In:  filename	Filename
+ *
+ * Returns: TRUE or FALSE
+ *
+ */
+size_t is_file_open(char *filename) {
+FILERECORD *next;
+
+/* loop through open file list */
+
+next=openfiles;
+
+while(next != NULL) {
+	if(strncmpi(filename,next->filename,MAX_PATH) == 0) return(TRUE);		/* file is open */
+
+	next=next->next;
+}
+
+return(FALSE);
+}
+
+/*
+ * Lock file byte range
+ *
+ * In:  handle	File handle
+	start	Start byte
+	end	End byte
+ *
+ * Returns: 0 on success or -1 on failure
+ *
+ */
+size_t flock(size_t handle,size_t start,size_t end) {
+FILELOCK *flockptr;
+FILELOCK *flocklast;
+FILERECORD *next;
+
+lock_mutex(&vfs_mutex);
+
+/* find file entry */
+
+next=openfiles;
+
+while(next != NULL) {
+	if(next->handle == handle) break;
+
+	next=next->next;
+}
+
+if(next == NULL) {	/* handle not found */
+	setlasterror(INVALID_HANDLE);
+	return(-1);
+}
+
+if(next->access & O_EXCLUSIVE) {		/* locking file with exclusive access */
+	if(next->owner_process != getpid()) {	/* not owner */
+		unlock_mutex(&vfs_mutex);
+
+		setlasterror(LOCK_VIOLATION);
+		return(-1);
+	}
+
+	setlasterror(NO_ERROR);
+	return(0);
+}
+
+/* find end of list */
+
+if(next->filelocklist == NULL) {		/* first entry */
+	next->filelocklist=kernelalloc(sizeof(FILELOCK));
+	if(next->filelocklist == NULL) return(-1);
+
+	flockptr=next->filelocklist;
+}
+else
+{
+	flockptr=next->filelocklist;
+
+	while(flockptr != NULL) {
+		if(start >= flockptr->start) {
+			if((end <= flockptr->end) || (flockptr->end < (flockptr->start+start))) {	/* already locked */
+				if(flockptr->ownerprocess != getpid()) {	/* not owner */
+					setlasterror(LOCK_VIOLATION);
+					return(-1);
+				}
+			}
+
+			setlasterror(NO_ERROR);
+			return(0);
+		}
+
+		flocklast=flockptr;
+		flockptr=flockptr->next;
+	}
+
+	flocklast->next=kernelalloc(sizeof(FILELOCK));
+	if(flocklast->next == NULL) return(-1);
+
+	flockptr=flocklast->next;
+}
+
+/* add lock information */
+flockptr->start=start;
+flockptr->end=end;
+flockptr->ownerprocess=getpid();
+
+setlasterror(NO_ERROR);
+return(0);
+}
+
+/*
+ * Unlock file byte range
+ *
+ * In:  handle	File handle
+	start	Start byte
+	end	End byte
+ *
+ * Returns: 0 on success or -1 on failure
+ *
+ */
+size_t funlock(size_t handle,size_t start,size_t end) {
+FILERECORD *next;
+FILELOCK *flockptr;
+FILELOCK *flocklast;
+
+/* find file entry */
+
+next=openfiles;
+
+while(next != NULL) {
+	if(next->handle == handle) break;
+
+	next=next->next;
+}
+
+if(next == NULL) {	/* handle not found */
+	setlasterror(INVALID_HANDLE);
+	return(-1);
+}
+
+if(next->access & O_EXCLUSIVE) {		/* exclusive access */
+	setlasterror(NO_ERROR);
+	return(0);
+}
+
+flockptr=next->filelocklist;
+
+while(flockptr != NULL) {
+	
+	flocklast=flockptr;
+
+	if(start >= flockptr->start) {
+		if((end <= flockptr->end) || (flockptr->end < (flockptr->start+start))) {	/* is locked */
+
+			if(flockptr->ownerprocess != getpid()) {	/* not owner */
+				setlasterror(ACCESS_DENIED);
+				return(-1);
+			}
+
+			if(flockptr == next->filelocklist) {			/* first entry */
+				flocklast=next->filelocklist;			/* save pointer to start */
+
+				next->filelocklist=flocklast->next;		/* set new beginning of list */
+				if(flocklast != NULL) kernelfree(flocklast);		/* free old beginning */
+			}
+			else if(flockptr->next == NULL) {				/* last entry */	
+				kernelfree(flocklast->next);				/* free last */
+				flocklast->next=NULL;				/* remove from end of list */
+			}
+			else								/* in the middle */
+			{
+				flocklast->next=flockptr->next;		/* remove from list */
+				kernelfree(flockptr);
+			}
+		
+			setlasterror(NO_ERROR);
+			return(0);
+		}
+	}
+
+	flockptr=flockptr->next;
+}
+	
+setlasterror(FILE_NOT_FOUND);
+return(-1);
 }
 

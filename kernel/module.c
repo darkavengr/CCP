@@ -126,7 +126,7 @@ while(kernelmodulenext != NULL) {
 	kernelmodulenext=kernelmodulenext->next;
 }
 
-handle=open(fullname,O_RDONLY);		/* open file */
+handle=open(fullname,O_RDONLY | O_EXCLUSIVE);		/* open file */
 if(handle == -1) {
 	enablemultitasking();
 	return(-1);		/* can't open */

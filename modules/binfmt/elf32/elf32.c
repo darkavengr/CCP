@@ -43,7 +43,7 @@ Elf32_Ehdr elf_header;
 
 getfullpath(filename,fullname);
 
-handle=open(fullname,O_RDONLY);		/* open file */
+handle=open(fullname,O_RDONLY | O_EXCLUSIVE);		/* open file */
 if(handle == -1) return(-1);		/* can't open */
 
 if(read(handle,&elf_header,sizeof(Elf32_Ehdr)) == -1) {
