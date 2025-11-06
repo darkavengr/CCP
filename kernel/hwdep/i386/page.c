@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "kernelhigh.h"
+#include "pagesize.h"
 #include "page.h"
 #include "hwdefs.h"
 #include "errors.h"
@@ -38,14 +39,10 @@
 #include "memorymanager.h"
 #include "string.h"
 
-size_t PAGE_SIZE=4096;
-
 extern end(void);
 extern kernel_begin(void);
 
 size_t paging_type=1;
-
-#define MEMBUF_START end
 
 struct ppt {
 	uint32_t pagedir[1024];

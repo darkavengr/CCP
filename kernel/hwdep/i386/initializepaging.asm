@@ -24,7 +24,6 @@ global unmap_lower_half
 extern paging_type
 extern processpaging
 extern processpaging_end
-extern PAGE_SIZE
 
 %include "init.inc"
 %include "bootinfo.inc"
@@ -36,6 +35,8 @@ ROOT_EMPTY		equ	0x4000
 
 PAGE_PRESENT		equ	1
 PAGE_RW			equ	2
+
+PAGE_SIZE		equ	4096
 
 [BITS 32]
 use32
@@ -186,8 +187,6 @@ rep	stosd
 
 mov	ecx,(1024*1024)				; map first 1mb
 
-;xchg	bx,bx
-
 mov	esi,kernel_size
 sub	esi,KERNEL_HIGH
 add	ecx,[esi]
@@ -210,9 +209,7 @@ add	ecx,eax
 
 and	ecx,0fffff000h
 
-mov	ebx,PAGE_SIZE			; page_size
-sub	ebx,KERNEL_HIGH
-add	ecx,[ebx]
+add	ecx,PAGE_SIZE
 
 shr	ecx,12					; number of page table entries
 mov	edi,ROOT_PAGETABLE
@@ -221,7 +218,7 @@ mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
 cld
 map_next_page_legacy:
 stosd
-add	eax,1000h			; point to next page
+add	eax,PAGE_SIZE			; point to next page
 loop	map_next_page_legacy
 
 mov	edi,ROOT_PAGEDIR
@@ -229,10 +226,9 @@ mov	eax,ROOT_PAGETABLE+PAGE_RW+PAGE_PRESENT
 mov	[edi],eax			; map lower half
 mov	[edi+(512*4)],eax			; map higher half
 
-mov	ebx,PAGE_SIZE			; page_size
-sub	ebx,KERNEL_HIGH
-mov	ebx,[ebx]
-mov	[edi+ebx],edi		; pagedirphys
+; store physical address of the page directory
+
+mov	[edi+PAGE_SIZE],edi		; pagedirphys
 
 mov	edi,ROOT_PAGEDIR+(1023*4)	; map last entry to page directory - page tables will be present at 0xfc000000 - 0xfffff000
 mov	eax,ROOT_PAGEDIR+PAGE_RW+PAGE_PRESENT

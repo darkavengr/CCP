@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "kernelhigh.h"
+#include "pagesize.h"
 #include "page.h"
 #include "hwdefs.h"
 #include "errors.h"
@@ -28,8 +29,6 @@
 #include "string.h"
 
 size_t signextend(size_t num,size_t bitnum);
-
-size_t PAGE_SIZE=4096;
 
 struct ppt {
 	uint64_t pml4[512];							/* PML4 */

@@ -36,6 +36,7 @@ XXAAAAAAAAABBBBBBBBBCCCCCCCCCCCC
 #include <stdint.h>
 #include <stddef.h>
 #include "kernelhigh.h"
+#include "pagesize.h"
 #include "page.h"
 #include "hwdefs.h"
 #include "errors.h"
@@ -43,7 +44,6 @@ XXAAAAAAAAABBBBBBBBBCCCCCCCCCCCC
 #include "memorymanager.h"
 #include "string.h"
 
-size_t PAGE_SIZE=4096;
 size_t paging_type=2;
 
 #define PDPT_LOCATION 0x2000

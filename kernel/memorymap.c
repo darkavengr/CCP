@@ -1,11 +1,11 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "kernelhigh.h"
+#include "pagesize.h"
+#include "pagesize.h"
 #include "bootinfo.h"
 #include "debug.h"
 #include "string.h"
-
-extern size_t PAGE_SIZE;
 
 #define SYSTEM_USE -1		/* page frame marked for system use */
 

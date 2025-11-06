@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "kernelhigh.h"
+#include "pagesize.h"
 #include "errors.h"
 #include "mutex.h"
 #include "device.h"

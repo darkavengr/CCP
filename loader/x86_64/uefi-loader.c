@@ -22,14 +22,15 @@
 #include <uefi.h>
 #include <stdint.h>
 #include <stddef.h>
-#include "bootinfo.h"
 #include <elf.h>
+#include "bootinfo.h"
+#include "pagesize.h"
+#include "pagesize.h"
 #include "errors.h"
 #include "string.h"
 
 /* based on  https://gitlab.com/bztsrc/posix-uefi/-/blob/master/examples/ */
 
-size_t PAGE_SIZE=4096;
 BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS;
 size_t last_error=0;
 char *loader_name="uefi-loader:";

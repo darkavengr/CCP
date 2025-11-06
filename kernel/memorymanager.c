@@ -22,6 +22,7 @@ along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stddef.h>
 #include "kernelhigh.h"
+#include "pagesize.h"
 #include "errors.h"
 #include "bootinfo.h"
 #include "memorymanager.h"
@@ -30,7 +31,6 @@ along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 #include "page.h"
 #include "string.h"
 
-extern size_t PAGE_SIZE;
 extern size_t MEMBUF_START;
 
 void *dmabuf=NULL;
