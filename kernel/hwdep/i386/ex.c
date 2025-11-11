@@ -33,25 +33,7 @@
 #include "memorymanager.h"
 #include "process.h"
 #include "string.h"
-
-#define DIVZERO 	0
-#define DEBUGEX		1
-#define NMI		2
-#define BREAKPOINT	3
-#define INTO_OVERFLOW	4
-#define OOB		5
-#define INVALID_OPCODE	6
-#define NO_COPROCESSOR	7
-#define DOUBLE_FAULT	8
-#define COPROCESSORSEGOVERRRUN 9
-#define	INVALID_TSS		10
-#define SEGMENT_NOTPRESENT 11
-#define STACK_FAULT	12
-#define GPF		14
-#define PAGE_FAULT	15
-#define COPROCESSOR_FAULT 16
-#define ALIGN_CHECK_EXCEPTION 17
-#define MACHINE_CHECK_EXCEPTION 18
+#include "ex.h"
 
 /*
  * x86 exception handler
@@ -86,15 +68,19 @@ size_t rowcount;
 size_t faultaddress;
 
 void exception(uint32_t *regs,uint32_t e,uint32_t dummy) {
-/* If there was a page fault, check if it was a stack overflow */
+asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
 if(e == PAGE_FAULT) {
-	asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
+	/* If there was a page fault, do possible demand paging */
 
-	if(faultaddress < get_usermode_stack_base()) {		/* stack overflow */
-		alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,faultaddress-PROCESS_STACK_SIZE); /* extend stack downwards */
+	if(faultaddress <= get_usermode_stack_base()) {		/* user-mode stack overflow */
+		alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
 		return;	
 	}
+	else if(faultaddress >= getenv()) {		/* enviroment variables */
+		alloc_int(ALLOC_NORMAL,getpid(),faultaddress,PAGE_SIZE);
+		return;
+ 	}
 }
 
 /* If here, it's a fatal exception */
@@ -137,7 +123,7 @@ shiftcount=12;
 
 do {
 	if(flagsname[count] == "$") break;
-
+7
 	if(flagsname[count] != "") kprintf_direct("%s=%d ",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
 	
 	flagsmask=flagsmask >> 1;

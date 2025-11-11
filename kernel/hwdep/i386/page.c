@@ -350,7 +350,7 @@ next=processpaging;
 while(next != NULL) {
 	if(next->process == process) {
 		asm volatile("mov %0, %%cr3":: "a"(next->pagedirphys));
-		return;
+		return(0);
 	}
 
 	next=next->next;

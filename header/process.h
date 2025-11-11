@@ -1,3 +1,5 @@
+#include "pagesize.h"
+
 #ifndef PROCESS_H
 #define PROCESS_H
 
@@ -11,7 +13,9 @@
 
 #define _SHUTDOWN	 		0
 #define _RESET				1
-#define PROCESS_STACK_SIZE 65536*4
+#define DEFAULT_KERNEL_STACK_SIZE 65536
+#define DEFAULT_USER_STACK_SIZE PAGE_SIZE
+
 #define DEFAULT_QUANTUM_COUNT 100
 
 #define SHUTDOWN_WAIT 10

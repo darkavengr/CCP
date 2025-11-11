@@ -448,7 +448,7 @@ push	13
 jmp	int_common	
 
 int14_handler:
-xchg	bx,bx
+;xchg	bx,bx
 push	14
 jmp	int_common	
 

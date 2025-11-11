@@ -91,18 +91,19 @@ uint64_t faultaddress;
 uint64_t stackbase;
 
 void exception(uint64_t *regs,uint64_t e) {
-
-/* If there was a page fault, check if it was a stack overflow */
+asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
 if(e == PAGE_FAULT) {
-	asm volatile ("mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
+	/* If there was a page fault, do possible demand paging */
 
-	if(faultaddress < get_usermode_stack_base()) {		/* stack overflow */
-		alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,faultaddress-PROCESS_STACK_SIZE); /* extend stack downwards */
-
-		asm("xchg %bx,%bx");
+	if(faultaddress <= get_usermode_stack_base()) {		/* stack overflow */
+		alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
 		return;	
 	}
+	else if(faultaddress >= getenv()) {		/* enviroment variables */
+		alloc_int(ALLOC_NORMAL,getpid(),faultaddress,PAGE_SIZE);
+		return;
+ 	} 		
 }
 
 /* If here, it's a fatal exception */

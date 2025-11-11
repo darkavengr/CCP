@@ -127,7 +127,7 @@ next->next=NULL;
 
 /* Create kernel stack for process */
 
-next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);	/* allocate stack */
+next->kernelstacktop=kernelalloc(DEFAULT_KERNEL_STACK_SIZE);	/* allocate stack */
 if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	currentprocess=oldprocess;	/* restore current process pointer */
 
@@ -143,7 +143,7 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 }
 
 next->kernelstackbase=next->kernelstacktop;
-next->kernelstacktop += PROCESS_STACK_SIZE;			/* top of kernel stack */
+next->kernelstacktop += DEFAULT_KERNEL_STACK_SIZE;			/* top of kernel stack */
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -203,7 +203,7 @@ if(saveenv != NULL) {
 
 /* allocate user mode stack below enviroment variables */
 
-stackp=alloc_int(ALLOC_NORMAL,getpid(),PROCESS_STACK_SIZE,(END_OF_LOWER_HALF-PROCESS_STACK_SIZE-ENVIROMENT_SIZE));
+stackp=alloc_int(ALLOC_NORMAL,getpid(),DEFAULT_USER_STACK_SIZE,(END_OF_LOWER_HALF-DEFAULT_USER_STACK_SIZE-ENVIROMENT_SIZE));
 if(stackp == NULL) {
 	currentprocess=oldprocess;	/* restore current process pointer */
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
@@ -220,12 +220,12 @@ if(stackp == NULL) {
 }
 
 next->stackbase=stackp;					/* add user mode stack base and pointer to new process entry */
-next->stackpointer=stackp+PROCESS_STACK_SIZE;
+next->stackpointer=stackp+DEFAULT_USER_STACK_SIZE;
 
 processes_end=next;						/* save last process address */
 
 enable_interrupts();
-	
+
 entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
@@ -245,7 +245,7 @@ if(entrypoint == -1) {					/* can't load executable */
 	return(-1);
 }
 
-initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
+initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->kernelstacktop-DEFAULT_KERNEL_STACK_SIZE); /* initialize kernel stack */
 
 /* create Program Segment Prefix */ 
 
@@ -263,7 +263,7 @@ if(flags & PROCESS_FLAG_BACKGROUND) {			/* run process in background */
 }
 else
 {
-	initialize_current_process_user_mode_stack(currentprocess->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
+	initialize_current_process_user_mode_stack(currentprocess->stackpointer,DEFAULT_USER_STACK_SIZE);	/* intialize and switch to user mode stack */
 
 	enablemultitasking();
 
