@@ -924,7 +924,8 @@ BPB *bpb;
 char *blockbuf;
 size_t read_size;
 size_t pos_rounded_down;
-size_t pos_rounded_up;
+size_t pos_mod;
+size_t pos_blocksize;
 
 if(gethandle(handle,&read_file_record) == -1) {		/* bad handle */
 	setlasterror(INVALID_HANDLE);
@@ -1016,11 +1017,16 @@ while(read_size > 0) {
 	addr += count;      /* point to next address */
 
 	/* if reading data that crosses a block boundary, find next block to read remainder of data */
+	pos_blocksize=(bpb->sectorsperblock*bpb->sectorsize);
+	pos_mod=read_file_record.currentpos % pos_blocksize;
+	pos_rounded_down=read_file_record.currentpos-(read_file_record.currentpos-pos_mod);
 
-	pos_rounded_down=read_file_record.currentpos - (read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize));
-	pos_rounded_up=read_file_record.currentpos + (read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize));
+	//kprintf_direct("rounded=%X %X %X\n",read_file_record.currentpos,blockoffset,pos_rounded_down);
+	//asm("xchg %bx,%bx");
+	
+	if((read_file_record.currentpos+blockoffset) > pos_rounded_down) {
+	//	kprintf_direct("Get next block\n");
 
-	if((pos_rounded_down+count) > pos_rounded_up) {
 	 	read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);
 
 		if((fattype == 12 && read_file_record.currentblock >= 0xff8) || 
@@ -1033,6 +1039,12 @@ while(read_size > 0) {
 	read_file_record.currentpos += count;
 	read_file_record.filesize += count;
 	read_file_record.flags |= FILE_POS_MOVED_BY_SEEK;
+
+	if(updatehandle(handle,&read_file_record) == -1) {		/* update file information */
+		setlasterror(INVALID_HANDLE);
+		return(-1);
+	}
+
 }
 
 kernelfree(iobuf);
@@ -1214,6 +1226,11 @@ while(write_size > 0) {
 	blockoffset=write_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
 	
+	kprintf_direct("write_file_record.currentpos=%X\n",write_file_record.currentpos);
+	kprintf_direct("blockoffset=%X\n",blockoffset);
+	kprintf_direct("count=%X\n",count);
+	asm("xchg %bx,%bx");
+
 	if(blockio(DEVICE_READ,write_file_record.drive,blockno,iobuf) == -1) {		/* read block */
 		kernelfree(iobuf);
 		return(-1);
@@ -1230,6 +1247,7 @@ while(write_size > 0) {
 		count=size;
 	}
 
+	asm("xchg %bx,%bx");
 	memcpy(iobuf+blockoffset,addr,count);			/* copy data to buffer */
 
 	if(blockio(DEVICE_WRITE,write_file_record.drive,blockno,iobuf) == -1) {		/* write block */
@@ -1309,6 +1327,8 @@ if(blockio(DEVICE_WRITE,write_file_record.drive,write_file_record.findlastblock,
 	kernelfree(blockbuf);
 	return(-1); 
 }
+
+updatehandle(handle,&write_file_record);		/* update file information */
 
 kernelfree(blockbuf);
 

@@ -105,14 +105,13 @@ return(fs.findnext(name,buf));		/* Call via function pointer */
 
 size_t open(char *filename,size_t access) {
 size_t blockcount;
-size_t handle;
 FILERECORD *next;
-FILERECORD *last;
 char *fullname[MAX_PATH];
 FILESYSTEM fs;
 BLOCKDEVICE blockdevice;
 CHARACTERDEVICE chardevice;
 FILERECORD dirent;
+SPLITBUF splitbuf;
 
 lock_mutex(&vfs_mutex);
 
@@ -127,14 +126,13 @@ if(openfiles == NULL) {
 	if(openfiles == NULL) return(-1);
 
 	next=openfiles;
+	openfiles_last=openfiles;
 }
 else
 {
 	next=openfiles;
 
 	while(next != NULL) {					/* return error if open */
-		last=next;
-
 		if(strncmpi(filename,next->filename,MAX_PATH) == 0) {	/* found filename */
 	
 			if(next->owner_process == getpid()) {
@@ -148,8 +146,6 @@ else
 				setlasterror(LOCK_VIOLATION);
 				return(-1);
 			}
-
-			break;		/* fall through to below to add extra entry */
 		}
 
 		next=next->next;
@@ -159,6 +155,7 @@ else
 	if(openfiles_last->next == NULL) return(-1);
 
 	next=openfiles_last->next;
+	openfiles_last=openfiles_last->next;
 }
 
 /* add common information */
@@ -192,7 +189,7 @@ if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
 /* If opening character device */
 
 if(findcharacterdevice(filename,&chardevice) == 0) {
-	strncpy(next->filename,chardevice.name,MAX_PATH);
+	strncpy(next->filename,&chardevice.name,MAX_PATH);
 
 	next->charioread=chardevice.charioread;
 	next->chariowrite=chardevice.chariowrite;
@@ -218,8 +215,6 @@ else if(access & O_CREAT) {		/* if O_CREAT is set, create file if it does not ex
 }
 else
 {
-	if(getpid() != 0) asm("xchg %bx,%bx");
-
 	if(findfirst(fullname,&dirent) == -1) {			/* check if file exists */
 		unlock_mutex(&vfs_mutex);
 		return(-1);
@@ -235,6 +230,8 @@ if((dirent.flags & FILE_DIRECTORY) == FILE_DIRECTORY) {
 
 getfullpath(filename,fullname);
 
+splitname(fullname,&splitbuf);				/* split name */
+
 /* copy file information */
 strncpy(next->filename,fullname,MAX_PATH);
 next->attribs=dirent.attribs;
@@ -249,6 +246,8 @@ next->findlastblock=dirent.findlastblock;
 next->findentry=dirent.findentry;
 next->flags=FILE_REGULAR;		/* file information flags */
 next->currentblock=next->startblock;
+next->drive=splitbuf.drive;
+next->owner_process=getpid();
 
 setlasterror(NO_ERROR);
 unlock_mutex(&vfs_mutex);
@@ -545,21 +544,9 @@ if(fs.read == NULL) {			/* not implemented */
 	return(-1);
 }
 
-if(flock(handle,next->currentpos,(next->currentpos+size)) == -1) {	/* lock read area */
-	unlock_mutex(&vfs_mutex);
-	return(-1);
-}
-
 unlock_mutex(&vfs_mutex);
 
-readcount=fs.read(handle,addr,size);
-
-if(funlock(handle,next->currentpos,(next->currentpos+size)) == -1) {	/* unlock read area */
-	unlock_mutex(&vfs_mutex);
-	return(-1);
-}
-
-return(readcount);
+return(fs.read(handle,addr,size));
 }
 
 /*
@@ -660,21 +647,7 @@ if(fs.write == NULL) {			/* not implemented */
 
 unlock_mutex(&vfs_mutex);
 
-if(flock(handle,next->currentpos,(next->currentpos+size)) == -1) {	/* lock write area */
-	unlock_mutex(&vfs_mutex);
-	return(-1);
-}
-
-unlock_mutex(&vfs_mutex);
-
-writecount=fs.write(handle,addr,size);
-
-if(funlock(handle,next->currentpos,(next->currentpos+size)) == -1) {	/* unlock write area */
-	unlock_mutex(&vfs_mutex);
-	return(-1);
-}
-
-return(writecount);
+return(fs.write(handle,addr,size));
 }
 
 
@@ -788,6 +761,7 @@ while(next != NULL) {					/* find filename in struct */
 		setlasterror(NO_ERROR);
 		return(0);
 	}
+
 	last=next;
 	next=next->next;
 }
@@ -1387,16 +1361,21 @@ return(-1);
  */
 size_t seek(size_t handle,size_t pos,size_t whence) {
 FILERECORD seek_file_record;
+BLOCKDEVICE blockdevice;
 
 if(gethandle(handle,&seek_file_record) == -1) {			/* bad handle */
 	setlasterror(INVALID_HANDLE);
 	return(-1);
 }
 
-if(seek_file_record.flags & FILE_FIFO) {	/* not file or block device */
+if((seek_file_record.flags & FILE_DIRECTORY) || 
+   (seek_file_record.flags & FILE_CHARACTER_DEVICE) ||
+   (seek_file_record.flags & FILE_FIFO)) {		/* not file or block device */
 	setlasterror(ACCESS_ERROR);
 	return(-1);
 }
+if(getblockdevice(seek_file_record.drive,&blockdevice) == -1) return(-1);
+
 
 if((whence == SEEK_SET) || (whence == SEEK_CUR)) {		/* check new file position */
 	if((seek_file_record.currentpos+pos) > seek_file_record.filesize) {	/* invalid position */
@@ -1405,21 +1384,23 @@ if((whence == SEEK_SET) || (whence == SEEK_CUR)) {		/* check new file position *
 	}
 }
 
-switch(whence) {
-	case SEEK_SET:				/*set current position */
-		seek_file_record.currentpos=pos;
-		break;
-
-	case SEEK_END:
-		seek_file_record.currentpos=seek_file_record.filesize+pos;	/* end+pos */
-		break;
-
-	case SEEK_CUR:				/* current location+pos */
-		seek_file_record.currentpos=seek_file_record.currentpos+pos;
-		break;
+if(whence == SEEK_SET) {
+	seek_file_record.currentpos=pos;		/* set file position */
+}
+else if(whence == SEEK_END) {
+	seek_file_record.currentpos=seek_file_record.filesize+pos;	/* seek to end of file + new position */
+}
+else if(whence == SEEK_CUR) {				/* seek to current file position + new position */
+	seek_file_record.currentpos=seek_file_record.currentpos+pos;
 }
 
-seek_file_record.flags |= FILE_POS_MOVED_BY_SEEK;
+//kprintf_direct("seek_file_record.currentpos=%X\n",seek_file_record.currentpos);
+
+/* only set FILE_POS_MOVED_BY_SEEK flag if seeking to another block */
+
+if((seek_file_record.currentpos+pos) >   (seek_file_record.currentpos+(blockdevice.sectorsize*blockdevice.sectorsperblock))) {
+	seek_file_record.flags |= FILE_POS_MOVED_BY_SEEK;
+}
 
 updatehandle(handle,&seek_file_record);		/* update */
 

@@ -632,6 +632,14 @@ switch(highbyte) {
 
 switch(argone) {
 	 
+	case 0x2524:				/* set critical error handler */
+		if(argtwo >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
+		return(set_critical_error_handler(argtwo));
+
 	case 0x3d01:		/* open file or device */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
 			setlasterror(INVALID_ADDRESS);
@@ -841,20 +849,17 @@ switch(argone) {
 		unlock_mutex(argfour);
 		return(0);
 
-
 	case 0x7030:				/* get enviroment address */
 		return(getenv());
 
 	case 0x7031:				/* unload module */
 		return(unload_kernel_module(argfour));
 
-	case 0x2524:				/* set critical error handler */
-		if(argtwo >= KERNEL_HIGH) {		/* invalid argument */
-			setlasterror(INVALID_ADDRESS);
-			return(-1);
-		}
+	case 0x7032:				/* lock file area */
+		return(flock(argtwo,argtwo,argthree));
 
-		return(set_critical_error_handler(argtwo));
+	case 0x7033:				/* unlock file area */
+		return(funlock(argtwo,argtwo,argthree));
 
 	default:
 		setlasterror(INVALID_FUNCTION);
