@@ -3,8 +3,6 @@
 #include "time.h"
 #include "device.h"
 
-#ifndef VFS_H
-#define VFS_H
 #define	NULL			0
 #define TRUE			1
 #define FALSE 			0
@@ -40,6 +38,11 @@
 #define SEEK_CUR	1	/* Seek from current position */
 #define SEEK_END	2	/* Seek from end of file */
 
+#define DEFAULT_CONSOLE_INPUT_DEVICE "CONIN"
+#define DEFAULT_CONSOLE_OUTPUT_DEVICE "CONOUT"
+
+#ifndef VFS_H
+#define VFS_H
 typedef struct {
 	uint8_t magicnumber[MAX_PATH];
 	size_t size;

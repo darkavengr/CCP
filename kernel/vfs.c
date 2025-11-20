@@ -920,7 +920,6 @@ FILESYSTEM *last;
 lock_mutex(&vfs_mutex);
 
 if(filesystems == NULL) {
-
 	filesystems=kernelalloc(sizeof(FILESYSTEM));		/* add to end */
 	if(filesystems == NULL) return(-1);
 
@@ -1029,34 +1028,55 @@ return(-1);
  *
  * In:  nothing
  *
- * Returns: nothing
+ * Returns: 0 on success, -1 on error
+ *
+ */
+size_t filemanager_init(void) {
+highest_handle=2;
+}
+
+/*
+ * Initialize TTY
+ *
+ * In:  nothing
+ *
+ * Returns: 0 on success, -1 on error
  *
  */
 
-
-size_t filemanager_init(void) {
+size_t tty_init(void) {
 FILERECORD *next;
+CHARACTERDEVICE inputchardevice;
+CHARACTERDEVICE outputchardevice;
 
-filesystems=NULL;						/* no filesystem drivers for now */
+if(findcharacterdevice(DEFAULT_CONSOLE_INPUT_DEVICE,&inputchardevice) == -1) {	/* get console input device */
+	kprintf_direct("tty_init: Unable to get console input device\n");
+	return(-1);
+}
+
+if(findcharacterdevice(DEFAULT_CONSOLE_OUTPUT_DEVICE,&outputchardevice) == -1) {	/* get console output device */
+	kprintf_direct("tty_init: Unable to get console output device\n");
+	return(-1);
+}
 
 /* Create initial stdin, stdout and stderr handles */
 
 openfiles=kernelalloc(sizeof(FILERECORD));			/* stdin */
 if(openfiles == NULL) {						/*can't allocate */
-	kprintf_direct("kernel: can't allocate memory for stdin\n");
+	kprintf_direct("tty_init: can't allocate memory for stdin\n");
 	return(-1);
 }
 
 strncpy(openfiles->filename,"stdin",MAX_PATH);
 openfiles->handle=0;
-openfiles->charioread=NULL;			/* for now */
+openfiles->charioread=inputchardevice.charioread;			/* function pointer to device driver I/O function */
 openfiles->chariowrite=NULL;
 openfiles->flags=FILE_CHARACTER_DEVICE;
 openfiles->access=O_RDONLY;
 
 openfiles->next=kernelalloc(sizeof(FILERECORD));			/* stdin */
 if(openfiles->next == NULL) {	/*can't allocate */
-	kprintf_direct("kernel: can't allocate memory for stdout\n");
+	kprintf_direct("tty: can't allocate memory for stdout\n");
 	return(-1);
 }
 
@@ -1065,7 +1085,7 @@ next=openfiles->next;
 strncpy(next->filename,"stdout",MAX_PATH);
 next->handle=1;
 next->charioread=NULL;			/* for now */
-next->chariowrite=NULL;
+next->chariowrite=outputchardevice.chariowrite;			/* function pointer to device driver I/O function */
 next->flags=FILE_CHARACTER_DEVICE;
 next->access=O_WRONLY;
 
@@ -1080,7 +1100,7 @@ next=next->next;
 strncpy(next->filename,"stderr",MAX_PATH);
 next->handle=2;
 next->charioread=NULL;			/* for now */
-next->chariowrite=NULL;
+next->chariowrite=inputchardevice.charioread;			/* function pointer to device driver I/O function */
 next->flags=FILE_CHARACTER_DEVICE;
 next->access=O_WRONLY;
 next->next=NULL;
@@ -1088,44 +1108,7 @@ next->next=NULL;
 openfiles_last=next;			/* save last */
 highest_handle=2;			/* save highest handle number */
 
-return;
-}
-
-/*
- * Initialize console
- *
- * In:  handle	handle of console device (0,1 or 2)
-	cptr	Pointer to console I/O function	
- *
- * Returns: -1 on error, 0 on success
- *
- */	
-
-size_t init_console_device(size_t type,size_t handle,void *cptr) {
-FILERECORD *next;
-	
-next=openfiles;
-
-while(next != NULL) {
-
-	if(next->handle == handle) {
-
-		if(type == DEVICE_READ) {
-			next->charioread=cptr;
-		}
-		else if(type == DEVICE_WRITE) {
-			next->chariowrite=cptr;
-		}
-
-		return(0);
-	}
-
-	next=next->next;
-}
-
-initialize_mutex(&vfs_mutex);		/* intialize mutex */
-
-return(-1);
+return(0);
 }
 
 /*

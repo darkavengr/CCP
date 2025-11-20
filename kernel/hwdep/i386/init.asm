@@ -42,6 +42,7 @@ extern initialize_interrupts					; initialize interrupts
 extern initialize_memory_map					; initialize memory map
 extern initializepaging						; initialize paging
 extern initrd_init						; initialize initial RAM disk
+extern tty_init							; initalize TTY
 extern end							; end of kernel in memory
 extern load_idt							; load IDT
 extern unmap_lower_half						; unmap lower half
@@ -51,6 +52,8 @@ extern load_modules_from_initrd					; load modules from initial RAM disk
 extern get_initial_kernel_stack_base				; get initial kernel stack base
 extern get_initial_kernel_stack_top				; get initial kernel stack top
 extern get_kernel_stack_size					; get kernel stack size
+extern PageFrameReclaimInit					; intialize page frame reclaimation
+extern swapmanager_init						; intialize swap manager
 
 ; globals
 ;
@@ -72,14 +75,12 @@ _asm_init:
 ;
 ; 16-bit initialisation code
 ;
-; here the computer is still in real mode,
-; the kernel will enable the a20 line, detect memory
+; Here the computer is still in real mode.
+; Hhe kernel will enable the a20 line, detect memory
 ; load gdt and idt and jump to protected mode
 ;
-;
-; from here to jump_high, the code is located in the lower
-; half of memory.
-; addresses should have KERNEL_HIGH subtracted from them
+; From here to jump_high, the code is located in the lower half of memory
+; and addresses should have KERNEL_HIGH subtracted from them.
 			
 %macro a20wait 0
 %%a20:
@@ -208,8 +209,8 @@ sub	edx,kernel_begin
 
 push	dword [BOOT_INFO_MEMORY_SIZE]	; memory size
 push	dword [BOOT_INFO_SYMBOL_SIZE]	; symbol table size
-push	dword [BOOT_INFO_INITRD_SIZE]	; initrd size
-push	dword [BOOT_INFO_KERNEL_SIZE]				; kernel size
+push	dword [BOOT_INFO_INITRD_SIZE]	; initial RAM disk size
+push	dword [BOOT_INFO_KERNEL_SIZE]	; kernel size
 call	initializepaging		; initialize paging to lower and higher halves of memory
 
 mov	eax,higher_half
@@ -226,13 +227,12 @@ mov	ebp,eax
 ;
 ; from here, don't need to subtract KERNEL_HIGH
 ;
-
 call	unmap_lower_half		; unmap lower half of memory
 
 lgdt	[gdt_high]			; load high gdt
 
 call	initialize_interrupts		; initialize interrupts
-call	load_idt			; load interrupts
+call	load_idt			; set exception interrupts and syscall and load IDT
 
 call	processmanager_init		; intialize process manager
 call	devicemanager_init		; intialize device manager
@@ -262,9 +262,6 @@ mov	edx,[MEMBUF_START]
 
 push	dword DMA_BUFFER_SIZE
 call	memorymanager_init		; initalize memory manager
-
-call	filemanager_init		; initialize file manager
-
 
 ; This block of code is a copy of the
 ; irq remapping code from drivers/pic/pic.c
@@ -317,24 +314,26 @@ xor	al,al
 mov	dx,0xA1
 out	dx,al
 
-call	initialize_tss					; initialize tss
+call	initialize_tss				; initialize TSS
 
 push	esp
-call	set_tss_esp0
+call	set_tss_esp0				; set TSS ESP0 to top of initial kernel stack
 
-call	init_multitasking
+call	init_multitasking			; initialize multitasking
+call	filemanager_init			; initialize file manager
 call	driver_init				; initialize built-in modules
-call	initrd_init
+call	initrd_init				; intialize modules in initial RAM disk
+call	tty_init				; initalize TTY
 
 call	get_initial_kernel_stack_top
+
 add	eax,KERNEL_HIGH
 mov	esp,eax					; temporary stack
 
-call	load_modules_from_initrd
+call	load_modules_from_initrd		; load modules from initial RAM disk
 
 sti
-; jump to highlevel code
-jmp	kernel
+jmp	kernel					; jump to highlevel code
 
 
 ; GDT
