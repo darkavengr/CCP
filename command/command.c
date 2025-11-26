@@ -284,7 +284,7 @@ while(1) {	/* forever */
 
 	memset(buffer,0,MAX_PATH);
 
-	readline(commandconsolein,buffer,MAX_PATH);			/* get line */
+	read(commandconsolein,buffer,MAX_PATH);			/* get line */
 
 	if(*buffer) doline(buffer);
 }
@@ -321,12 +321,12 @@ if(*b == '\n') *b=0;		/* remove newline */
 
 tc=tokenize_line(command,parsebuf," \t");	
 
-kprintf_direct("command=%s\n",command);
-kprintf_direct("tc=%d\n",tc);
+//kprintf_direct("command=%s\n",command);
+//kprintf_direct("tc=%d\n",tc);
 
-for(count=0;count<tc;count++) {
-	 kprintf_direct("parsebuf[%d]=%s\n",count,parsebuf[count]);
-}
+//for(count=0;count<tc;count++) {
+//	 kprintf_direct("parsebuf[%d]=%s\n",count,parsebuf[count]);
+//}
 
 touppercase(parsebuf[0],parsebuf[0]);		/* convert to uppercase */
 	
@@ -1206,7 +1206,7 @@ while(1) {
 return(0);
 }
 
-size_t outputconsole(char *s,size_t size) {
+size_t screen_write(char *s,size_t size) {
  return(write(stdout,s,size));
 }
 

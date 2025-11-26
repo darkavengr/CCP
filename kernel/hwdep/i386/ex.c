@@ -123,7 +123,7 @@ shiftcount=12;
 
 do {
 	if(flagsname[count] == "$") break;
-7
+
 	if(flagsname[count] != "") kprintf_direct("%s=%d ",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
 	
 	flagsmask=flagsmask >> 1;

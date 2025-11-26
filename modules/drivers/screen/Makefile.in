@@ -1,7 +1,7 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-FILES=console.c
+FILES=screen.c
 OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
 $(OBJFILES): %.o: %.c

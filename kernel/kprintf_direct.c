@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include "tty.h"
 #include "string.h"
 
 #define LEFT_JUSTIFY_FLAG		1
@@ -26,6 +27,9 @@
  * 
  * This function is used early in intializtion and by exception()
  */
+
+/* Uses screen_write() rather than write() to avoid output redirection */
+
 size_t kprintf_direct(char *format,...) {
 va_list args;
 char *formatptr;
@@ -146,11 +150,11 @@ while(*formatptr != 0) {
 
 				if(strlen(s) < width) {		/* pad out string */
 					for(count=0;count<width-strlen(s);count++) {
-						outputconsole(" ",1);
+						screen_write(" ",1);
 					}
 				}
 
-				outputconsole(s,strlen(s));
+				screen_write(s,strlen(s));
 
 				outcount += strlen(s);
 
@@ -184,14 +188,14 @@ while(*formatptr != 0) {
 				}
 
 				if(num & ( 1 << ((sizeof(size_t) * 8)-1))) {
-					outputconsole("-",1);	/* write minus sign if negative */
+					screen_write("-",1);	/* write minus sign if negative */
 
 					outcount++;			 
 				}
 				else
 				{
 					if(flags & PLUS_MINUS_FLAG) {
-						outputconsole("+",1);
+						screen_write("+",1);
 						outcount++;
 					}
 				}
@@ -203,17 +207,17 @@ while(*formatptr != 0) {
 		/*		if(width > 0) {
 					for(count=width-strlen(tempbuffer);count > 0;count--) {
 						if(flags & ZERO_BEFORE_DIGIT_FLAG) {
-							outputconsole("0",1);
+							screen_write("0",1);
 						}
 						else if(flags & SPACE_BEFORE_DIGIT_FLAG) {
-							outputconsole(" ",1);
+							screen_write(" ",1);
 						}
 
 						outcount++;
 					}
 				}*/
 
-				outputconsole(tempbuffer,strlen(tempbuffer));
+				screen_write(tempbuffer,strlen(tempbuffer));
 				outcount += strlen(tempbuffer);
 
 				formatptr++;			/* point to next format character */
@@ -256,13 +260,13 @@ while(*formatptr != 0) {
 					itoa(num,tempbuffer);		/* convert it to string */
 				}
 				else if(formatchar == 'o') {
-					if(flags & USE_HEX_OCTAL_SIGN) outputconsole("0",1);		/* print 0 before octal numbers */
+					if(flags & USE_HEX_OCTAL_SIGN) screen_write("0",1);		/* print 0 before octal numbers */
 
 					tooctal(num,tempbuffer);
 
 				}
 				else if((formatchar == 'x') || (formatchar == 'X')) {
-					if(flags & USE_HEX_OCTAL_SIGN) outputconsole("0x",2);		/* print 0x before hexadecimal numbers */
+					if(flags & USE_HEX_OCTAL_SIGN) screen_write("0x",2);		/* print 0x before hexadecimal numbers */
 
 					tohex(num,tempbuffer);
 
@@ -272,17 +276,17 @@ while(*formatptr != 0) {
 				if(width > 0) {		/* pad out number */
 					for(count=width-strlen(tempbuffer);count > 0;count--) {
 						if(flags & ZERO_BEFORE_DIGIT_FLAG) {
-							outputconsole("0",1);
+							screen_write("0",1);
 						}
 						else if(flags & SPACE_BEFORE_DIGIT_FLAG) {
-							outputconsole(" ",1);
+							screen_write(" ",1);
 						}
 
 						outcount++;
 					}
 				}
 
-				outputconsole(tempbuffer,strlen(tempbuffer));
+				screen_write(tempbuffer,strlen(tempbuffer));
 				outcount += strlen(tempbuffer);
 
 				formatptr++;			/* point to next format character */
@@ -292,15 +296,15 @@ while(*formatptr != 0) {
 	  			num=(unsigned char) va_arg(args,int);
 
 				ptr=tempbuffer;
-				*ptr++=(char)num;
+					*ptr++=(char)num;
 				*ptr++=0;
 
-				outputconsole(tempbuffer,strlen(tempbuffer));
+				screen_write(tempbuffer,strlen(tempbuffer));
 
 	  			formatptr++;
 			}
 			if(formatchar == '%') {			/* % character */
-				outputconsole("%",1);
+				screen_write("%",1);
 				
 				outcount++;
 	  			formatptr++;
@@ -311,10 +315,10 @@ while(*formatptr != 0) {
 				tohex(num,tempbuffer);
 
 				for(outcount=sizeof(size_t)*4-strlen(tempbuffer);count > 0;count--) {
-					outputconsole("0",1);
+					screen_write("0",1);
 				}
 
-				outputconsole(tempbuffer,strlen(tempbuffer));
+				screen_write(tempbuffer,strlen(tempbuffer));
 
 				outcount += sizeof(size_t)*4;
 			}
@@ -379,7 +383,7 @@ while(*formatptr != 0) {
 	}
 	else								/* output character */
 	{
-			outputconsole(&formatchar,1);
+			screen_write(&formatchar,1);
 
 			formatptr++;
 			outcount++;

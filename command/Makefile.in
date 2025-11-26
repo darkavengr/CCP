@@ -1,7 +1,7 @@
 ASM=nasm
 CC=@arch@-elf-gcc
 LD=@arch@-elf-ld
-CFILES=command.c addvar.c copyfile.c err.c readline.c runcommand.c
+CFILES=command.c addvar.c copyfile.c err.c runcommand.c
 ASMFILES=@arch@/call.asm
 CCFLAGS=-g -lgcc -Wl,-Map -Wl,@buildroot@/mapfiles/command.map
 LDFLAGS=-ffreestanding -nostdlib -T ld.script.command  -Wl,-Map -Wl,@buildroot@/mapfiles/command.map

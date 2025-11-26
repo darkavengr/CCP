@@ -1,9 +1,0 @@
-ASM=@asm@
-CC=@cc@
-LD=@ld@
-FILES=timer.c
-OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
-
-$(OBJFILES): %.o: %.c
-	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
-

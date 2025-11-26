@@ -608,79 +608,78 @@ while(*b != 0) {
 		c=*++b;
  
 		switch(c) {
-
-		/* fall through */
-
-		case 's':				/* string */
-			s=va_arg(args,const char*);
-
-			count += strlen(s);
-			if(count >= size) return;
-
-			strncat(bufptr,s,MAX_SIZE);
-
-			bufptr += strlen(s);
-
-			b++;
-			break;
-
-		case 'd':				/* signed decimal */
-			num=va_arg(args,int);
-
-			if((num >> ((sizeof(int)*8)-1)) == 1)  strncat(bufptr,"-",MAX_SIZE);
-  
-			itoa(num,z);
-
-			strncat(bufptr,z,size-count);
-			count += size;
-
-			bufptr=bufptr+strlen(z)+1;
-
-			b++;
-			break;
-
-   		case 'u':				/* unsigned decimal */
-			num=va_arg(args,size_t);
-
-			itoa(num,z);
-
-			strncat(bufptr,z,size-count);
-			bufptr=bufptr+strlen(z)+1;
+			case 's':				/* string */
+				s=va_arg(args,const char*);
 	
-			b++;
-			break;
+				count += strlen(s);
+				if(count >= size) return;
 
-   		case 'o':				/* octal */
-			num=va_arg(args,size_t);
+				strncat(bufptr,s,MAX_SIZE);	/* copy to end of buffer */
 
-			itoa(num,z);
+				bufptr += strlen(s);
 
-			strncat(bufptr,z,size-count);
-			count += size;
+				b++;
+				break;
 
-			bufptr=bufptr+strlen(z)+1;
+			case 'd':				/* signed decimal */
+				num=va_arg(args,int);
 
-			b++;
-			break;
-
-   		case 'p':				/* same as x */
-   		case 'x':				/*  lowercase x */
-   		case 'X':
-			num=va_arg(args,size_t);
-			tohex(num,z);
- 
-			strncat(bufptr,z,size-count);
-			count += size;
-
-			bufptr=bufptr+strlen(z)+1;
-			b++;
+				if((num >> ((sizeof(int)*8)-1)) == 1)  strncat(bufptr,"-",MAX_SIZE);
   
-			break;
+				itoa(num,z);
+	
+				strncat(bufptr,z,size-count);
+
+				count += size;
+				bufptr += strlen(z)+1;
+
+				b++;
+				break;
+
+   			case 'u':				/* unsigned decimal */
+				num=va_arg(args,size_t);
+
+				itoa(num,z);
+
+				strncat(bufptr,z,size-count);
+				bufptr += strlen(z)+1;
+	
+				b++;
+				break;
+
+   			case 'o':				/* octal */
+				num=va_arg(args,size_t);
+
+				itoa(num,z);
+
+				strncat(bufptr,z,size-count);
+				count += size;
+
+				bufptr += strlen(z)+1;
+
+				b++;
+				break;
+
+   			case 'p':				/* same as x */
+   			case 'x':				/*  lowercase x */
+   			case 'X':
+				num=va_arg(args,size_t);
+				tohex(num,z);
+ 
+				strncat(bufptr,z,size-count);
+				count += size;
+
+				bufptr += strlen(z)+1;
+				b++;
+  
+				break;
    
-		case 'c':				/* character */
-			c=va_arg(args,size_t);
-			b++;
-			break;
+			case 'c':				/* character */
+				c=va_arg(args,size_t);
+
+				*bufptr++=c;			/* add character to buffer */
+				b++;
+				break;
 
 		case '%':
 			strncat(bufptr,"%",size-count);
@@ -853,4 +852,30 @@ do {
 
 return(num);
 }
+
+/*
+ * Sign-extends number
+ *
+ * In:	number				Number to sign-extend
+ *	bitnum				Bit number to sign-extend from
+ */
+size_t signextend(size_t num,size_t bitnum) {
+size_t signextendnum;
+size_t signextendcount;
+
+signextendnum=(size_t) ((size_t) num & (((size_t) 1 << bitnum)));
+
+for(signextendcount=0;signextendcount != (sizeof(num)*8)-bitnum;signextendcount++) {
+	num |= ((size_t) signextendnum);
+
+	signextendnum=((size_t) signextendnum << 1);
+}
+
+return((size_t) num);
+}
+
+size_t round_up(size_t num,size_t multiple) {
+return(num+(multiple-(num % multiple)));
+}
+
 

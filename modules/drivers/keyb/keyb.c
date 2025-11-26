@@ -17,7 +17,7 @@
    along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-/* CCP keyboard driver */
+/* PS/2 keyboard driver */
 
 #include <stdint.h>
 #include "kernelhigh.h"
@@ -30,20 +30,27 @@
 #include "debug.h"
 #include "keyb.h"
 #include "string.h"
+#include "tty.h"
+#include "ttycharacters.h"
 
-#define MODULE_INIT keyb_init
+#define MODULE_INIT keyboard_init
 
 /* characters from scan codes */
-char *scancodes_unshifted[] = { "`",0x22,"1","2","3","4","5","6","7","8","9","0","-","="," ","\t","q","w","e","r","t","y","u", \
-			    "i","o","p","[","]","\n"," ","a","s","d","f","g","h","j","k","l",";","@","#"," ","\\","z","x","c", \
-		           	"v","b","n","m",",",".","/",",","/"," "," "," "," "," "," "," "," "," "," "," ", \
-			    " "," "," "," "," "," "," ","7","8","9","-","4","5","6","+","1","2","3","0"," " };
 
-char *scancodes_shifted[] = { "`",0x22,"!","@","\£","$","%%","^","&","*","(",")","_","+","\b","\t","Q","W","E","R","T","Y","U", \
-			    "I","O","P","{","}","\n"," ","A","S","D","F","G","H","J","K","L",":","%","`","£","|","Z", \
-			    "X","C","V","B","N","M","<",">","?"," "," "," "," "," "," "," "," "," "," "," "," ", \
-			    " "," "," "," "," "," "," ","7","8","9","-","4","5","6","+","1","2","3","0","." };
+char *scancodes_unshifted[] = { "","`","1","2","3","4","5","6","7","8","9","0","-","=",TTY_CHAR_BACK,"\t","q","w","e","r","t","y",
+			        "u","i","o","p","[","]","\n"," ","a","s","d","f","g","h","j","k","l",";","@","#"," ","\\","z",
+			        "x","c","v","b","n","m",",",".","/","",TTY_CHAR_PTSCR,""," ","",TTY_CHAR_F1,TTY_CHAR_F2,TTY_CHAR_F3,
+				TTY_CHAR_F4,TTY_CHAR_F5,TTY_CHAR_F6,TTY_CHAR_F7,TTY_CHAR_F8,TTY_CHAR_F9,TTY_CHAR_F10,"","",TTY_CHAR_HOME,
+				TTY_CHAR_UP,TTY_CHAR_PGUP,"-",TTY_CHAR_LEFT,"7",TTY_CHAR_RIGHT,"+",TTY_CHAR_END,TTY_CHAR_DOWN,
+				TTY_CHAR_PGDOWN,TTY_CHAR_INSERT,TTY_CHAR_BACK };
 
+char *scancodes_shifted[] = { "","`","!","@","\£","$","%%","^","&","*","(",")","_","+",TTY_CHAR_BACK,"\t","Q","W","E","R","T","Y","U",
+			      "I","O","P","{","}","\n"," ","A","S","D","F","G","H","J","K","L",":","%","`","£","|","Z","X","C","V",
+			      "B","N","M","<",">","?",TTY_CHAR_PTSCR," "," "," ",TTY_CHAR_F1,TTY_CHAR_F2,TTY_CHAR_F3,TTY_CHAR_F4,
+			      TTY_CHAR_F5,TTY_CHAR_F6,TTY_CHAR_F7,TTY_CHAR_F8,TTY_CHAR_F9,TTY_CHAR_F10," "," ",TTY_CHAR_HOME,TTY_CHAR_UP,
+			      TTY_CHAR_PGUP,"-",TTY_CHAR_LEFT,"7",TTY_CHAR_RIGHT,"+",TTY_CHAR_END,TTY_CHAR_DOWN,TTY_CHAR_PGDOWN,
+			      TTY_CHAR_INSERT,TTY_CHAR_BACK };
+	
 char *keybbuf[KEYB_BUFFERSIZE];
 char *keybuf=keybbuf;
 size_t readcount=0;
@@ -59,9 +66,9 @@ uint8_t keyboardledflags=0;
  * Returns nothing
  *
  */
-size_t keyb_init(void) {
-CHARACTERDEVICE device;
+size_t keyboard_init(void) {
 uint8_t *keyflagsptr=KERNEL_HIGH+BIOS_DATA_AREA_ADDRESS;
+TTY_HANDLER handler;
 
 keyboardflags=0;
 
@@ -73,28 +80,22 @@ if(((uint8_t) *keyflagsptr & KEYB_BDA_CAPS_LOCK)) {
 
 readcount=0;
 
-/* create console device */
-strncpy(&device.name,"CON",MAX_PATH);
-device.charioread=&readconsole;
-device.chariowrite=NULL;
-device.ioctl=NULL;
-device.flags=0;
-device.data=NULL;
-device.next=NULL;
+/* create TTY handler */
+handler.ttyread=&keyboard_read;
+handler.ttywrite=NULL;
 
-if(add_character_device(&device) == -1) {	/* add character device */
-	kprintf_direct("keyb: Can't register character device %s: %s\n",device.name,kstrerr(getlasterror()));
+if(tty_register_read_handler(&handler) == -1) {	/* add character device */
+	kprintf_direct("keyb: Can't register TTY handler for keyboard: %s\n",kstrerr(getlasterror()));
 	return(-1);
 }
 
 setirqhandler(1,'KEYB',&readkey);		/* set IRQ handler */
-	
-init_console_device(DEVICE_READ,0,&readconsole);
+
 return(0);
 }
 
 /*
- * Read from console
+ * Read from keyboard
  *
  * In: buf	Buffer
        size	Number of character to read
@@ -102,18 +103,15 @@ return(0);
  *  Returns nothing
  *
  */
-void readconsole(char *buf,size_t size) {
+void keyboard_read(char *buf,size_t size) {
 keybuf=keybbuf; 						/* point to start of buffer */
-BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;
 
 readcount=0;
 
-do {	
-	if(readcount > size) readcount=0;
+while(readcount < size) ;;
 
-}  while(readcount < size);
+memcpy(buf,keybbuf,size);
 
-memcpy(buf,keybbuf,size);				
 readcount=0;
 	
 return;
@@ -138,10 +136,10 @@ keycode=inb(KEYBOARD_DATA_PORT);			/* read scan code */
 
 /* if it's a break code, then do various keys */
 
-if((keycode & 128) == 128) {
+if(keycode & 128) {
 /* clear keyboard flags if key is up */
 
-	if((keycode == LEFT_SHIFT_UP) ||(keycode == RIGHT_SHIFT_UP)) {
+	if((keycode == LEFT_SHIFT_UP) || (keycode == RIGHT_SHIFT_UP)) {
 		keyboardflags &= !SHIFT_PRESSED;
 		return;
 	}
@@ -156,30 +154,16 @@ if((keycode & 128) == 128) {
 		return;
 	}
 
-	return;						/* ignore return codes */
+	return;
 }
 
-/* for the rest of the keys, only make codes matter */
+/* for the rest of the keys only the make codes matter */
 
-if(readcount++ == KEYB_BUFFERSIZE) return;
+if(readcount++ == KEYB_BUFFERSIZE) return;		/* buffer is full */
 
-switch(keycode) {								/* control characters */
+/* handle special keys */
 
-	case KEY_TAB:
-		write(stdout,"\t",1);
-	 	return;
-
-	case KEY_HOME_7:							/* move cursor to start of line */  
-		bootinfo->cursor_col=0;
-		keybuf=keybbuf;			/* point to start of buffer */
-		return;
-
-	case KEY_END1:								/* move cursor to end of line */
-		bootinfo->cursor_col=strlen(keybbuf);
-	
-		keybuf=(keybbuf+strlen(keybbuf));	/* point to end of buffer */
-		return;
-
+switch(keycode) {
 	case LEFT_SHIFT:
 		keyboardflags |= SHIFT_PRESSED;
 
@@ -195,21 +179,8 @@ switch(keycode) {								/* control characters */
 	case KEY_ALT:
 		keyboardflags |= ALT_PRESSED;
 	
-		if((readcount-1) >= 0) readcount--;
-		return;
-
-	case KEY_BACK:
-		
-		*keybuf++=8;		/* put backspace character into buffer */
-
-		if((bootinfo->cursor_col-1) > 1) {	
-			movecursor(bootinfo->cursor_row,--bootinfo->cursor_col);
-
-			write(stdout," ",1);
-			movecursor(bootinfo->cursor_row,--bootinfo->cursor_col);
-		}
-
-		return;							
+		*keybuf++=TTY_CHAR_ALT;
+		return;					
 	
 	case KEY_SCROLL_LOCK:
 		if((keyboardflags & SCROLL_LOCK_PRESSED)) {		/* toggle scroll lock */
@@ -271,41 +242,33 @@ switch(keycode) {								/* control characters */
 		return;
 }
 
-if((keyboardflags & CTRL_PRESSED)) {							/* control characters */
-	/* display ^X character */
-	write(stdout,"^",1);
-	write(stdout,scancodes_shifted[keycode],1);
-
-	*keybuf++=(uint8_t) scancodes_shifted[keycode]-'@';		/* put ASCII character for control */
-
-	if(keychar == 'C') {		/* special case for ctrl-C */
-		sendsignal(getpid(),SIGINT);		/* send SIGINT signal */
-	}
-
-}
-else if((keyboardflags & CTRL_PRESSED) && (keyboardflags & ALT_PRESSED) && keycode == KEY_DEL) {	/* pressed ctrl-alt-del */
+if((keyboardflags & CTRL_PRESSED) && (keyboardflags & ALT_PRESSED) && keycode == KEY_DEL) {	/* pressed ctrl-alt-del */
 	shutdown(1);
 }
+
+if((keyboardflags & CTRL_PRESSED)) {					/* control characters */
+	if( ((keycode >= KEY_Q) && (keycode <= KEY_LEFT_SQR_BRACKET_LEFT_CURL_BRACKET)) ||
+ 	    ((keycode >= KEY_A) && (keycode <= KEY_L)) ||
+	    ((keycode >= KEY_Z) && (keycode <= KEY_M))) {		/* ctrl-X characters */
+		*keybuf++=(uint8_t) *scancodes_shifted[keycode]-'@';		/* put ASCII character for control */
+	}
+}
 else
-{
+{ 
 	/* if caps lock is on only shift letters */
 
 	if((keyboardflags & CAPS_LOCK_PRESSED)) {
 		keychar=*scancodes_shifted[keycode];		/* get character */
 
  		if(((keychar >= 'A') && (keychar <= 'Z')) && ((keyboardflags & SHIFT_PRESSED) == 0)) {
-			keychar += 32;				/* to lowercase */
+			keychar += 32;				/* convert to lowercase */
 
 			*keybuf++=keychar;
-
-			write(stdout,scancodes_shifted[keycode],1);
 			return;
 		}
 
 		if(((keychar >= 'A') && (keychar <= 'Z')) && (keyboardflags & SHIFT_PRESSED)) {
 			*keybuf++=keychar;
-
-			write(stdout,scancodes_unshifted[keycode],1);
 			return;
 		}
 
@@ -314,13 +277,10 @@ else
 	/* If capslock is off, use uppercase letters if shift pressed. Use lowercase letters otherwise */
 
 	if((keyboardflags & SHIFT_PRESSED)) {
-		write(stdout,scancodes_shifted[keycode],1);
-
 		*keybuf++=*scancodes_shifted[keycode];
 	}
 	else
 	{
-		write(stdout,scancodes_unshifted[keycode],1);
 		*keybuf++=*scancodes_unshifted[keycode];	
 	}
 }

@@ -133,8 +133,7 @@
 
 #define SET_KEYBOARD_LEDS	0xED
 
-void readconsole(char *buf,size_t size);
+void keyboard_read(char *buf,size_t size);
 size_t keyb_init(void);
 void readkey(void);
-
 

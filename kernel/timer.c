@@ -6,7 +6,7 @@
 size_t timer_count=0;
 size_t timer_internal=0;
 
-size_t timer_init(char *initstr) {
+size_t initialize_abstract_timer(char *initstr) {
 setirqhandler(0,'TIMR',&timer_increment);		/* Register timer */
 
 timer_count=0;

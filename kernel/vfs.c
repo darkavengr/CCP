@@ -493,7 +493,6 @@ if((next->access & O_RDONLY) == 0) {		/* not opened for read access */
  */
 
 if((next->flags & FILE_CHARACTER_DEVICE)) {		/* character device I/O */
-
 	if(next->charioread(addr,size) == -1) {
 		unlock_mutex(&vfs_mutex);
 		return(-1);
@@ -825,6 +824,7 @@ lock_mutex(&vfs_mutex);
 next=openfiles;
 	
 while(next != NULL) {					/* find handle in list */
+
 	if((next->handle == handle) && (next->owner_process == sourcepid)) {
 		if(openfiles == NULL) {
 			openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
@@ -851,11 +851,11 @@ while(next != NULL) {					/* find handle in list */
 		memcpy(openfiles_last,next,sizeof(FILERECORD));		/* copy file handle */
 
 		if(newhandle == -1) {			/* assign handle */
-			openfiles_last->handle=next->handle;
+			openfiles_last->handle=++highest_handle;
 		}
 		else
 		{
-			openfiles_last=++highest_handle;
+			openfiles_last->handle=next->handle;
 		}
 
 		openfiles_last->owner_process=destpid;
@@ -1032,82 +1032,7 @@ return(-1);
  *
  */
 size_t filemanager_init(void) {
-highest_handle=2;
-}
-
-/*
- * Initialize TTY
- *
- * In:  nothing
- *
- * Returns: 0 on success, -1 on error
- *
- */
-
-size_t tty_init(void) {
-FILERECORD *next;
-CHARACTERDEVICE inputchardevice;
-CHARACTERDEVICE outputchardevice;
-
-if(findcharacterdevice(DEFAULT_CONSOLE_INPUT_DEVICE,&inputchardevice) == -1) {	/* get console input device */
-	kprintf_direct("tty_init: Unable to get console input device\n");
-	return(-1);
-}
-
-if(findcharacterdevice(DEFAULT_CONSOLE_OUTPUT_DEVICE,&outputchardevice) == -1) {	/* get console output device */
-	kprintf_direct("tty_init: Unable to get console output device\n");
-	return(-1);
-}
-
-/* Create initial stdin, stdout and stderr handles */
-
-openfiles=kernelalloc(sizeof(FILERECORD));			/* stdin */
-if(openfiles == NULL) {						/*can't allocate */
-	kprintf_direct("tty_init: can't allocate memory for stdin\n");
-	return(-1);
-}
-
-strncpy(openfiles->filename,"stdin",MAX_PATH);
-openfiles->handle=0;
-openfiles->charioread=inputchardevice.charioread;			/* function pointer to device driver I/O function */
-openfiles->chariowrite=NULL;
-openfiles->flags=FILE_CHARACTER_DEVICE;
-openfiles->access=O_RDONLY;
-
-openfiles->next=kernelalloc(sizeof(FILERECORD));			/* stdin */
-if(openfiles->next == NULL) {	/*can't allocate */
-	kprintf_direct("tty: can't allocate memory for stdout\n");
-	return(-1);
-}
-
-next=openfiles->next;
-
-strncpy(next->filename,"stdout",MAX_PATH);
-next->handle=1;
-next->charioread=NULL;			/* for now */
-next->chariowrite=outputchardevice.chariowrite;			/* function pointer to device driver I/O function */
-next->flags=FILE_CHARACTER_DEVICE;
-next->access=O_WRONLY;
-
-next->next=kernelalloc(sizeof(FILERECORD));			/* stdin */
-if(next->next == NULL) {	/*can't allocate */
-	kprintf_direct("kernel: can't allocate memory for stderr\n");
-	return(-1);
-}
-
-next=next->next;
-
-strncpy(next->filename,"stderr",MAX_PATH);
-next->handle=2;
-next->charioread=NULL;			/* for now */
-next->chariowrite=inputchardevice.charioread;			/* function pointer to device driver I/O function */
-next->flags=FILE_CHARACTER_DEVICE;
-next->access=O_WRONLY;
-next->next=NULL;
-
-openfiles_last=next;			/* save last */
-highest_handle=2;			/* save highest handle number */
-
+highest_handle=-1;	/* -1 so the following handles will be 0,1,2... See open() and tty_init() */
 return(0);
 }
 

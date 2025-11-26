@@ -52,9 +52,7 @@ extern load_modules_from_initrd					; load modules from initial RAM disk
 extern get_initial_kernel_stack_base				; get initial kernel stack base
 extern get_initial_kernel_stack_top				; get initial kernel stack top
 extern get_kernel_stack_size					; get kernel stack size
-extern PageFrameReclaimInit					; intialize page frame reclaimation
-extern swapmanager_init						; intialize swap manager
-
+extern initialize_abstract_timer				; initialize abstract timer
 ; globals
 ;
 global _asm_init
@@ -324,6 +322,7 @@ call	filemanager_init			; initialize file manager
 call	driver_init				; initialize built-in modules
 call	initrd_init				; intialize modules in initial RAM disk
 call	tty_init				; initalize TTY
+call	initialize_abstract_timer		; initialize abstract timer
 
 call	get_initial_kernel_stack_top
 

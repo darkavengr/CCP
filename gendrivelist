@@ -6,23 +6,25 @@ echo // Auto-generated file- do not edit!>drive.c
 echo \#define NULL 0 >>drive.c
 echo>>drive.c
 
-for f in $*; do
-	dirname=`echo $f | rev | cut -d/ -f 2 | rev`
-	name=`echo $f | rev | cut -d/ -f 1 | rev`
-
-	if [ $dirname == "drivers" ] || [ $dirname == "filesystems" ] || [ $dirname == "binfmt" ]; then
-		echo extern $name\_init\(\)\;>>drive.c
-	fi
-done
-
 echo void driver_init\(void\) {>>drive.c
 for f in $*; do
 	dirname=`echo $f | rev | cut -d/ -f 2 | rev`
 	name=`echo $f | rev | cut -d/ -f 1 | rev`
 
 	if [ $dirname == "drivers" ]  || [ $dirname == "filesystems" ] || [ $dirname == "binfmt" ]; then
+		initname=`grep "#define MODULE_INIT" $f/$name.c | cut -f3 -d " "`	# extract name from module source
+
+		# Check if there is no init module name
+
+		test -z $initname
+		if [ $? == 0 ]; then
+			echo "gendrivelist: Can't find module intialisation function for " $f/$name.c
+			exit 1
+		fi
+
 		echo Including driver $name
-		echo $name\_init\(NULL\)\;>>drive.c
+		echo extern $initname\(\)\;>>drive.c
+		echo $initname\(NULL\)\;>>drive.c
 	fi
 
 done

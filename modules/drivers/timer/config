@@ -1,8 +1,0 @@
-name=timer
-description=Abstract timer device
-compile_opt=y
-compile_external_module=y
-
-
-
-
