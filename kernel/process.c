@@ -184,9 +184,9 @@ highest_pid_used++;
 /* duplicate stdin, stdout and stderr */
 
 if(getpid() != 0) {
-	dup_internal(stdin,-1,getppid(),getpid());
-	dup_internal(stdout,-1,getppid(),getpid());
-	dup_internal(stderr,-1,getppid(),getpid());
+	dup_internal(stdin,stdin,getppid(),getpid());
+	dup_internal(stdout,stdout,getppid(),getpid());
+	dup_internal(stderr,stderr,getppid(),getpid());
 }
 
 /* Part two of enviroment variables duplication

@@ -97,9 +97,8 @@ if((page_count < (size/PAGE_SIZE)) || (count == (bootinfo->memorysize/PAGE_SIZE)
 	 return(NULL);
 }
 
-/* first start virtual address */
-
-if(flags != ALLOC_NOPAGING) {
+if((flags & ALLOC_NOPAGING) == 0) {
+	/* find start virtual address */
 
 	if(overrideaddress == -1) { 					/* find first free virtual address */
 		first_virtual_address=findfreevirtualpage(size,flags,process); 
@@ -110,7 +109,7 @@ if(flags != ALLOC_NOPAGING) {
 	   		setlasterror(NO_MEM);
 	   		return(NULL);
 	  	}
-	 
+	
 	  	virtual_address=first_virtual_address;
 	}
 	else
@@ -151,25 +150,21 @@ while(count != (bootinfo->memorysize/PAGE_SIZE)+1) {
 	  
 /* link physical addresses to virtual addresses */
 
-	     	if(flags != ALLOC_NOPAGING) {	
+	     	if((flags & ALLOC_NOPAGING) == 0) {	
 	
-	     		switch(flags) {
-	     			case ALLOC_NORMAL:				/* add user-mode page */
-	 				addpage_user(virtual_address,process,physical_address);
-	        			if(process == getpid()) loadpagetable(process);
-					break;
+	     		if(flags & ALLOC_NORMAL) {				/* add user-mode page */
+	 			addpage_user(virtual_address,process,physical_address);
+	        		if(process == getpid()) loadpagetable(process);
+			}
+			else if(flags & ALLOC_KERNEL) {				/* add kernel page */
+				addpage_system(virtual_address,process,physical_address); 
 
-				case ALLOC_KERNEL:
-	 				addpage_system(virtual_address,process,physical_address); /* add kernel page */
+	        		if(process == getpid()) loadpagetable(process);
+	        	}
+			else if(flags & ALLOC_GLOBAL) {				 /* add global page */
+	 			addpage_system(virtual_address,process,physical_address);
 
-	        			if(process == getpid()) loadpagetable(process);
-	        			break;
-
-				case ALLOC_GLOBAL:
-	 				addpage_user(virtual_address,process,physical_address); /* add global page */
-
-	        			if(process == getpid()) loadpagetable(process);
-	       				break;	    
+	        		if(process == getpid()) loadpagetable(process);	    
 	       		}
 
 			virtual_address += PAGE_SIZE;
@@ -186,14 +181,19 @@ while(count != (bootinfo->memorysize/PAGE_SIZE)+1) {
 
 *memory_map_entry_ptr=(size_t *) -1;							/* mark end of chain */
 
-if(flags != ALLOC_NOPAGING) memset(first_virtual_address,0,size-1);
+if(flags & ALLOC_GUARDPAGE) {		/* place a non-present guard page at the end of the allocated memory */
+	virtual_address -= PAGE_SIZE;
+	addpage_int(0,process,virtual_address,0);		
+}
+
+if((flags & ALLOC_NOPAGING) == 0) memset(first_virtual_address,0,size-1);
 
 unlock_mutex(&memmanager_mutex);
 
 setlasterror(NO_ERROR);
-
 return((void *) first_virtual_address);
 }
+
 /*
 * Internal free memory function
 *
@@ -309,7 +309,7 @@ return(free_internal(getpid(),b,FREE_PHYSICAL));
 * 
 */
 void *kernelalloc(size_t size) {				/* allocate kernel memory (0 - 0x80000000) */
-return(alloc_int(ALLOC_KERNEL,getpid(),size,-1));
+return(alloc_int(ALLOC_KERNEL | ALLOC_GUARDPAGE,getpid(),size,-1));
 }
 
 /*

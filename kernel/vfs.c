@@ -60,6 +60,7 @@ if(fs.findfirst == NULL) {			/* not implemented */
 	return(-1);
 }
 
+if(getpid() != 0) asm("xchg %bx,%bx");
 return(fs.findfirst(name,buf));				/* call handler */
 }
 

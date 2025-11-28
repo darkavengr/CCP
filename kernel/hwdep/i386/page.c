@@ -115,15 +115,15 @@ if(page >= KERNEL_HIGH) {
 			}
 
 			next->pagedir[1022]=remap->pagedir[1023];
-			pagetableptr=(uint32_t *) 0xFF800000 + (pagedir_entry_number*1024);
 
-		
+			pagetableptr=(uint32_t *) 0xFF800000 + (pagedir_entry_number*1024);
 			pagetableptr[pagetable_entry_number]=((uint32_t) physaddr & 0xfffff000)+mode;			/* page table */
 		}
 
 		remap=remap->next;
 	}
 
+	next->pagedir[1022]=0;
 }
 
 return(0);
@@ -174,6 +174,8 @@ processpaging_end->next=oldvirtaddress;					/* add link to list */
 processpaging_end=processpaging_end->next;		/* point to end */
 processpaging_end->pagedirphys=old_pagingentryptr_phys;						/* physical address of page directory */
 processpaging_end->process=process;
+
+memset(processpaging_end->pagedir,0,PAGE_SIZE);
 
 memcpy(&processpaging_end->pagedir[512],&processpaging->pagedir[512],PAGE_SIZE/2);		/* copy higher half of page directory */
 

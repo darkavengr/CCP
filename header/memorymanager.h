@@ -1,9 +1,10 @@
 #define FREE_PHYSICAL	1
 
-#define ALLOC_NORMAL	0
-#define ALLOC_KERNEL	1
-#define ALLOC_NOPAGING 	2
-#define ALLOC_GLOBAL	4
+#define ALLOC_NORMAL	1
+#define ALLOC_KERNEL	2
+#define ALLOC_NOPAGING 	4
+#define ALLOC_GLOBAL	8
+#define ALLOC_GUARDPAGE	16
 
 #define DMA_BUFFER_SIZE	32768
 

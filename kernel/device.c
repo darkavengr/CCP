@@ -655,16 +655,16 @@ return(0);
  *
  */
 void callirqhandlers(size_t irqnumber,void *stackparams) {
-IRQ_HANDLER *next=irq_handlers;
+IRQ_HANDLER *next;
+IRQ_HANDLER *last;
 
-while(next != NULL) {	
-	if((next->irqnumber == irqnumber) && (next->handler != NULL)) {
-		//kprintf_direct("IRQ=%X %X %X\n",next->irqnumber,next->handler,next->refnumber);
+next=irq_handlers;
+last=next;
 
-		//if(next->refnumber == 'TIMR') asm("xchg %bx,%bx");
-		next->handler(stackparams);		/* call handler */
-	}
-
+while(next != NULL) {
+	if((next->irqnumber == irqnumber) && (next->handler != NULL)) next->handler(stackparams);		/* call handler */
+	
+	last=next;
 	next=next->next;
 }
 

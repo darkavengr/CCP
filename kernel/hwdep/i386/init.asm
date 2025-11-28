@@ -317,7 +317,7 @@ call	initialize_tss				; initialize TSS
 push	esp
 call	set_tss_esp0				; set TSS ESP0 to top of initial kernel stack
 
-call	init_multitasking			; initialize multitasking
+;call	init_multitasking			; initialize multitasking
 call	filemanager_init			; initialize file manager
 call	driver_init				; initialize built-in modules
 call	initrd_init				; intialize modules in initial RAM disk

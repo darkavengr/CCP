@@ -87,6 +87,7 @@ mov	dword [irqnumber],14
 jmp	irq
 
 irq15:
+xchg	bx,bx
 mov	dword [irqnumber],15
 jmp	irq
 
