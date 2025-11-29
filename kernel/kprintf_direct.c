@@ -204,7 +204,7 @@ while(*formatptr != 0) {
 
 				/* pad out number */
 		
-		/*		if(width > 0) {
+				if(width > 0) {
 					for(count=width-strlen(tempbuffer);count > 0;count--) {
 						if(flags & ZERO_BEFORE_DIGIT_FLAG) {
 							screen_write("0",1);
@@ -215,7 +215,7 @@ while(*formatptr != 0) {
 
 						outcount++;
 					}
-				}*/
+				}
 
 				screen_write(tempbuffer,strlen(tempbuffer));
 				outcount += strlen(tempbuffer);

@@ -34,6 +34,7 @@
 #include "process.h"
 #include "string.h"
 #include "debug.h"
+#include "../i386/ex.h"
 
 #define DIVZERO 	0
 #define DEBUGEX		1
@@ -111,15 +112,54 @@ if(e == PAGE_FAULT) {
 /* Display fault type and address */
 
 if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("\nKernel panic [%s] at address %016X\n",exp[e],regs[0]);
+	kprintf_direct("\nKernel panic [%s] at address %016X:\n",exp[e],regs[0]);
 }
 else
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %016X in %s\n",exp[e],regs[0],processname);
+	kprintf_direct("%s at address %016X in %s:\n",exp[e],regs[0],processname);
 }
 
+if((faultnumber == DOUBLE_FAULT) || (faultnumber == INVALID_TSS) || (faultnumber == SEGMENT_NOT_PRESENT) || \
+   (faultnumber == STACK_FAULT) || (faultnumber == GENERAL_PROTECTION_FAULT) || (faultnumber == ALIGN_CHECK)) {
+	kprintf_direct("When accessing GDT selector %X\n\n",faultinfo);
+}
+else if(faultnumber == PAGE_FAULT) {
+	if(faultinfo & PAGEFAULT_WRITE) {
+		kprintf_direct("Error writing page at address %X",faultaddress);
+	}
+	else
+	{
+		kprintf_direct("Error reading page at address %X",faultaddress);
+	}
+
+	if(faultinfo & PAGEFAULT_USERMODE) {		/* user mode */
+		kprintf_direct(" in user-mode");
+	}
+	else
+	{
+		kprintf_direct(" in kernel mode");
+	}
+
+	if(faultinfo & PAGEFAULT_INSTRUCTION_FETCH) kprintf_direct(" on instruction fetch");
+	
+	else if(faultinfo & PAGEFAULT_RESERVEDBITS) {
+		kprintf_direct(": Reserved bits overwritten\n\n");
+	}
+	else if(faultinfo & PAGEFAULT_PROTKEY) {
+		kprintf_direct(": Protection key violation\n\n");
+	}
+	else if(faultinfo & PAGEFAULT_SHADOW_STACK) {
+		kprintf_direct(": Shadow stack access violation\n\n");
+	}
+	else if(faultinfo & PAGEFAULT_SGX) {
+		kprintf_direct(": Reserved bits overwritten\n\n");
+	}
+	else if((faultinfo & PAGEFAULT_PRESENT) == 0) {
+		kprintf_direct(": Page not present\n\n");
+	}
+}
 /* display registers */
 
 count=0;
@@ -138,25 +178,39 @@ while(regnames[count] != NULL) {							/* dump registers */
 	count++;
 }
 
-/* display flags */
+/* Dump CPU status flags */
+
+kprintf_direct("\n\n");
+
 flagsmask=4096;						/* mask to get flags */
 count=0;
 shiftcount=12;
+rowcount=0;
+
+/* dump flags */
 
 do {
 	if(flagsname[count] == "$") break;
 
-	if(flagsname[count] != "") kprintf_direct("%s=%d ",flagsname[count],(((uint64_t) regs[10] & flagsmask) >> shiftcount));
-	
-	flagsmask=flagsmask >> 1;
+	if(flagsname[count] != NULL) {
+		kprintf_direct("%s=%d",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
+		rowcount++;
+
+		if(rowcount == 5) {			/* at end of row */
+			kprintf_direct("\n");
+			rowcount=0;
+		}
+		else
+		{
+			kprintf_direct(" ");
+		}
+	}
+
+flagsmask=flagsmask >> 1;
 	shiftcount--;
 	count++;
 
 } while(flagsname[count] != "$");
-
-asm("xchg %bx,%bx");
-
-/* kill faulting process or shut down system if there are no processes */
 
 if(get_current_process_pointer() == NULL) {
 	kprintf_direct("\nThe system will now shut down\n");

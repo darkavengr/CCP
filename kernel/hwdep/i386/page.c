@@ -276,8 +276,10 @@ struct ppt *next;
 struct ppt *current;
 
 next=processpaging;
-	
+
 while(next != NULL) {	
+	//if(getpid() != 0) asm("xchg %bx,%bx");
+
 	if(next->process == getpid()) current=next;					/* find process struct */ 
 	if(next->process == process) break;
 	next=next->next;

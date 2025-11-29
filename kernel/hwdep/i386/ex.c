@@ -46,10 +46,10 @@
  * 
  */
 
-void exception(uint32_t *regs,uint32_t e,uint32_t dummy);
+void exception(uint32_t *regs,uint32_t faultnumber,uint32_t dummy);
 uint32_t flags;
 
-char *exp[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception", \
+char *exceptions[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception", \
 		"Into detected overflow","Out of bounds exception","Invalid opcode exception","No coprocessor exception", \
 		 "Double Fault","Coprocessor segment overrun","Bad TSS","Segment not present","Stack fault", \
 		 "General protection fault","Page fault","Unknown interrupt exception","Coprocessor fault", \
@@ -57,7 +57,7 @@ char *exp[] = { "Division by zero exception","Debug exception","Non maskable int
 
 char *regnames[] = { "EIP", "ESP", "EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP","" };
 
-char *flagsname[]= { "","Overflow", " Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
+char *flagsname[]= { NULL,"Overflow", "Direction","Interrupt","Trap","Sign","Zero",NULL,"Adjust",NULL,NULL,NULL,"Carry","$" };
 
 size_t count;
 uint32_t flagsmask;
@@ -67,7 +67,7 @@ uint32_t shiftcount;
 size_t rowcount;
 size_t faultaddress;
 
-void exception(uint32_t *regs,uint32_t e,uint32_t dummy) {
+void exception(uint32_t *regs,uint32_t faultnumber,uint32_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
 //if(e == PAGE_FAULT) {
@@ -82,13 +82,53 @@ asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 /* If here, it's a fatal exception */
 
 if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("\nKernel panic [%s] at address %08X\n\n",exp[e],regs[0]);
+	kprintf_direct("\nKernel panic [%s] at address %08X:\n",exceptions[faultnumber],regs[0]);
 }
 else
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %08X in %s\n\n",exp[e],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %08X in %s:\n",exceptions[faultnumber],regs[0],processname);  /* exception */
+}
+
+if((faultnumber == DOUBLE_FAULT) || (faultnumber == INVALID_TSS) || (faultnumber == SEGMENT_NOT_PRESENT) || \
+   (faultnumber == STACK_FAULT) || (faultnumber == GENERAL_PROTECTION_FAULT) || (faultnumber == ALIGN_CHECK)) {
+	kprintf_direct("When accessing GDT selector %X\n\n",faultinfo);
+}
+else if(faultnumber == PAGE_FAULT) {
+	if(faultinfo & PAGEFAULT_WRITE) {
+		kprintf_direct("Error writing page at address %X",faultaddress);
+	}
+	else
+	{
+		kprintf_direct("Error reading page at address %X",faultaddress);
+	}
+
+	if(faultinfo & PAGEFAULT_USERMODE) {		/* user mode */
+		kprintf_direct(" in user-mode");
+	}
+	else
+	{
+		kprintf_direct(" in kernel mode");
+	}
+
+	if(faultinfo & PAGEFAULT_INSTRUCTION_FETCH) kprintf_direct(" on instruction fetch");
+	
+	else if(faultinfo & PAGEFAULT_RESERVEDBITS) {
+		kprintf_direct(": Reserved bits overwritten\n\n");
+	}
+	else if(faultinfo & PAGEFAULT_PROTKEY) {
+		kprintf_direct(": Protection key violation\n\n");
+	}
+	else if(faultinfo & PAGEFAULT_SHADOW_STACK) {
+		kprintf_direct(": Shadow stack access violation\n\n");
+	}
+	else if(faultinfo & PAGEFAULT_SGX) {
+		kprintf_direct(": Reserved bits overwritten\n\n");
+	}
+	else if((faultinfo & PAGEFAULT_PRESENT) == 0) {
+		kprintf_direct(": Page not present\n\n");
+	}
 }
 
 count=0;
@@ -114,15 +154,28 @@ kprintf_direct("\n\n");
 flagsmask=4096;						/* mask to get flags */
 count=0;
 shiftcount=12;
+rowcount=0;
 
 /* dump flags */
 
 do {
 	if(flagsname[count] == "$") break;
 
-	if(flagsname[count] != "") kprintf_direct("%s=%d ",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
-	
-	flagsmask=flagsmask >> 1;
+	if(flagsname[count] != NULL) {
+		kprintf_direct("%s=%d",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
+		rowcount++;
+
+		if(rowcount == 5) {			/* at end of row */
+			kprintf_direct("\n");
+			rowcount=0;
+		}
+		else
+		{
+			kprintf_direct(" ");
+		}
+	}
+
+flagsmask=flagsmask >> 1;
 	shiftcount--;
 	count++;
 
@@ -137,7 +190,7 @@ else
 	asm("xchg %bx,%bx");
 	enable_interrupts();
 
-	//kill(getpid());
+	kill(getpid());
 	kprintf_direct("\nProcess terminated\n");
 }
 

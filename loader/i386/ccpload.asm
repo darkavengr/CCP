@@ -23,7 +23,7 @@ RETRY_COUNT	equ	3
 ELF32_MAGIC 	equ 0
 ELF32_BITS  	equ 4
 ELF32_ENDIAN 	equ 5
-ELF32_HEADER_VER	equ 6
+ELF32_HDR_VER	equ 6
 ELF32_OS_ABI	equ 7
 ELF32_PADDING5	equ 8
 ELF32_TYPE	equ 16
@@ -74,7 +74,7 @@ SYM32_ENTRY_SIZE	equ 0x10
 ELF64_MAGIC 	equ 0
 ELF64_BITS  	equ 4
 ELF64_ENDIAN 	equ 5
-ELF64_HEADER_VER	equ 6
+ELF64_HDR_VER	equ 6
 ELF64_OS_ABI	equ 7
 ELF64_PADDING5	equ 8
 ELF64_TYPE	equ 16
@@ -128,8 +128,21 @@ ELF32_BIT	equ 1
 SHT_SYMTAB	equ 2
 SHT_STRTAB	equ 3
 
-STT_NOTYPE	equ 0
-STT_SECTION	equ 3
+STT_NOTYPE	equ 0		; Symbol type is unspecified
+STT_OBJECT	equ 1		; Symbol is a data object
+STT_FUNC	equ 2		; Symbol is a code object
+STT_SECTION	equ 3		; Symbol associated with a section
+STT_FILE	equ 4		; Symbol's name is file name
+STT_COMMON	equ 5		; Symbol is a common data object
+STT_TLS		equ 6		; Symbol is thread-local data object*/
+STT_NUM		equ 7		; Number of defined types. 
+STT_LOOS	equ 10		; Start of OS-specific
+STT_GNU_IFUNC	equ 10		; Symbol is indirect code object
+STT_HIOS	equ 12		; End of OS-specific
+STT_LOPROC	equ 13		; Start of processor-specific
+STT_HIPROC	equ 15		; End of processor-specific
+
+SHN_ABS		equ 0xfff1	; Absolute section
 
 INT15_E820_BASE_ADDR_LOW	equ 0
 INT15_E820_BASE_ADDR_HIGH	equ 4
@@ -455,25 +468,38 @@ loop	next_find_sections
 mov	edi,[symbols_start]				; output address
 mov	ebx,[symtab]					; point to symbol table
 
-next_symbol:
+next_symbol32:
 mov	esi,[strtab]					; point to string table
+
+mov	al,[ebx+SYM32_INFO]				; get symbol information
+and	al,0xf						; get symbol type
+
+; skip STT_SECTION and STT_FILE symbols
+
+cmp	al,STT_SECTION
+je	symbol_end32
+
+cmp	al,STT_FILE
+je	symbol_end32
+
 add	esi,[ebx+SYM32_NAME]				; point to string
 dec	esi
 
-next_string:
+next_string32:
 a32	movsb
 
 cmp	byte [edi-1],0
-jne	next_string
-
-mov	eax,[ebx+SYM32_NAME]
+jne	next_string32
 
 mov	eax,[ebx+SYM32_VALUE]				; get value
 
+cmp	eax,KERNEL_HIGH
+jl	symbol_end32
+	
 mov	[edi],eax
-
 add	edi,4						; point to next
 
+symbol_end32:
 add	ebx,SYM32_ENTRY_SIZE
 
 mov	eax,[number_of_symbols]
@@ -481,7 +507,7 @@ dec	eax
 mov	[number_of_symbols],eax
 
 test	eax,eax					; if at end
-jnz	next_symbol
+jnz	next_symbol32
 
 ;
 ; load program segments
@@ -618,7 +644,21 @@ mov	ebx,[symtab]					; point to symbol table
 
 next_symbol64:
 mov	esi,[strtab]					; point to string table
+
+mov	al,[ebx+SYM32_INFO]				; get symbol information
+and	al,0xf						; get symbol type
+
+; skip STT_SECTION and STT_FILE symbols
+
+cmp	al,STT_SECTION
+je	symbol_end64
+
+cmp	al,STT_FILE
+je	symbol_end64
+
 add	esi,[ebx+SYM64_NAME]				; point to string
+
+inc	esi
 
 next_string64:
 a32	movsb
@@ -632,6 +672,8 @@ mov	eax,[ebx+SYM64_VALUE+4]				; get value high word
 mov	[edi+4],eax
 
 add	edi,8						; point to next
+
+symbol_end64:
 add	ebx,SYM64_SIZE
 
 mov	eax,[number_of_symbols]
