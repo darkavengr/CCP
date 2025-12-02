@@ -23,7 +23,7 @@ global switch_task_process_descriptor
 
 extern save_kernel_stack_pointer
 extern getpid
-extern loadpagetable
+extern switch_address_space
 extern get_kernel_stack_pointer
 extern update_current_process_pointer
 extern set_tss_rsp0
@@ -194,7 +194,7 @@ add	rsp,8
 call	getpid
 
 mov	rdi,rax
-call	loadpagetable
+call	switch_address_space
 add	rsp,4
 
 call	get_kernel_stack_pointer

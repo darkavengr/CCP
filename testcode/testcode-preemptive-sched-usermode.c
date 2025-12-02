@@ -13,13 +13,13 @@
 #include "debug.h"
 #include "version.h"
 #include "string.h"
+#include "pagesize.h"
 
 #define ENTRY_POINT 0x100
 
 extern PROCESS *processes;
 extern PROCESS *currentprocess;
 extern size_t highest_pid_used;
-extern size_t PAGE_SIZE;
 
 PROCESS *processes_end;
 size_t *stackinit;
@@ -45,7 +45,7 @@ if(processes == NULL) {  					/* first process */
 	processes=kernelalloc(sizeof(PROCESS));			/* add entry to beginning of list */
 
 	if(processes == NULL) {					/* return if can't allocate */
-		loadpagetable(getppid());
+		switch_address_space(getppid());
 		freepages(highest_pid_used);	
 
 		return(-1);
@@ -60,7 +60,7 @@ else								/* not first process */
 {
 	processes_end->next=kernelalloc(sizeof(PROCESS));	/* add entry to end of list */
 	if(processes_end->next == NULL) {			/* return error if can't allocate */
-		loadpagetable(getppid());
+		switch_address_space(getppid());
 		freepages(highest_pid_used);
 
 		setlasterror(NO_MEM);
@@ -90,7 +90,7 @@ next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);	/* allocate stack */
 if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	currentprocess=oldprocess;	/* restore current process pointer */
 
-	loadpagetable(highest_pid_used);
+	switch_address_space(highest_pid_used);
 	freepages(highest_pid_used);
 
 	kernelfree(lastprocess->next);	/* remove process from list */
@@ -108,7 +108,7 @@ currentprocess=next;		/* kludge */
 initialize_current_process_kernel_stack(next->kernelstacktop,ENTRY_POINT,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
 
 page_init(highest_pid_used);				/* intialize page directory */	
-loadpagetable(highest_pid_used);			/* load page table */
+switch_address_space(highest_pid_used);			/* load page table */
 
 /* allocate user mode stack below enviroment variables */
 
@@ -123,7 +123,7 @@ if(stackp == NULL) {
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
 
-	loadpagetable(highest_pid_used);
+	switch_address_space(highest_pid_used);
 	freepages(highest_pid_used);
 	return(-1);
 }
@@ -163,7 +163,7 @@ while(next != NULL) {
 
 currentprocess=processes;
 
-loadpagetable(0);
+switch_address_space(0);
 
 initialize_current_process_user_mode_stack(processes->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
 

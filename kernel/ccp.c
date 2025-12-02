@@ -48,12 +48,6 @@ extern FILESYSTEM *filesystems;
 void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
-char *name[MAX_PATH];
-
-getkernelsymbolbyvalue(0x80100000,name);
-
-kprintf_direct("name=%s\n",name);
-asm("xchg %bx,%bx");
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);

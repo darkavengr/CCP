@@ -77,7 +77,7 @@ if(processes == NULL) {  					/* first process */
 	processes=kernelalloc(sizeof(PROCESS));			/* add entry to beginning of list */
 
 	if(processes == NULL) {					/* return if can't allocate */
-		loadpagetable(getppid());
+		switch_address_space(getppid());
 		freepages(highest_pid_used);	
 		return(-1);
 	}
@@ -91,7 +91,7 @@ else								/* not first process */
 {
 	processes_end->next=kernelalloc(sizeof(PROCESS));	/* add entry to end of list */
 	if(processes_end->next == NULL) {			/* return error if can't allocate */
-		loadpagetable(getppid());
+		switch_address_space(getppid());
 		freepages(highest_pid_used);
 
 		setlasterror(NO_MEM);
@@ -131,7 +131,7 @@ next->kernelstacktop=kernelalloc(DEFAULT_KERNEL_STACK_SIZE);	/* allocate stack *
 if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	currentprocess=oldprocess;	/* restore current process pointer */
 
-	loadpagetable(getppid());
+	switch_address_space(getppid());
 	freepages(highest_pid_used);
 
 	kernelfree(lastprocess->next);	/* remove process from list */
@@ -158,7 +158,7 @@ if(currentprocess != NULL) {
 	if(saveenv == NULL) {
 		currentprocess=oldprocess;	/* restore current process pointer */
 
-		loadpagetable(getppid());
+		switch_address_space(getppid());
 		freepages(highest_pid_used);
 
 		if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
@@ -172,7 +172,7 @@ if(currentprocess != NULL) {
 }
 
 page_init(highest_pid_used);				/* intialize page directory */	
-loadpagetable(highest_pid_used);			/* load page table */
+switch_address_space(highest_pid_used);			/* load page table */
 
 lastprocess=currentprocess;
 currentprocess=next;					/* switch to new process descriptor */
@@ -213,7 +213,7 @@ if(stackp == NULL) {
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
 
-	loadpagetable(getppid());
+	switch_address_space(getppid());
 	freepages(highest_pid_used);
 	
 	return(-1);
@@ -239,7 +239,7 @@ if(entrypoint == -1) {					/* can't load executable */
 
 	currentprocess=lastprocess;	/* restore current process */
 
-	loadpagetable(getppid());
+	switch_address_space(getppid());
 
 	freepages(highest_pid_used);	
 	return(-1);
@@ -256,7 +256,7 @@ psp->cmdlinesize=strlen(psp->commandline);
 if(flags & PROCESS_FLAG_BACKGROUND) {			/* run process in background */
 	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
 
-	loadpagetable(getpid());
+	switch_address_space(getpid());
 
 	freepages(highest_pid_used);
 	return(0);
@@ -1126,10 +1126,10 @@ if(next->signalhandler != NULL) {		/* if the process has a signal handler */
 
 	thisprocess=getpid();			/* get current process */
 
-	loadpagetable(process);			/* switch to process address space */
+	switch_address_space(process);			/* switch to process address space */
 
 	next->signalhandler(signalno);		/* call signal handler */
-	loadpagetable(thisprocess);		/* switch back to original address space */
+	switch_address_space(thisprocess);		/* switch back to original address space */
 
 	
 }

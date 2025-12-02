@@ -25,7 +25,7 @@ global switch_task_process_descriptor
 extern is_multitasking_enabled			
 extern save_kernel_stack_pointer
 extern getpid
-extern loadpagetable
+extern switch_address_space
 extern get_kernel_stack_pointer
 extern update_current_process_pointer
 extern set_tss_esp0
@@ -181,7 +181,7 @@ add	esp,4
 call	getpid
 
 push	eax
-call	loadpagetable
+call	switch_address_space
 add	esp,4
 
 ; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch

@@ -153,18 +153,18 @@ while(count != (bootinfo->memorysize/PAGE_SIZE)+1) {
 	     	if((flags & ALLOC_NOPAGING) == 0) {	
 	
 	     		if(flags & ALLOC_NORMAL) {				/* add user-mode page */
-	 			addpage_user(virtual_address,process,physical_address);
-	        		if(process == getpid()) loadpagetable(process);
+	 			map_user_page(virtual_address,process,physical_address);
+	        		if(process == getpid()) switch_address_space(process);
 			}
 			else if(flags & ALLOC_KERNEL) {				/* add kernel page */
-				addpage_system(virtual_address,process,physical_address); 
+				map_system_page(virtual_address,process,physical_address); 
 
-	        		if(process == getpid()) loadpagetable(process);
+	        		if(process == getpid()) switch_address_space(process);
 	        	}
 			else if(flags & ALLOC_GLOBAL) {				 /* add global page */
-	 			addpage_system(virtual_address,process,physical_address);
+	 			map_system_page(virtual_address,process,physical_address);
 
-	        		if(process == getpid()) loadpagetable(process);	    
+	        		if(process == getpid()) switch_address_space(process);	    
 	       		}
 
 			virtual_address += PAGE_SIZE;
@@ -183,7 +183,7 @@ while(count != (bootinfo->memorysize/PAGE_SIZE)+1) {
 
 if(flags & ALLOC_GUARDPAGE) {		/* place a non-present guard page at the end of the allocated memory */
 	virtual_address -= PAGE_SIZE;
-	addpage_int(0,process,virtual_address,0);		
+	map_page_internal(0,process,virtual_address,0);		
 }
 
 if((flags & ALLOC_NOPAGING) == 0) memset(first_virtual_address,0,size-1);
@@ -243,7 +243,7 @@ do {
 	*z=0;							/* remove from allocation table */
 	z=p;
 
-	if((p != -1) || (p == 0)) removepage(pc,process);				/* remove page from page table */
+	if((p != -1) || (p == 0)) unmap_page(pc,process);				/* remove page from page table */
 	pc=pc+PAGE_SIZE;
 }  while(p != -1);
 
@@ -403,7 +403,7 @@ dmaptr=dmabuf;
 dmap=dmabuf;
 
 for(count=0;count<dmasize/PAGE_SIZE;count++) {
-	  addpage_system(dmap+KERNEL_HIGH,0,dmap);
+	  map_system_page(dmap+KERNEL_HIGH,0,dmap);
 
 	  dmap += PAGE_SIZE;
 }
