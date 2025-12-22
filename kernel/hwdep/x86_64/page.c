@@ -60,20 +60,20 @@ SSSSSSSSSSSSSSSSZZZZZZZZZXXXXXXXXXAAAAAAAAABBBBBBBBBCCCCCCCCCCCC
 */
 
 size_t map_page_internal(size_t page_flags,size_t process,size_t virtual_address,void *physical_address) { 
-struct ppt *next;
+struct ppt *next=NULL;
 size_t pml4_number;
 size_t pdpt_number;
 size_t page_directory_number;
 size_t page_table_number;
-uint64_t *pml4ptr;
+uint64_t *pml4ptr=
 uint64_t *pdptptr;
 uint64_t *pagedirptr;
 uint64_t *pagetableptr;
 uint64_t newpagedirentry;
 uint64_t addr;
 uint64_t *pageptr;
-struct ppt *current_page_mapping;
-struct ppt *update;
+struct ppt *current_page_mapping=NULL;
+struct ppt *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -275,10 +275,10 @@ size_t pml4count;
 size_t pdptcount;
 size_t pdcount;
 size_t ptcount;
-uint64_t *pagedirptr;
-uint64_t *pagetableptr;
-struct ppt *current_page_mapping;
-struct ppt *update;
+uint64_t *pagedirptr=NULL;
+uint64_t *pagetableptr=NULL;
+struct ppt *current_page_mapping=NULL;
+struct ppt *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -347,11 +347,11 @@ size_t findfreevirtualpage(size_t size,size_t alloc,size_t process) {
 size_t s;
 size_t start;
 size_t end;
-struct ppt *next;
-uint64_t *pagedirptr;
-uint64_t *pagetableptr;
-uint64_t *pdptptr;
-uint64_t *pml4ptr;
+struct ppt *next=NULL;
+uint64_t *pagedirptr=NULL;
+uint64_t *pagetableptr=NULL;
+uint64_t *pdptptr=NULL;
+uint64_t *pml4ptr=NULL;
 size_t pdcount;
 size_t ptcount;
 size_t last;
@@ -359,8 +359,8 @@ size_t pdptcount;
 size_t pml4count;
 size_t address;
 size_t countx;
-struct ppt *current_page_mapping;
-struct ppt *update;
+struct ppt *current_page_mapping=NULL;
+struct ppt *update=NULL;
 size_t savemapping;
 
 next=processpaging;

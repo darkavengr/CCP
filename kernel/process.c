@@ -232,11 +232,13 @@ disable_interrupts();
 if(entrypoint == -1) {					/* can't load executable */
 	kernelfree(next->kernelstacktop);	/* free kernel stack */
 
-	if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
+	if(lastprocess != NULL) {
+		kernelfree(lastprocess->next);	/* remove process from list */
 
-	lastprocess->next=NULL;		/* remove process */
+		lastprocess->next=NULL;		/* remove process */
+	}
+
 	processes_end=lastprocess;
-
 	currentprocess=lastprocess;	/* restore current process */
 
 	switch_address_space(getppid());
@@ -266,7 +268,6 @@ else
 	initialize_current_process_user_mode_stack(currentprocess->stackpointer,DEFAULT_USER_STACK_SIZE);	/* intialize and switch to user mode stack */
 
 	enablemultitasking();
-
 	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
 }
 
@@ -1594,12 +1595,10 @@ EXECUTABLEFORMAT *next;
 char *buffer[MAX_PATH];
 size_t handle;
 
-/* read magic number */
-
 handle=open(filename,O_RDONLY);		/* open file */
 if(handle == -1) return(-1);		/* can't open file */
 
-if(read(handle,buffer,MAX_PATH) == -1) {
+if(read(handle,buffer,MAX_PATH) == -1) {	/* read magic number */
 	close(handle);
 	return(-1);
 }
@@ -1619,7 +1618,6 @@ while(next != NULL) {
 setlasterror(NOT_IMPLEMENTED);
 return(-1);
 }
-
 
 /*
 * Reset process tick counter

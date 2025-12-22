@@ -70,6 +70,8 @@ size_t faultaddress;
 void exception(uint32_t *regs,uint32_t faultnumber,uint32_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
+if(faultaddress == 0xffffff17) asm("xchg %bx,%bx");
+
 //if(e == PAGE_FAULT) {
 	/* If there was a page fault, do possible demand paging */
 
@@ -128,6 +130,10 @@ else if(faultnumber == PAGE_FAULT) {
 	}
 	else if((faultinfo & PAGEFAULT_PRESENT) == 0) {
 		kprintf_direct(": Page not present\n\n");
+	}
+	else
+	{
+		kprintf_direct("\n");
 	}
 }
 

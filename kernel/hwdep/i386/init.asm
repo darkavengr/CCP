@@ -53,14 +53,14 @@ extern get_initial_kernel_stack_base				; get initial kernel stack base
 extern get_initial_kernel_stack_top				; get initial kernel stack top
 extern get_kernel_stack_size					; get kernel stack size
 extern initialize_abstract_timer				; initialize abstract timer
+
+;
 ; globals
 ;
 global _asm_init
 global MEMBUF_START
 global gdt
 global gdt_end
-
-DMA_BUFFER_SIZE equ 32768	
 
 GDT_LIMIT equ 5
 
@@ -258,7 +258,6 @@ call	initialize_memory_map		; initialize memory map
 
 mov	edx,[MEMBUF_START]
 
-push	dword DMA_BUFFER_SIZE
 call	memorymanager_init		; initalize memory manager
 
 ; This block of code is a copy of the

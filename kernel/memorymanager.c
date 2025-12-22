@@ -181,10 +181,10 @@ while(count != (bootinfo->memorysize/PAGE_SIZE)+1) {
 
 *memory_map_entry_ptr=(size_t *) -1;							/* mark end of chain */
 
-if(flags & ALLOC_GUARDPAGE) {		/* place a non-present guard page at the end of the allocated memory */
-	virtual_address -= PAGE_SIZE;
-	map_page_internal(0,process,virtual_address,0);		
-}
+//if(flags & ALLOC_GUARDPAGE) {		/* place a non-present guard page at the end of the allocated memory */
+//	virtual_address -= PAGE_SIZE;
+//	map_page_internal(0,process,virtual_address,0);		
+//}
 
 if((flags & ALLOC_NOPAGING) == 0) memset(first_virtual_address,0,size-1);
 
@@ -333,7 +333,7 @@ return(free_internal(getpid(),b,0));
 * 
 */
 void *kernelalloc_nopaging(size_t size) {
-	return(alloc_int(ALLOC_NOPAGING,getpid(),size,-1));
+return(alloc_int(ALLOC_NOPAGING,getpid(),size,-1));
 }
 
 /*

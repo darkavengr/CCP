@@ -60,7 +60,6 @@ if(fs.findfirst == NULL) {			/* not implemented */
 	return(-1);
 }
 
-if(getpid() != 0) asm("xchg %bx,%bx");
 return(fs.findfirst(name,buf));				/* call handler */
 }
 
@@ -121,6 +120,7 @@ lock_mutex(&vfs_mutex);
 	 handle exists and is not owned by the called and is not opened for exclusive access. Return error if it is.
 */
 
+next=openfiles;
 
 if(openfiles == NULL) {
 	openfiles=kernelalloc(sizeof(FILERECORD));					/* add new entry */
@@ -133,7 +133,7 @@ else
 {
 	next=openfiles;
 
-	while(next != NULL) {					/* return error if open */
+	while(next != NULL) {
 		if(strncmpi(filename,next->filename,MAX_PATH) == 0) {	/* found filename */
 	
 			if(next->owner_process == getpid()) {
@@ -155,52 +155,51 @@ else
 	openfiles_last->next=kernelalloc(sizeof(FILERECORD));					/* add new entry */
 	if(openfiles_last->next == NULL) return(-1);
 
-	next=openfiles_last->next;
 	openfiles_last=openfiles_last->next;
 }
 
 /* add common information */
 
-next->owner_process=getpid();
-next->handle=++highest_handle;
-next->access=access;
-next->currentblock=0;
-next->currentpos=0;
-next->pipe=NULL;
-next->pipereadprevious=NULL;
-next->pipelast=NULL;
-next->pipereadptr=NULL;
-next->filelocklist=NULL;
-next->next=NULL;
+openfiles_last->owner_process=getpid();
+openfiles_last->handle=++highest_handle;
+openfiles_last->access=access;
+openfiles_last->currentblock=0;
+openfiles_last->currentpos=0;
+openfiles_last->pipe=NULL;
+openfiles_last->pipereadprevious=NULL;
+openfiles_last->pipelast=NULL;
+openfiles_last->pipereadptr=NULL;
+openfiles_last->filelocklist=NULL;
+openfiles_last->next=NULL;
 
 /* If opening block device */
 
 if(getdevicebyname(filename,&blockdevice) == 0) {		/* get device info */
-	strncpy(next->filename,blockdevice.name,MAX_PATH);
-	next->flags=FILE_BLOCK_DEVICE;
+	strncpy(openfiles_last->filename,blockdevice.name,MAX_PATH);
+	openfiles_last->flags=FILE_BLOCK_DEVICE;
 
-	memcpy(&next->blockdevice,&blockdevice,sizeof(BLOCKDEVICE));	/* copy device information */
+	memcpy(&openfiles_last->blockdevice,&blockdevice,sizeof(BLOCKDEVICE));	/* copy device information */
 	
 	unlock_mutex(&vfs_mutex);
 
 	setlasterror(NO_ERROR);
-	return(next->handle);					/* return handle */
+	return(openfiles_last->handle);					/* return handle */
 }
 
 /* If opening character device */
 
 if(findcharacterdevice(filename,&chardevice) == 0) {
-	strncpy(next->filename,&chardevice.name,MAX_PATH);
+	strncpy(openfiles_last->filename,&chardevice.name,MAX_PATH);
 
-	next->charioread=chardevice.charioread;
-	next->chariowrite=chardevice.chariowrite;
-	next->ioctl=chardevice.ioctl;
-	next->flags=FILE_CHARACTER_DEVICE;
+	openfiles_last->charioread=chardevice.charioread;
+	openfiles_last->chariowrite=chardevice.chariowrite;
+	openfiles_last->ioctl=chardevice.ioctl;
+	openfiles_last->flags=FILE_CHARACTER_DEVICE;
 
 	unlock_mutex(&vfs_mutex);
 
 	setlasterror(NO_ERROR);
-	return(next->handle);					/* return handle */
+	return(openfiles_last->handle);					/* return handle */
 }
 
 /* If opening regular file */
@@ -234,26 +233,26 @@ getfullpath(filename,fullname);
 splitname(fullname,&splitbuf);				/* split name */
 
 /* copy file information */
-strncpy(next->filename,fullname,MAX_PATH);
-next->attribs=dirent.attribs;
+strncpy(openfiles_last->filename,fullname,MAX_PATH);
+openfiles_last->attribs=dirent.attribs;
 
-memcpy(&next->create_time_date,&dirent.create_time_date,sizeof(TIME));
-memcpy(&next->last_written_time_date,&dirent.last_written_time_date,sizeof(TIME));
-memcpy(&next->last_accessed_time_date,&dirent.last_accessed_time_date,sizeof(TIME));
-next->filesize=dirent.filesize;
-next->startblock=dirent.startblock;
-next->dirent=dirent.dirent;
-next->findlastblock=dirent.findlastblock;
-next->findentry=dirent.findentry;
-next->flags=FILE_REGULAR;		/* file information flags */
-next->currentblock=next->startblock;
-next->drive=splitbuf.drive;
-next->owner_process=getpid();
+memcpy(&openfiles_last->create_time_date,&dirent.create_time_date,sizeof(TIME));
+memcpy(&openfiles_last->last_written_time_date,&dirent.last_written_time_date,sizeof(TIME));
+memcpy(&openfiles_last->last_accessed_time_date,&dirent.last_accessed_time_date,sizeof(TIME));
+openfiles_last->filesize=dirent.filesize;
+openfiles_last->startblock=dirent.startblock;
+openfiles_last->dirent=dirent.dirent;
+openfiles_last->findlastblock=dirent.findlastblock;
+openfiles_last->findentry=dirent.findentry;
+openfiles_last->flags=FILE_REGULAR;		/* file information flags */
+openfiles_last->currentblock=openfiles_last->startblock;
+openfiles_last->drive=splitbuf.drive;
+openfiles_last->owner_process=getpid();
 
 setlasterror(NO_ERROR);
 unlock_mutex(&vfs_mutex);
 
-return(next->handle);					/* return handle */
+return(openfiles_last->handle);					/* return handle */
 } 
 
 /*
@@ -723,6 +722,7 @@ size_t close(size_t handle) {
 size_t count;
 FILERECORD *last;
 FILERECORD *next;
+FILERECORD *save;
 
 last=next;
 	
@@ -732,7 +732,6 @@ next=openfiles;
 
 while(next != NULL) {					/* find filename in struct */
 	if((next->handle == handle) && (next->owner_process == getpid())) {
-
 		if((next->flags & FILE_FIFO)) closepipe(next);		/* if closing pipe */
 
 		if(next == openfiles) {			/* first entry */
@@ -741,13 +740,16 @@ while(next != NULL) {					/* find filename in struct */
 			openfiles=last->next;		/* set new beginning of list */
 			if(last != NULL) kernelfree(last);		/* free old beginning */
 
-			if(last->next == NULL) openfiles_last=next;		/* save last */
-		}
-		else if(next->next == NULL) {		/* last entry */	
-			kernelfree(last->next);		/* free last */
-			last->next=NULL;		/* remove from end of list */
+			if(openfiles->next == NULL) openfiles_last=next;		/* save last */
 
-			openfiles_last=last;		/* save last */
+		}
+		else if(next->next == NULL) {		/* last entry */
+			save=last->next;
+			last->next=NULL;		/* truncate list */
+
+			openfiles_last=last;		/* save last */	
+		
+			kernelfree(save);		/* free entry */
 		}
 		else
 		{
@@ -870,8 +872,6 @@ while(next != NULL) {					/* find handle in list */
 	
 	next=next->next;
 }
-
-
 
 unlock_mutex(&vfs_mutex);
 setlasterror(INVALID_HANDLE);
@@ -1709,5 +1709,21 @@ while(flockptr != NULL) {
 	
 setlasterror(FILE_NOT_FOUND);
 return(-1);
+}
+
+void dumphandles(void) {
+FILERECORD *next;
+
+kprintf_direct("\n");
+	
+next=openfiles;
+while(next != NULL) {
+	kprintf_direct("dumphandles() next=%X\n",next);
+	kprintf_direct("dumphandles() next->next=%X\n",next->next);
+//	kprintf_direct("%s %X\n",next->filename,next->handle);
+
+//	asm("xchg %bx,%bx");
+	next=next->next;
+}
 }
 

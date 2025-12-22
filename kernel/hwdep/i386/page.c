@@ -49,8 +49,6 @@ struct ppt {
 } *processpaging=PAGE_DIRECTORY_LOCATION+KERNEL_HIGH;
 
 struct ppt *processpaging_end;  
-		
-/* add page */
 
 /*
 * Map virtual address to physical address
@@ -69,8 +67,8 @@ uint32_t pagedir_entry_number;
 uint32_t pagetable_entry_number;
 uint32_t *pagetableptr;
 uint32_t newpagedirentry;
-struct ppt *current_page_mapping;
-struct ppt *update;
+struct ppt *current_page_mapping=NULL;
+struct ppt *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -96,10 +94,20 @@ pagetable_entry_number=(virtual_address >> 12) & 0x3ff;				/* page table offset 
    Kernel pages are the same for every process and don't need this */
 
 if((process != getpid()) && (virtual_address < KERNEL_HIGH)) {
+//	asm("xchg %bx,%bx");
 	savemapping=current_page_mapping->pagedir[1023];			/* save current recursive mapping */
 
 	current_page_mapping->pagedir[1023]=update->pagedir[1023];		/* update mapping */
 }
+
+/*if(getpid() != 0) {
+	kprintf_direct("physical_address=%X\n",physical_address);
+	kprintf_direct("virtual_address=%X\n",virtual_address);	kprintf_direct("pagedir_entry_number=%X\n",pagedir_entry_number);
+	kprintf_direct("pagetable_entry_number=%X\n",pagetable_entry_number);
+	kprintf_direct("update=%X\n",update);
+	kprintf_direct("update->pagedir[%X]=%X [%X]\n",pagedir_entry_number,update->pagedir[pagedir_entry_number],&pagedir_entry_number,update->pagedir[pagedir_entry_number]);
+	asm("xchg %bx,%bx");
+}*/
 
 if(update->pagedir[pagedir_entry_number] == 0) {				/* if page directory entry is empty */	
 	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
@@ -198,7 +206,7 @@ memset(processpaging_end->pagedir,0,PAGE_SIZE);
 
 memcpy(&processpaging_end->pagedir[512],&processpaging->pagedir[512],PAGE_SIZE/2);		/* copy higher half of page directory */
 
-processpaging_end->pagedir[1023]=processpaging_end->pagedirphys+(PAGE_RW+PAGE_PRESENT);	/* recursively map process page tables */
+processpaging_end->pagedir[1023]=processpaging_end->pagedirphys+(PAGE_RW | PAGE_PRESENT);	/* recursively map process page tables */
 
 processpaging_end->next=NULL;
 return(0);
@@ -230,8 +238,8 @@ size_t pagecount;
 size_t entrycount;
 size_t *pagetableptr;
 size_t physaddress=0;
-struct ppt *current_page_mapping;
-struct ppt *update;
+struct ppt *current_page_mapping=NULL;
+struct ppt *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -302,14 +310,14 @@ size_t findfreevirtualpage(size_t size,size_t alloc,size_t process) {
 uint32_t s;
 size_t start;
 size_t end;
-size_t count;
-size_t countx;
+size_t pagedircount;
+size_t pagetablecount;
 uint32_t *pagetableptr;
 size_t sz;
 size_t last;
-struct ppt *next;
-struct ppt *current_page_mapping;
-struct ppt *update;
+struct ppt *next=NULL;
+struct ppt *current_page_mapping=NULL;
+struct ppt *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -330,8 +338,7 @@ if((update == NULL) || (current_page_mapping == NULL)) {
 
 size &= (0-1)-(PAGE_SIZE-1);		/* round */
 
-
-	/* walk through page directories and tables to find free pages in directories already used */
+/* walk through page directories and tables to find free pages in directories already used */
 
 if(alloc == ALLOC_NORMAL) {
 	start=0;	
@@ -348,30 +355,38 @@ if((process != getpid()) && (alloc == ALLOC_NORMAL)) {
 	current_page_mapping->pagedir[1023]=update->pagedir[1023];
 }
 
-for(count=start;count<end;count++) {			/* page directories */
+//if(getpid() != 0) {
+//	kprintf_direct("update=%X\n",update);
+//	asm("xchg %bx,%bx");
+//}
 
-	if(update->pagedir[count] != 0) {						/* in use */
+for(pagedircount=start;pagedircount < end;pagedircount++) {			/* page directories */
+	if(update->pagedir[pagedircount] != 0) {						/* in use */
 
 		s=0;
 
-		pagetableptr=(uint32_t *) 0xffc00000 + (count*1024);
+		pagetableptr=(uint32_t *) 0xffc00000 + (pagedircount*1024);
 
-		for(countx=0;countx<1022;countx++) {      
-			if(pagetableptr[countx] == 0) {
-	        		if(s == 0) last=countx;
+//		if(getpid() != 0) kprintf_direct("pagetableptr=%X\n",pagetableptr);
+
+		for(pagetablecount=0;pagetablecount < 1022;pagetablecount++) {      
+//			if(getpid() != 0) kprintf_direct("&pagetableptr[%X]=%X\n",pagetablecount,pagetableptr);
+
+			if(pagetableptr[pagetablecount] == 0) {
+	        		if(s == 0) last=pagetablecount;
 
 				if(s > size) {
 					if((process != getpid()) && (alloc == ALLOC_NORMAL)) current_page_mapping->pagedir[1023]=savemapping;
 
-					return((count << 22)+(last << 12)); /* found enough */	
+					return((pagedircount << 22)+(last << 12)); /* found enough */	
 				}
 
 	 	  		s += PAGE_SIZE;		
 	     		}
 	    		else
 	    		{
-	     			last=countx;
-	     			s=0;				/* must be contiguous */
+	     			last=pagetablecount;
+	     			s=0;			/* must be contiguous */
 	    		}
 	  	}
 
@@ -382,10 +397,10 @@ if((process != getpid()) && (alloc == ALLOC_NORMAL)) current_page_mapping->paged
 
 s=0;
 
-for(count=start;count<1022;count++) {			/* page directories */
-	if(update->pagedir[count] == 0) {
+for(pagedircount=start;pagedircount < 1022;pagedircount++) {			/* page directories */
+	if(update->pagedir[pagedircount] == 0) {
 		s=s+(1024*1024)*4;						/* found 4Mb */
-		if(s >= size)  return( (count << 22));	
+		if(s >= size)  return((pagedircount << 22));	
 	}
 }
 

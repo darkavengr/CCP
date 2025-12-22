@@ -35,157 +35,133 @@
  */
 
 size_t strlen(char *str) {
- size_t count=0;
- char *s;
+size_t count=0;
+char *strptr=str;
 
- s=str;
+if(*str == 0) return(0);			/* null string */
 
- if(*str == 0) return(0);			/* null string */
+while((char) *strptr++ != 0) count++;		/* find size */
 
- while(*s++ != 0) count++;		/* find size */
-
- return(count);
+return(count);
 }
 
 /*
  * Get length of Unicode string
  *
- * In: char *string	String to get length of
-	   size_t maxlen	Maximum length of string
+ * In: string	Input string
+       maxlen	Maximum length of string
  *
  * Returns string length
  *
  */
 
 size_t strlen_unicode(char *str,size_t maxlen) {
- size_t count;
- char *s;
- char c;
- char d;
+size_t count;
+char *strptr=str;
 
- count=0;
- s=str;
+count=0;
 
- if(*s == 0) return(0);				/* null string */
+if((char) *str == 0) return(0);				/* null string */
 
- while(count < maxlen) {
-  c=*s++;
-  d=*s++;
-  if((c == 0) && (d == 0)) return(count);
+while(maxlen--) {
+	if(((char) *strptr++ == 0) && ((char) *strptr++ == 0)) return(count);
 
-  count++;	
- }
+	count++;	
+}
 
- return(count);
+return(count);
 }
 
 /*
  * Copy string
  *
- * In: d		Destination string
-       s		Source string
+ * In: dest		Destination string
+       source		Source string
+       size		Number of bytes to copy
  *
  * Returns nothing
  *
  */
 
-void strncpy(char *d,char *s,size_t size) {
-char *x;
-char *y;
+char *strncpy(char *dest,char *source,size_t size) {
+char *destptr=dest;
+char *sourceptr=source;
 size_t count=0;
 
-x=s;
-y=d;
+while(*sourceptr != 0) {			/* until end */
+	if(size-- == 0) break;	/* too large */
 
-while(*x != 0) {			/* until end */
-	if(++count == size) break;	/* too large */
-
-	*y++=*x++;	
+	*destptr++=*sourceptr++;	
 }
 
-if(count < (size-1)) *y--=0;
+if(count < (size-1)) *destptr--=0;
 }
 
 /*
  * Conatecate string
  *
- * In: d		String to conatecate to
-       s		String to conatecate
+ * In: str		String to conatecate to
+       catstr		String to conatecate
  *
  * Returns nothing
  *
  */
 
-void strncat(char *d,char *s,size_t size) {
-char *x=s;
-char *y=d;
+char *strncat(char *str,char *catstr,size_t size) {
+char *strptr=str;
+char *catstrptr=catstr;
 size_t count=0;
 
-while(*y != 0) {
-	if(++count == size) break;		/* at end */
+while((char) *strptr++ != 0) count++;
 
-	y++;		/* find end */
+strptr--;		/* overwrite null */
+count--;
+
+while((char) *catstrptr != 0) {
+	*strptr++=*catstrptr++;			/* copy character */
+
+	if(count++ == (size-1)) break;		/* at end */
 }
 
-count=0;
-
-while(*x != 0) {
-	if(++count == size) break;		/* at end */
-
-	*y++=*x++;	/* append byte */
-}
-
-if(count < (size-1)) *y--=0;
+*strptr=0;
+return(str);
 }
 
 /*
  * Copy memory
  *
- * In: void *d		Address to copy to
-	   void *s		Address to copy from
-	   size_t c		Number of bytes to copy
+ * In: dest		Address to copy to
+       source		Address to copy from
+       count		Number of bytes to copy
  *
- * Returns number of bytes copied
+ * Returns: Pointer to destination
  *
  */
 
-size_t memcpy(void *d,void *s,size_t c) {
-char *x;
-char *y;
-size_t count=0;
- 
-x=s;
-y=d;
+size_t memcpy(void *dest,void *source,size_t count) {
+char *sourceptr=source;
+char *destptr=dest;
 
-while(count++ < c) {
-	*y++=*x++;
-}
-
-return(d);   
+while(count-- > 0) *destptr++=*sourceptr++;
+	
+return(dest);
 }
 
 /*
  * Compare memory
  *
- * In: void *d		Second address to compare
-	   void *s		First address to compare
-	   size_t c		Number of bytes to compare
+ * In: source		Second address to compare
+       dest		First address to compare
+       count		Number of bytes to compare
  *
  * Returns different of last source and destination bytes if they do not match, 0 otherwise
  *
  */
 
 size_t memcmp(char *source,char *dest,size_t count) {
-char c,d;
-
 while(count > 0) {
-	if(*source != *dest) {
-		c=*source;
-		d=*dest;
-
-		return(d-c);
-	}
-
+	if(*source != *dest) return((char) *dest - (char) *source);
+	
 	source++;
  	dest++;
 	count--;
@@ -197,39 +173,34 @@ return(0);
 /*
  * Compare string
  *
- * In: char *source	First string to compare
-	   void *dest	Second string to compare
+ * In: source	First string to compare
+       dest	Second string to compare
  *
  * Returns different of last source and destination bytes if they do not match, 0 otherwise
  *
  */
 size_t strncmp(char *source,char *dest,size_t size) {
-char c,d;
 
-while(*source == *dest) {
-	if(*source == 0 && *dest == 0) return(0);		/* same */
+while((char) *source == (char) *dest) {
+	if(((char) *source == 0) && ((char) *dest == 0)) return(0);		/* same */
 
 	source++;
 	dest++;
 }
 
-c=*source;
-d=*dest;
-
-return(d-c);
+return((char) *dest - (char) *source);
 }
 
 /*
  * Compare string case insensitively
  *
- * In: char *source	First string to compare
-	   void *dest	Second string to compare
+ * In: source	First string to compare
+       dest	Second string to compare
  *
  * Returns different of last source and destination bytes if they do not match, 0 otherwise
  *
  */
 size_t strncmpi(char *source,char *dest,size_t size) {
-char a,b;
 char *sourcetemp[MAX_SIZE];
 char *desttemp[MAX_SIZE];
 
@@ -242,25 +213,21 @@ return(strncmp(sourcetemp,desttemp,size));
 /*
  * Fill memory
  *
- * In: void *buf	Address to fill
-	   char i		Byte to fill with
-	   size_t size	Number of bytes to fill
+ * In: buf	Address to fill
+       fillchar Byte to fill with
+       size	Number of bytes to fill
  *
  * Returns nothing
  *
  */
 
-void memset(void *buf,char i,size_t size) {
-size_t count=0;
-char *b=buf;
+void *memset(void *buf,char fillchar,size_t count) {
+char *bufptr=buf;
 
-for(count=0;count<size;count++) {
-	*b++=i;				/* put byte */
+while(count-- > 0) *bufptr++=fillchar;				/* put byte */
+
+return(buf);
 }
-
-return;
-}
-
 
 /*
  * Convert integer to character representation
@@ -312,82 +279,115 @@ for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
 /*
  * Match string using wildcard
  *
- * In: char *mask
-	   void *dest	Second string to compare
+ * In: wildcard Wildcard
+       str 	Input string
  *
- * Returns different of last source and destination bytes if they do not match, 0 otherwise
+ * Returns: 0 if found, -1 if not
  *
  */
-size_t wildcard(char *mask,char *filename) {
-size_t count;
-size_t countx;
-char *x;
-char *y;
+size_t wildcard(char *wildcard,char *str) {
+char *wildcardptr=wildcard;
+char *strptr=str;
 char *buf[MAX_SIZE];
-char *b;
-char *d;
-char *mmask[MAX_SIZE];
-char *nname[MAX_SIZE];
-
-touppercase(mask,mmask);
-touppercase(filename,nname);
+char *bufptr;
+size_t IsFound=FALSE;
+char *startofmultichars;
 
 memset(buf,0,MAX_SIZE);				/* clear buffer */
  
-x=mmask;
-y=nname;
+wildcardptr=wildcard;
+strptr=str;
 
-for(count=0;count<strlen(mmask);count++) {
-	if(*x == '*') {					/* match multiple characters */
-		b=buf;
-		x++;
-   
-		while(*x != 0) {					/* match multiple characters */
-			if(*x == '*' || *x == '?') break;
+if(((char) *strptr++ == '*') && ((char) *strptr == 0)) return(TRUE);	/* match everything */
 
-			*b++=*x++;
+strptr=str;
+
+while((char) *wildcardptr != 0) {
+
+	if((char) *wildcardptr == '?') {		/* match any single character */
+		if((char) *strptr++ == 0) {
+			IsFound=FALSE;
+		}
+		else
+		{
+			IsFound=TRUE;
 		}
 
-		b=filename;
-		d=buf;
+		wildcardptr++;
+	}
+	else if((char) *wildcardptr == '*') {		/* match multiple characters */
+		wildcardptr++;
 
-		for(countx=0;countx<strlen(nname);countx++) {
-			if(memcmp(b,d,strlen(buf)) == 0) return(0);
+		bufptr=buf;
 
-			b++;
+		/* find multiple characters to search for */
+
+		while((char) *wildcardptr != 0) {
+			*bufptr++=*wildcardptr++;
+
+			if(((char) *wildcardptr == '?') || ((char) *wildcardptr == '*')) break;
 		}
 
-	 return(-1);
+		/* find start of multi-character pattern */
+
+		startofmultichars=strptr;
+
+		while((char) *startofmultichars != 0) {
+			if((char) *startofmultichars == (char) *buf) break;
+
+			startofmultichars++;
+		}
+	
+		if(memcmp(startofmultichars,buf,strlen(buf)) == 0) {
+			IsFound=TRUE;
+		}
+		else
+		{
+			IsFound=FALSE;
+		}
+	}
+	else					/* literal character */
+	{
+		if((char) *wildcardptr == (char) *strptr) {
+			IsFound=TRUE;
+		}
+		else
+		{
+			IsFound=FALSE;
+		}
+
+		wildcardptr++;
+		strptr++;
+
+	}
+
 }
 
-if(*x++ != *y++)  return(-1);
+if(IsFound == TRUE) return(0);
+
+return(-1);
 }
 
-
-return(0);
-}
 
 /*
  * Convert string to uppercase
  *
- * In: char *string	String to convert
+ * In: string	String to convert
+ *     out	Output buffer
  *
  * Returns nothing
  *
  */
-size_t touppercase(char *string,char *out) {
-char *s;
+void touppercase(char *string,char *out) {
+char *strptr=string;
 char *outptr=out;
 
-s=string;
-
-while(*s != 0) {			/* until end */
-	*outptr=*s;
+while(*strptr != 0) {			/* until end */
+	*outptr=*strptr++;
 
 	if((*outptr >= 'a') && (*outptr <= 'z')) *outptr = *outptr-32;			/* to uppercase */
 	
 	outptr++;
-	s++;
 }
 
 *outptr++=0;
@@ -401,19 +401,16 @@ while(*s != 0) {			/* until end */
  * Returns nothing
  *
  */
-size_t tolowercase(char *string,char *out) {
-char *s;
+void tolowercase(char *string,char *out) {
+char *strptr=string;
 char *outptr=out;
 
-s=string;
-
-while(*s != 0) {			/* until end */
-	*outptr=*s;
+while(*strptr != 0) {			/* until end */
+	*outptr=*strptr++;
 
 	if((*outptr >= 'A') && (*outptr <= 'Z')) *outptr = *outptr+32;			/* to uppercase */
 	
 	outptr++;
-	s++;
 }
 
 *outptr++=0;
@@ -422,9 +419,9 @@ while(*s != 0) {			/* until end */
 /*
  * Replace string using wildcard
  *
- * In: char *name	Input string
-	   char *mask	Wildcard to match
-	   char *out	Output string
+ * In: name	Input string
+       mask	Wildcard to match
+       out	Output string
  *
  * Returns nothing
  *
@@ -490,218 +487,76 @@ return;
 /*
  * Truncate string
  *
- * In: char *str	String to truncate
-	   int c		Number of characters to truncate
+ * In: str	String to truncate
+       c	Number of characters to truncate
  *
- * Returns nothing
+ * Returns: Address of truncated end
  *
  */
-int strtrunc(char *str,int c) {
-char *s;
-int count;
-int pos;
+char *strtrunc(char *str,int newsize) {
+char *strptr;
 
-s=str;
-while(*s++ != 0) ;;
+strptr=(strlen(str)-newsize);		/* point to new end */
+*strptr=0;
 
-s -= 2;
-*s=0;
-
-return;
+return(strptr);
 }
 
 /*
  * Convert string to integer
  *
- * In: char *hex	String to convert
-	   int base		Base number to use (2,8,10,16)
+ * In: numstr	String to convert
+       base	Base number to use (2,8,10,16)
  *
  * Returns converted number
  *
  */
-int atoi(char *numstr,int base) {
-int num=0;
-char *b;
-char c;
-int count=0;
-int shiftamount=0;
 
-if(base == 10) shiftamount=1;	/* for decimal */
+size_t atoi(char *numstr,size_t base) {
+size_t num=0;
+char *strptr;
+size_t shiftamount=0;
 
-b=numstr;
-count=strlen(numstr);		/* point to end */
+if(base == 10) shiftamount=1;		/* for decimal numbers */
 
-b=b+(count-1);
+strptr=numstr;
+strptr += (strlen(numstr)-1);		/* point to end */
 
-while(count > 0) {
-	c=*b;
- 
+while(strptr >= numstr) {
 	if(base == 16) {
-		if(c >= 'A' && c <= 'F') num += (((int) c-'A')+10) << shiftamount;
-		if(c >= 'a' && c <= 'f') num += (((int) c-'a')+10) << shiftamount;	
-		if(c >= '0' && c <= '9') num += ((int) c-'0') << shiftamount;
+		if( ((char) *strptr >= 'A') && ((char) *strptr <= 'F')) {
+			num += (((size_t) *strptr-'A')+10) << shiftamount;
+		}
+		else if( ((char) *strptr >= 'a') && ((char) *strptr <= 'f')) {
+			num += (((size_t) *strptr-'a')+10) << shiftamount;	
+		}
+		else if( ((char) *strptr >= '0') && ((char) *strptr <= '9')) {
+			num += ((size_t)  *strptr-'0') << shiftamount;
+		}
 
 		shiftamount += 4;
-		count--;
  	}
-
-	if(base == 8) {
-		if(c >= '0' && c <= '7') num += ((int) c-'0') << shiftamount;
+	else if(base == 8) {
+		if( ((char) *strptr >= '0') && ((char) *strptr <= '7')) num += ((size_t) *strptr-'0') << shiftamount;
 
 		shiftamount += 3;
-		count--;
 	}
+	else if(base == 2) {
+		if( ((char) *strptr >= '0') && ((char) *strptr <= '1')) num += ((size_t) *strptr-'0') << shiftamount;
 
-	if(base == 2) {
-		if(c >= '0' && c <= '1') num += ((int) c-'0') << shiftamount;
-
-		shiftamount += 1;
-		count--;
+		shiftamount++;
 	}
+	else if(base == 10) {
+ 		num += ((size_t) *strptr-'0') * shiftamount;
 
- if(base == 10) {
- 	num += (((int) c-'0')*shiftamount);
-
- 	shiftamount =shiftamount*10;
- 	count--;
- }
-
- b--;
+ 		shiftamount *= 10;
+	}
+	
+	strptr--;
 }
 
 return(num);
 }
-
-/*
- * Print formatted string to string
- *
- * In:  char *buf	Buffer to store output
-	char *format	Formatted string to print, uses same format placeholders as printf
-	   ...		Variable number of arguments to write to buf
- *
- * Returns nothing
- */
-
-void ksnprintf(char *buf,char *format,size_t size, ...) {
-va_list args;
-char *b;
-char c;
-char *s;
-int num;
-double d;
-char *z[MAX_SIZE];
-char *bufptr;
-size_t count=0;
-
-bufptr=buf;
-
-va_start(args,format);			/* get start of variable arguments */
-
-b=format;
-
-while(*b != 0) {
-	if(count == size) break;	/* at end */
-
-	c=*b;
-
-	if(c == '%') {
-		c=*++b;
- 
-		switch(c) {
-			case 's':				/* string */
-				s=va_arg(args,const char*);
-	
-				count += strlen(s);
-				if(count >= size) return;
-
-				strncat(bufptr,s,MAX_SIZE);	/* copy to end of buffer */
-
-				bufptr += strlen(s);
-
-				b++;
-				break;
-
-			case 'd':				/* signed decimal */
-				num=va_arg(args,int);
-
-				if((num >> ((sizeof(int)*8)-1)) == 1)  strncat(bufptr,"-",MAX_SIZE);
-  
-				itoa(num,z);
-	
-				strncat(bufptr,z,size-count);
-
-				count += size;
-				bufptr += strlen(z)+1;
-
-				b++;
-				break;
-
-   			case 'u':				/* unsigned decimal */
-				num=va_arg(args,size_t);
-
-				itoa(num,z);
-
-				strncat(bufptr,z,size-count);
-				bufptr += strlen(z)+1;
-	
-				b++;
-				break;
-
-   			case 'o':				/* octal */
-				num=va_arg(args,size_t);
-
-				itoa(num,z);
-
-				strncat(bufptr,z,size-count);
-				count += size;
-
-				bufptr += strlen(z)+1;
-
-				b++;
-				break;
-
-   			case 'p':				/* same as x */
-   			case 'x':				/*  lowercase x */
-   			case 'X':
-				num=va_arg(args,size_t);
-				tohex(num,z);
- 
-				strncat(bufptr,z,size-count);
-				count += size;
-
-				bufptr += strlen(z)+1;
-				b++;
-  
-				break;
-   
-			case 'c':				/* character */
-				c=va_arg(args,size_t);
-
-				*bufptr++=c;			/* add character to buffer */
-				b++;
-				break;
-
-		case '%':
-			strncat(bufptr,"%",size-count);
-			break;
-
-		case 'f':
-			break;
-
-   		}
-
- 	}
- 	else
- 	{
-		*bufptr++=c;
-		b++;
-	}
-
-}
-
-va_end(args);
-}
-
 /*
  * Convert number to hexadecimal string
  *
@@ -788,49 +643,48 @@ return;
 /*
  * Tokenize string into array
  *
- * In: char *linebuf			String to tokenize
-	   char *tokens[MAX_SIZE][MAX_SIZE]	Array to hold tokens
-	   char *split			Character delimiter
+ * In: linebuf				String to tokenize
+       tokens[MAX_SIZE][MAX_SIZE]	Array to hold tokens
+       delim				Character delimiter
  *
- * Returns number of tokens
+ * Returns: Number of tokens
  */
 
-size_t tokenize_line(char *linebuf,char *tokens[MAX_SIZE][MAX_SIZE],char *split) {
+size_t tokenize_line(char *linebuf,char *tokens[MAX_SIZE][MAX_SIZE],char *delim) {
 char *token;
-size_t tc=0;
-size_t count;
-char *d;
-char *splitptr;
+size_t tokencount=0;
+char *tokenptr;
+char *delimptr;
 
 memset(tokens,0,MAX_SIZE);
 
 token=linebuf;
 
-d=tokens[0];
+tokenptr=tokens[0];
 
 while(*token != 0) {
-	splitptr=split;			/* point to split characters */
+	delimptr=delim;			/* point to delimiter characters */
 
-	while(*splitptr != 0) {
+	while(*delimptr != 0) {
 
-		if(*token == *splitptr++) {	/* end of token */
+		if(*token == *delimptr++) {	/* end of token */
 			token++;
-			tc++;
+			tokencount++;
 
-			*d=0;		/* put null at end of token */
+			*tokenptr=0;		/* put null at end of token */
 
-			d=tokens[tc];
+			delimptr=tokens[tokencount];
 			break;
    		}
  	 }	
 
-	 *d++=*token++;
+	 *tokenptr++=*token++;
  }
 
-tc++;
-*tokens[tc]=0;
+tokencount++;
+*tokens[tokencount]=0;
 
-return(tc);
+return(tokencount);
 }
 
 /*
@@ -841,13 +695,12 @@ return(tc);
  */
 size_t ipow(size_t n,size_t e) {
 size_t num=n;				/* save number */
-size_t count=e;
 
 /* multiple n by base number until end */
 
 do {
 	num *= n;
-} while(--count > 1);
+} while(--e > 1);
 
 
 return(num);
@@ -878,4 +731,122 @@ size_t round_up(size_t num,size_t multiple) {
 return(num+(multiple-(num % multiple)));
 }
 
+size_t ksnprintf(char *buf,char *format,size_t size, ...) {
+va_list args;
+char *formatptr;
+char c;
+char *strptr;
+int int_num;
+double double_num;
+char *temp_buf[MAX_SIZE];
+char *bufptr;
+size_t count=0;
+
+bufptr=buf;
+formatptr=format;
+
+va_start(args,format);			/* get start of variable arguments */
+
+while(*formatptr != 0) {
+	if(count == size) return(count);	/* at end */
+
+	if((char) *formatptr == '%') {
+		formatptr++;
+ 
+		switch((char) *formatptr) {
+			case 's':				/* string */
+				strptr=va_arg(args,const char*);
+	
+				count += strlen(strptr);	/* add number of bytes put in output buffer */
+				if(count >= size) return(count);
+
+				strncat(bufptr,strptr,MAX_SIZE);	/* copy to end of buffer */
+
+				bufptr += strlen(strptr);
+
+				formatptr++;
+				break;
+
+			case 'd':				/* signed decimal */
+				int_num=va_arg(args,int);
+
+				if((int_num >> ((sizeof(int)*8)-1)) == 1)  strncat(bufptr,"-",MAX_SIZE);	/* add negative sign */
+  
+				itoa(int_num,temp_buf);
+	
+				strncat(bufptr,temp_buf,size-count);	/* append to buffer */
+
+				count += size;				/* add number of bytes put in output buffer */
+				bufptr += strlen(temp_buf)+1;		/* add to buffer address */
+
+				formatptr++;
+				break;
+
+   			case 'u':				/* unsigned decimal */
+				int_num=va_arg(args,size_t);
+
+				itoa(int_num,temp_buf);
+
+				strncat(bufptr,temp_buf,size-count);
+				bufptr += strlen(temp_buf)+1;
+	
+				formatptr++;
+				break;
+
+   			case 'o':				/* octal */
+				int_num=va_arg(args,size_t);
+
+				itoa(int_num,temp_buf);
+
+				strncat(bufptr,temp_buf,size-count);
+				count += size;
+
+				bufptr += strlen(temp_buf)+1;
+
+				formatptr++;
+				break;
+
+   			case 'p':				/* same as x */
+   			case 'x':				/*  lowercase x */
+   			case 'X':
+				int_num=va_arg(args,size_t);
+				tohex(int_num,temp_buf);
+ 
+				strncat(bufptr,temp_buf,size-count);
+				count += size;
+
+				bufptr += strlen(temp_buf)+1;
+				formatptr++;
+ 
+				break;
+   
+			case 'c':				/* character */
+				c=va_arg(args,size_t);
+
+				*bufptr++=c;			/* add character to buffer */
+				formatptr++;
+				break;
+
+		case '%':
+			strncat(bufptr,"%",size-count);
+			break;
+
+		case 'f':
+			break;
+
+   		}
+
+ 	}
+ 	else
+ 	{
+		*bufptr++=*formatptr;
+		formatptr++;
+	}
+
+}
+
+va_end(args);
+
+return(count);
+}
 

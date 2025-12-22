@@ -32,8 +32,6 @@ ROOT_PDPT		equ	0x3000
 ROOT_PAGEDIR		equ	0x4000
 ROOT_PAGETABLE		equ	0x5000
 
-DMA_BUFFER_SIZE equ 32768	
-
 GDT_LIMIT equ 10
 
 PAGE_PRESENT equ 1
@@ -408,7 +406,6 @@ mov	r9,rax				; stack_size
 
 call	initialize_memory_map		; initialize memory map
 
-mov	rdi,qword DMA_BUFFER_SIZE
 call	memorymanager_init		; initalize memory manager
 
 call	filemanager_init		; initialize file manager

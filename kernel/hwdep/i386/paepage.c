@@ -77,8 +77,8 @@ size_t pagetable_entry_number;
 uint64_t *pagetableptr;
 uint64_t newpagedirentry;
 uint32_t addr;
-struct ppt *current_page_mapping;
-struct ppt *update;
+struct ppt *current_page_mapping=NULL;
+struct ppt *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -324,15 +324,15 @@ size_t findfreevirtualpage(size_t size,size_t alloc,size_t process) {
 size_t s;
 size_t start;
 size_t end;
-struct ppt *next;
-uint64_t *pagedirptr;
-uint64_t *ptptr;
+struct ppt *next=NULL;
+uint64_t *pagedirptr=NULL;
+uint64_t *ptptr=NULL;
 size_t pdcount;
 size_t ptcount;
 size_t last;
 uint32_t pdptcount;
-struct ppt *current_page_mapping;
-struct ppt *update;
+struct ppt *current_page_mapping=NULL;
+struct ppt *update=NULL;
 size_t savemapping;
 
 next=processpaging;

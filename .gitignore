@@ -1,12 +1,2 @@
-out
-sb16.log
-bx_enh_dbg.ini
-ccp.sym
-*.map
-Makefile
-modernize
-runemu
-installccp-floppy
-installccp-hd
-itsalive.wav
+*.o
 
