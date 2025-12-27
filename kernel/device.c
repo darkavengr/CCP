@@ -323,9 +323,6 @@ lock_mutex(&blockdevice_mutex);			/* lock mutex */
 
 next=blockdevices;
 while(next != NULL) {
-
-//	kprintf_direct("getblockdevice=%d %d\n",next->drive,drive);
-
 	if(next->drive == drive) {		/* found device */
 
 		memcpy(buf,next,sizeof(BLOCKDEVICE));
@@ -409,8 +406,6 @@ next=blockdevices;
 while(next != NULL) {
 	if(next->drive == drive) {		 		/* already loaded */
 		save_next=next->next;
-
-//		asm("xchg %bx,%bx");
 
 		memcpy(next,driver,sizeof(BLOCKDEVICE));		/* update struct */
 
@@ -656,15 +651,12 @@ return(0);
  */
 void callirqhandlers(size_t irqnumber,void *stackparams) {
 IRQ_HANDLER *next;
-IRQ_HANDLER *last;
 
 next=irq_handlers;
-last=next;
 
 while(next != NULL) {
 	if((next->irqnumber == irqnumber) && (next->handler != NULL)) next->handler(stackparams);		/* call handler */
 	
-	last=next;
 	next=next->next;
 }
 

@@ -31,4 +31,6 @@ size_t tokenize_line(char *linebuf,char *tokens[MAX_SIZE][MAX_SIZE],char *delim)
 size_t signextend(size_t num,size_t bitnum);
 void tolowercase(char *string,char *out);
 char *strtrunc(char *str,int newsize);
+size_t round_down(size_t num,size_t multiple);
+size_t round_up(size_t num,size_t multiple);
 

@@ -1,4 +1,4 @@
-/*  CCP Version 0.0.1
+/* 	CCP Version 0.0.1
 	(C) Matthew Boote 2020-2023
 
 	This file is part of CCP.
@@ -102,6 +102,7 @@ if(count < (size-1)) *destptr--=0;
  *
  * In: str		String to conatecate to
        catstr		String to conatecate
+       size		Maximum size of buffer
  *
  * Returns nothing
  *
@@ -348,17 +349,9 @@ while((char) *wildcardptr != 0) {
 	}
 	else					/* literal character */
 	{
-		if((char) *wildcardptr == (char) *strptr) {
-			IsFound=TRUE;
-		}
-		else
-		{
-			IsFound=FALSE;
-		}
+		if((char) *wildcardptr++ != (char) *strptr++) return(-1);
 
-		wildcardptr++;
-		strptr++;
-
+		IsFound=TRUE;
 	}
 
 }
@@ -728,7 +721,15 @@ return((size_t) num);
 }
 
 size_t round_up(size_t num,size_t multiple) {
+if(num < multiple) return(multiple);
+
 return(num+(multiple-(num % multiple)));
+}
+
+size_t round_down(size_t num,size_t multiple) {
+if(num < multiple) return(num);
+
+return((num / multiple)*multiple);
 }
 
 size_t ksnprintf(char *buf,char *format,size_t size, ...) {

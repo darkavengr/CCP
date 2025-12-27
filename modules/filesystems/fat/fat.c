@@ -942,13 +942,47 @@ bpb=blockdevice.superblock;		/* point to superblock */
 
 /* If current position has changed using seek(), find block number from FAT */
 
+if((read_file_record.flags & FILE_POS_MOVED_BY_SEEK) && (read_file_record.currentblock != read_file_record.previousblock) \
+   && ((read_file_record.currentblock != (read_file_record.previousblock+1)))) {
+	/* If seeking to previous block, start from the start block.
+	   The FAT is a singly-linked list so it must seek for the beginning */
 
-if((read_file_record.flags & FILE_POS_MOVED_BY_SEEK)) {
-	for(count=0;count<(read_file_record.currentpos/(bpb->sectorsperblock*bpb->sectorsize));count++) {
+	if(read_file_record.currentpos < read_file_record.previouspos) {
+		read_file_record.currentblock=read_file_record.startblock;
 
-		read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);
+		if((read_file_record.currentpos >= read_file_record.filesize) || \
+   		   (read_file_record.currentblock == 0) || \
+		   (fattype == 12 && read_file_record.currentblock >= 0xff8) || \
+		   (fattype == 16 && read_file_record.currentblock >= 0xfff8) || \
+		   (fattype == 32 && read_file_record.currentblock >= 0xffffff8)) {
+			setlasterror(INPUT_PAST_END);
+			return(-1);
+		}
+
+		read_file_record.currentpos=0;
 	}
+	
+	if(size > (bpb->sectorsperblock*bpb->sectorsize)) {
+		count=(size / (bpb->sectorsperblock*bpb->sectorsize));	
+		count=round_down(count,(bpb->sectorsperblock*bpb->sectorsize));	/* get number of whole blocks */
+	}
+	else
+	{
+		count=1;
+	}
+
+	while(count > 0) {
+		read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);
+		count--;
+		read_file_record.currentpos +=  count;
+	}
+
+	/* partial block */
+	if( (size - (bpb->sectorsperblock*bpb->sectorsize)) > 0) 
+		read_file_record.currentpos +=  (size - (bpb->sectorsperblock*bpb->sectorsize));
 }
+
+read_file_record.previousblock=read_file_record.currentblock;		/* update previous block */
 
 iobuf=kernelalloc(bpb->sectorsperblock*bpb->sectorsize);
 if(iobuf == NULL) return(-1);
@@ -957,9 +991,9 @@ if(iobuf == NULL) return(-1);
 
 if((read_file_record.currentpos >= read_file_record.filesize) || \
    (read_file_record.currentblock == 0) || \
-   (fattype == 12 && read_file_record.currentblock >= 0xff8) || \
-   (fattype == 16 && read_file_record.currentblock >= 0xfff8) || \
-   (fattype == 32 && read_file_record.currentblock >= 0x0ffffff8)) {
+   ((fattype == 12) && (read_file_record.currentblock >= 0xff8)) || 
+   ((fattype == 16) && (read_file_record.currentblock >= 0xfff8)) || \
+   ((fattype == 32) && (read_file_record.currentblock >= 0x0ffffff8))) {
 
 	setlasterror(INPUT_PAST_END);
 	return(-1);
@@ -986,12 +1020,13 @@ while(read_size > 0) {
 	blockno=((read_file_record.currentblock-2)*bpb->sectorsperblock)+datastart;
 	blockoffset=read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
-	
+		
+
 	if(blockio(DEVICE_READ,read_file_record.drive,blockno,iobuf) == -1) {		/* read block */
 		kernelfree(iobuf);
 		return(-1);
 	}
-	
+
 	/* adjust copy size */
 
 	if(size < (bpb->sectorsperblock*bpb->sectorsize)) {
@@ -1010,35 +1045,27 @@ while(read_size > 0) {
 
 	if((blockoffset+count) > (bpb->sectorsperblock*bpb->sectorsize)) count=(bpb->sectorsperblock*bpb->sectorsize)-(blockoffset+count);
 
-	bytesdone += count;
-
 	memcpy(addr,iobuf+blockoffset,count);			/* copy data to buffer */
 
+	bytesdone += count;
 	addr += count;      /* point to next address */
 
 	/* if reading data that crosses a block boundary, find next block to read remainder of data */
-	pos_blocksize=(bpb->sectorsperblock*bpb->sectorsize);
-	pos_mod=read_file_record.currentpos % pos_blocksize;
-	pos_rounded_down=read_file_record.currentpos-(read_file_record.currentpos-pos_mod);
 
-	//kprintf_direct("rounded=%X %X %X\n",read_file_record.currentpos,blockoffset,pos_rounded_down);
-	//asm("xchg %bx,%bx");
-	
-	if((read_file_record.currentpos+blockoffset) > pos_rounded_down) {
-	//	kprintf_direct("Get next block\n");
-
+	if((read_file_record.currentpos+count) >= round_up(read_file_record.currentpos,(bpb->sectorsperblock*bpb->sectorsize))) {
 	 	read_file_record.currentblock=fat_get_next_block(read_file_record.drive,read_file_record.currentblock);
 
-		if((fattype == 12 && read_file_record.currentblock >= 0xff8) || 
-		   (fattype == 16 && read_file_record.currentblock >= 0xfff8) || \
-		   (fattype == 32 && read_file_record.currentblock >= 0x0ffffff8)) break;
+		if(((fattype == 12) && (read_file_record.currentblock >= 0xff8)) || 
+		   ((fattype == 16) && (read_file_record.currentblock >= 0xfff8)) || \
+		   ((fattype == 32) && (read_file_record.currentblock >= 0xffffff8))) break;
 	}
 
 	/* increment read size */
+
 	read_size -= count; 
 	read_file_record.currentpos += count;
 	read_file_record.filesize += count;
-	read_file_record.flags |= FILE_POS_MOVED_BY_SEEK;
+	read_file_record.flags &= FILE_POS_MOVED_BY_SEEK;
 
 	if(updatehandle(handle,&read_file_record) == -1) {		/* update file information */
 		setlasterror(INVALID_HANDLE);
@@ -1146,7 +1173,7 @@ if((write_file_record.currentpos >= write_file_record.filesize) || \
    (write_file_record.currentblock == 0) || \
    (fattype == 12 && write_file_record.currentblock >= 0xff8) || \
    (fattype == 16 && write_file_record.currentblock >= 0xfff8) || \
-   (fattype == 32 && write_file_record.currentblock >= 0x0ffffff8)) {
+   (fattype == 32 && write_file_record.currentblock >= 0xffffff8)) {
 	/* update FAT */
 
 	count=(size / (bpb->sectorsperblock*bpb->sectorsize));		/* number of blocks in FAT chain */
@@ -1226,10 +1253,10 @@ while(write_size > 0) {
 	blockoffset=write_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
 	
-	kprintf_direct("write_file_record.currentpos=%X\n",write_file_record.currentpos);
-	kprintf_direct("blockoffset=%X\n",blockoffset);
-	kprintf_direct("count=%X\n",count);
-	asm("xchg %bx,%bx");
+//	kprintf_direct("write_file_record.currentpos=%X\n",write_file_record.currentpos);
+//	kprintf_direct("blockoffset=%X\n",blockoffset);
+//	kprintf_direct("count=%X\n",count);
+//	asm("xchg %bx,%bx");
 
 	if(blockio(DEVICE_READ,write_file_record.drive,blockno,iobuf) == -1) {		/* read block */
 		kernelfree(iobuf);
@@ -1264,7 +1291,7 @@ while(write_size > 0) {
 
 	/* if writing data that crosses a block boundary, find next block to write remainder of data */
 
-	if((blockoffset+size) > (bpb->sectorsperblock*bpb->sectorsize)) {
+	if((write_file_record.currentpos+count) >= round_up(write_file_record.currentpos,(bpb->sectorsperblock*bpb->sectorsize))) {
 	 	write_file_record.currentblock=fat_get_next_block(write_file_record.drive,write_file_record.currentblock);
 	}
 

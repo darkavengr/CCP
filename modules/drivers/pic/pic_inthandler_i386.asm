@@ -22,6 +22,7 @@ global irq13
 global irq14
 global irq15
 global irq_exit
+global irq
 
 ;
 ; IRQ handlers
@@ -94,7 +95,7 @@ jmp	irq
 irq:
 pusha						; save registers
 mov	eax,esp
-sub	eax,12					; minus 2 dword callirqhandlers() parameters and return eip
+sub	eax,12					; minus 2 dword callirqhandlers() parameters and return EIP
 
 push	eax					; stack parameters
 push	dword [irqnumber]			; IRQ number

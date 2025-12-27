@@ -100,9 +100,11 @@ typedef struct {
 	uint64_t startblock;
 	size_t drive;
 	uint64_t currentblock;
+	uint64_t previousblock;
 	size_t dirent;
 	size_t access;
 	size_t currentpos;
+	size_t previouspos;
 	size_t flags;
 	size_t handle;
 	BLOCKDEVICE blockdevice;

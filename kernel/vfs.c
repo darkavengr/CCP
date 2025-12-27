@@ -165,6 +165,7 @@ openfiles_last->handle=++highest_handle;
 openfiles_last->access=access;
 openfiles_last->currentblock=0;
 openfiles_last->currentpos=0;
+openfiles_last->previouspos=0;
 openfiles_last->pipe=NULL;
 openfiles_last->pipereadprevious=NULL;
 openfiles_last->pipelast=NULL;
@@ -1283,8 +1284,8 @@ if((seek_file_record.flags & FILE_DIRECTORY) ||
 	setlasterror(ACCESS_ERROR);
 	return(-1);
 }
-if(getblockdevice(seek_file_record.drive,&blockdevice) == -1) return(-1);
 
+if(getblockdevice(seek_file_record.drive,&blockdevice) == -1) return(-1);
 
 if((whence == SEEK_SET) || (whence == SEEK_CUR)) {		/* check new file position */
 	if((seek_file_record.currentpos+pos) > seek_file_record.filesize) {	/* invalid position */
@@ -1292,6 +1293,8 @@ if((whence == SEEK_SET) || (whence == SEEK_CUR)) {		/* check new file position *
 		return(-1);
 	}
 }
+
+seek_file_record.previouspos=seek_file_record.currentpos;	/* save previous position */
 
 if(whence == SEEK_SET) {
 	seek_file_record.currentpos=pos;		/* set file position */
@@ -1303,11 +1306,9 @@ else if(whence == SEEK_CUR) {				/* seek to current file position + new position
 	seek_file_record.currentpos=seek_file_record.currentpos+pos;
 }
 
-//kprintf_direct("seek_file_record.currentpos=%X\n",seek_file_record.currentpos);
-
 /* only set FILE_POS_MOVED_BY_SEEK flag if seeking to another block */
 
-if((seek_file_record.currentpos+pos) >   (seek_file_record.currentpos+(blockdevice.sectorsize*blockdevice.sectorsperblock))) {
+if((seek_file_record.currentpos+pos) !=   (seek_file_record.currentpos+(blockdevice.sectorsize*blockdevice.sectorsperblock))) {
 	seek_file_record.flags |= FILE_POS_MOVED_BY_SEEK;
 }
 
