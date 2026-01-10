@@ -542,26 +542,26 @@ mov 	es,eax
 mov 	fs,eax
 mov 	gs,eax
 
-;call	is_multitasking_enabled	
-;test	eax,eax
-;jz	no_disable_multitasking
+call	is_multitasking_enabled	
+test	eax,eax
+jz	no_disable_multitasking
 
-;mov	dword [multitasking_was_enabled],1
+mov	dword [multitasking_was_enabled],1
 
-;call	disablemultitasking
+call	disablemultitasking
 
-;no_disable_multitasking:
+no_disable_multitasking:
 
 sti
 call	dispatchhandler
 cli
 
-;cmp	dword [multitasking_was_enabled],1
-;jnz	no_enable_multitasking
+cmp	dword [multitasking_was_enabled],1
+jnz	no_enable_multitasking
 
-;call	enablemultitasking
+call	enablemultitasking
 
-;no_enable_multitasking:
+no_enable_multitasking:
 pop	edi
 pop	esi
 pop	edx

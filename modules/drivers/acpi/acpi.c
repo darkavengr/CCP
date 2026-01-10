@@ -31,11 +31,13 @@ RSDT rsdt;
 XSDT xsdt;
 FACP *facp;
 MADT *madt;
+size_t PowerButtonMode;
+char *ACPIConfigInvalidValue="acpi: Invalid configuration value for %s: %s\n";
 
 /*
 * Initialize ACPI
 *
-* In: char *init
+* In: init
 *
 *  Returns: -1 on error, 0 on success
 *
@@ -51,6 +53,32 @@ MADT madt;
 FADT fadt;
 SRAT srat;
 SSDT ssdt;
+char *tokens[MAX_SIZE][MAX_SIZE];
+
+PowerButtonMode=POWERBUTTON_DEFAULT;	/* use default method for now */
+
+if(init != NULL) {			/* args found */
+	tc=tokenize_line(init,tokens," ");	/* tokenize line */
+
+	for(count=0;count < tc;count++) {
+		tokenize_line(tokens[count],op,"=");	/* subtokenize token */
+
+		if(strncmp(op[0],"powerbutton",MAX_PATH) == 0) {		/* power button handling */
+			if(strncmp(op[1],"poweroff",MAX_PATH) == 0) {	/* power off */
+				PowerButtonMode=POWERBUTTON_OFF;		
+			}
+			else if(strncmp(op[1],"sleep",MAX_PATH) == 0) {	/* sleep */
+				PowerButtonMode=POWERBUTTON_SLEEP;		
+			}
+			else if(strncmp(op[1],"reboot",MAX_PATH) == 0) {	/* reboot */
+				PowerButtonMode=POWERBUTTON_REBOOT;		
+			}
+			else {
+				kprintf_direct(ACPIConfigInvalidValue,op[0],op[1]);
+			}
+		}
+	}
+}
 
 /* ACPI intialization - find RSDP */
 
@@ -67,7 +95,7 @@ if(rsdp_ptr >= RSDP_END_ADDRESS) {	/* signature not found */
 	return(-1);
 }
 
-memcpy(rsdp,rsdp_ptr,sizeof(RSDP));	/* copy rdsp */
+memcpy(rsdp,rsdp_ptr,sizeof(RSDP));	/* copy RSDP */
 
 /* get RSDT */
 
@@ -83,7 +111,7 @@ if(rsdp.revision == 0) {		/* ACPI 1.0 */
 
 	memcpy(rsdt.rsdt_entries,rsdt+sizeof(RSDT),rsdt.length-sizeof(RSDT));		/* copy rsdt to struct */
 	
-	type=32;			/* 32-bit rsdt */
+	type=32;			/* 32-bit RSDR */
 	length=rsdt.length/4;
 	tableptr=rsdt.rsdt_entries;	/* point to RSDT entries */
 }
@@ -91,21 +119,21 @@ else
 {
 	memcpy(xsdt,rsdp.xsdt_address+KERNEL_HIGH,xsdt.length-sizeof(XSDT));
 
-	xsdt.xsdt_entries=kernelalloc(xsdt.length);		/* allocate buffer for xsdt entries */
+	xsdt.xsdt_entries=kernelalloc(xsdt.length);		/* allocate buffer for XSDT entries */
 
 	if(xsdt.xsdt_entries == NULL) {
 		kprintf_direct("acpi: Can't allocate memory for XSDT\n");
 		return(-1);
 	}
 
-	type=64;			/* 64-bit xsdt */
+	type=64;			/* 64-bit XSDT */
 	length=xsdt.length/8;
 	tableptr=xsdt.xsdt_entries;	/* point to XSDT entries */
 }
 
 /* Get copies of tables */
 
-for(count=0;count<length;count++) {
+for(count=0;count < length;count++) {
 	if(memcmp(tableptr->signature,"FACP",4) == 0) {		/* FACP */
 		memcpy(&facp,tableptr,sizeof(FACP));
 	} 
@@ -127,7 +155,11 @@ for(count=0;count<length;count++) {
 	else if(memcmp(tableptr->signature,"SSDT",4) == 0) {
 		memcpy(&ssdt,tableptr,sizeof(SSDT));
 	}
-
+	else
+	{
+		kprintf_direct("acpi: Unknown table %s\n",tableptr->signature);
+		return(-1);
+	}
 	tableptr++;
 }
 
@@ -139,18 +171,107 @@ if(fadt.smi_command != 0) {		/* if ACPI not enabled */
 	  while (inw(fadt->pm1a_control_block) & 1 == 0) ;; /* wait for ACPI to enable */
 }
 
-if(dsdt.amlptr != NULL) parse_aml(dsdt.amlptr);		/* parse dsdt aml code */
-if(ssdt.amlptr != NULL) parse_aml(ssdt.amlptr);		/* parse ssdt aml code */
+if(dsdt.amlptr != NULL) parse_aml(dsdt.amlptr);		/* parse DSDT AML */
+if(ssdt.amlptr != NULL) parse_aml(ssdt.amlptr);		/* parse SSDT AML */
 
 return(0);
 }
 
-int ACPIShutdown(void) {
+/*
+* Power off
+*
+* In: Nothing
+*
+* Returns: -1 on error, 0 on success
+*
+*/
+size_t ACPIPowerOff(void) {
+shutdown(_SHUTDOWN);
 }
 
-int ACPIRestart(void) {
+/*
+* Restart
+*
+* In: Nothing
+*
+* Returns: -1 on error, 0 on success
+*
+*/
+size_t ACPIRestart(void) {
+shutdown(_RESET);
 }
 
-int ACPISleep(void) {
+/*
+* Sleep
+*
+* In: Nothing
+*
+* Returns: -1 on error, 0 on success
+*
+*/
+size_t ACPISleep(void) {
+}
+
+/*
+* Get RSDP table pointer
+*
+* In: Nothing
+*
+*  Returns: Pointer to RSDP table
+*
+*/
+RDSP *ACPIGetRSDP(void) {
+return(&rsdp);
+}
+
+/*
+* Get RSDT table pointer
+*
+* In: Nothing
+*
+*  Returns: Pointer to RSDT table
+*
+*/
+RDST *ACPIGetRSDT(void) {
+return(&rsdt);
+}
+
+/*
+* Get XSDT table pointer
+*
+* In: Nothing
+*
+*  Returns: Pointer to XSDT table
+*
+*/
+
+XSDT *ACPIGetXSDT(void) {
+return(&xsdt);
+}
+
+/*
+* Get FACP table pointer
+*
+* In: Nothing
+*
+*  Returns: Pointer to FACP table
+*
+*/
+
+FACP *ACPIGetFACP(void) {
+return(facp);
+}
+
+/*
+* Get MADT table pointer
+*
+* In: Nothing
+*
+*  Returns: Pointer to MADT table
+*
+*/
+
+MADT *ACPIGetMADT(void) {
+return(madt);
 }
 

@@ -1,9 +1,11 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-FILES=acpi.c
-OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
+FILES=acpi.c aml.c
+ASMFILES=sci-@arch@.asm
 
-$(OBJFILES): %.o: %.c
-	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $< -o $(addprefix @buildroot@/obj/@arch@/,$@)
+acpi.o: $(FILES)
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ $(FILES) -o @buildroot/obj/@arch@/acpi.o
+
+
 
