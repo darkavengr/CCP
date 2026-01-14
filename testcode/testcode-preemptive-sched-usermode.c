@@ -24,8 +24,8 @@ extern size_t highest_pid_used;
 PROCESS *processes_end;
 size_t *stackinit;
 
-uint8_t thread1[] = { 0xB4,0x9,0xBA,0xB,0x1,0x0,0x0,0xCD,0x21,0xEB,0xF5,0x31,0x0 };
-uint8_t thread2[] = { 0xB4,0x9,0xBA,0xB,0x1,0x0,0x0,0xCD,0x21,0xEB,0xF5,0x32,0x0 };
+uint8_t process1[] = { 0xB4,0x9,0xBA,0xB,0x1,0x0,0x0,0xCD,0x21,0xEB,0xF5,0x31,0x0 };
+uint8_t process2[] = { 0xB4,0x9,0xBA,0xB,0x1,0x0,0x0,0xCD,0x21,0xEB,0xF5,0x32,0x0 };
 
 void CreateUserTask(void *address) {
 void *kernelstackbase;
@@ -47,7 +47,6 @@ if(processes == NULL) {  					/* first process */
 	if(processes == NULL) {					/* return if can't allocate */
 		switch_address_space(getppid());
 		freepages(highest_pid_used);	
-
 		return(-1);
 	}
 
@@ -60,9 +59,6 @@ else								/* not first process */
 {
 	processes_end->next=kernelalloc(sizeof(PROCESS));	/* add entry to end of list */
 	if(processes_end->next == NULL) {			/* return error if can't allocate */
-		switch_address_space(getppid());
-		freepages(highest_pid_used);
-
 		setlasterror(NO_MEM);
 		return(-1);
 	}
@@ -86,7 +82,7 @@ next->next=NULL;
 
 /* Create kernel stack for process */
 
-next->kernelstacktop=kernelalloc(PROCESS_STACK_SIZE);	/* allocate stack */
+next->kernelstacktop=kernelalloc(DEFAULT_KERNEL_STACK_SIZE);	/* allocate stack */
 if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	currentprocess=oldprocess;	/* restore current process pointer */
 
@@ -101,18 +97,21 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 }
 
 next->kernelstackbase=next->kernelstacktop;
-next->kernelstacktop += PROCESS_STACK_SIZE;			/* top of kernel stack */
+next->kernelstacktop += DEFAULT_KERNEL_STACK_SIZE;			/* top of kernel stack */
 
-currentprocess=next;		/* kludge */
+initialize_current_process_kernel_stack(next->kernelstacktop,ENTRY_POINT,next->kernelstacktop-DEFAULT_KERNEL_STACK_SIZE); /* initialize kernel stack */
 
-initialize_current_process_kernel_stack(next->kernelstacktop,ENTRY_POINT,next->kernelstacktop-PROCESS_STACK_SIZE); /* initialize kernel stack */
+//kprintf_direct("highest_pid_used=%X\n",highest_pid_used);
+//asm("xchg %bx,%bx");
 
 page_init(highest_pid_used);				/* intialize page directory */	
 switch_address_space(highest_pid_used);			/* load page table */
 
+currentprocess=next;		/* kludge */
+
 /* allocate user mode stack below enviroment variables */
 
-stackp=alloc_int(ALLOC_NORMAL,highest_pid_used,PROCESS_STACK_SIZE,(END_OF_LOWER_HALF-PROCESS_STACK_SIZE-ENVIROMENT_SIZE));
+stackp=alloc_int(ALLOC_NORMAL,highest_pid_used,DEFAULT_USER_STACK_SIZE,(END_OF_LOWER_HALF-DEFAULT_USER_STACK_SIZE-ENVIROMENT_SIZE));
 
 if(stackp == NULL) {
 	currentprocess=oldprocess;	/* restore current process pointer */
@@ -129,7 +128,7 @@ if(stackp == NULL) {
 }
 
 next->stackbase=stackp;					/* add user mode stack base and pointer to new process entry */
-next->stackpointer=(stackp+PROCESS_STACK_SIZE)-PAGE_SIZE;
+next->stackpointer=(stackp+DEFAULT_USER_STACK_SIZE)-PAGE_SIZE;
 
 processes_end=next;						/* save last process address */
 
@@ -143,21 +142,11 @@ return(0);
 }
 
 void kernel(void) {
-PROCESS *next;
-
 disablemultitasking(); 
 disable_interrupts();
 
-CreateUserTask(&thread1);
-CreateUserTask(&thread2);
-
-next=processes;
-
-while(next != NULL) {
-	DEBUG_PRINT_DEC(next->pid);
-
-	next=next->next;
-}
+CreateUserTask(&process1);
+CreateUserTask(&process2);
 
 /* initialize process 0 */
 
@@ -165,7 +154,7 @@ currentprocess=processes;
 
 switch_address_space(0);
 
-initialize_current_process_user_mode_stack(processes->stackpointer,PROCESS_STACK_SIZE);	/* intialize and switch to user mode stack */
+initialize_current_process_user_mode_stack(processes->stackpointer,DEFAULT_USER_STACK_SIZE);	/* intialize and switch to user mode stack */
 
 enablemultitasking(); 
 

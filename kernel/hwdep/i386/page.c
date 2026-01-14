@@ -94,20 +94,10 @@ pagetable_entry_number=(virtual_address >> 12) & 0x3ff;				/* page table offset 
    Kernel pages are the same for every process and don't need this */
 
 if((process != getpid()) && (virtual_address < KERNEL_HIGH)) {
-//	asm("xchg %bx,%bx");
 	savemapping=current_page_mapping->pagedir[1023];			/* save current recursive mapping */
 
 	current_page_mapping->pagedir[1023]=update->pagedir[1023];		/* update mapping */
 }
-
-/*if(getpid() != 0) {
-	kprintf_direct("physical_address=%X\n",physical_address);
-	kprintf_direct("virtual_address=%X\n",virtual_address);	kprintf_direct("pagedir_entry_number=%X\n",pagedir_entry_number);
-	kprintf_direct("pagetable_entry_number=%X\n",pagetable_entry_number);
-	kprintf_direct("update=%X\n",update);
-	kprintf_direct("update->pagedir[%X]=%X [%X]\n",pagedir_entry_number,update->pagedir[pagedir_entry_number],&pagedir_entry_number,update->pagedir[pagedir_entry_number]);
-	asm("xchg %bx,%bx");
-}*/
 
 if(update->pagedir[pagedir_entry_number] == 0) {				/* if page directory entry is empty */	
 	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
@@ -274,8 +264,6 @@ for(pagecount=0;pagecount<512;pagecount++) {
 		pagetableptr=(uint32_t *) 0xffc00000 + (pagecount*1024);
 		
 		for(entrycount=0;entrycount<1023;entrycount++) {    
-
-		//      asm("xchg %bx,%bx");
 		//      if(pagetableptr[entrycount] != 0) free_physical(pagetableptr[entrycount]);
 	 	}
 
@@ -355,11 +343,6 @@ if((process != getpid()) && (alloc == ALLOC_NORMAL)) {
 	current_page_mapping->pagedir[1023]=update->pagedir[1023];
 }
 
-//if(getpid() != 0) {
-//	kprintf_direct("update=%X\n",update);
-//	asm("xchg %bx,%bx");
-//}
-
 for(pagedircount=start;pagedircount < end;pagedircount++) {			/* page directories */
 	if(update->pagedir[pagedircount] != 0) {						/* in use */
 
@@ -367,10 +350,7 @@ for(pagedircount=start;pagedircount < end;pagedircount++) {			/* page directorie
 
 		pagetableptr=(uint32_t *) 0xffc00000 + (pagedircount*1024);
 
-//		if(getpid() != 0) kprintf_direct("pagetableptr=%X\n",pagetableptr);
-
 		for(pagetablecount=0;pagetablecount < 1022;pagetablecount++) {      
-//			if(getpid() != 0) kprintf_direct("&pagetableptr[%X]=%X\n",pagetablecount,pagetableptr);
 
 			if(pagetableptr[pagetablecount] == 0) {
 	        		if(s == 0) last=pagetablecount;

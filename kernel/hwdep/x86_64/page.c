@@ -65,7 +65,7 @@ size_t pml4_number;
 size_t pdpt_number;
 size_t page_directory_number;
 size_t page_table_number;
-uint64_t *pml4ptr=
+uint64_t *pml4ptr;
 uint64_t *pdptptr;
 uint64_t *pagedirptr;
 uint64_t *pagetableptr;
@@ -74,29 +74,30 @@ uint64_t addr;
 uint64_t *pageptr;
 struct ppt *current_page_mapping=NULL;
 struct ppt *update=NULL;
+struct ppt *remap=NULL;
+
 size_t savemapping;
 
 next=processpaging;
 
 while(next != NULL) {					/* find process */
-	if(next->next->process == process) previous=next; /* get entry before */
 	if(next->process == process) update=next;
 	if(next->process == getpid()) current_page_mapping=next;	
 
-	if((update != NULL) && (current_page_mapping != NULL) && (previous != NULL)) break;	/* found mappings */
+	if((update != NULL) && (current_page_mapping != NULL)) break;	/* found mappings */
 
 	next=next->next;
 }
 
-if((update == NULL) || (current_page_mapping == NULL) || (previous == NULL)) {
+if((update == NULL) || (current_page_mapping == NULL)) {
 	setlasterror(INVALID_PROCESS);
 	return(-1);
 }
 
-pml4_number=((page & 0xFF8000000000) >> 39);
-pdpt_number=((page & 0x7FC0000000) >> 30);
-page_directory_number=((page & 0x3FE00000) >> 21);
-page_table_number=((page & 0x1FF000) >> 12);
+pml4_number=((virtual_address & 0xFF8000000000) >> 39);
+pdpt_number=((virtual_address & 0x7FC0000000) >> 30);
+page_directory_number=((virtual_address & 0x3FE00000) >> 21);
+page_table_number=((virtual_address & 0x1FF000) >> 12);
 
 pml4ptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) 0x1ff << 12),47);
 pdptptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) pml4_number << 12),47);
@@ -155,7 +156,7 @@ if(process != getpid()) current_page_mapping->pml4[511]=savemapping;	/* restore 
 
 /* map page into all address spaces if it is a kernel page */
 
-if(page >= KERNEL_HIGH) {
+if(virtual_address >= KERNEL_HIGH) {
 	remap=processpaging;
 
 	while(remap != NULL) {
@@ -393,7 +394,7 @@ else
 	end=511;
 }
 
-if((process != getpid()) && (virtual_address < KERNEL_HIGH)) {	/* map process recursively for access */
+if((process != getpid()) && (alloc == ALLOC_NORMAL)) { /* map process recursively for access */
 	savemapping=current_page_mapping->pml4[511];
 	current_page_mapping->pml4[511]=update->pml4[511];
 }
@@ -428,7 +429,7 @@ for(pml4count=start;pml4count != end;pml4count++) {
 								if(s >= size) {
 									address=signextend(((uint64_t) ((uint64_t) pml4count << 39)+((uint64_t) pdptcount << 30)+((uint64_t) pdcount << 21)+((uint64_t) last << 12)),47);
 								
-									if((process != getpid()) && (virtual_address < KERNEL_HIGH)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
+									if((process != getpid()) && (alloc == ALLOC_NORMAL)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
 									return((uint64_t) address);
 								}
 	 	  					
@@ -460,8 +461,8 @@ for(pml4count=start;pml4count<end;pml4count++) {
 			address=signextend((uint64_t) ((uint64_t) pml4count << 39) | ((uint64_t) pdptcount << 30),47);
 
 		       	if(s >= size) {
+				if((process != getpid()) && (alloc == ALLOC_NORMAL)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
 				return(address);	 /* found enough */
-				if((process != getpid()) && (virtual_address < KERNEL_HIGH)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
 			}
 	 	}
 	}
@@ -478,7 +479,7 @@ for(pml4count=0;pml4count<511;pml4count++) {
 		address=signextend(((uint64_t) pml4count << 39),47);		/* + 256TB */
 
 	       	if(s >= size) {
-			if((process != getpid()) && (virtual_address < KERNEL_HIGH)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
+			if((process != getpid()) && (alloc == ALLOC_NORMAL)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
 
 			return(address); /* found enough */	         
 		}
@@ -486,7 +487,7 @@ for(pml4count=0;pml4count<511;pml4count++) {
 	
 }
 
-if((process != getpid()) && (virtual_address < KERNEL_HIGH)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
+if((process != getpid()) && (alloc == ALLOC_NORMAL)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
 
 setlasterror(NO_MEM);
 return(-1);
@@ -527,7 +528,7 @@ return(-1);
 * Returns 0 on success or -1 on failutr
 * 
 */
-uint64_t getpagetableentry(size_t process,uint64_t virtual_address) {
+uint64_t get_pagetable_entry(size_t process,uint64_t virtual_address) {
 struct ppt *next;
 size_t pml4_number;
 size_t pdpt_number;
@@ -535,7 +536,6 @@ size_t page_directory_number;
 size_t page_table_number;
 uint64_t *pagetableptr;
 uint64_t *pageptr;
-struct ppt *next;
 struct ppt *current_page_mapping;
 struct ppt *update;
 size_t retval;
@@ -579,7 +579,7 @@ return(pageptr[page_table_number]);				/* return page table entry */
 * Returns physical address or -1 on error
 * 
 */
-size_t getphysicaladdress(size_t process,uint32_t virtual_address) {
+uint64_t getphysicaladdress(size_t process,uint64_t virtual_address) {
 size_t entry=get_pagetable_entry(process,virtual_address);
 
 if(entry == -1) return(-1);
@@ -614,28 +614,6 @@ return(map_page_internal(PAGE_USER | PAGE_RW | PAGE_PRESENT,process,page,physadd
 */
 size_t map_system_page(uint64_t page,size_t process,void *physaddr) { 
 return(map_page_internal(PAGE_SYSTEM | PAGE_RW | PAGE_PRESENT,process,page,physaddr));
-}
-
-
-/*
- * Sign-extends number
- *
- * In:	number				Number to sign-extend
- *	bitnum				Bit number to sign-extend from
- */
-size_t signextend(size_t num,size_t bitnum) {
-size_t signextendnum;
-size_t signextendcount;
-
-signextendnum=(size_t) ((size_t) num & (((size_t) 1 << bitnum)));
-
-for(signextendcount=0;signextendcount != (sizeof(num)*8)-bitnum;signextendcount++) {
-	num |= ((size_t) signextendnum);
-
-	signextendnum=((size_t) signextendnum << 1);
-}
-
-return((size_t) num);
 }
 
 void set_initial_process_paging_end(void) {

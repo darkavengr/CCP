@@ -34,6 +34,7 @@
 #include "process.h"
 #include "string.h"
 #include "ex.h"
+#include "module.h"
 
 /*
  * x86 exception handler
@@ -66,11 +67,10 @@ char *processname[MAX_PATH];
 uint32_t shiftcount;
 size_t rowcount;
 size_t faultaddress;
+KERNELMODULE *module;
 
 void exception(uint32_t *regs,uint32_t faultnumber,uint32_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
-
-if(faultaddress == 0xffffff17) asm("xchg %bx,%bx");
 
 //if(e == PAGE_FAULT) {
 	/* If there was a page fault, do possible demand paging */
@@ -83,10 +83,18 @@ if(faultaddress == 0xffffff17) asm("xchg %bx,%bx");
 
 /* If here, it's a fatal exception */
 
-if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("\nKernel panic [%s] at address %08X:\n",exceptions[faultnumber],regs[0]);
+if(regs[0] >= KERNEL_HIGH) {		/* kernel or kernel module */
+	module=FindModuleFromAddress(regs[0]);		/* get module associated with address */
+
+	if(module != NULL) {		/* exception in module */
+		kprintf_direct("%s at address %08X in module %s:\n",exceptions[faultnumber],regs[0],module->filename); 
+	}
+	else
+	{
+		kprintf_direct("\nKernel panic [%s] at address %08X:\n",exceptions[faultnumber],regs[0]);
+	}
 }
-else
+else			/* application */
 {
 	getprocessfilename(processname);
  

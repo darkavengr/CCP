@@ -1035,6 +1035,8 @@ return(-1);
  */
 size_t filemanager_init(void) {
 highest_handle=-1;	/* -1 so the following handles will be 0,1,2... See open() and tty_init() */
+openfiles=NULL;
+filesystems=NULL;
 return(0);
 }
 
@@ -1721,9 +1723,6 @@ next=openfiles;
 while(next != NULL) {
 	kprintf_direct("dumphandles() next=%X\n",next);
 	kprintf_direct("dumphandles() next->next=%X\n",next->next);
-//	kprintf_direct("%s %X\n",next->filename,next->handle);
-
-//	asm("xchg %bx,%bx");
 	next=next->next;
 }
 }

@@ -261,17 +261,18 @@ set_batch_mode(FALSE);			/* set batch mode */
 commandconsolein=stdin;
 commandconsoleout=stdout;
 
+/* fill drive current directories */
 c='A';
 
-for(count=0;count<26;count++) {		/* fill directory struct */
+for(count=0;count<26;count++) {
 	b=directories[count];
 
- *b++=c;
- *b++=':';
- *b++='\\';
- *b++=0;
+	*b++=c;
+	*b++=':';
+	*b++='\\';
+	*b++=0;
 
- c++;
+	c++;
 }
 
 /* Loop  forever accepting commands */
@@ -279,8 +280,7 @@ for(count=0;count<26;count++) {		/* fill directory struct */
 while(1) {	/* forever */
 	getcwd(buffer); 
 
-	c=*buffer;
-	kprintf_direct("%c>",c);		/* display prompt */
+	kprintf_direct("%c>",(char) *buffer);		/* display prompt */
 
 	memset(buffer,0,MAX_PATH);
 

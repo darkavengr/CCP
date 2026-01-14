@@ -140,15 +140,13 @@ jnz	multitasking_enabled
 jmp	no_stack_switch
 
 multitasking_enabled:
-call	is_current_process_ready_to_switch
-test	eax,eax					; return if process is not ready to switch
-jnz	task_time_slice_finished
+;call	is_current_process_ready_to_switch
+;test	eax,eax					; return if process is not ready to switch
+;jnz	task_time_slice_finished
 
-jmp	no_stack_switch
+;jmp	no_stack_switch
 
 task_time_slice_finished:
-;xchg	bx,bx
-
 push	dword [OldContextPointer]
 call	save_kernel_stack_pointer		; save kernel stack pointer for current process
 add	esp,4
@@ -198,6 +196,7 @@ mov	esp,eax
 no_stack_switch:
 ;xor	eax,eax
 ;mov	[save_descriptor],eax				; clear descriptor
+
 ret
 
 OldContextPointer dd 0

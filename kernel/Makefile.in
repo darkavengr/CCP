@@ -30,7 +30,7 @@ hwdep:
 #
 .PHONY: modules
 modules:
-	@buildroot@/gendrivelist @driver_list@
+	@buildroot@/gendrivelist @arch@ @driver_list@
 	for f in @driver_list@; do make -C $$f;done
 
 	for f in @initrd_driver_list@; do make -C $$f;done

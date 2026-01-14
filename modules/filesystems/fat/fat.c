@@ -1252,11 +1252,6 @@ if(fattype == 32) {
 while(write_size > 0) {
 	blockoffset=write_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 	count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;
-	
-//	kprintf_direct("write_file_record.currentpos=%X\n",write_file_record.currentpos);
-//	kprintf_direct("blockoffset=%X\n",blockoffset);
-//	kprintf_direct("count=%X\n",count);
-//	asm("xchg %bx,%bx");
 
 	if(blockio(DEVICE_READ,write_file_record.drive,blockno,iobuf) == -1) {		/* read block */
 		kernelfree(iobuf);
@@ -1274,7 +1269,6 @@ while(write_size > 0) {
 		count=size;
 	}
 
-	asm("xchg %bx,%bx");
 	memcpy(iobuf+blockoffset,addr,count);			/* copy data to buffer */
 
 	if(blockio(DEVICE_WRITE,write_file_record.drive,blockno,iobuf) == -1) {		/* write block */
@@ -2066,6 +2060,7 @@ getblockdevice(drive,&blockdevice);		/* get device */
 bootbuf=kernelalloc(MAX_BLOCK_SIZE);				/* allocate buffer */
 if(bootbuf == NULL) return(-1); 
 
+
 if(blockio(DEVICE_READ,drive,(uint64_t) 0,bootbuf) == -1) {				/* get bios Parameter Block */
 	kernelfree(bootbuf);
 	return(-1); 
@@ -2104,7 +2099,6 @@ memcpy(blockdevice.superblock,&bpb,sizeof(BPB));		/* update BPB */
 
 update_block_device(drive,&blockdevice);			/* update block device information */
 
-kernelfree(bootbuf);
 return(fattype);
 }
 

@@ -4,9 +4,17 @@
 #
 echo // Auto-generated file- do not edit!>drive.c
 echo \#define NULL 0 >>drive.c
+echo \#include \"string.h\">>drive.c
+echo \#include \"vfs.h\">>drive.c
+echo \#include \"module.h\">>drive.c
 echo>>drive.c
 
+echo extern size_t AddModule\(KERNELMODULE *entry\)\;>>drive.c
 echo void driver_init\(void\) {>>drive.c
+echo KERNELMODULE kernelmodule\;>>drive.c
+
+export arch=$1
+shift
 for f in $*; do
 	dirname=`echo $f | rev | cut -d/ -f 2 | rev`
 	name=`echo $f | rev | cut -d/ -f 1 | rev`
@@ -24,6 +32,11 @@ for f in $*; do
 
 		echo Including driver $name
 		echo extern $initname\(\)\;>>drive.c
+
+		echo strncpy\(kernelmodule.filename,\"$name.o\",MAX_PATH\)\;>>drive.c
+		echo kernelmodule.startaddress=\&$initname\;>>drive.c
+		echo kernelmodule.size=`ls -l ../obj/$arch/$name.o | cut -d ' ' -f5`\;>>drive.c
+		echo AddModule\(\&kernelmodule\)\;>>drive.c
 		echo $initname\(NULL\)\;>>drive.c
 	fi
 

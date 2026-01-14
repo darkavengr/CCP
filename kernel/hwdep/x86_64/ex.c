@@ -56,13 +56,12 @@
 #define MACHINE_CHECK_EXCEPTION 17
 
 void enable_interrupts(void);
-void exception(uint64_t *regs,uint64_t e);
 
 /*
  * x86 exception handler
  *
  * In: regs	Registers
-       e	Error number
+       faultnumber	Error number
        dummy	Dummy value
  *
  * Returns nothing
@@ -80,7 +79,7 @@ char *exp[] = { "Division by zero exception","Debug exception","Non maskable int
 
 char *regnames[] = { "RIP","RSP","RAX","RBX","RCX","RDX","RSI","RDI","RBP","R10","R11","R12","R13","R14","R15",NULL};
 
-char *flagsname[]= { "","Overflow"," Direction"," Interrupt"," Trap"," Sign"," Zero",""," Adjust","","",""," Carry","$" };
+char *flagsname[]= { "","Overflow"," Direction"," Interrupt"," Trap"," Sign"," Zero",NULL," Adjust",NULL,NULL,NULL," Carry","$" };
 
 size_t count;
 uint64_t flagsmask;
@@ -91,34 +90,36 @@ size_t rowcount;
 uint64_t faultaddress;
 uint64_t stackbase;
 
-void exception(uint64_t *regs,uint64_t e) {
+void exception(uint64_t *regs,uint64_t faultnumber,uint64_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
-if(e == PAGE_FAULT) {
+if(faultnumber == PAGE_FAULT) {
 	/* If there was a page fault, do possible demand paging */
 
-	if(faultaddress <= get_usermode_stack_base()) {		/* stack overflow */
+	if(faultaddress <= get_usermode_stack_base()) {		/* user-mode stack overflow */
 		alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
 		return;	
-	}
-	else if(faultaddress >= getenv()) {		/* enviroment variables */
-		alloc_int(ALLOC_NORMAL,getpid(),faultaddress,PAGE_SIZE);
-		return;
- 	} 		
+	}	
 }
 
 /* If here, it's a fatal exception */
 
-/* Display fault type and address */
+if(regs[0] >= KERNEL_HIGH) {			/* kernel or kernel module exception */
+	module=FindModuleFromAddress(regs[0]);		/* get module associated with address */
 
-if(regs[0] >= KERNEL_HIGH) {
-	kprintf_direct("\nKernel panic [%s] at address %016X:\n",exp[e],regs[0]);
+	if(module != NULL) {		/* exception in module */
+		kprintf_direct("%s at address %016X in module %s:\n",exceptions[faultnumber],regs[0],module->filename); 
+	}
+	else
+	{
+		kprintf_direct("\nKernel panic [%s] at address %016X:\n",exp[faultnumber],regs[0]);
+	}
 }
-else
+else					/* application exception */
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %016X in %s:\n",exp[e],regs[0],processname);
+	kprintf_direct("\n%s at address %016X in %s:\n",exp[faultnumber],regs[0],processname);
 }
 
 if((faultnumber == DOUBLE_FAULT) || (faultnumber == INVALID_TSS) || (faultnumber == SEGMENT_NOT_PRESENT) || \
@@ -144,7 +145,7 @@ else if(faultnumber == PAGE_FAULT) {
 
 	if(faultinfo & PAGEFAULT_INSTRUCTION_FETCH) kprintf_direct(" on instruction fetch");
 	
-	else if(faultinfo & PAGEFAULT_RESERVEDBITS) {
+	if(faultinfo & PAGEFAULT_RESERVEDBITS) {
 		kprintf_direct(": Reserved bits overwritten\n\n");
 	}
 	else if(faultinfo & PAGEFAULT_PROTKEY) {
@@ -160,6 +161,7 @@ else if(faultnumber == PAGE_FAULT) {
 		kprintf_direct(": Page not present\n\n");
 	}
 }
+
 /* display registers */
 
 count=0;
@@ -193,7 +195,7 @@ do {
 	if(flagsname[count] == "$") break;
 
 	if(flagsname[count] != NULL) {
-		kprintf_direct("%s=%d",flagsname[count],(((uint32_t) regs[10] & flagsmask) >> shiftcount));
+		kprintf_direct("%s=%d",flagsname[count],(((uint64_t) regs[10] & flagsmask) >> shiftcount));
 		rowcount++;
 
 		if(rowcount == 5) {			/* at end of row */
@@ -212,18 +214,18 @@ flagsmask=flagsmask >> 1;
 
 } while(flagsname[count] != "$");
 
-if(get_current_process_pointer() == NULL) {
+if(get_current_process_pointer() == NULL) {			/* if there are no processes, shut down the system */
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);
 }
-else
-{
-	asm("xchg %bx,%bx");
-	enable_interrupts();
 
-	kill(getpid());
-	kprintf_direct("\nProcess terminated\n");
-}
+asm("xchg %bx,%bx");
+enable_interrupts();
 
+/* terminate process */
+kill(getpid());
+kprintf_direct("\nProcess terminated\n");
+
+return;
 }
 

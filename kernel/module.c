@@ -34,19 +34,10 @@
 #include "string.h"
 #include <elf.h>
 
-size_t load_kernel_module(char *filename,char *argsx);
-size_t getnameofsymbol32(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf32_Sym *symtab,Elf32_Shdr *sectionptr,size_t which,char *name);
-size_t getnameofsymbol64(char *strtab,char *sectionheader_strptr,char *modulestartaddress,Elf64_Sym *symtab,Elf64_Shdr *sectionptr,size_t which,char *name);
-size_t getkernelsymbol(char *name);
-size_t add_external_module_symbol(char *name,size_t val);
-size_t get_external_module_symbol(char *name);
-size_t unload_kernel_module(char *filename);
-Elf32_Shdr *GetModuleReference32(char *modulestartaddress,Elf32_Ehdr *elf_header,Elf32_Shdr *shptr);
-Elf64_Shdr *GetModuleReference64(char *modulestartaddress,Elf64_Ehdr *elf_header,Elf64_Shdr *shptr);
-
 SYMBOL_TABLE_ENTRY *externalmodulesymbols=NULL;
 KERNELMODULE *kernelmodules=NULL;
-KERNELMODULE *kernel_module_end=NULL;
+KERNELMODULE *kernelmodules_end=NULL;
+KERNELMODULE *kernelmodulelast;
 
 /*
  * Load and execute kernel module
@@ -95,8 +86,6 @@ char *rodata;
 char *data;
 char *next_free_address_rodata;
 char *next_free_address_data;
-KERNELMODULE *kernelmodulenext;
-KERNELMODULE *kernelmodulelast;
 char *commondataptr;
 size_t common_data_section_size;
 size_t elf_type;
@@ -105,25 +94,14 @@ size_t number_of_reloc_headers;
 size_t sectiontype;
 size_t stval;
 size_t stsize;
-
-disablemultitasking();
+KERNELMODULE kernelmodule;
+size_t modulesize;
 
 getfullpath(filename,fullname);
 
-/* check if module is loaded */
-
-kernelmodulenext=kernelmodules;
-
-while(kernelmodulenext != NULL) {
-
-	if(strncmpi(kernelmodulenext->filename,fullname,MAX_PATH) == 0) {		/* found module name */
-		enablemultitasking();
-
-		setlasterror(MODULE_ALREADY_LOADED);
-		return(-1);
-	}
-
-	kernelmodulenext=kernelmodulenext->next;
+if(IsModuleLoaded(filename) == 0) {		/* check if module is loaded */
+	setlasterror(MODULE_ALREADY_LOADED);
+	return(-1);
 }
 
 handle=open(fullname,O_RDONLY | O_EXCLUSIVE);		/* open file */
@@ -132,7 +110,9 @@ if(handle == -1) {
 	return(-1);		/* can't open */
 }
 
-modulestartaddress=kernelalloc(getfilesize(handle));		/* allocate memory for module */
+modulesize=getfilesize(handle);			/* get module size */
+
+modulestartaddress=kernelalloc(modulesize);		/* allocate memory for module */
 if(modulestartaddress == NULL) {
 	close(handle);	
 
@@ -307,7 +287,7 @@ if(((elf_type == ELFCLASS32) && (symtab32 == NULL)) || ((elf_type == ELFCLASS64)
 
 	setlasterror(INVALID_EXECUTABLE);
 	kernelfree(modulestartaddress);
-	kernelfree(kernel_module_end->commondata);
+	kernelfree(kernelmodules_end->commondata);
 
 	enablemultitasking();
 	return(-1); 
@@ -316,7 +296,7 @@ if(((elf_type == ELFCLASS32) && (symtab32 == NULL)) || ((elf_type == ELFCLASS64)
 if(strtab == NULL) {
 	kprintf_direct("module loader: Module has no string section(s)\n");
 	kernelfree(modulestartaddress);
-	kernelfree(kernel_module_end->commondata);
+	kernelfree(kernelmodules_end->commondata);
 
 	setlasterror(INVALID_EXECUTABLE);
 
@@ -330,43 +310,43 @@ if(kernelmodules == NULL) {			/* first in list */
 	kernelmodules=kernelalloc(sizeof(KERNELMODULE));
 	if(kernelmodules == NULL) {
 		kernelfree(modulestartaddress);
-		kernelfree(kernel_module_end->commondata);
+		kernelfree(kernelmodules_end->commondata);
 
 		enablemultitasking();	
 		return(-1);
 	}
 
-	kernel_module_end=kernelmodules;
+	kernelmodules_end=kernelmodules;
 }
 else
 {
-	kernel_module_end->next=kernelalloc(sizeof(KERNELMODULE));
-	if(kernel_module_end->next == NULL) {
+	kernelmodules_end->next=kernelalloc(sizeof(KERNELMODULE));
+	if(kernelmodules_end->next == NULL) {
 		kernelfree(modulestartaddress);
-		kernelfree(kernel_module_end->commondata);
+		kernelfree(kernelmodules_end->commondata);
 
 		enablemultitasking();	
 		return(-1);
 	}
 
-	kernel_module_end=kernel_module_end->next;
+	kernelmodules_end=kernelmodules_end->next;
 }
 
-strncpy(kernel_module_end->filename,fullname,MAX_PATH);
+strncpy(kernelmodules_end->filename,fullname,MAX_PATH);
 
-kernel_module_end->next=NULL;
+kernelmodules_end->next=NULL;
 
-kernel_module_end->commondata=kernelalloc(common_data_section_size);		/* allocate buffer for data section */
-if(kernel_module_end->commondata == NULL) {
+kernelmodules_end->commondata=kernelalloc(common_data_section_size);		/* allocate buffer for data section */
+if(kernelmodules_end->commondata == NULL) {
 	kernelfree(modulestartaddress);
-	kernelfree(kernel_module_end->commondata);
+	kernelfree(kernelmodules_end->commondata);
 	kernelfree(kernelmodulelast->next);
 	
 	enablemultitasking();
 	return(-1);
 }
 
-commondataptr=kernel_module_end->commondata;
+commondataptr=kernelmodules_end->commondata;
 
 /* Relocate elf references
 
@@ -603,7 +583,7 @@ for(count=0;count<(number_of_section_headers-1);count++) {
 				kprintf_direct("module loader: unknown relocation type %d in module %s\n",symtype,filename);
 		
 				kernelfree(modulestartaddress);
-				kernelfree(kernel_module_end->commondata);
+				kernelfree(kernelmodules_end->commondata);
 				kernelfree(kernelmodulelast->next);
 
 				enablemultitasking();
@@ -641,10 +621,18 @@ for(count=0;count<(number_of_section_headers-1);count++) {
 	
 }
 
+/* Add kernel module entry */
+
+strncpy(kernelmodule.filename,filename,MAX_PATH);		/* filename */
+kernelmodule.startaddress=modulestartaddress;			/* start address */
+kernelmodule.size=modulesize;					/* size */
+if(AddModule(&kernelmodule) == -1) {				/* Add module entry */
+	kernelfree(codestart);
+	return(-1);
+}
+
 /* call module entry point */
 entry=codestart;
-
-enablemultitasking();
 return(entry(argsx));
 }
 
@@ -848,7 +836,7 @@ while(kernelmodulenext != NULL) {
 	kernelmodulelast=kernelmodulenext;
 
 	if(strncmpi(kernelmodulenext->filename,fullname,MAX_PATH) == 0) {		/* found module name */
-		kernelfree(kernel_module_end->commondata);
+		kernelfree(kernelmodules_end->commondata);
 		kernelmodulelast->next=kernelmodulenext->next;		/* remove from list */
 
 		kernelfree(kernelmodulenext);
@@ -865,10 +853,108 @@ setlasterror(FILE_NOT_FOUND);
 return(-1);
 }
 
+/*
+ * Get 32-bit module reference
+ *
+ * In:  modulestartaddress	Module start addres
+ * 	elf_header		Pointer to module's ELF header
+	shptr			Pointer to module's section header
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
 Elf32_Shdr *GetModuleReference32(char *modulestartaddress,Elf32_Ehdr *elf_header,Elf32_Shdr *shptr) {
 return((modulestartaddress+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf32_Shdr)));
 }
 
+/*
+ * Get 64-bit module reference
+ *
+ * In:  modulestartaddress	Module start addres
+ * 	elf_header		Pointer to module's ELF header
+	shptr			Pointer to module's section header
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
 Elf64_Shdr *GetModuleReference64(char *modulestartaddress,Elf64_Ehdr *elf_header,Elf64_Shdr *shptr) {
 return((modulestartaddress+elf_header->e_shoff)+(shptr->sh_info*sizeof(Elf64_Shdr)));
+}
+
+/*
+ * Add kernel module entry
+ *
+ * In: entry	Kenel module information
+ *
+ * Returns 0 on success, -1 otherwise
+ * 
+ */
+size_t AddModule(KERNELMODULE *entry) {
+if(kernelmodules == NULL) {		/* first entry */
+	kernelmodules=kernelalloc(sizeof(KERNELMODULE));
+	if(kernelmodules == NULL) return(-1);
+
+	kernelmodulelast=kernelmodules;
+	kernelmodules_end=kernelmodules;
+}
+else
+{
+	kernelmodules_end->next=kernelalloc(sizeof(KERNELMODULE));
+	if(kernelmodules_end->next == NULL) return(-1);
+
+	kernelmodulelast=kernelmodules_end;
+	kernelmodules_end=kernelmodules_end->next;
+}
+
+memcpy(kernelmodules_end,entry,sizeof(KERNELMODULE));		/* copy module information */
+kernelmodules_end->next=NULL;			/* set end of list */
+
+setlasterror(NO_ERROR);
+return(0);
+}
+
+/*
+ * Check if module is loaded
+ *
+ * In: modulefilename	Module filename
+ *
+ * Returns 0 if module is loaded, -1 otherwise
+ * 
+ */
+size_t IsModuleLoaded(char *filename) {
+KERNELMODULE *kernelmodulenext;
+
+kernelmodulenext=kernelmodules;
+
+while(kernelmodulenext != NULL) {
+	if(strncmpi(kernelmodulenext->filename,filename,MAX_PATH) == 0) return(0);		/* found module name */
+
+	kernelmodulenext=kernelmodulenext->next;
+}
+
+return(-1);
+}
+
+/*
+ * Find module from addresss
+ *
+ * In: address		Address
+ *
+ * Returns pointer to module if address is within module, NULL otherwise
+ * 
+ */
+KERNELMODULE *FindModuleFromAddress(char *address) {
+KERNELMODULE *kernelmodulenext;
+
+kernelmodulenext=kernelmodules;
+
+while(kernelmodulenext != NULL) {
+	/* found module */
+
+	if((address > kernelmodulenext->startaddress) && (address < (kernelmodulenext->startaddress+kernelmodulenext->size))) return(kernelmodulenext);
+
+	kernelmodulenext=kernelmodulenext->next;
+}
+
+return(NULL);
 }

@@ -548,7 +548,7 @@ jz	no_disable_multitasking
 
 mov	dword [multitasking_was_enabled],1
 
-call	disablemultitasking
+;call	disablemultitasking
 
 no_disable_multitasking:
 
@@ -559,7 +559,7 @@ cli
 cmp	dword [multitasking_was_enabled],1
 jnz	no_enable_multitasking
 
-call	enablemultitasking
+;call	enablemultitasking
 
 no_enable_multitasking:
 pop	edi

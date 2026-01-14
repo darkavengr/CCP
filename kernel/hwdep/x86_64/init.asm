@@ -18,7 +18,6 @@
 ;  along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 ;
 
-
 ;
 ; Initialization for x86_64 processors
 ;
@@ -64,6 +63,7 @@ extern get_initial_kernel_stack_base				; get initial kernel stack base
 extern get_initial_kernel_stack_top				; get initial kernel stack top
 extern get_kernel_stack_size					; get kernel stack size
 extern set_initial_process_paging_end				; set initial process paging end
+extern tty_init							; initialize TTY
 
 ;
 ; globals
@@ -400,14 +400,13 @@ sub	rcx,rax				; kernel_size
 
 call	get_initial_kernel_stack_top
 mov	r8,rax				; stack_address
+mov	r9,rax
 
-call	get_kernel_stack_size
-mov	r9,rax				; stack_size
+call	get_initial_kernel_stack_base
+sub	r9,rax				; stack size
 
 call	initialize_memory_map		; initialize memory map
-
 call	memorymanager_init		; initalize memory manager
-
 call	filemanager_init		; initialize file manager
 
 ; This block of code is a copy of the
@@ -461,13 +460,14 @@ xor	al,al
 mov	dx,0xA1
 out	dx,al
 
-call	init_multitasking
-
+call	tty_init				; initialize TTY
 call	driver_init				; initialize built-in modules
-call	initrd_init
+call	initrd_init				; intialize initrd
+call	load_modules_from_initrd		; load modules from initrd
+call	initialize_tss				; initialize TSS
+call	init_multitasking			; initialize multitasking
 
-call	initialize_tss					; initialize TSS
-
+; Set TSS RSP0 to top of kernel stack
 call	get_initial_kernel_stack_top
 
 mov	rcx,qword KERNEL_HIGH
@@ -475,11 +475,9 @@ add	rax,rcx
 mov	rdi,rax
 call	set_tss_rsp0
 
-call	load_modules_from_initrd
-
 sti
 
-jmp	kernel		; jump to high g7level code
+jmp	kernel		; jump to high level code
 
 
 ; 64-bit GDT

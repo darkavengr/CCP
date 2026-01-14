@@ -53,6 +53,11 @@ size_t tty_init(void) {
 CHARACTERDEVICE device;
 size_t handle;
 
+tty_read_handlers=NULL;
+tty_write_handlers=NULL;
+tty_default_read_handler=NULL;
+tty_default_write_handler=NULL;
+
 strncpy(&device.name,TTY_DEVICE,MAX_PATH);
 device.charioread=&tty_read;
 device.chariowrite=&tty_write;
@@ -111,7 +116,7 @@ if(ttyptr == NULL) {		/* no handler */
 
 /* read from input device on character at a time to allow for special character processing */
 
-for(count=0;count < size;count++) {
+for(count=0;count < size;count++) {	
 	bytesread=ttyptr->ttyread(dataptr,1);		/* read data */
 	if(bytesread == -1) return(-1);
 

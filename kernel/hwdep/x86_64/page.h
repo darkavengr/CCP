@@ -14,7 +14,7 @@ size_t unmap_page(size_t page,size_t process);
 size_t freepages(size_t process);
 size_t findfreevirtualpage(size_t size,size_t alloc,size_t process);
 size_t switch_address_space(size_t process);
-uint64_t getphysicaladdress(size_t process,uint64_t virtaddr);
+uint64_t getphysicaladdress(size_t process,uint64_t virtual_address);
 size_t map_user_page(uint64_t page,size_t process,void *physaddr); 
 size_t map_system_page(uint64_t page,size_t process,void *physaddr); 
 size_t signextend(size_t num,size_t bitnum);

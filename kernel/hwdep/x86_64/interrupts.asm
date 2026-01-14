@@ -53,7 +53,6 @@ use64
 
 %macro inthandler_noerr 1
 int%1_handler:
-xchg	bx,bx
 push	rdi
 push	rax
 push	rbx
@@ -70,7 +69,6 @@ jmp	int_common
 
 %macro inthandler_err 1
 int%1_handler:
-xchg	bx,bx
 push	rdi
 push	rax
 push	rbx
@@ -483,8 +481,6 @@ pop	rbx
 pop	rax
 
 sti
-
-;xchg	bx,bx
 call	dispatchhandler
 
 ;call	enablemultitasking

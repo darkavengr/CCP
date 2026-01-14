@@ -234,6 +234,7 @@ call	load_idt			; set exception interrupts and syscall and load IDT
 
 call	processmanager_init		; intialize process manager
 call	devicemanager_init		; intialize device manager
+call	filemanager_init		; initialize file manager
 
 mov	edi,end				; calculate kernel size
 sub	edi,kernel_begin
@@ -245,7 +246,13 @@ mov	ebx,[ebx]
 mov	ecx,kernel_begin		; get kernel start address
 mov	edx,[MEMBUF_START]
 
-call	get_kernel_stack_size
+; get initial kernel stack size
+
+call	get_initial_kernel_stack_top
+mov	esi,eax
+call	get_initial_kernel_stack_base
+sub	esi,eax
+
 push	eax
 
 call	get_initial_kernel_stack_base
@@ -316,12 +323,12 @@ call	initialize_tss				; initialize TSS
 push	esp
 call	set_tss_esp0				; set TSS ESP0 to top of initial kernel stack
 
-call	init_multitasking			; initialize multitasking
-call	filemanager_init			; initialize file manager
+call	tty_init				; initialize TTY
 call	driver_init				; initialize built-in modules
-call	initrd_init				; intialize modules in initial RAM disk
-call	tty_init				; initalize TTY
-call	initialize_abstract_timer		; initialize abstract timer
+call	initrd_init				; intialize initrd
+call	load_modules_from_initrd		; load modules from initrd
+call	initialize_tss				; initialize TSS
+call	init_multitasking			; initialize multitasking
 
 call	get_initial_kernel_stack_top
 
