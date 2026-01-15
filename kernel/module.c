@@ -459,8 +459,6 @@ for(count=0;count<(number_of_section_headers-1);count++) {
 				       (modulestartaddress+elf_header64->e_shoff)+(symptr64->st_shndx*sizeof(Elf64_Shdr)),whichsym,name);	/* get name of symbol */				
 			}					
 
-			kprintf_direct("module 11\n");
-
 			/* external symbol */							
 			if( ((elf_type == ELFCLASS32) && (symptr32->st_shndx == SHN_UNDEF)) || ((elf_type == ELFCLASS64) && (symptr64->st_shndx == SHN_UNDEF))) {
 				symval=getkernelsymbol(name);
@@ -470,7 +468,7 @@ for(count=0;count<(number_of_section_headers-1);count++) {
 					if(symval == -1) symval=stval;
 				}
 		
-				add_external_module_symbol(name,symval+KERNEL_HIGH);		/* add external symbol to list */
+				add_external_module_symbol(name,symval+KERNEL_HIGH,stsize);		/* add external symbol to list */
 			}
 			else
 			{	
@@ -501,7 +499,7 @@ for(count=0;count<(number_of_section_headers-1);count++) {
 							next_free_address_rodata += stsize;
 							symval=next_free_address_rodata;
 
-							if(add_external_module_symbol(name,symval) == -1) next_free_address_rodata -= stsize;
+							if(add_external_module_symbol(name,symval,stsize) == -1) next_free_address_rodata -= stsize;
 
 							next_free_address_rodata += stsize;
 						}
@@ -521,7 +519,7 @@ for(count=0;count<(number_of_section_headers-1);count++) {
 								next_free_address_data += stsize;
 								symval=next_free_address_data;
 	
-								add_external_module_symbol(name,symval);
+								add_external_module_symbol(name,symval,stsize);
 							}
 						}
 						else
@@ -543,7 +541,7 @@ for(count=0;count<(number_of_section_headers-1);count++) {
 								if(symval == -1) {
 									symval=data+stval;
 										
-									add_external_module_symbol(name,symval);	
+									add_external_module_symbol(name,symval,stsize);	
 								}
 							}
 							else if(strncmp(bufptr,"bss",MAX_PATH) == 0) {
@@ -551,7 +549,7 @@ for(count=0;count<(number_of_section_headers-1);count++) {
 								if(symval == -1) {
 									symval=commondataptr+stval;
 
-									add_external_module_symbol(name,symval);
+									add_external_module_symbol(name,symval,stsize);
 								}	
 							}
 						}
@@ -730,7 +728,7 @@ symptr += KERNEL_HIGH;		/* point to symbol table */
 
 /* loop through symbols and find the kernel symbol */
 
-for(count=0;count<bootinfo->number_of_symbols;count++) {
+for(count=0;count < bootinfo->number_of_symbols;count++) {
 	if(strncmp(symptr,name,MAX_PATH) == 0) {				/* symbol found */
 		symptr += (strlen(name)+1);		/* skip over name */
   
@@ -738,21 +736,69 @@ for(count=0;count<bootinfo->number_of_symbols;count++) {
 		return(*valptr);			/* return value */
  	}
 
-	symptr += strlen(symptr)+sizeof(size_t)+1;		/* skip over name and symbol */
+	symptr += strlen(symptr)+(sizeof(size_t)*2)+1;	/* skip over name, size and symbol */
 }
 
 return(-1);
 }
 
 /*
+ * Find symbol from addrtess
+ *
+ * In:  address		Address
+ *
+ * Returns symbol value on success, NULL otherwise
+ * 
+ */
+char *FindSymbolFromAddress(char *address) {
+BOOT_INFO *bootinfo=BOOT_INFO_ADDRESS+KERNEL_HIGH;		/* point to boot information */
+char *symptr;
+size_t count;
+size_t *valptr;
+size_t symboladdress;
+size_t symbolsize;
+SYMBOL_TABLE_ENTRY *next;
+char *nameptr;
+
+symptr=bootinfo->symbol_start;
+symptr += KERNEL_HIGH;		/* point to symbol table */
+
+for(count=0;count < bootinfo->number_of_symbols;count++) {
+	nameptr=symptr;
+
+	symptr += (strlen(symptr)+1);		/* skip over name */
+	valptr=symptr;			/* cast pointer to size_t */
+	
+	symboladdress=(size_t) *valptr;	/* get address */
+	valptr++;
+	symbolsize=(size_t) *valptr;		/* get size */
+
+	if((address >= symboladdress) &&  (address <= (symboladdress+symbolsize))) return(nameptr);	/* found address */
+
+	symptr += (sizeof(size_t)*2);	/* point to next */
+}
+
+next=externalmodulesymbols;
+
+while(next != NULL) {
+	if((next->address >= symboladdress) &&  (next->address <= (symboladdress+next->size))) return(next->name);	/* found address */
+
+	next=next->next;
+}
+
+return(NULL);
+}
+
+/*
  * Add external module symbol
  *
- * In: char *name	Name of symbol
- *
+ * In: name	Name of symbol
+ *     val	Symbol value
+	size	
  * Returns symbol value on success, -1 otherwise
  * 
  */
-size_t add_external_module_symbol(char *name,size_t val) {
+size_t add_external_module_symbol(char *name,size_t val,size_t size) {
 SYMBOL_TABLE_ENTRY *next;
 SYMBOL_TABLE_ENTRY *last;
 
@@ -783,6 +829,7 @@ else
 
 strncpy(next->name,name,MAX_PATH);
 next->address=val;
+next->size=size;
 next->next=NULL;
 
 //kprintf_direct("added symbol %s\n",name);
@@ -949,9 +996,10 @@ KERNELMODULE *kernelmodulenext;
 kernelmodulenext=kernelmodules;
 
 while(kernelmodulenext != NULL) {
-	/* found module */
+	//kprintf_direct("%s %X %X %X\n",kernelmodulenext->filename,kernelmodulenext->startaddress,kernelmodulenext->size,address);
 
-	if((address > kernelmodulenext->startaddress) && (address < (kernelmodulenext->startaddress+kernelmodulenext->size))) return(kernelmodulenext);
+	/* found module */
+	if((address >= kernelmodulenext->startaddress) && (address <= (kernelmodulenext->startaddress+kernelmodulenext->size))) return(kernelmodulenext);
 
 	kernelmodulenext=kernelmodulenext->next;
 }

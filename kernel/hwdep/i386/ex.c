@@ -62,12 +62,12 @@ char *flagsname[]= { NULL,"Overflow", "Direction","Interrupt","Trap","Sign","Zer
 
 size_t count;
 uint32_t flagsmask;
-char *b;
 char *processname[MAX_PATH];
 uint32_t shiftcount;
 size_t rowcount;
 size_t faultaddress;
-KERNELMODULE *module;
+KERNELMODULE *module=NULL;
+char *FunctionName=NULL;
 
 void exception(uint32_t *regs,uint32_t faultnumber,uint32_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
@@ -87,18 +87,28 @@ if(regs[0] >= KERNEL_HIGH) {		/* kernel or kernel module */
 	module=FindModuleFromAddress(regs[0]);		/* get module associated with address */
 
 	if(module != NULL) {		/* exception in module */
-		kprintf_direct("%s at address %08X in module %s:\n",exceptions[faultnumber],regs[0],module->filename); 
+		kprintf_direct("%s at address %08X in kernel module %s",exceptions[faultnumber],regs[0],module->filename); 
 	}
 	else
 	{
-		kprintf_direct("\nKernel panic [%s] at address %08X:\n",exceptions[faultnumber],regs[0]);
+		kprintf_direct("\nKernel panic [%s] at address %08X",exceptions[faultnumber],regs[0]);
+	}
+
+	/* display function name */
+	FunctionName=FindSymbolFromAddress(regs[0]);
+	if(FunctionName != NULL) {		/* found function name */
+		kprintf_direct(" in function %s:\n",FunctionName);
+	}
+	else
+	{
+		kprintf_direct(":\n");
 	}
 }
 else			/* application */
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("%s at address %08X in %s:\n",exceptions[faultnumber],regs[0],processname);  /* exception */
+	kprintf_direct("%s at address %08X in %s:\n",exceptions[faultnumber],regs[0],processname);
 }
 
 if((faultnumber == DOUBLE_FAULT) || (faultnumber == INVALID_TSS) || (faultnumber == SEGMENT_NOT_PRESENT) || \
@@ -195,7 +205,7 @@ flagsmask=flagsmask >> 1;
 
 } while(flagsname[count] != "$");
 
-if(get_current_process_pointer() == NULL) {
+if((get_current_process_pointer() == NULL) || (regs[0] >= KERNEL_HIGH)) {		/* kernel or kernel module */
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);
 }

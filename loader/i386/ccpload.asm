@@ -499,6 +499,10 @@ jl	symbol_end32
 mov	[edi],eax
 add	edi,4						; point to next
 
+mov	eax,[ebx+SYM32_SIZE]				; get size
+mov	[edi],eax
+add	edi,4						; point to next
+
 symbol_end32:
 add	ebx,SYM32_ENTRY_SIZE
 
@@ -670,7 +674,12 @@ mov	eax,[ebx+SYM64_VALUE]				; get value low word
 mov	[edi],eax
 mov	eax,[ebx+SYM64_VALUE+4]				; get value high word
 mov	[edi+4],eax
+add	edi,8						; point to next
 
+mov	eax,[ebx+SYM64_SIZE]				; get size low word
+mov	[edi],eax
+mov	eax,[ebx+SYM64_SIZE+4]				; get size high word
+mov	[edi+4],eax
 add	edi,8						; point to next
 
 symbol_end64:

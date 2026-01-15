@@ -35,25 +35,7 @@
 #include "string.h"
 #include "debug.h"
 #include "../i386/ex.h"
-
-#define DIVZERO 	0
-#define DEBUGEX		1
-#define NMI		2
-#define BREAKPOINT	3
-#define INTO_OVERFLOW	4
-#define OOB		5
-#define INVALID_OPCODE	6
-#define NO_COPROCESSOR	7
-#define DOUBLE_FAULT	8
-#define COPROCESSORSEGOVERRRUN 9
-#define	INVALID_TSS		10
-#define SEGMENT_NOTPRESENT 11
-#define STACK_FAULT	12
-#define GPF		13
-#define PAGE_FAULT	14
-#define COPROCESSOR_FAULT 15
-#define ALIGN_CHECK_EXCEPTION 16
-#define MACHINE_CHECK_EXCEPTION 17
+#include "module.h"
 
 void enable_interrupts(void);
 
@@ -104,15 +86,25 @@ if(faultnumber == PAGE_FAULT) {
 
 /* If here, it's a fatal exception */
 
-if(regs[0] >= KERNEL_HIGH) {			/* kernel or kernel module exception */
+if(regs[0] >= KERNEL_HIGH) {		/* kernel or kernel module */
 	module=FindModuleFromAddress(regs[0]);		/* get module associated with address */
 
 	if(module != NULL) {		/* exception in module */
-		kprintf_direct("%s at address %016X in module %s:\n",exceptions[faultnumber],regs[0],module->filename); 
+		kprintf_direct("%s at address %016X in kernel module %s",exceptions[faultnumber],regs[0],module->filename); 
 	}
 	else
 	{
-		kprintf_direct("\nKernel panic [%s] at address %016X:\n",exp[faultnumber],regs[0]);
+		kprintf_direct("\nKernel panic [%s] at address %016X",exceptions[faultnumber],regs[0]);
+	}
+
+	/* display function name */
+	FunctionName=FindSymbolFromAddress(regs[0]);
+	if(FunctionName != NULL) {		/* found function name */
+		kprintf_direct(" in function %s:\n",FunctionName);
+	}
+	else
+	{
+		kprintf_direct(":\n");
 	}
 }
 else					/* application exception */
@@ -214,7 +206,7 @@ flagsmask=flagsmask >> 1;
 
 } while(flagsname[count] != "$");
 
-if(get_current_process_pointer() == NULL) {			/* if there are no processes, shut down the system */
+if((get_current_process_pointer() == NULL) || (regs[0] >= KERNEL_HIGH)) {		/* kernel or kernel module */
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);
 }
