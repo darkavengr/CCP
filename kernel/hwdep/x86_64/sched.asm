@@ -16,11 +16,14 @@
 ;  You should have received a copy of the GNU General Public License
 ;  along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
-global switch_task
+global switch_to_next_process
 global end_switch
+global end_yield
 global yield
 global switch_task_process_descriptor
+global IsDebug
 
+extern is_multitasking_enabled			
 extern save_kernel_stack_pointer
 extern getpid
 extern switch_address_space
@@ -38,184 +41,136 @@ extern get_current_process_pointer
 extern get_processes_pointer
 extern enablemultitasking
 extern disablemultitasking
-extern getphysicaladdress
-extern is_multitasking_enabled
+extern GetCurrentProcessFlags
+extern SetCurrentProcessFlags
 
-%define offset
+PROCESS_NEW	equ 2
+PROCESS_RUNNING	equ 8
 
 %include "kernelselectors.inc"
 ;
-; The functions switch_task_process_descriptor and yield should not be called from 
-; an interrupt handler. Instead, switch_task must be called.
+; The functions switch_task_process_descriptor() and yield() should not be called from 
+; an interrupt handler. Call switch_task() instead.
 ;
 
-switch_task_process_descriptor:
-mov	[rel save_rax],rax
+switch_task_process_descriptor:				; get process descriptor
+mov	[save_descriptor],rdi
 
-mov	rax,[rsp+4]				; get process descriptor
-mov	[rel save_descriptor],rax
-mov	rax,[rel save_rax]
-
-; fall through to yield
-
-;
-; Force switch to next process
-;
-; In: Nothing
-;
-; Returns: Nothing
-;
-yield:
-cli
-
-;
-; Stack format:
-;
-; RIP (already on stack)
-; CS  (already on stack)
-; RFLAGS (already on stack)
-; RBP
-; RAX	
-; RBX
-; RCX
-; RDX
-; RSI
-; RDI
-
-; save rip, cs and rflags in the same way as an interrupt call
-
-push	rax
-mov	rax,[rsp+8]				; get rip
-mov	[rel saverip],rax			; save it
-pop	rax
-
-sub	rsp,4
-
-pushf
-push	qword [rel saverip]
-
-push	rax					; save registers
-push	rbx
-push	rcx
-push	rdx
-push	rsi
-push	rdi
-push	r10
-push	r11
-push	r12
-push	r13
-push	r14
-push	r15
-
-call	switch_task				; switch to next task
-
-pop	r15					; restore registers
-pop	r14
-pop	r13
-pop	r12
-pop	r11
-pop	r10
-pop	rdi
-pop	rsi
-pop	rdx
-pop	rcx
-pop	rbx
-pop	rax
-
-iretq						; jump to RIP
+; fall through to switch_to_next_process()
 
 ;
 ; Switch task
 ;
-; This function is called by a function which is expected to save the registers onto the stack and call switch_task.
-; After returning from switch_task, the calling function will then restore the registers and return, transferring control to the new process.
-;
-; You are not expected to understand this
-;
+switch_to_next_process:
+mov	[OldContextPointer],rdi			; save pointer to saved context
 
-switch_task:
-mov	[rel save_rsp],rsp
+; return if there are no processes
 
+call	get_processes_pointer
+test	rax,rax
+jnz	have_processes
+
+jmp	no_stack_switch
+
+have_processes:
 call	is_multitasking_enabled			
 test	rax,rax 				; return if multitasking is disabled
 jnz	multitasking_enabled
 
-jmp	end_switch
+jmp	no_stack_switch
 
 multitasking_enabled:
-call	disablemultitasking
-
-push	qword [rel save_rsp]			; save current task's stack pointer
-call	save_kernel_stack_pointer
-add	rsp,8
-
-call	increment_process_ticks
-
-mov	rax,[rel save_descriptor]			; get descriptor
-test	rax,rax					; if switching to a specific process
-jnz	task_time_slice_finished		; don't check if process is ready to switch
+inc	byte [0xFFFFFF00000B8000]
 
 call	is_current_process_ready_to_switch
-test	rax,rax					; if process not ready to switch, return
+test	rax,rax					; return if process is not ready to switch
 jnz	task_time_slice_finished
-
-call	enablemultitasking
-
-jmp	end_switch
+jmp	no_stack_switch
 
 task_time_slice_finished:
-call	reset_current_process_ticks
+call	reset_current_process_ticks		; reset number of process quantum ticks
 
 call	getpid
+test	rax,rax
+jnz	skiptest
 
-cmp	rax,1
-jne	no_debug
+call	GetCurrentProcessFlags			; get process flags
 
-xchg	bx,bx
-no_debug:
+and	rax,PROCESS_NEW				; get new process flag
+test	rax,rax					; if new process, skip saving kernel stack pointer
+jnz	not_first
+
+skiptest:
+mov	rdi,[rel OldContextPointer]
+call	save_kernel_stack_pointer		; save kernel stack pointer for current process
+
+not_first:
+call	GetCurrentProcessFlags			; get process flags
+
+and	rax,~PROCESS_NEW			; clear new process flag
+or	rax,PROCESS_RUNNING			; set process running flag
+
+mov	rdi,rax
+call	SetCurrentProcessFlags
 
 ;
 ; Switch to next process
 ;
 
-mov	rdi,[rel save_descriptor]			; get descriptor
-test	rdi,rdi						; if not switching to a specific process
-jnz	have_descriptor					; update process now
+;mov	rax,[rel save_descriptor]				; get pointer to process entry
+;test	rax,rax						; if not switching to a specific process
+;jnz	have_descriptor					; update process now
 
-call	find_next_process_to_switch_to			; get pointer to next process to switch to
+call	find_next_process_to_switch_to			; get pointer to next process
+
+;have_descriptor:
 mov	rdi,rax
-
-have_descriptor:
+push	rax						; update current process pointer
 call	update_current_process_pointer
-add	rsp,8
 
-; load page tables
+call	getpid
+test	rax,rax
+jz	no_debug
+
+xchg	bx,bx
+no_debug:
+
+; switch address space
 
 call	getpid
 
 mov	rdi,rax
 call	switch_address_space
-add	rsp,4
 
-call	get_kernel_stack_pointer
-mov	rsp,rax						; switch kernel stack
-
-; Patch rsp0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
+; Patch ESP0 in the TSS. The scheduler will use the correct kernel stack on the next task switch
 call	get_kernel_stack_top
 
 mov	rdi,rax
 call	set_tss_rsp0
-add	rsp,8
 
-call	enablemultitasking
+call	get_kernel_stack_pointer
+; switch kernel stack
 
-end_switch:
-xor	rax,rax
-mov	[rel save_descriptor],rax				; clear descriptor
+mov	rsp,rax
+
+;xor	rax,rax
+;mov	[rel save_descriptor],rax				; clear descriptor
+ 
+;
+; Return directly to process. Does *not* return to the caller
+popa						; restore registers
+pop	gs
+pop	fs
+pop	es
+pop	ds
+iret
+
+;
+; No stack switch. Return to caller
+;
+no_stack_switch:
 ret
 
-save_rsp dq 0
-save_rax dq 0
 save_descriptor dq 0
-saverip dq 0
+OldContextPointer dq 0
 

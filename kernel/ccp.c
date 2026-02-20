@@ -48,7 +48,6 @@ extern FILESYSTEM *filesystems;
 void kernel(void) {
 FILERECORD commandrun;
 size_t returnvalue;
-size_t handle;
 
 if(findfirst("\\AUTOEXEC.BAT",&commandrun) == 0) {
 	returnvalue=exec("\\COMMAND.RUN","/P /K \\AUTOEXEC.BAT",FALSE);
@@ -65,6 +64,6 @@ if(returnvalue ==  -1) {
 	while(1) ;;
 }
 
-asm("xchg %bx,%bx");
+while(1) ;;			/* wait for scheduler to run new task */
 }
 

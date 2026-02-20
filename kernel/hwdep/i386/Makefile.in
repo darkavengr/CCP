@@ -2,7 +2,7 @@ ASM=nasm
 CC=@arch@-elf-gcc
 LD=@arch@-elf-gcc
 
-all: ex.o partition.o port.o sched.o mutex.o interrupts.o stack.o aainit.o usermode.o cpustate.o initializepaging.o tss.o gdt.o @cc_opt_obj_files@
+all: ex.o partition.o port.o sched.o mutex.o interrupts.o stack.o aainit.o cpustate.o initializepaging.o tss.o gdt.o @cc_opt_obj_files@
 
 ex.o:
 	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ ex.c -o @buildroot@/obj/@arch@/ex.o
@@ -36,9 +36,6 @@ interrupts.o:
 
 gdt.o:
 	$(ASM) -felf32 gdt.asm -o @buildroot@/obj/@arch@/gdt.o
-
-usermode.o:
-	$(ASM) -felf32 usermode.asm -o @buildroot@/obj/@arch@/usermode.o
 
 initializepaging.o:
 	$(ASM) -felf32 initializepaging.asm -o @buildroot@/obj/@arch@/initializepaging.o

@@ -235,7 +235,9 @@ size_t savemapping;
 next=processpaging;
 
 while(next != NULL) {					/* find process */	
-	if(next->next->process == process) previous=next;
+	if(next->next != NULL) {
+		if(next->next->process == process) previous=next;
+	}
 
 	if(next->process == process) update=next;		
 	if(next->process == getpid()) current_page_mapping=next;	
@@ -245,7 +247,8 @@ while(next != NULL) {					/* find process */
 	next=next->next;
 }
 
-if((update == NULL) || (current_page_mapping == NULL) || (previous == NULL)) {
+
+if((update == NULL) || (current_page_mapping == NULL) || ((next->next != NULL) && (previous == NULL))) {
 	setlasterror(INVALID_PROCESS);
 	return(-1);
 }

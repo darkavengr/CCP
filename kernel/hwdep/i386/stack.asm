@@ -42,8 +42,6 @@ extern save_kernel_stack_pointer
 extern get_kernel_stack_top
 extern get_usermode_stack_pointer
 
-extern irq_exit
-
 [BITS 32]
 use32
 
@@ -86,36 +84,41 @@ initialize_current_process_kernel_stack:
 mov	esi,[esp+4]				; kernel stack top
 mov	edx,[esp+8]				; entry point
 mov	ecx,[esp+12]				; kernel stack bottom
+mov	ebx,[esp+16]				; user-mode kernel stack top
 
 mov	eax,esi
-sub	esi,11*4
+sub	esi,16*4
 
-mov	dword [esi],0x200			; eflags
-mov	dword [esi-4],KERNEL_CODE_SELECTOR	; cs
-mov	[esi-8],edx				; eip
+mov	dword [esi],USER_DATA_SELECTOR			; user ss
+mov	dword [esi-4],ebx				; user esp
+mov	dword [esi-8],0x200			; user eflags; enable interrupts on iret
+mov	dword [esi-12],USER_CODE_SELECTOR	; user cs
+mov	dword [esi-16],edx			; user eip
 
-mov	dword [esi-12],0xFFFFFFFF		; eax
-mov	dword [esi-16],0xEEEEEEEE		; ecx
-mov	dword [esi-20],0xDDDDDDDD		; edx
-mov	dword [esi-24],0xCCCCCCCC		; ebx
-mov	[esi-28],esi				; esp
-mov	[esi-32],ecx				; ebp
-mov	dword [esi-36],0xBBBBBBBB		; esi
-mov	dword [esi-40],0xAAAAAAAA		; edi
-
-mov	dword [esi-44],irq_exit		; return address of stub function
+mov	dword [esi-20],USER_DATA_SELECTOR	; ds
+mov	dword [esi-24],USER_DATA_SELECTOR	; es
+mov	dword [esi-28],USER_DATA_SELECTOR	; fs
+mov	dword [esi-32],USER_DATA_SELECTOR	; gs
+mov	dword [esi-36],0xFFFFFFFF		; eax
+mov	dword [esi-40],0xEEEEEEEE		; ecx
+mov	dword [esi-44],0xDDDDDDDD		; edx
+mov	dword [esi-48],0xCCCCCCCC		; ebx
+mov	[esi-52],esi				; esp
+mov	[esi-56],ecx				; ebp
+mov	dword [esi-60],0xBBBBBBBB		; esi
+mov	dword [esi-64],0xAAAAAAAA		; edi
 
 ;
 ; Adjust kernel stack pointer to point to intial values
 ;
 
-sub	esi,11*4
+sub	esi,16*4
 
 push	esi
 call	save_kernel_stack_pointer
 add	esp,4
 
-; Set esp0 field in the TSS to ensure that the kernel stack is switched to next time the CPU switches to ring 0.
+; Set ESP0 field in the TSS to ensure that the kernel stack is switched to next time the CPU switches to ring 0.
 
 push	esi
 call	set_tss_esp0

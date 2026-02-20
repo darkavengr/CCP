@@ -31,6 +31,8 @@
 #include "version.h"
 #include "string.h"
 
+extern size_t IsDebug;
+
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
 PROCESS *processes_end=NULL;
@@ -55,7 +57,7 @@ PROCESS *oldprocess;
       argsx	Arguments
       flags	Flags
 *
-* Returns -1 on error, doesn't return on success if it is a foreground process. Returns 0 on success if it is a background process.
+* Returns -1 on error, 0 on success
 *
 */
 
@@ -69,6 +71,8 @@ char *fullpath[MAX_PATH];
 
 disablemultitasking();
 
+IsDebug=FALSE;
+
 oldprocess=currentprocess;					/* save current process pointer */
 
 /* add process to process list and find process ID */
@@ -78,7 +82,7 @@ if(processes == NULL) {  					/* first process */
 
 	if(processes == NULL) {					/* return if can't allocate */
 		switch_address_space(getppid());
-		freepages(highest_pid_used);	
+		freepages(highest_pid_used);
 		return(-1);
 	}
 
@@ -114,14 +118,14 @@ strncpy(next->args,argsx,MAX_PATH);		/* process arguments */
 
 getcwd(next->currentdirectory);		/* current directory */
 
-next->maxticks=DEFAULT_QUANTUM_COUNT;	/* maximum number of ticks for this process */
-next->ticks=0;				/* start at 0 for number of ticks */
+next->maxticks=get_timer_count()+DEFAULT_QUANTUM_COUNT;	/* maximum number of ticks for this process */
+next->ticks=get_timer_count();		/* start at 0 for number of ticks */
 next->parentprocess=getpid();		/* parent process ID */
 next->pid=highest_pid_used;		/* process ID */
 next->errorhandler=NULL;		/* error handler, NULL for now */
 next->signalhandler=NULL;		/* signal handler, NULL for now */
 next->childprocessreturncode=0;		/* return code from child process */
-next->flags=flags;			/* process flags */
+next->flags=flags | PROCESS_NEW;	/* process flags */
 next->lasterror=0;			/* last error */
 next->next=NULL;
 
@@ -138,7 +142,6 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
-
 	return(-1);
 }
 
@@ -215,7 +218,6 @@ if(stackp == NULL) {
 
 	switch_address_space(getppid());
 	freepages(highest_pid_used);
-	
 	return(-1);
 }
 
@@ -243,11 +245,13 @@ if(entrypoint == -1) {					/* can't load executable */
 
 	switch_address_space(getppid());
 
-	freepages(highest_pid_used);	
+	freepages(highest_pid_used);
+
 	return(-1);
 }
 
-initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->kernelstacktop-DEFAULT_KERNEL_STACK_SIZE); /* initialize kernel stack */
+/* initialize kernel stack */
+initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->kernelstacktop-DEFAULT_KERNEL_STACK_SIZE,next->stackpointer);
 
 /* create Program Segment Prefix */ 
 
@@ -255,22 +259,17 @@ ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
 
-if(flags & PROCESS_FLAG_BACKGROUND) {			/* run process in background */
-	currentprocess=oldprocess;	/* restore current process pointer */			/* restore previous process */
+/* switch back to parent processes stack so the function can return */
 
-	switch_address_space(getpid());
+switch_address_space(getppid());
 
-	freepages(highest_pid_used);
-	return(0);
-}
-else
-{
-	initialize_current_process_user_mode_stack(currentprocess->stackpointer,DEFAULT_USER_STACK_SIZE);	/* intialize and switch to user mode stack */
+if(oldprocess != NULL) currentprocess=oldprocess;	/* restore current process pointer */
+reset_current_process_ticks();		/* force new process to run */
 
-	enablemultitasking();
-	switch_to_usermode_and_call_process(entrypoint);		/* switch to user mode, enable interrupts, and call process */
-}
+enablemultitasking();
+enable_interrupts();
 
+setlasterror(NO_ERROR);
 return(0);
 }
 
@@ -357,14 +356,12 @@ unlock_mutex(&process_mutex);			/* unlock mutex */
 if(process == oldprocess) {	/* killing current process */
 	currentprocess->ticks=currentprocess->maxticks+1;	/* force task to end of timeslot */
 
-	
-
-	yield();			/* switch to next process if killing current process */
+	asm("xchg %bx,%bx");
+	switch_to_next_process();			/* switch to next process if killing current process */
 
 }
 
 setlasterror(NO_ERROR);
-
 unlock_mutex(&process_mutex);			/* unlock mutex */
 return(0);
 }
@@ -496,7 +493,7 @@ switch(highbyte) {
 		return(GetVersion());
 
 	case 0x31:
-		return(yield());
+		return(switch_to_next_process());
 		
 	case 0x39:			/* create directory */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
@@ -543,10 +540,10 @@ switch(highbyte) {
 		return(read((size_t)  argtwo,(char *) argfour,(size_t)  argthree));
 	 
 	case 0x40:			/* write to file or device */
-		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
-			setlasterror(INVALID_ADDRESS);
-			return(-1);
-		}
+		//if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+		//	setlasterror(INVALID_ADDRESS);
+		//	return(-1);
+		//}
 
 		return(write((size_t)  argtwo,(char *) argfour,(size_t)  argthree));
 	case 0x41:                     /* delete */
@@ -1260,7 +1257,7 @@ while(next != NULL) {
 
 		setlasterror(NO_ERROR);
 	
-		if(pid == getpid()) yield();		/* switch to next process if blocking current process */
+		if(pid == getpid()) switch_to_next_process();		/* switch to next process if blocking current process */
 		return(0);
 	}
 	
@@ -1630,7 +1627,8 @@ return(-1);
 void reset_current_process_ticks(void) {
 if(currentprocess == NULL) return;
 
-currentprocess->ticks=0;
+currentprocess->ticks=get_timer_count();
+currentprocess->maxticks=get_timer_count()+DEFAULT_QUANTUM_COUNT;	/* maximum number of ticks for this process */
 }
 
 /*
@@ -1675,3 +1673,28 @@ size_t GetVersion(void) {
 return((CCP_MAJOR_VERSION << 24) | (CCP_MINOR_VERSION << 16) | (CCP_RELEASE_VERSION << 8));
 }
 
+/*
+* Get current process flags
+*
+* In:  Nothing
+*
+* Returns: process flags
+*
+*/
+
+size_t GetCurrentProcessFlags(void) {
+return(currentprocess->flags);
+}
+
+/*
+* Set current process flags
+*
+* In:  flags	Process flags
+
+* Returns: nothing
+*
+*/
+
+void SetCurrentProcessFlags(size_t flags) {
+currentprocess->flags=flags;
+}

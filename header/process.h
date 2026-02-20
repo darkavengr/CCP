@@ -3,11 +3,11 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-#define PROCESS_NEW	0
-#define	PROCESS_READY	1
-#define PROCESS_RUNNING	2
-#define	PROCESS_BLOCKED	4
-#define PROCESS_FORCE_SWITCH	8
+#define PROCESS_NEW	2
+#define	PROCESS_READY	4
+#define PROCESS_RUNNING	8
+#define	PROCESS_BLOCKED	16
+#define PROCESS_FORCE_SWITCH	32
 
 #define PROCESS_FLAG_BACKGROUND		1
 
@@ -105,4 +105,6 @@ size_t GetVersion(void);
 size_t get_usermode_stack_base(void);
 size_t get_usermode_stack_top(void);
 void set_usermode_stack_base(void *base);
+size_t GetCurrentProcessFlags(void);
+void SetCurrentProcessFlags(size_t flags);
 

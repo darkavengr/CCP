@@ -3,7 +3,7 @@ CC=@arch@-elf-gcc
 LD=@arch@-elf-gcc
 
 CFILES=ex.c mutex.c page.c port.c partition.c
-ASMFILES=cpustate.asm gdt.asm interrupts.asm sched.asm stack.asm tss.asm usermode.asm
+ASMFILES=cpustate.asm gdt.asm interrupts.asm sched.asm stack.asm tss.asm
 
 COBJFILES=$(addsuffix .o,$(basename $(notdir $(CFILES))))
 ASMOBJFILES=$(addsuffix .o,$(basename $(notdir $(ASMFILES))))

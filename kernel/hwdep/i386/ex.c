@@ -205,6 +205,8 @@ flagsmask=flagsmask >> 1;
 
 } while(flagsname[count] != "$");
 
+asm("xchg %bx,%bx");
+
 if((get_current_process_pointer() == NULL) || (regs[0] >= KERNEL_HIGH)) {		/* kernel or kernel module */
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);

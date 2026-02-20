@@ -4,7 +4,6 @@ use32
 %include "kernelselectors.inc"
 
 extern callirqhandlers
-
 global irq0
 global irq1
 global irq2
@@ -21,7 +20,6 @@ global irq12
 global irq13
 global irq14
 global irq15
-global irq_exit
 global irq
 
 ;
@@ -88,22 +86,17 @@ mov	dword [irqnumber],14
 jmp	irq
 
 irq15:
-xchg	bx,bx
 mov	dword [irqnumber],15
 jmp	irq
 
 irq:
+push	ds
+push	es
+push	fs
+push	gs
 pusha						; save registers
-mov	eax,esp
-sub	eax,12					; minus 2 dword callirqhandlers() parameters and return EIP
 
-push	eax					; stack parameters
-push	dword [irqnumber]			; IRQ number
-call	callirqhandlers				; call IRQ handler
-add	esp,8
-
-irq_exit:
-mov	ebx,[irqnumber]			        ; get interrupt number
+mov	ebx,[irqnumber]
 cmp	ebx,7			     	        ; if slave IRQ
 jle	nslave				        ; continue if not
 
@@ -114,7 +107,16 @@ nslave:
 mov	al,0x20				        ; reset master
 out	0x20,al
 
+push	esp					; pointer to saved context
+push	dword [irqnumber]			; IRQ number
+call	callirqhandlers				; call IRQ handler
+add	esp,8
+
 popa						; restore registers
+pop	gs
+pop	fs
+pop	es
+pop	ds
 iret						; return
 
 irqnumber dd 0

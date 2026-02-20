@@ -25,7 +25,7 @@
 
 size_t multitaskingenabled=FALSE;
 
-extern void switch_task(void *regs);
+extern void switch_to_next_process(void);
 
 /*
  * Disable multitasking
@@ -65,7 +65,7 @@ return;
 void init_multitasking(void) {
 multitaskingenabled=FALSE;
 
-setirqhandler(0,'SCHD',&switch_task);		/* Register task switcher */
+setirqhandler(0,'SCHD',&switch_to_next_process);		/* Register task switcher */
 return;
 }
 
@@ -115,7 +115,7 @@ return(newprocess);
  * 
  */
 
-size_t is_current_process_ready_to_switch(void) { 
+size_t is_current_process_ready_to_switch(void) {
 if(get_processes_pointer() == NULL) return(FALSE);
 
 if(timer_increment() < get_process_max_tick_count()) return(FALSE);

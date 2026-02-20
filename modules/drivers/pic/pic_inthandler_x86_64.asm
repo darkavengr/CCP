@@ -88,11 +88,15 @@ mov	qword [rel irqnumber],14
 jmp	irq
 
 irq15:
-xchg	bx,bx
 mov	qword [rel irqnumber],15
 jmp	irq
 
 irq:
+push	ds
+push	es
+push	fs
+push	gs
+
 push	rax						; save registers
 push	rbx
 push	rcx
@@ -106,12 +110,6 @@ push	r13
 push	r14
 push	r15
 
-mov	rdi,qword irqnumber
-mov	rdi,[rdi]				; irq number
-mov	rsi,qword buf					; stack parameter pointer
-call	callirqhandlers				; call irq handler
-
-irq_exit:
 mov	al,PIC_EOI			        ; reset PIC
 out	PIC_MASTER_COMMAND,al			; reset PIC master
 
@@ -122,6 +120,12 @@ jle	nslave				        ; continue if not
 out	PIC_SLAVE_COMMAND,al			; reset PIC slave
 
 nslave:
+mov	rdi,qword irqnumber
+mov	rdi,[rdi]				; irq number
+mov	rsi,qword buf					; stack parameter pointer
+call	callirqhandlers				; call irq handler
+
+irq_exit:
 pop	r15						; restore registers
 pop	r14
 pop	r13
@@ -134,6 +138,10 @@ pop	rdx
 pop	rcx
 pop	rbx
 pop	rax
+pop	gs
+pop	fs
+pop	es
+pop	ds
 iretq						; return
 
 irqnumber dq 0

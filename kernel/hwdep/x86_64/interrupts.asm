@@ -471,19 +471,8 @@ push	rdx
 push	rsi
 push	rdi
 
-call	disablemultitasking
-
-pop	rdi
-pop	rsi
-pop	rdx
-pop	rcx
-pop	rbx
-pop	rax
-
 sti
 call	dispatchhandler
-
-;call	enablemultitasking
 cli
 
 mov	r11,qword tempone
@@ -506,6 +495,16 @@ dq idttable				; base
 idttable:
 times 256 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 idt_end:
+mov	al,PIC_EOI			        ; reset PIC
+out	PIC_MASTER_COMMAND,al			; reset PIC master
+
+mov	ebx,[rel irqnumber]		        ; get IRQ number
+cmp	ebx,7			     	        ; if slave IRQ
+jle	nslave				        ; continue if not
+			     
+out	PIC_SLAVE_COMMAND,al			; reset PIC slave
+
+nslave:
 
 error_number_exceptions dq 8,10,11,12,13,14,17,21,29,30
 end_error_number_exceptions:

@@ -62,50 +62,46 @@ jmp	r11					; return without using stack
 ;
 ; Initialize kernel-mode stack
 ;
-; In:	rdi=Stack pointer top
+; In:	rdi=Kenrel stack pointer top
 ;	rsi=Stack bottom
 ;	rdx=Entry point
-;
+;	rcx=User-mode stack top
 
 ; Returns: Nothing
 ;
 initialize_current_process_kernel_stack:
-mov	r11,rdi
-sub	r11,16*8				; space for initial stack frame
+sub	rsi,17*8
 
-mov	rax,qword initial_exit			; return address
-mov	[r11],rax
+mov	qword [rsi],USER_DATA_SELECTOR			; user ss
+mov	qword [rsi-8],ecx				; user esp
+mov	qword [rsi-16],0x200			; user eflags; enable interrupts on iret
+mov	qword [rsi-32],USER_CODE_SELECTOR	; user cs
+mov	qword [rsi-40],rdx			; user eip
 
-; fill in zeroes for rax,rbx,rcx,rdx,rsi,rdi,r10,r11,r12,r13,r14,r15
-
-push	rdi
-
-mov	rdi,r11
-add	rdi,8
-
-mov	rcx,12
-
-xor	rax,rax
-rep	stosq
-
-pop	rdi
-
-mov	[r11+104],rdx				; rip
-mov	qword [r11+112],KERNEL_CODE_SELECTOR	; cs
-mov	qword [r11+116],0x200			; rflags
-mov	[r11+124],rdi			; rsp
+mov	qword [rsi-48],USER_DATA_SELECTOR	; ds
+mov	qword [rsi-56],USER_DATA_SELECTOR	; es
+mov	qword [rsi-64],USER_DATA_SELECTOR	; fs
+mov	qword [rsi-72],USER_DATA_SELECTOR	; gs
+mov	qword [rsi-80],0xFFFFFFFFFFFFFFFF	; eax
+mov	qword [rsi-88],0xEEEEEEEEEEEEEEEE	; ecx
+mov	qword [rsi-96],0xDDDDDDDDDDDDDDDD	; edx
+mov	qword [rsi-104],0xCCCCCCCCCCCCCCCC	; ebx
+mov	[rsi-112],rdi				; esp
+mov	[rsi-120],rsi				; ebp
+mov	qword [rsi-128],0xBBBBBBBBBBBBBBBB	; esi
+mov	qword [rsi-134],0xAAAAAAAAAAAAAAAA	; edi
 
 ;
 ; Adjust kernel stack pointer
 ; so it points to intial values
 ;
 call	get_kernel_stack_top
-sub	rax,16*8
+sub	rax,17*8
 
 mov	rdi,rax
 call	save_kernel_stack_pointer
 
-; Set tss esp0 to ensure that the kernel stack is switched to next time the cpu switches to ring 0.
+; Set TSS ESP0 to ensure that the kernel stack is switched to next time the cpu switches to ring 0.
 
 mov	rdi,rax
 call	set_tss_rsp0
