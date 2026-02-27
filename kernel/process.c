@@ -31,8 +31,6 @@
 #include "version.h"
 #include "string.h"
 
-extern size_t IsDebug;
-
 size_t last_error_no_process=0;
 PROCESS *processes=NULL;
 PROCESS *processes_end=NULL;
@@ -70,8 +68,6 @@ PSP *psp=NULL;
 char *fullpath[MAX_PATH];
 
 disablemultitasking();
-
-IsDebug=FALSE;
 
 oldprocess=currentprocess;					/* save current process pointer */
 
@@ -357,7 +353,7 @@ if(process == oldprocess) {	/* killing current process */
 	currentprocess->ticks=currentprocess->maxticks+1;	/* force task to end of timeslot */
 
 	asm("xchg %bx,%bx");
-	switch_to_next_process();			/* switch to next process if killing current process */
+	yield();			/* switch to next process if killing current process */
 
 }
 
@@ -493,7 +489,7 @@ switch(highbyte) {
 		return(GetVersion());
 
 	case 0x31:
-		return(switch_to_next_process());
+		return(yield());
 		
 	case 0x39:			/* create directory */
 		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
@@ -1257,7 +1253,7 @@ while(next != NULL) {
 
 		setlasterror(NO_ERROR);
 	
-		if(pid == getpid()) switch_to_next_process();		/* switch to next process if blocking current process */
+		if(pid == getpid()) yield();		/* switch to next process if blocking current process */
 		return(0);
 	}
 	
@@ -1305,7 +1301,7 @@ while(next != NULL) {
 	
 		setlasterror(NO_ERROR);	
 
-		switch_task_process_descriptor(processes_end);		/* switch to unblocked process */
+		//switch_task_process_descriptor(processes_end);		/* switch to unblocked process */
 		return(0);
 	}
 	
@@ -1683,6 +1679,8 @@ return((CCP_MAJOR_VERSION << 24) | (CCP_MINOR_VERSION << 16) | (CCP_RELEASE_VERS
 */
 
 size_t GetCurrentProcessFlags(void) {
+if(currentprocess == NULL) return;
+
 return(currentprocess->flags);
 }
 
@@ -1696,5 +1694,7 @@ return(currentprocess->flags);
 */
 
 void SetCurrentProcessFlags(size_t flags) {
+if(currentprocess == NULL) return;
+
 currentprocess->flags=flags;
 }

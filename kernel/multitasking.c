@@ -25,7 +25,8 @@
 
 size_t multitaskingenabled=FALSE;
 
-extern void switch_to_next_process(void);
+void switch_to_next_task(size_t *savedcontext);
+void switch_task_process_descriptor(size_t *savedcontext,PROCESS *descriptor);
 
 /*
  * Disable multitasking
@@ -65,7 +66,7 @@ return;
 void init_multitasking(void) {
 multitaskingenabled=FALSE;
 
-setirqhandler(0,'SCHD',&switch_to_next_process);		/* Register task switcher */
+setirqhandler(0,'SCHD',&switch_to_next_task);		/* Register task switcher */
 return;
 }
 
@@ -121,5 +122,48 @@ if(get_processes_pointer() == NULL) return(FALSE);
 if(timer_increment() < get_process_max_tick_count()) return(FALSE);
 
 return(TRUE);
+}
+
+/*
+ * Switch to next task
+ *
+ * In: savedcontext	Pointer to saved context
+ *
+ * Returns: nothing
+ * 
+ */
+
+void switch_to_next_task(size_t *savedcontext) {
+if(get_processes_pointer == NULL) return;	/* no processes */
+
+if(is_multitasking_enabled() == FALSE) return;	/* return if multitasking is disabled */
+
+if(timer_increment() < get_process_max_tick_count()) return;
+
+if(is_current_process_ready_to_switch() == FALSE) return; /* return if process is not ready to switch */
+
+reset_current_process_ticks();			/* reset number of process quantum ticks */
+
+switch_task(savedcontext,find_next_process_to_switch_to());	/* switch to task */
+
+/* should never be here */
+}
+
+/*
+ * Switch to next task using process descriptor
+ *
+ * In:	savedcontext	Pointer to saved context
+ *	descriptor	Pointer to process descriptor
+ *
+ * Returns: nothing
+ * 
+ */
+
+void switch_task_process_descriptor(size_t *savedcontext,PROCESS *descriptor) {
+if(get_processes_pointer == NULL) return;	/* no processes */
+
+switch_task(savedcontext,descriptor);	/* switch to task */
+
+/* should never be here */
 }
 

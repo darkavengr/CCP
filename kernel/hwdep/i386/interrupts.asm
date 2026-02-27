@@ -565,9 +565,5 @@ dd IDT_table				; base
 IDT_table:
 times 256 db 0,0,0,0,0,0,0,0
 
-tempone dd 0
-temptwo dd 0
-intnumber dd 0
-multitasking_was_enabled dd 0
 regbuf times 20 dd 0
 

@@ -16,84 +16,89 @@
 ;  You should have received a copy of the GNU General Public License
 ;  along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 
-global switch_to_next_process
+global switch_task
 global end_switch
 global end_yield
 global yield
 global switch_task_process_descriptor
-global IsDebug
 
-extern is_multitasking_enabled			
 extern save_kernel_stack_pointer
 extern getpid
 extern switch_address_space
 extern get_kernel_stack_pointer
-extern update_current_process_pointer
 extern set_tss_esp0
-extern find_next_process_to_switch_to
-extern is_current_process_ready_to_switch
-extern reset_current_process_ticks
-extern increment_tick_count
 extern get_kernel_stack_top
-extern increment_process_ticks
-extern get_next_process_pointer
-extern get_current_process_pointer
-extern get_processes_pointer
-extern enablemultitasking
-extern disablemultitasking
 extern GetCurrentProcessFlags
 extern SetCurrentProcessFlags
+extern find_next_process_to_switch_to
+extern update_current_process_pointer
 
 PROCESS_NEW	equ 2
 PROCESS_RUNNING	equ 8
 
 %include "kernelselectors.inc"
-;
-; The functions switch_task_process_descriptor() and yield() should not be called from 
-; an interrupt handler. Call switch_task() instead.
-;
 
-switch_task_process_descriptor:
+;
+; Force switch to next process
+;
+; In: Nothing
+;
+; Returns: Nothing
+;
+yield:
+cli
+
+;
+; Stack format:
+;
+; EIP      
+; CS
+; EFLAGS
+; EAX	
+; ECX
+; EDX
+; EBX
+; Useless ESP
+; EBP
+; ESI
+; EDI
+
+; save eip, cs and eflags in the same way as an interrupt call
+
 push	eax
-
-mov	eax,[esp+4]				; get process descriptor
-mov	[save_descriptor],eax
+mov	eax,[esp+4]				; get eip
+mov	[save_eip],eax				; save it
 pop	eax
 
-; fall through to switch_to_next_process()
+; create fake interrupt return stack
+pushf						; eflags
+push	dword KERNEL_CODE_SELECTOR		; cs
+push	dword [save_eip]			; eip
+pusha						; save registers
+
+mov	[OldContextPointer],esp
+
+call	find_next_process_to_switch_to
+push	eax
+push	dword [OldContextPointer]
+call	switch_task				; switch to next task
+
+end_yield:
+add	esp,8
+
+popa						; restore registers
+iret
 
 ;
 ; Switch task
 ;
-switch_to_next_process:
+switch_task:
 mov	eax,[esp+4]
-mov	[OldContextPointer],eax			; save esp
+mov	[OldContextPointer],eax
+mov	eax,[esp+8]
+mov	[NextProcessPointer],eax
 
-; return if there are no processes
-
-call	get_processes_pointer
-test	eax,eax
-jnz	have_processes
-
-jmp	no_stack_switch
-
-have_processes:
-call	is_multitasking_enabled			
-test	eax,eax 				; return if multitasking is disabled
-jnz	multitasking_enabled
-
-jmp	no_stack_switch
-
-multitasking_enabled:
 inc	byte [0x800b8000]
-
-call	is_current_process_ready_to_switch
-test	eax,eax					; return if process is not ready to switch
-jnz	task_time_slice_finished
-jmp	no_stack_switch
-
-task_time_slice_finished:
-call	reset_current_process_ticks		; reset number of process quantum ticks
 
 call	getpid
 test	eax,eax
@@ -124,23 +129,16 @@ add	esp,4
 ; Switch to next process
 ;
 
-;mov	eax,[save_descriptor]				; get pointer to process entry
-;test	eax,eax						; if not switching to a specific process
-;jnz	have_descriptor					; update process now
-
-call	find_next_process_to_switch_to			; get pointer to next process
-
-;have_descriptor:
-push	eax						; update current process pointer
+push	dword [NextProcessPointer]		; update current process pointer
 call	update_current_process_pointer
 add	esp,4
 
-call	getpid
-test	eax,eax
-jz	no_debug
+;call	getpid
+;test	eax,eax
+;jz	no_debug
 
-xchg	bx,bx
-no_debug:
+;xchg	bx,bx
+;no_debug:
 
 ; switch address space
 
@@ -158,12 +156,8 @@ call	set_tss_esp0
 add	esp,4
 
 call	get_kernel_stack_pointer
-; switch kernel stack
 
-mov	esp,eax
-
-;xor	eax,eax
-;mov	[save_descriptor],eax				; clear descriptor
+mov	esp,eax					; switch kernel stack
  
 ;
 ; Return directly to process. Does *not* return to the caller
@@ -174,13 +168,7 @@ pop	es
 pop	ds
 iret
 
-;
-; No stack switch. Return to caller
-;
-no_stack_switch:
-ret
-
 OldContextPointer dd 0
-save_descriptor dd 0
-IsDebug dd 0
+NextProcessPointer dd 0
+save_eip dd 0
 

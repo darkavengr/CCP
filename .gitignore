@@ -1,2 +1,9 @@
-*.o
+bin/i386/*
+bin/x86_64/*
+obj/i386/*
+obj/x86_64/*
+Makefile
+command/*.o
+mapfiles/*
+kernel/drive.c
 

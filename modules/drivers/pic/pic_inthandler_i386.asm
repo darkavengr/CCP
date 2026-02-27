@@ -119,5 +119,9 @@ pop	es
 pop	ds
 iret						; return
 
+nop
+nop
+nop
+nop
 irqnumber dd 0
 
