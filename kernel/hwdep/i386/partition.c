@@ -98,7 +98,7 @@ for(partition_count=0;partition_count<3;partition_count++) {
 		 	ksnprintf(hdstruct.name,"HD%d",MAX_PATH,hdstruct.drive);
 		 	hdcount++;
 
-		 	add_block_device(&hdstruct);
+		 	if(add_block_device(&hdstruct) == -1) return(-1);	/* add block device */
 	       
 		 	sector=(partition[1].startsectorcylinder & 0x3f);
 		 	cyl=((partition[1].startsectorcylinder & 0xc0) << 2)+partition[partition_count].startcylinder;
@@ -125,7 +125,6 @@ cyl=((partition[partition_count].startsectorcylinder & 0xc0) << 2)+partition[par
 head=partition[partition_count].starthead;
 
 handler(DEVICE_READ,physdrive,(uint64_t) partition[partition_count].firstsector,bootbuf);
-
 
 hdstruct.sectorspertrack=(partition[partition_count].endsectorcylinder & 0x3f);
 hdstruct.numberofheads=partition[partition_count].endhead;

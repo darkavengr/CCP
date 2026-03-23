@@ -1,0 +1,8 @@
+name=Example filesystem driver
+description=Example filesystem driver
+compile_opt=m
+compile_external_module=y
+
+
+
+

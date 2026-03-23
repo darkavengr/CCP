@@ -134,6 +134,8 @@ return(TRUE);
  */
 
 void switch_to_next_task(size_t *savedcontext) {
+PROCESS *nextprocess;
+
 if(get_processes_pointer == NULL) return;	/* no processes */
 
 if(is_multitasking_enabled() == FALSE) return;	/* return if multitasking is disabled */
@@ -142,11 +144,17 @@ if(timer_increment() < get_process_max_tick_count()) return;
 
 if(is_current_process_ready_to_switch() == FALSE) return; /* return if process is not ready to switch */
 
+nextprocess=find_next_process_to_switch_to();	/* find next process */
+
+SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
+nextprocess->flags |= PROCESS_RUNNING;	/* set process running flag for next process */
+
 reset_current_process_ticks();			/* reset number of process quantum ticks */
 
-switch_task(savedcontext,find_next_process_to_switch_to());	/* switch to task */
+switch_task(savedcontext,nextprocess);	/* switch to task */
 
-/* should never be here */
+kprintf_direct("BAAAAAAAAAAAAAAAAD!!!!!!!\n");
+asm("xchg %bx,%bx");
 }
 
 /*
@@ -161,6 +169,9 @@ switch_task(savedcontext,find_next_process_to_switch_to());	/* switch to task */
 
 void switch_task_process_descriptor(size_t *savedcontext,PROCESS *descriptor) {
 if(get_processes_pointer == NULL) return;	/* no processes */
+
+SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
+descriptor->flags |= PROCESS_RUNNING;	/* set process running flag for next process */
 
 switch_task(savedcontext,descriptor);	/* switch to task */
 

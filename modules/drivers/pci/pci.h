@@ -263,6 +263,8 @@
 #define BYTE4_BITMASK 0xFF00
 #define BYTE1_BITMASK 0xFF
 
+#ifndef PCI_H
+#define PCI_H
 typedef struct {
 	uint16_t device_id;
 	uint16_t vendor_id;
@@ -303,7 +305,7 @@ typedef struct {
 	uint8_t subclass;
 	uint8_t progif;
 	uint8_t reserved_id;
-uint8_t bist;
+	uint8_t bist;
 	uint8_t headertype;
 	uint8_t latency_timer;
 	uint8_t cache_line_size;
@@ -367,6 +369,58 @@ typedef struct {
 	uint16_t subsystem_device_id;
 	uint32_t pc_card_legacy_mode_base_address;
 } pci_headertype02;
+#endif
 
-
+uint32_t pci_get_deviceid(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_vendor(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_status(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_command(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_class_code(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_subclass(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_progif(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_revisionid(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar0(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar1(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar2(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar3(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar4(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar5(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_cardbus_cis_pointer(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_subsystemid(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_subsytem_vendor_id(uint32_t bus,uint32_t device,uint32_t function);
+uint16_t pci_get_header_type(uint32_t bus,uint32_t device,uint32_t function);
+uint16_t pci_get_secondary_bus(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_read_word(uint32_t bus,uint32_t device,uint32_t function,uint32_t reg);
+size_t pci_find_device(uint32_t bus,uint32_t device,uint32_t function,void *buf);
+void pci_init(char *initstring);
+size_t add_pci_device(uint16_t bus,uint32_t device,uint32_t function);
+uint32_t pci_write_word(uint32_t bus,uint32_t device,uint32_t function,uint32_t reg,uint32_t data);
+uint32_t pci_put_command(uint32_t bus,uint32_t device,uint32_t function,uint32_t data);
+uint32_t pci_put_status(uint32_t bus,uint32_t device,uint32_t function,uint32_t data);
+uint32_t pci_get_deviceid(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_vendor(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_status(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_command(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_class_code(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_subclass(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_progif(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_revisionid(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar0(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar1(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar2(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar3(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar4(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_bar5(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_cardbus_cis_pointer(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_subsystemid(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_get_subsytem_vendor_id(uint32_t bus,uint32_t device,uint32_t function);
+uint16_t pci_get_header_type(uint32_t bus,uint32_t device,uint32_t function);
+uint16_t pci_get_secondary_bus(uint32_t bus,uint32_t device,uint32_t function);
+uint32_t pci_read_word(uint32_t bus,uint32_t device,uint32_t function,uint32_t reg);
+size_t pci_find_device(uint32_t bus,uint32_t device,uint32_t function,void *buf);
+void pci_init(char *initstring);
+size_t add_pci_device(uint16_t bus,uint32_t device,uint32_t function);
+uint32_t pci_write_word(uint32_t bus,uint32_t device,uint32_t function,uint32_t reg,uint32_t data);
+uint32_t pci_put_command(uint32_t bus,uint32_t device,uint32_t function,uint32_t data);
+uint32_t pci_put_status(uint32_t bus,uint32_t device,uint32_t function,uint32_t data);
 

@@ -1,0 +1,8 @@
+name=Example block driver
+description=Example block driver
+compile_opt=m
+compile_external_module=y
+
+
+
+

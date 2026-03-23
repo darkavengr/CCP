@@ -21,12 +21,12 @@
 ; SCI interrupt handler
 ;
 
-extern PowerButtonMode
+extern GetPowerButtonMode
 
-void sci_interrupt_handler:
+sci_interrupt_handler:
 pusha						; save registers
 
-mov	eax,[PowerButtonMode]			; get power button mode
+call	GetPowerButtonMode			; get power button mode
 
 test	eax,eax					; shutdown
 jz	sci_shutdown

@@ -68,6 +68,15 @@ struct {
 		{"3.5\" 2.88M",15,2,2400 }
 	       };
 
+/*
+ * Initialize block device
+ *
+ * In:  init	Initialization string
+ *
+ * Returns: 0 on success, -1 on failure
+ *
+ */
+
 size_t floppy_init(char *init) {
 BLOCKDEVICE fdstruct;
 size_t floppycount=0;

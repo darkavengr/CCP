@@ -1039,7 +1039,7 @@ return(0);
  */
 
 size_t dir_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]) {
-char *b;
+char *bufptr;
 char *buffer[MAX_PATH];
 size_t dircount=0;
 size_t fcount=0;
@@ -1051,18 +1051,24 @@ if(!*parsebuf[1]) strncpy(parsebuf[1],"*",MAX_PATH);	/* find all by default */
 
 getfullpath(parsebuf[1],buffer);
 
-/* find end of name */
+bufptr=buffer+strlen(buffer);	/* find end of name */
 
-b=buffer+strlen(buffer);
+/* find start of filename */
 
-while(*b-- != '\\') ;;
+while(bufptr != parsebuf[0]) {
+	if(*bufptr == '\\') break;	/* found start of filename */
 
-b=b+2;
-*b=0;
+	bufptr--;
+}
+
+bufptr += 2;
+*bufptr=0;
 
 kprintf_direct(directoryof,buffer);
 	
 memset(&direntry.filename,0,MAX_PATH);
+
+kprintf_direct("parsebuf[1]=%s\n",parsebuf[1]);
 
 if(findfirst(parsebuf[1],&direntry) == -1) {
 	if(getlasterror() != END_OF_DIRECTORY) kprintf_direct("%s\n",kstrerr(getlasterror()));

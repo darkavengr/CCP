@@ -21,6 +21,8 @@ size_t AMLGetFieldLength(uint8_t *amlbuf);
 ACPITreeNode *FindACPINode(char *name,ACPITreeNode *node);
 ACPITreeNode *GetACPIRootNode(void);
 
+AMLOPCODE *GetAMLOpcodeInformation(size_t) opcode);
+
 #ifndef AML_H
 	#define AML_H
 	typedef struct {
@@ -46,11 +48,24 @@ ACPITreeNode *GetACPIRootNode(void);
 	} AMLBUFFER;
 
 	typedef struct {
+		size_t size;
+		AMLTREEVALUE value;
+	} AMLPACKAGE;
+		
+	typedef struct {
 		size_t integer;
-		AMBUFFER buffer;
-		PACKAGE package;
-		FIELDUNIT fieldunit;
+		char *string[ACPI_NAME_MAX];
+		AMLBUFFER buffer;
+		AMLPACKAGE package;
+		AMLFIELDUNIT fieldunit;
 	} AMLTYPE;
-}
+
+	typedef struct {
+		uint8_t opcode;
+		size_t NumberOfParameters;
+		size_t FirstParameterType;
+		size_t SecondParameterType;
+		size_t ResultParameterType;
+	} AMLOPCODE;
 #endif
 

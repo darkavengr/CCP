@@ -1,0 +1,8 @@
+name=Example character driver
+description=Example character driver
+compile_opt=m
+compile_external_module=y
+
+
+
+

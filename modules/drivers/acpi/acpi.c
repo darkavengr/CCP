@@ -275,3 +275,15 @@ MADT *ACPIGetMADT(void) {
 return(madt);
 }
 
+/*
+* Get power button mode
+*
+* In: Nothing
+*
+* Returns: Power button mode
+*
+*/
+size_t GetPowerButtonMode(void) {
+return(PowerButtonMode);
+}
+

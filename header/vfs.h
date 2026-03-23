@@ -61,7 +61,7 @@ typedef struct {
 	size_t (*rmdir)(char *);
 	size_t (*create)(char *);
 	size_t (*chmod)(char *,size_t);
-	size_t (*touch)(char *,size_t,size_t,size_t);
+	size_t (*touch)(char *,TIME *,TIME *,TIME *);
 	size_t (*getstartblock)(char *);
 	struct FILESYSTEM *next;
 	size_t magic_count;

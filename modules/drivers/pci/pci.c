@@ -23,33 +23,6 @@
 
 #define MODULE_INIT pci_init
 
-uint32_t pci_get_deviceid(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_vendor(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_status(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_command(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_class_code(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_subclass(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_progif(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_revisionid(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_bar0(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_bar1(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_bar2(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_bar3(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_bar4(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_bar5(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_cardbus_cis_pointer(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_subsystemid(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_get_subsytem_vendor_id(uint32_t bus,uint32_t device,uint32_t function);
-uint16_t pci_get_header_type(uint32_t bus,uint32_t device,uint32_t function);
-uint16_t pci_get_secondary_bus(uint32_t bus,uint32_t device,uint32_t function);
-uint32_t pci_read_word(uint32_t bus,uint32_t device,uint32_t function,uint32_t reg);
-size_t pci_find_device(uint32_t bus,uint32_t device,uint32_t function,void *buf);
-void pci_init(char *initstring);
-size_t add_pci_device(uint16_t bus,uint32_t device,uint32_t function);
-uint32_t pci_write_word(uint32_t bus,uint32_t device,uint32_t function,uint32_t reg,uint32_t data);
-uint32_t pci_put_command(uint32_t bus,uint32_t device,uint32_t function,uint32_t data);
-uint32_t pci_put_status(uint32_t bus,uint32_t device,uint32_t function,uint32_t data);
-
 /*
  * Initialize PCI
  *

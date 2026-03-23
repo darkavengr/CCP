@@ -107,8 +107,6 @@ switch_task:
 mov	[OldContextPointer],rdi
 mov	[NextProcessPointer],rsi
 
-inc	byte [0x800b8000]
-
 call	getpid
 test	rax,rax
 jnz	skiptest

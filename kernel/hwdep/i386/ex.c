@@ -72,14 +72,14 @@ char *FunctionName=NULL;
 void exception(uint32_t *regs,uint32_t faultnumber,uint32_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
-//if(e == PAGE_FAULT) {
+if(faultnumber == PAGE_FAULT) {
 	/* If there was a page fault, do possible demand paging */
 
-	//if(faultaddress <= get_usermode_stack_base()) {		/* user-mode stack overflow */
-	//	alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
-//		return;	
-	//}
-//}
+	if(faultaddress <= get_usermode_stack_base()) {		/* user-mode stack overflow */
+		alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
+		return;	
+	}
+}
 
 /* If here, it's a fatal exception */
 

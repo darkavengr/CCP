@@ -141,8 +141,13 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	return(-1);
 }
 
+kprintf_direct("kernel base=%X\n",next->kernelstacktop);
+
 next->kernelstackbase=next->kernelstacktop;
 next->kernelstacktop += DEFAULT_KERNEL_STACK_SIZE;			/* top of kernel stack */
+
+kprintf_direct("kernel top=%X\n",next->kernelstacktop);
+//asm("xchg %bx,%bx");
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -247,15 +252,13 @@ if(entrypoint == -1) {					/* can't load executable */
 }
 
 /* initialize kernel stack */
-initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->kernelstacktop-DEFAULT_KERNEL_STACK_SIZE,next->stackpointer);
+initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->stackpointer-DEFAULT_KERNEL_STACK_SIZE,next->stackpointer);
 
 /* create Program Segment Prefix */ 
 
 ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
-
-/* switch back to parent processes stack so the function can return */
 
 switch_address_space(getppid());
 
@@ -291,23 +294,22 @@ oldprocess=getpid();				/* save current process ID */
 /* search through processes then blocked processes */
 
 next=processes;
-last=next;
 	
 while(next != NULL) {
-
 	if(next->pid == process) {		/* found process */
 		process_found=TRUE;
 		break;
 	}
 
+	last=next;
 	next=next->next;
 }
 		
 if(process_found == FALSE) {
 	next=blockedprocesses;
-	last=next;
 	
 	while(next != NULL) {
+		last=next;
 
 		if(next->pid == process) {		/* found process */
 			process_found=TRUE;
@@ -317,7 +319,6 @@ if(process_found == FALSE) {
 		next=next->next;
 	}
 }
-
 
 if(process_found == FALSE) {		/* process not found */
 	setlasterror(INVALID_PROCESS);
@@ -350,15 +351,14 @@ if(processes == NULL) {		/* no processes */
 unlock_mutex(&process_mutex);			/* unlock mutex */
 
 if(process == oldprocess) {	/* killing current process */
-	currentprocess->ticks=currentprocess->maxticks+1;	/* force task to end of timeslot */
+	currentprocess=last;
 
+	kprintf_direct("currentprocess->pid=%X\n",currentprocess->pid);
 	asm("xchg %bx,%bx");
 	yield();			/* switch to next process if killing current process */
-
 }
 
 setlasterror(NO_ERROR);
-unlock_mutex(&process_mutex);			/* unlock mutex */
 return(0);
 }
 
@@ -381,7 +381,7 @@ size_t exit(size_t val) {
 *
 * In: shutdown_status	Shutdown or restart
 *
-* Returns nothing
+* Returns: never returns
 *
 */
 
@@ -528,18 +528,18 @@ switch(highbyte) {
 
   	 
 	case 0x3f:			/* read from file or device */
-		//if(argfour >= KERNEL_HIGH) {		/* invalid argument */
-		//	setlasterror(INVALID_ADDRESS);
-		//	return(-1);
-		//}
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
 
 		return(read((size_t)  argtwo,(char *) argfour,(size_t)  argthree));
 	 
 	case 0x40:			/* write to file or device */
-		//if(argfour >= KERNEL_HIGH) {		/* invalid argument */
-		//	setlasterror(INVALID_ADDRESS);
-		//	return(-1);
-		//}
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
 
 		return(write((size_t)  argtwo,(char *) argfour,(size_t)  argthree));
 	case 0x41:                     /* delete */
@@ -586,6 +586,8 @@ switch(highbyte) {
 			return(-1);
 		}
 
+		asm("xchg %bx,%bx");
+
 		return(findfirst(argfour,argtwo));
 
 	case 0x4f:			/* find next file */
@@ -593,6 +595,8 @@ switch(highbyte) {
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
 		}
+
+		asm("xchg %bx,%bx");
 
 		return(findnext(argfour,argtwo));
 
@@ -1092,8 +1096,8 @@ return;
 /*
 * Send signal to process
 *
-* In: process	Process to send signal to
-	      size_t signal	Signal to send
+* In: process	Process, -1 to send to all processes
+	signal	Signal to send
 *
 * Returns -1 on error or 0 on success
 *
@@ -1101,31 +1105,39 @@ return;
 
 size_t sendsignal(size_t process,size_t signal) {
 PROCESS *next;
+size_t multitasking_was_disabled;
+
 next=processes;
 
-while(next != NULL) {
-	if(next->pid == process) break;
-	next=next->next;
-}
+do {
+	if((next->pid == -1) || (next->pid == process)) {
+		if(next->signalhandler != NULL) {		/* if the process has a signal handler */
+			/* disable multi tasking */
 
-if(next == NULL) {
+			if(is_multitasking_enabled() == TRUE) {
+				multitasking_was_disabled=TRUE;
+				disablemultitasking();
+			}
+
+			signalno=signal;			/* save signal number so that when the process address space changes it won't be lost */
+
+			thisprocess=getpid();			/* get current process */
+
+			switch_address_space(process);			/* switch to process address space */
+
+			next->signalhandler(signalno);		/* call signal handler */
+			switch_address_space(thisprocess);		/* switch back to original address space */
+
+			if(multitasking_was_disabled == TRUE) enablemultitasking();
+		}
+	}
+
+	next=next->next;
+} while((next != NULL) && (process == -1));
+
+if((process != -1) && (next == NULL)) {
 	setlasterror(INVALID_PROCESS);		/* invalid process */
 	return(-1);
-}
-
-
-if(next->signalhandler != NULL) {		/* if the process has a signal handler */
-	disablemultitasking();
-	signalno=signal;			/* save signal number so that when the process address space changes it won't be lost */
-
-	thisprocess=getpid();			/* get current process */
-
-	switch_address_space(process);			/* switch to process address space */
-
-	next->signalhandler(signalno);		/* call signal handler */
-	switch_address_space(thisprocess);		/* switch back to original address space */
-
-	
 }
 
 setlasterror(NO_ERROR);
@@ -1149,12 +1161,12 @@ return;
 /*
 * Call critical error handler
 *
-* In: name    Error message to display
-	      drive	Drive number if invoked on error from block device
-	      flags	Flags
-	      error	Error number
+* In:	name    Error message to display
+	drive	Drive number if invoked on error from block device
+	flags	Flags
+	error	Error number
 *
-* Returns -1 on error or critical error handler on success
+* Returns -1 on error or critical error handler return value on success
 *
 */
 
@@ -1188,7 +1200,7 @@ initialize_mutex(&process_mutex);
 /*
 * Block process
 *
-* In: pid	PID of process to block
+* In: pid	process to block
 *
 * Returns -1 on error or 0 on success
 *
@@ -1267,7 +1279,7 @@ return(-1);
 /*
 * Unblock process
 *
-* In: pid		PID of process to unblock
+* In: pid	process to unblock
 *b
 * Returns -1 on error or 0 on success
 *
@@ -1336,6 +1348,8 @@ return(currentprocess->envptr);
 void save_kernel_stack_pointer(size_t new_stack_pointer) {
 if(currentprocess == NULL) return;
 
+//kprintf_direct("save stack [%X]=%X\n",currentprocess->pid,new_stack_pointer);
+
 currentprocess->kernelstackpointer=new_stack_pointer;
 }
 
@@ -1349,6 +1363,8 @@ currentprocess->kernelstackpointer=new_stack_pointer;
 */
 size_t get_kernel_stack_pointer(void) {
 if(currentprocess == NULL) return(NULL);
+
+//kprintf_direct("get stack [%X]=%X\n",currentprocess->pid,currentprocess->kernelstackpointer);
 
 return(currentprocess->kernelstackpointer);
 }
@@ -1390,7 +1406,7 @@ return(currentprocess->stackbase);
 *
 */
 void set_usermode_stack_base(void *base) {
-if(currentprocess == NULL);
+if(currentprocess == NULL) return;
 
 currentprocess->stackbase=base;
 }
@@ -1698,3 +1714,4 @@ if(currentprocess == NULL) return;
 
 currentprocess->flags=flags;
 }
+

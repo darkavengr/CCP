@@ -1,7 +1,7 @@
 ASM=@asm@
 CC=@cc@
 LD=@ld@
-FILES=test.c
+FILES=exfat.c
 OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
 $(OBJFILES): %.o: %.c

@@ -334,14 +334,29 @@ else if((uint8_t) *++amlptr == ACPI_NAME_OP) {	/* name */
 return(amlptr);
 }
 
+AMLOPCODE *GetAMLOpcodeInformation(uint8_t opcode) {
+AMLOPCODE *next;
+
+next=OpcodeInformation;
+
+do {
+	if(next->opcode == opcode) return(next);		/* found entry */
+
+	next=next->next;
+} while(next->name != NULL) {
+
+return(NULL);
+}
+
 size_t ExecuteAMLMethod(char *MethodName,AMLVALUE *args[6]) {
 ACPITreeNode *MethodNode;
 uint8_t *methodptr;
 size_t count;
 AMLVALUE local[7];
 size_t ProgramCounter=0;
+AMLOPCODE *OpcodeInformation;
 
-MethodNode=FindACPINode(char *MethodNode,GetACPIRootNode());	/* Find method node */
+MethodNode=FindACPINode(MethodNode,GetACPIRootNode());	/* Find method node */
 if(MethodNode == NULL) {		/* not found */
 	SetLastError(INVALID_VALUE);
 	return(-1);
@@ -354,11 +369,87 @@ do {
 	/* execute AML method opcode */
 
 	switch((uint8_t) *methodptr++) {
-		case 0x70:		/* modulus */
+		case 0x70:		/* store */
+			methodsize -= 2;
+
+			WriteTarget(ParseTarget(),ParseSuperName());
+			break;
+
+		case 0x72:		/* add */
+			methodsize -= 3;
+
+			WriteTarget(ParseTarget(),ParseTermArg() + ParseTermArg());
+			break;
+
+		case 0x74:			/* subtract */
+			methodsize -= 3;
+
+			WriteTarget(ParseTarget(),ParseTermArg() - ParseTermArg());
+7			break;
+
+		case 0x75:			/* increment */
+			break;
+
+		case 0x76:			/* decrement */
+			break;
 			
+		case 0x77:			/* multiply */
+			methodsize -= 3;
+
+			WriteTarget(ParseTarget(),ParseTermArg() * ParseTermArg());
+			break;
+
+		case 0x78:			/* divide */
+			methodsize -= 3;
+
+			WriteTarget(ParseTarget(),ParseTermArg() / ParseTermArg());
+			WriteTarget(ParseTarget(),ParseTermArg() % ParseTermArg());
+			break;
+
+		case 0x79:			/* shift left */
+			methodsize -= 3;
+
+			WriteTarget(ParseTarget(),ParseTermArg() << ParseTermArg());
+			break;
+
+		case 0x7A:			/* shift right */
+			methodsize -= 3;
+
+			WriteTarget(ParseTarget(),ParseTermArg() >> ParseTermArg());
+			break;
+
+		case 0x7B:			/* logical and */
+			methodsize -= 3;
+
+			WriteTarget(ParseTarget(),ParseTermArg() & ParseTermArg());
+			break;
+
+		case 0x7D:			/* logical or */
+			methodsize -= 3;
+
+			WriteTarget(ParseTarget(),ParseTermArg() | ParseTermArg());
+			break;
+
+		case 0x7F:			/* logical exclusive or */
+			methodsize -= 3;
+
+			WriteTarget(ParseTarget(),ParseTermArg() ^ ParseTermArg());
+			break;
+
+		case 0x80:			/* logical not */
+			methodsize -= 2;
+
+			WriteTarget(ParseTarget(),!ParseTermArg());
+			break;
+
+		case 0x9D:			/* copy object */
+			WriteSimpleName(ParseTermArg());
+			break;
+
+		case 0x
 	}
 
 } while(count-- > 0);
 
 return(0);
-}	 	
+}

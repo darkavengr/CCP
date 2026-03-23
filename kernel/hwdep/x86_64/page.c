@@ -28,8 +28,6 @@
 #include "memorymanager.h"
 #include "string.h"
 
-size_t signextend(size_t num,size_t bitnum);
-
 struct ppt {
 	uint64_t pml4[512];							/* PML4 */
 	uint64_t pml4phys;							/* Physical address of PML4 */

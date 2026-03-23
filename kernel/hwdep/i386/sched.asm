@@ -54,6 +54,10 @@ cli
 ; EIP      
 ; CS
 ; EFLAGS
+; DS
+; ES
+; GS
+; FS
 ; EAX	
 ; ECX
 ; EDX
@@ -64,7 +68,6 @@ cli
 ; EDI
 
 ; save eip, cs and eflags in the same way as an interrupt call
-
 push	eax
 mov	eax,[esp+4]				; get eip
 mov	[save_eip],eax				; save it
@@ -74,23 +77,30 @@ pop	eax
 pushf						; eflags
 push	dword KERNEL_CODE_SELECTOR		; cs
 push	dword [save_eip]			; eip
+push	ds					; save segment selector registers
+push	es
+push	gs
+push	fs
 pusha						; save registers
-
 mov	[OldContextPointer],esp
 
 call	find_next_process_to_switch_to
 push	eax
 push	dword [OldContextPointer]
+
+xchg	bx,bx
 call	switch_task				; switch to next task
 
-end_yield:
-add	esp,8
-
-popa						; restore registers
-iret
+; shouldn't be here
+ret
 
 ;
 ; Switch task
+;
+; In:	[esp+4]		Pointer to current process context
+;	[esp+8]		New process descriptor
+;
+; Returns: Doesn't return
 ;
 switch_task:
 mov	eax,[esp+4]
@@ -105,6 +115,7 @@ test	eax,eax
 jnz	skiptest
 
 call	GetCurrentProcessFlags			; get process flags
+mov	[ProcessFlags],eax
 
 and	eax,PROCESS_NEW				; get new process flag
 test	eax,eax					; if new process, skip saving kernel stack pointer
@@ -116,10 +127,8 @@ call	save_kernel_stack_pointer		; save kernel stack pointer for current process
 add	esp,4
 
 not_first:
-call	GetCurrentProcessFlags			; get process flags
-
+mov	eax,[ProcessFlags]
 and	eax,~PROCESS_NEW			; clear new process flag
-or	eax,PROCESS_RUNNING			; set process running flag
 
 push	eax
 call	SetCurrentProcessFlags
@@ -133,17 +142,16 @@ push	dword [NextProcessPointer]		; update current process pointer
 call	update_current_process_pointer
 add	esp,4
 
-;call	getpid
-;test	eax,eax
-;jz	no_debug
+call	getpid
+test	eax,eax
+jz	no_debug
 
-;xchg	bx,bx
-;no_debug:
+xchg	bx,bx
+no_debug:
 
 ; switch address space
 
 call	getpid
-
 push	eax
 call	switch_address_space
 add	esp,4
@@ -155,11 +163,10 @@ push	eax
 call	set_tss_esp0
 add	esp,4
 
+; switch kernel stack
 call	get_kernel_stack_pointer
+mov	esp,eax
 
-mov	esp,eax					; switch kernel stack
- 
-;
 ; Return directly to process. Does *not* return to the caller
 popa						; restore registers
 pop	gs
@@ -171,4 +178,5 @@ iret
 OldContextPointer dd 0
 NextProcessPointer dd 0
 save_eip dd 0
+ProcessFlags dd 0
 

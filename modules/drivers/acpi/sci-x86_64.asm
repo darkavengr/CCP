@@ -21,7 +21,7 @@
 ; SCI interrupt handler
 ;
 
-extern PowerButtonMode
+extern GetPowerButtonMode
 
 sci_interrupt_handler:
 push	rax						; save registers
@@ -37,16 +37,15 @@ push	r13
 push	r14
 push	r15
 
-mov	rsi,PowerButtonMode
-mov	eax,[rsi]				; get power button mode
+call	GetPowerButtonMode			; get power button mode
 
-test	eax,eax					; shutdown
+test	rax,rax					; shutdown
 jz	sci_shutdown
 
-cmp	eax,1					; restart
+cmp	rax,1					; restart
 jz	sci_restart
 
-cmp	eax,2					; sleep
+cmp	rax,2					; sleep
 jz	sci_sleep
 
 jmp	sci_return
