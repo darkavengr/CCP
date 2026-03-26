@@ -6,9 +6,10 @@
 ACPITreeNode *ACPIRoot=NULL;
 ACPITreeNode *ACPICurrentScope=NULL;
 ACPITreeNode *ACPIParentScope=NULL;
-char *InvalidNestedTerm="acpi: Invalid nested AML term %s in %s block\n";
-char *ACPITermOutsideBlock="acpi: AML %s term outside of DEVICE or SCOPE block\n";
+char *InvalidNestedTerm="acpi: Invalid nested term %s in %s block\n";
+char *ACPITermOutsideBlock="acpi: %s term outside of DEVICE or SCOPE block\n";
 char *ACPITerms[] = { "Device","Scope","Processor","ThermalZone","PowerResource","Method" };
+uint8_t *methodptr;
 
 /*
 * Get root node
@@ -350,10 +351,7 @@ return(NULL);
 
 size_t ExecuteAMLMethod(char *MethodName,AMLVALUE *args[6]) {
 ACPITreeNode *MethodNode;
-uint8_t *methodptr;
-size_t count;
 AMLVALUE local[7];
-size_t ProgramCounter=0;
 AMLOPCODE *OpcodeInformation;
 
 MethodNode=FindACPINode(MethodNode,GetACPIRootNode());	/* Find method node */
@@ -363,28 +361,28 @@ if(MethodNode == NULL) {		/* not found */
 }
 
 methodptr=MethodNode->MethodPtr;		/* point to method data */
-count=MethodNode->MethodSize;
 
 do {
+	ExecuteAMLInstruction(methodptr);	/* execute AML instruction */
+} while(methodptr != (methodptr + MethodNode->MethodSize));
+
+return(0);
+}
+
+size_t ExecuteAMLInstruction(uint8_t *methodptr) {
 	/* execute AML method opcode */
 
 	switch((uint8_t) *methodptr++) {
 		case 0x70:		/* store */
-			methodsize -= 2;
-
-			WriteTarget(ParseTarget(),ParseSuperName());
+			WriteTarget(ParseTarget(methodptr++),ParseSuperName());
 			break;
 
 		case 0x72:		/* add */
-			methodsize -= 3;
-
-			WriteTarget(ParseTarget(),ParseTermArg() + ParseTermArg());
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) + ParseTermArg(methodptr++));
 			break;
 
 		case 0x74:			/* subtract */
-			methodsize -= 3;
-
-			WriteTarget(ParseTarget(),ParseTermArg() - ParseTermArg());
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) - ParseTermArg(methodptr++));
 7			break;
 
 		case 0x75:			/* increment */
@@ -394,62 +392,140 @@ do {
 			break;
 			
 		case 0x77:			/* multiply */
-			methodsize -= 3;
-
-			WriteTarget(ParseTarget(),ParseTermArg() * ParseTermArg());
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) * ParseTermArg(methodptr++));
 			break;
 
 		case 0x78:			/* divide */
-			methodsize -= 3;
-
-			WriteTarget(ParseTarget(),ParseTermArg() / ParseTermArg());
-			WriteTarget(ParseTarget(),ParseTermArg() % ParseTermArg());
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) / ParseTermArg(methodptr++));
 			break;
 
 		case 0x79:			/* shift left */
-			methodsize -= 3;
-
-			WriteTarget(ParseTarget(),ParseTermArg() << ParseTermArg());
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) << ParseTermArg(methodptr++));
 			break;
 
 		case 0x7A:			/* shift right */
-			methodsize -= 3;
-
-			WriteTarget(ParseTarget(),ParseTermArg() >> ParseTermArg());
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) >> ParseTermArg(methodptr++));
 			break;
 
 		case 0x7B:			/* logical and */
-			methodsize -= 3;
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) & ParseTermArg(methodptr++));
+			break;
 
-			WriteTarget(ParseTarget(),ParseTermArg() & ParseTermArg());
+		case 0x7C:			/* logical nand */
+			WriteTarget(ParseTarget(methodptr++),~(ParseTermArg(methodptr++) & ParseTermArg(methodptr++)));
 			break;
 
 		case 0x7D:			/* logical or */
-			methodsize -= 3;
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) | ParseTermArg(methodptr++));
+			break;
 
-			WriteTarget(ParseTarget(),ParseTermArg() | ParseTermArg());
+		case 0x7E:			/* logical nor */
+			WriteTarget(ParseTarget(methodptr++),~(ParseTermArg(methodptr++) | ParseTermArg(methodptr++)));
 			break;
 
 		case 0x7F:			/* logical exclusive or */
-			methodsize -= 3;
-
-			WriteTarget(ParseTarget(),ParseTermArg() ^ ParseTermArg());
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) ^ ParseTermArg(methodptr++));
 			break;
 
 		case 0x80:			/* logical not */
-			methodsize -= 2;
+			count -= 2;
 
-			WriteTarget(ParseTarget(),!ParseTermArg());
+			WriteTarget(ParseTarget(methodptr++),~ParseTermArg(methodptr++));
+			break;
+
+		case 0x86:			/* modulus */
+			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) % ParseTermArg(methodptr++));
 			break;
 
 		case 0x9D:			/* copy object */
-			WriteSimpleName(ParseTermArg());
+			WriteSimpleName(ParseTermArg(methodptr++));
 			break;
 
-		case 0x
+		case 0xA0:			/* if */
+			IfStatement(methodptr);
+			break;
+
+		case 0xA1:			/* else */
+			ElseStatement(methodptr);
+			break;
+
+		case 0xA2:			/* while */
+			WhileOp(methodptr);
+			break;
+
+		case 0xA3:			/* no-op */
+			break;
+
 	}
 
-} while(count-- > 0);
+/*
+* Recursively find ACPI node
+*
+* In: methodptr	pointer to current AML address
+*
+* Returns: Nothing
+*
+*/
+void IfStatement(uint8_t *methodptr) {
+size_t pkglength;
+size_t FoundOp=FALSE;
 
-return(0);
+pkglength=(size_t) *methodptr++;			/* get package length */
+
+if(EvaluatePredicate(methodptr++) == TRUE) {	/* if predicate is true */
+	do {
+		ExecuteAMLInstruction(methodptr);
+	} while(methodptr != (methodptr + pkglengfth));
 }
+else						/* predicate is false */
+{
+	do {
+		if(((uint8_t) *methodptr == AML_ELSE_OP) && (FoundElse == FALSE)) FoundElse=TRUE;	/* found ElseOp */
+
+		if(FoundElse == TRUE) ExecuteAMLInstruction(methodptr);
+
+	} while(methodptr != (methodptr + pkglengfth));
+
+return;
+}
+
+/*
+* AML while operation
+*
+* In: methodptr		Pointer to current AML address
+*
+* Returns: Nothing
+*
+*/
+void WhileOp(uint8_t *methodptr) {
+size_t pkglength;
+uint8_t predicate;
+
+pkglength=(size_t) *methodptr++;			/* get package length */
+predicate=*methodptr++;
+
+while(EvaluatePredicate(predicate) == TRUE) {	/* if predicate is true */
+	do {
+		if((uint8_t) *methodptr == AML_BREAK_OP) {	/* BreakOp */
+			return;
+		}
+		else if((uint8_t) *methodptr == AML_CONTINUE_OP) {	/* ContinueOp */
+			methodptr++;
+			continue;
+		}
+		else
+		{
+			ExecuteAMLInstruction(methodptr);
+		}
+	} while(methodptr != (methodptr + pkglengfth));
+}
+
+return;
+}
+
+size_t ParseTarget(uint8_t *methodptr) {
+uint8_t target;
+
+target=(uint8_t) *methodptr;		/* get target */
+
+if(target >

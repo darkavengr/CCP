@@ -14,6 +14,9 @@
 #define ACPI_NAME_MAX		255
 #define AML_STRING_SEGMENT_SIZE	4
 
+#define AML_BREAK_OP		0xA5
+#define AML_CONTINUE_OP		0x9F
+
 uint8_t *ParseAML(uint8_t *aml_data);
 size_t AddSubNode(size_t type,void *dataptr,size_t datalen);
 void GetAMLString(uint8_t *amlbuf,char *buf);

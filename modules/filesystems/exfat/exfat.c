@@ -228,7 +228,7 @@ while(1) {
 			for(count=0;count < FileEntry.entrycount;count++) {
 				memcpy(&FilenameEntry,blockptr,EXFAT_ENTRY_SIZE);
 
-				AppendUnicodeNameFromFilenameEntry(&FilenameEntry,FilenamePtr);		/* get filename entry */
+				unicode_to_ascii(&FilenameEntry.name,FilenamePtr,EXFAT_ENTRY_SIZE);		/* get filename entry */
 				FilenamePtr += EXFAT_ENTRY_SIZE;
 			}
 
@@ -522,7 +522,7 @@ if((write_file_record.currentpos >= write_file_record.filesize) || \
 					return(-1);
 				}
 				else if(newblock) {	/* file can be extended in bitmap */
-		 			newblock=exfat_find_free_bitmap_entry(write_file_record.drive);
+		 			newblock=exfat_find_free_bitmap_entries(write_file_record.drive,1);
 					if(newblock == -1) {
 						kernelfree(newblock);
 						return(-1);
@@ -624,7 +624,7 @@ while(write_size > 0) {
 
 updatehandle(handle,&write_file_record);			/* update file handle data */
 
-exfat_update_file_entry(write_file_record.drive,&write_file_record);	/* update file entry */
+exfat_update_file_entry(&write_file_record);	/* update file entry */
 
 setlasterror(NO_ERROR);
 return(bytesdone);						/* return number of bytes */
@@ -722,7 +722,7 @@ while(1) {
 		{
 			memcpy(&FilenameEntry,blockptr,EXFAT_ENTRY_SIZE);
 
-			AppendFilenameEntryFromUnicodeName(FilenamePtr,&FilenameEntry);		/* put filename entry */
+			ascii_to_unicode(FilenamePtr,FilenameEntry.name,EXFAT_ENTRY_SIZE);	/* put filename entry */
 			memcpy(blockptr,&FilenameEntry,EXFAT_ENTRY_SIZE);
 
 			FilenamePtr += EXFAT_NAME_SEGMENT_LENGTH;
@@ -733,7 +733,7 @@ while(1) {
 	}
 	
 	if(BlockUpdated == TRUE) {		/* write block if it was updated */
-		if(dirblock == (buf.findlastblock-2)) SetExFATDirtyFlag();		/* set dirty flag for first write */
+		if(dirblock == (buf.findlastblock-2)) SetExFATDirtyFlag(splitbuf_old.drive);		/* set dirty flag for first write */
 
 		if(blockio(DEVICE_WRITE,splitbuf_old.drive,((uint64_t) dirblock),blockbuf) == -1) { /* write directory block */
 			kernelfree(blockbuf);
@@ -813,7 +813,7 @@ memset(buf.filename,0,MAX_PATH);
 while(1) {
 	BlockUpdated=FALSE;
 
-	blockptr=blockbuf+(dirblock*EXFAT_ENTRY_SIZE);	/* point to next file */
+	blockptr=blockbuf+(dirblock*EXFAT_ENTRY_SIZE);	/* point to entry */
 
 	if(blockio(DEVICE_READ,splitbuf.drive,((uint64_t) dirblock),blockbuf) == -1) { /* read directory block */
 		kernelfree(blockbuf);
@@ -846,7 +846,7 @@ while(1) {
 	}
 	
 	if(BlockUpdated == TRUE) {		/* write block if it was updated */
-		if(dirblock == (buf.findlastblock-2)) SetExFATDirtyFlag();		/* set dirty flag for first write */
+		if(dirblock == (buf.findlastblock-2)) SetExFATDirtyFlag(splitbuf.drive);		/* set dirty flag for first write */
 
 		if(blockio(DEVICE_WRITE,splitbuf.drive,((uint64_t) dirblock),blockbuf) == -1) { /* write directory block */
 			kernelfree(blockbuf);
@@ -882,7 +882,7 @@ if(BlockUpdated == TRUE) {
 
 		if(exfat_update_fat(splitbuf.drive,(uint64_t) unlink_block,0) == -1) return(-1);
 
-		exfat_clear_bitmap_entry(splitbuf.drive,previous_block);		/* remove entry from bitmap */
+		exfat_update_bitmap_entry(splitbuf.drive,previous_block,0);		/* remove entry from bitmap */
  		unlink_block=exfat_get_next_block(splitbuf.drive,previous_block);	/* get next block */
 	} while(unlink_block != (uint64_t) 0xFFFFFFFFFFFFFFFF);
 }
@@ -892,7 +892,6 @@ kernelfree(blockbuf);
 setlasterror(NO_ERROR);  
 return(NO_ERROR);				/* no error */
 }
-
 
 /*
  * Create directory
@@ -1028,7 +1027,7 @@ do {
  			FileInfoEntry.entrytype=EXFAT_ENTRY_INFO;
 			FileInfoEntry.flags=0;
 			FileInfoEntry.filenamelength=strlen(splitbuf.filename);	/* filename length */
-			FileInfoEntry.filenamehash=hashfilename(splitbuf.filename);	/* hash of filename */
+			FileInfoEntry.filenamehash=exfat_hash_filename(splitbuf.filename,strlen(splitbuf.filename));	/* hash of filename */
 			FileInfoEntry.validfilesize=0;
 
 			if(type == _DIR) {			/* create subdirectory's block */
@@ -1064,7 +1063,7 @@ do {
 					FilenameEntry.entrytype=EXFAT_ENTRY_FILENAME;
 					FilenameEntry.entrycount=count;
 
-					AppendFilenameEntryFromName(SourceFilenamePtr,DestFilenamePtr);		/* get filename entry */
+					ascii_to_unicode(SourceFilenamePtr,DestFilenamePtr,EXFAT_ENTRY_SIZE);		/* get filename entry */
 
 					SourceFilenamePtr += EXFAT_NAME_SEGMENT_LENGTH;
 					DestFilenamePtr += EXFAT_NAME_SEGMENT_LENGTH;
@@ -1218,7 +1217,7 @@ while(1) {
 }
 
 if(BlockUpdated == TRUE) {		/* write block if it was updated */
-	if(dirblock == (buf.findlastblock-2)) SetExFATDirtyFlag();		/* set dirty flag for first write */
+	if(dirblock == (buf.findlastblock-2)) SetExFATDirtyFlag(splitbuf.drive);		/* set dirty flag for first write */
 
 	if(blockio(DEVICE_WRITE,splitbuf.drive,((uint64_t) dirblock),blockbuf) == -1) { /* write0 directory block */
 		kernelfree(blockbuf);
@@ -1345,7 +1344,7 @@ while(1) {
 }
 
 if(BlockUpdated == TRUE) {		/* write block if it was updated */
-	if(dirblock == (buf.findlastblock-2)) SetExFATDirtyFlag();		/* set dirty flag for first write */
+	if(dirblock == (buf.findlastblock-2)) SetExFATDirtyFlag(splitbuf.drive);		/* set dirty flag for first write */
 
 	if(blockio(DEVICE_WRITE,splitbuf.drive,((uint64_t) dirblock),blockbuf) == -1) { /* write directory block */
 		kernelfree(blockbuf);
@@ -1648,7 +1647,7 @@ return(0);
  * Returns: -1 on error, start block on success
  *
  */
-size_t exfat_get_start_block(size_t drive,char *name) {
+uint64_t exfat_get_start_block(size_t drive,char *name) {
 uint64_t rb;
 size_t count;
 SPLITBUF splitbuf;
@@ -1726,7 +1725,7 @@ for(tokencount=1;tokencount < tc;tokencount++) {
 			}
 			else if((uint8_t) *blockptr ==  EXFAT_ENTRY_FILENAME) {				/* filename */
 				memcpy(&FilenameEntry,blockptr,EXFAT_ENTRY_SIZE);
-				AppendUnicodeNameFromFilenameEntry(FilenamePtr,&FilenameEntry.name);		/* get filename entry */
+				unicode_to_ascii(FilenamePtr,&FilenameEntry.name,EXFAT_ENTRY_SIZE);		/* get filename entry */
 			
 				FilenamePtr += EXFAT_NAME_SEGMENT_LENGTH;
 
@@ -1781,7 +1780,7 @@ return(-1);
  */
 
 
-size_t exfat_get_next_block(size_t drive,uint64_t block) {
+uint64_t exfat_get_next_block(size_t drive,uint64_t block) {
 uint8_t *buf;
 uint64_t blockno;
 uint64_t entry;
@@ -1794,10 +1793,10 @@ if(exfat_detect_change(drive) == -1) return(-1);
 
 if(getblockdevice(drive,&blockdevice) == -1) return(-1);
 
+superblock_info=blockdevice.superblock;		/* point to superblock_info */
+
 buf=kernelalloc(1 << superblock_info->BytesPerBlockShift);
 if(buf == NULL) return(-1);
-
-superblock_info=blockdevice.superblock;		/* point to superblock_info */
 
 entryno=block*8;				
 
@@ -1881,7 +1880,7 @@ BLOCKDEVICE blockdevice;
 
 getblockdevice(drive,&blockdevice);		/* get device */ 
 
-bootbuf=kernelalloc(MAX_BLOCK_SIZE);				/* allocate buffer */
+bootbuf=kernelalloc(EXFAT_MAX_BLOCK_SIZE);				/* allocate buffer */
 if(bootbuf == NULL) return(-1); 
 
 
@@ -1902,5 +1901,183 @@ memcpy(blockdevice.superblock,bootbuf,sizeof(ExFATBootSector));		/* update super
 update_block_device(drive,&blockdevice);			/* update block device information */
 
 return(0);
+}
+
+/*
+ * Set ExFAT volume dirty flag
+ *
+ * In:  drive	Drive
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+size_t SetExFATDirtyFlag(size_t drive) {
+BLOCKDEVICE blockdevice;
+ExFATBootSector superblock_info;
+void *buf;
+
+if(getblockdevice(drive,&blockdevice) == -1) return(-1);
+
+buf=kernelalloc(EXFAT_MAX_BLOCK_SIZE);
+if(buf == NULL) return(-1);
+
+if(blockio(DEVICE_READ,drive,0,buf) == -1) {			/* read superblock */
+	kernelfree(buf);
+	return(-1);
+}
+
+memcpy(&superblock_info,buf,sizeof(ExFATBootSector));
+
+superblock_info.VolumeFlags |= VOLUME_FLAG_VOLUME_DIRTY;
+
+memcpy(buf,&superblock_info,sizeof(ExFATBootSector));
+
+if(blockio(DEVICE_WRITE,drive,0,buf) == -1) {			/* write superblock */
+	kernelfree(buf);
+	return(-1);
+}
+
+return(0);
+}
+
+/*
+ * Update file directory entry
+ *
+ * In: entry	File record holding file information
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+size_t exfat_update_file_entry(FILERECORD *entry) {
+SPLITBUF splitbuf;
+char *blockbuf;
+char *blockptr;
+char *fullpath[MAX_PATH];
+size_t BlockUpdated=FALSE;
+ExFATFileEntry FileEntry;
+ExFATFileInfoEntry FileInfoEntry;
+ExFATBootSector *superblock_info;
+size_t dirblock;
+size_t direntrycount;
+size_t nextdirblock;
+FILERECORD findbuf;
+
+getfullpath(entry->filename,fullpath);			/* get full path of filename */
+
+splitname(fullpath,&splitbuf);		/* split name */
+
+if(findfirst(fullpath,&findbuf) == -1) {		/* get file entry */
+	setlasterror(FILE_NOT_FOUND);
+	return(-1);
+}
+
+blockbuf=kernelalloc((1 << superblock_info->BytesPerBlockShift));			/* allocate block buffer */
+if(blockbuf == NULL) {
+	setlasterror(NO_MEM);
+	return(-1);
+}
+			
+dirblock=(superblock_info->ClusterHeapOffset+findbuf.findlastblock)-2;	/* get block number relative to cluster heap */
+
+/* search through directory until filename found */
+
+while(1) {
+	BlockUpdated=FALSE;
+
+	blockptr=blockbuf+(dirblock*EXFAT_ENTRY_SIZE);	/* point to entry */
+
+	if(blockio(DEVICE_READ,splitbuf.drive,((uint64_t) dirblock),blockbuf) == -1) { /* read directory block */
+		kernelfree(blockbuf);
+		return(-1);
+	}
+
+	for(direntrycount=0;direntrycount < (1 << superblock_info->BytesPerBlockShift) / EXFAT_ENTRY_SIZE;direntrycount++) {
+	
+		if((uint8_t) *blockptr ==  EXFAT_ENTRY_FILE) {				/* file entry */
+			memcpy(&FileEntry,blockptr,EXFAT_ENTRY_SIZE);
+			
+			FileEntry.attributes=entry->attribs;
+			FileEntry.create_time_date=entry->create_time_date.seconds | (entry->create_time_date.minutes << 5) | \
+						   (entry->create_time_date.hours << 11) | (entry->create_time_date.day << 16) | \
+						   (entry->create_time_date.month << 21) | ((entry->create_time_date.year - 1980) << 11);
+
+			FileEntry.last_written_time_date=entry->last_written_time_date.seconds | (entry->last_written_time_date.minutes << 5) | \
+						   (entry->last_written_time_date.hours << 11) | (entry->last_written_time_date.day << 16) | \
+						   (entry->last_written_time_date.month << 21) | ((entry->last_written_time_date.year - 1980) << 11);
+
+			FileEntry.last_accessed_time_date=entry->last_accessed_time_date.seconds | (entry->last_accessed_time_date.minutes << 5) | \
+						   (entry->last_accessed_time_date.hours << 11) | (entry->last_accessed_time_date.day << 16) | \
+						   (entry->last_accessed_time_date.month << 21) | ((entry->last_accessed_time_date.year - 1980) << 11);
+
+			memcpy(blockptr,&FileEntry,EXFAT_ENTRY_SIZE);			
+
+			BlockUpdated=TRUE;
+		}
+		else if((uint8_t) *blockptr ==  EXFAT_ENTRY_INFO) {				/* file information */
+			memcpy(&FileInfoEntry,blockptr,EXFAT_ENTRY_SIZE);
+			
+			FileInfoEntry.startblock=entry->startblock;
+			FileInfoEntry.filesize=entry->filesize;
+
+			memcpy(blockptr,&FileEntry,EXFAT_ENTRY_SIZE);
+
+			BlockUpdated=TRUE;
+		}
+		
+		blockptr += EXFAT_ENTRY_SIZE;	
+	}
+	
+	if(BlockUpdated == TRUE) {		/* write block if it was updated */
+		if(dirblock == (findbuf.findlastblock-2)) SetExFATDirtyFlag(splitbuf.drive);		/* set dirty flag for first write */
+
+		if(blockio(DEVICE_WRITE,splitbuf.drive,((uint64_t) dirblock),blockbuf) == -1) { /* write directory block */
+			kernelfree(blockbuf);
+			return(-1);
+		}
+
+		kernelfree(blockbuf);
+		return(0);
+	}
+
+	if(direntrycount >= (1 << superblock_info->BytesPerBlockShift) / EXFAT_ENTRY_SIZE) {		/* at end of block */
+		nextdirblock=exfat_get_next_block(splitbuf.drive,nextdirblock);	/* get next block */		
+
+		if(nextdirblock == (uint64_t) 0xFFFFFFFFFFFFFFFF) {		/* at end of directory */
+			kernelfree(blockbuf);
+
+			setlasterror(END_OF_DIRECTORY);
+			return(-1);
+		}
+
+		dirblock=(superblock_info->ClusterHeapOffset+nextdirblock)-2;	/* get block number relative to cluster heap */
+	}
+
+}
+
+kernelfree(blockbuf);
+
+setlasterror(NO_ERROR);
+return(NO_ERROR);				/* no error */
+}
+
+/*
+ * Calculate filename hash
+ *
+ * In:  filename	Filename
+ *	length		Length of filename
+ *
+ * Returns: -1 on error, 0 on success
+ *
+ */
+uint16_t exfat_hash_filename(char *filename,size_t length) {
+uint16_t hash;
+size_t count;
+char *nameptr=filename;
+
+for(count=0;count < length * 2;count++) {
+	hash=(hash << 15) | (hash >> 1) + (char) *nameptr++;
+}
+
+return(hash);
 }
 

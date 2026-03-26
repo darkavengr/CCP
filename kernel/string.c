@@ -681,7 +681,7 @@ return(tokencount);
 }
 
 /*
- * Raises integer to power
+ * Raise integer to power
  *
  * In:	n				Base number
  *	e				Exponent
@@ -700,7 +700,7 @@ return(num);
 }
 
 /*
- * Sign-extends number
+ * Sign extend number
  *
  * In:	number				Number to sign-extend
  *	bitnum				Bit number to sign-extend from
@@ -720,17 +720,40 @@ for(signextendcount=0;signextendcount != (sizeof(num)*8)-bitnum;signextendcount+
 return((size_t) num);
 }
 
+/*
+ * Round number up
+ *
+ * In:	num		Number to round up
+ *	multiple	Multiple to round up to
+ */
+
 size_t round_up(size_t num,size_t multiple) {
 if(num < multiple) return(multiple);
 
 return(num+(multiple-(num % multiple)));
 }
 
+/*
+ * Round number down
+ *
+ * In:	num		Number to round down
+ *	multiple	Multiple to round down to
+ */
+
 size_t round_down(size_t num,size_t multiple) {
 if(num < multiple) return(num);
 
 return((num / multiple)*multiple);
 }
+
+/*
+ * Create formatted string
+ *
+ * In:	buf	Output buffer
+ *	format	Format strings. Same as kprintf_direct()
+ *	size	Buffer length
+	...	Parameters
+ */
 
 size_t ksnprintf(char *buf,char *format,size_t size, ...) {
 va_list args;
@@ -849,5 +872,39 @@ while(*formatptr != 0) {
 va_end(args);
 
 return(count);
+}
+
+/*
+ * Convert ASCII string to Unicode
+ *
+ * In:	str	ASCII string
+ *	strout	Output buffer
+ */
+void ascii_to_unicode(char *str,char *strout,size_t length) {
+while(length-- > 0) {
+	if((char) *str != 0) break;	/* at end */
+
+	*strout++=*str++;
+	str++;		/* skip continuation byte */
+}
+
+return;
+}
+
+/*
+ * Convert Unicode to ASCII string
+ *
+ * In:	str	Unicode string
+ *	strout	Output buffer
+ */
+void unicode_to_ascii(char *str,char *strout,size_t length) {
+while(length-- > 0) {
+	if((char) *str != 0) break;	/* at end */
+
+	*strout++=*str++;
+	strout++;		/* skip continuation byte */
+}
+
+return;
 }
 

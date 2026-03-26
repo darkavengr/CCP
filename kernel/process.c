@@ -141,13 +141,8 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	return(-1);
 }
 
-kprintf_direct("kernel base=%X\n",next->kernelstacktop);
-
 next->kernelstackbase=next->kernelstacktop;
 next->kernelstacktop += DEFAULT_KERNEL_STACK_SIZE;			/* top of kernel stack */
-
-kprintf_direct("kernel top=%X\n",next->kernelstacktop);
-//asm("xchg %bx,%bx");
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication

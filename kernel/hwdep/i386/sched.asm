@@ -142,12 +142,12 @@ push	dword [NextProcessPointer]		; update current process pointer
 call	update_current_process_pointer
 add	esp,4
 
-call	getpid
-test	eax,eax
-jz	no_debug
+;call	getpid
+;test	eax,eax
+;jz	no_debug
 
-xchg	bx,bx
-no_debug:
+;xchg	bx,bx
+;no_debug:
 
 ; switch address space
 

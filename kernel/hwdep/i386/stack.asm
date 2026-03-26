@@ -119,10 +119,6 @@ call	save_kernel_stack_pointer
 add	esp,4
 
 ; Set ESP0 field in the TSS to ensure that the kernel stack is switched to next time the CPU switches to ring 0.
-
-push	esi
-call	set_tss_esp0
-add	esp,4
 ret
 
 get_stack_pointer:

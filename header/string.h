@@ -33,4 +33,6 @@ void tolowercase(char *string,char *out);
 char *strtrunc(char *str,int newsize);
 size_t round_down(size_t num,size_t multiple);
 size_t round_up(size_t num,size_t multiple);
+void ascii_to_unicode(char *str,char *strout,size_t length);
+void unicode_to_ascii(char *str,char *strout,size_t length);
 

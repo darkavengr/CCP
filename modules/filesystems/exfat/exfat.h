@@ -1,7 +1,7 @@
-#define VOLUME_FLAG_ACTIVEFAT		1
-#define VOLUME_FLAG_VOLUMEDIRTY		2
-#define VOLUME_FLAG_MEDIAFAILURE	4
-#define VOLUME_FLAG_CLEARTOZERO		8
+#define VOLUME_FLAG_ACTIVE_FAT		1
+#define VOLUME_FLAG_VOLUME_DIRTY	2
+#define VOLUME_FLAG_MEDIA_FAILURE	4
+#define VOLUME_FLAG_CLEAR_TO_ZERO	8
 
 #define EXFAT_ENTRY_FILE	0x85
 #define EXFAT_ENTRY_INFO	0xC0
@@ -22,7 +22,7 @@
 #define EXFAT_NO_FAT_CHAIN		2
 #define EXFAT_FILE_CONTIGUOUS		4
 
-#define MAX_BLOCK_SIZE			32768
+#define EXFAT_MAX_BLOCK_SIZE			32768
 
 #ifndef EXFAT_H
 	#define EXFAT_H
@@ -109,8 +109,11 @@ uint64_t exfat_find_free_bitmap_entries(size_t drive,size_t numberofentries);
 size_t exfat_update_bitmap_entry(size_t drive,size_t entry,size_t SetOrClear);
 size_t exfat_get_bitmap_entry(size_t drive,size_t entry);
 size_t exfat_convert_bitmap_to_fat_chain(size_t drive,size_t startentry);
-size_t exfat_get_start_block(size_t drive,char *name);
-size_t exfat_get_next_block(size_t drive,uint64_t block);
+uint64_t exfat_get_start_block(size_t drive,char *name);
+uint64_t exfat_get_next_block(size_t drive,uint64_t block);
 size_t exfat_update_fat(size_t drive,uint64_t block,uint64_t blockentry);
 size_t exfat_detect_change(size_t drive);
+size_t SetExFATDirtyFlag(size_t drive);
+size_t exfat_update_file_entry(FILERECORD *entry);
+uint16_t exfat_hash_filename(char *filename,size_t length);
 

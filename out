@@ -1,0 +1,5 @@
+/home/matt/programs/ccp/obj/i386/exfat.o: In function `exfat_create_int':
+exfat.c:(.text+0x23ba): undefined reference to `hashfilename'
+collect2: error: ld returned 1 exit status
+make[1]: *** [all] Error 1
+make: *** [kernel] Error 2
