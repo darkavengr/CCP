@@ -3,11 +3,11 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-#define PROCESS_NEW	2
-#define	PROCESS_READY	4
-#define PROCESS_RUNNING	8
-#define	PROCESS_BLOCKED	16
-#define PROCESS_FORCE_SWITCH	32
+#define PROCESS_NEW		2
+#define	PROCESS_READY		4
+#define PROCESS_RUNNING		8
+#define	PROCESS_BLOCKED		16
+#define PROCESS_TERMINATED	32
 
 #define PROCESS_FLAG_BACKGROUND		1
 
@@ -23,7 +23,7 @@
 
 #define ENVIROMENT_SIZE 32768
 
-typedef struct { 
+typedef struct PROCESS { 
 	size_t pid;
 	size_t ticks;	
 	size_t maxticks;
@@ -43,6 +43,7 @@ typedef struct {
 	size_t stackbase;
 	size_t lasterror;
 	char *envptr;	
+	struct PROCESS *prev;
 	struct PROCESS *next;
 }  __attribute__((packed)) PROCESS;
 
@@ -107,4 +108,5 @@ size_t get_usermode_stack_top(void);
 void set_usermode_stack_base(void *base);
 size_t GetCurrentProcessFlags(void);
 void SetCurrentProcessFlags(size_t flags);
+PROCESS *GetPreviousProcessPointer(void);
 

@@ -319,14 +319,9 @@ if(strncmp(command,"\n",MAX_PATH) == 0) return(0);	/* blank line */
 b=command+strlen(command)-1;
 if(*b == '\n') *b=0;		/* remove newline */
 
+memset(parsebuf,0,COMMAND_TOKEN_COUNT*MAX_PATH);
+
 tc=tokenize_line(command,parsebuf," \t");	
-
-//kprintf_direct("command=%s\n",command);
-//kprintf_direct("tc=%d\n",tc);
-
-//for(count=0;count<tc;count++) {
-//	 kprintf_direct("parsebuf[%d]=%s\n",count,parsebuf[count]);
-//}
 
 touppercase(parsebuf[0],parsebuf[0]);		/* convert to uppercase */
 	

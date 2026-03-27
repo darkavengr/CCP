@@ -87,12 +87,9 @@ mov	[OldContextPointer],esp
 call	find_next_process_to_switch_to
 push	eax
 push	dword [OldContextPointer]
-
-xchg	bx,bx
 call	switch_task				; switch to next task
 
 ; shouldn't be here
-ret
 
 ;
 ; Switch task

@@ -196,8 +196,6 @@ mov	edx,[esp+8]
 mov	ecx,[esp+12]
 
 mov	ah,0x3f
-nop
-nop
 int	0x21
 ret
 

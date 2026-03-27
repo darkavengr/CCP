@@ -86,6 +86,8 @@ if(processes == NULL) {  					/* first process */
 	lastprocess=processes_end;			/* save current end */
 
 	next=processes;
+
+	processes_end->prev=NULL;			/* save pointer to previous entry */
 }
 else								/* not first process */
 {
@@ -100,6 +102,8 @@ else								/* not first process */
 
 	lastprocess=processes_end;			/* save current end */
 	next=processes_end->next;		/* get a copy of end, so that the list is not affected if any errors occur */
+
+	processes_end->next->prev=processes_end;	/* save pointer to previous entry */
 }
 
 getfullpath(filename,fullpath);		/* get full path to executable */
@@ -272,19 +276,15 @@ return(0);
 *
 * In: process	Process ID
 *
-* Returns -1 on error or 0 on success.
+* Returns -1 on error. Doesn't return on sucess
 *
 */
 
 size_t kill(size_t process) {
-PROCESS *last;
 PROCESS *next;
-size_t oldprocess;
-size_t process_found=FALSE;
+PROCESS *last;
 
 lock_mutex(&process_mutex);			/* lock mutex */
-
-oldprocess=getpid();				/* save current process ID */
 
 /* search through processes then blocked processes */
 
@@ -292,69 +292,33 @@ next=processes;
 	
 while(next != NULL) {
 	if(next->pid == process) {		/* found process */
-		process_found=TRUE;
-		break;
+		next->flags=PROCESS_TERMINATED;
+
+		unlock_mutex(&process_mutex);			/* unlock mutex */
+		yield();			/* switch to next process */
 	}
 
-	last=next;
 	next=next->next;
 }
-		
-if(process_found == FALSE) {
-	next=blockedprocesses;
+
+/* search through block processes list */
+
+next=blockedprocesses;
 	
-	while(next != NULL) {
-		last=next;
-
-		if(next->pid == process) {		/* found process */
-			process_found=TRUE;
-			break;
-		}
-
-		next=next->next;
+while(next != NULL) {
+	if(next->pid == process) {		/* found process */	
+		RemoveProcess(GetPreviousProcessPointer(),get_current_process_pointer(),get_next_process_pointer());			/* remove process */
+		unlock_mutex(&process_mutex);			/* unlock mutex */
+		return(0);
 	}
+
+	next=next->next;
 }
 
-if(process_found == FALSE) {		/* process not found */
-	setlasterror(INVALID_PROCESS);
-
-	unlock_mutex(&process_mutex);			/* unlock mutex */
-	return(-1);
-}
-
-/* remove process */
-
-if(next == processes) {			/* start */
-	processes=next->next;
-}
-else if(next->next == NULL) {		/* end */
-	last->next=NULL;
-}
-else						/* middle */
-{
-	last->next=next->next;	
-}		
-
-kernelfree(next);		/* free process entry */
-freepages(oldprocess);		/* release paging structures */
-
-if(processes == NULL) {		/* no processes */
-	kprintf_direct("kernel: No more processes running, system will shut down\n");
-	shutdown(_SHUTDOWN);
-}
+setlasterror(INVALID_PROCESS);
 
 unlock_mutex(&process_mutex);			/* unlock mutex */
-
-if(process == oldprocess) {	/* killing current process */
-	currentprocess=last;
-
-	kprintf_direct("currentprocess->pid=%X\n",currentprocess->pid);
-	asm("xchg %bx,%bx");
-	yield();			/* switch to next process if killing current process */
-}
-
-setlasterror(NO_ERROR);
-return(0);
+return(-1);
 }
 
 /*
@@ -581,8 +545,6 @@ switch(highbyte) {
 			return(-1);
 		}
 
-		asm("xchg %bx,%bx");
-
 		return(findfirst(argfour,argtwo));
 
 	case 0x4f:			/* find next file */
@@ -590,8 +552,6 @@ switch(highbyte) {
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
 		}
-
-		asm("xchg %bx,%bx");
 
 		return(findnext(argfour,argtwo));
 
@@ -1275,7 +1235,7 @@ return(-1);
 * Unblock process
 *
 * In: pid	process to unblock
-*b
+*
 * Returns -1 on error or 0 on success
 *
 */
@@ -1462,6 +1422,19 @@ return(processes);
 }
 
 /*
+* Set pointer to processes list
+*
+* In:  New pointer to processes list
+*
+* Returns: Nothing
+*
+*/
+
+void set_processes_pointer(PROCESS *newprocess) {
+processes=newprocess;
+}
+
+/*
 * Find first process
 *
 * In: processbuf	Pointer to buffer to hold process information
@@ -1522,7 +1495,7 @@ return(currentprocess);
 }
 
 /*
-* next process pointer
+* Get next process pointer
 *
 * In:  Nothing
 *
@@ -1708,5 +1681,45 @@ void SetCurrentProcessFlags(size_t flags) {
 if(currentprocess == NULL) return;
 
 currentprocess->flags=flags;
+}
+
+/*
+* Get previous process pointer
+*
+* In:  Nothing
+*
+* Returns: process flags
+*
+*/
+
+PROCESS *GetPreviousProcessPointer(void) {
+if(currentprocess == NULL) return(NULL);
+
+return(currentprocess->prev);
+}
+
+/*
+* Remove process
+*
+* In:	prev	Previous process
+*	current	Current process
+	next	Next process
+*
+* Returns: Nothing
+*
+*/
+void RemoveProcess(PROCESS *prev,PROCESS *current,PROCESS *next) {
+if(current == get_processes_pointer()) {			/* start */
+	set_processes_pointer(next);
+}
+else if(next == NULL) {		/* end */
+	current->next=NULL;
+}
+else						/* middle */
+{
+	prev->next=next->next;	
+}		
+
+return;
 }
 
