@@ -32,19 +32,63 @@ char *batchfileptr;
 size_t batchmode;
 
 /*
- * Run external command
+ * Run external command from PATH
  *
- * In: char *filename		Filename to run
-	      char *args		Arguments
-	      unsigned long backg	Background/foreground flag
+ * In:  filename	Filename to run
+	args		Arguments
+	backg		Background/foreground flag
  *
  * Returns 0 on success, -1 on error
  *
  */
 
-unsigned long runcommand(char *filename,char *args,unsigned long backg) {
-size_t errorlevel;
-char *b;
+size_t run_command_path(char *command,char *args,size_t flags) {
+char *sourceptr;
+char *destbuf;
+char *destptr;
+char *fullpath[MAX_PATH];
+char *pathbuf[MAX_PATH];
+char *pathptr;
+
+/* run command in current directory */
+
+getfullpath(command,fullpath);		/* get full path to executable */
+if(runcommand(fullpath,args,flags) == 0) return(0);	/* command was successful */
+
+/* run command in path directories */
+
+if(GetVariableValue("PATH",destbuf) == 0) {
+	destptr=destbuf;
+
+	/* copy directory from path */
+	do {
+		if((char) *pathptr == ';') {	/* at end of directory name */
+			*destptr++ += '\\';
+			strncpy(destptr,command,MAX_PATH);	/* add filename */
+
+			if(runcommand(destbuf,args,flags) == 0) return(0);	/* command was successful */
+		}
+
+		*destptr++=*pathptr++;
+	} while((char) *pathptr != 0);
+}
+
+return(-1);
+}
+
+/*
+ * Run external command
+ *
+ * In:  filename	Filename to run
+	args		Arguments
+	backg		Background/foreground flag
+ *
+ * Returns 0 on success, -1 on error
+ *
+ */
+
+size_t runcommand(char *filename,char *args,size_t backg) {
+char *filenameptr;
 char *buf[MAX_PATH];
 char *ext;
 
@@ -52,17 +96,17 @@ touppercase(filename,filename);				/* to upper case */
 
 /* if it has extension */
 
-b=filename;
-while(*b != 0) {
-	if(*b == '.') {		/* found extension */
-		ext=b;
+filenameptr=filename;
+while((char) *filenameptr != 0) {
+	if((char) *filenameptr == '.') {		/* found extension */
+		ext=filenameptr;			/* save pointer to filename extension */
 		ext++;
 
-		if(*b++ == 'R' && *b++ == 'U' && *b++ == 'N') {
+		if(((char) *filenameptr++ == 'R') && ((char) *filenameptr++ == 'U') && ((char) *filenameptr++ == 'N')) {
 			if(exec(filename,args,backg) == -1) {
 	     			itoa(getlasterror(),buf);
 
-				setvar("ERRORLEVEL",buf);
+				SetVariableValue("ERRORLEVEL",buf);
 
 	    			return(-1);
 	   		}
@@ -70,50 +114,50 @@ while(*b != 0) {
 	   		return(0);
 		}
 
-	 	b=ext;
+	 	filenameptr=ext;
 
-	  	if(*b++ == 'B' && *b++ == 'A' && *b++ == 'T') {
-	    		if(dobatchfile(filename,args,backg) == -1) {
+		if(((char) *filenameptr++ == 'B') && ((char) *filenameptr++ == 'A') && ((char) *filenameptr++ == 'T')) {
+	    		if(run_batch_file(filename,args,backg) == -1) {
 	     			itoa(getlasterror(),buf);
 
-	     			setvar("ERRORLEVEL",buf);
+	     			SetVariableValue("ERRORLEVEL",buf);
 	     			return(-1);
+			}
 		}
 	       
 		return(0);
 	}
 
-
-	break;
+	filenameptr++;
 }
 
-b++;
-}
 /* run .run then .bat */
 
-b=filename;
-b += strlen(filename);		/* point to next */
+filenameptr=filename;
+filenameptr += strlen(filename);		/* point to next */
+ext=filenameptr;
 
-*b='.';
-*++b='R';
-*++b='U';
-*++b='N';
+*filenameptr='.';
+*++filenameptr='R';
+*++filenameptr='U';
+*++filenameptr='N';
 
-if(exec(filename,args,backg) == -1) {
-	b=ext;
+if(exec(filename,args,backg) == -1) {		/* if it's not a binary executable, add .BAT extension and attempt to run it */
+	filenameptr=ext;
 
- 	*b='.';
- 	*++b='B';
- 	*++b='A';
- 	*++b='T';
+	*filenameptr='.';
+	*++filenameptr='B';
+	*++filenameptr='A';
+	*++filenameptr='T';
 
-	if(dobatchfile(filename,args,backg) == -1) return(-1);
+	if(run_batch_file(filename,args,backg) == -1) return(-1);
 }
 
+return(0);
 }
 
 /*
- * Run batchfile
+ * Run batch file
  *
  * In: filename	Filename of batch file to run
 	      args	Arguments
@@ -122,7 +166,7 @@ if(exec(filename,args,backg) == -1) {
  *  Returns 0 on success, -1 on error
  *
  */
-int dobatchfile(char *filename,char *args,size_t flags) {
+size_t run_batch_file(char *filename,char *args,size_t flags) {
 size_t handle;
 char *buf[MAX_PATH];
 char *batchfileargs[MAX_PATH];
@@ -132,17 +176,13 @@ size_t count;
 char c;
 size_t filesize;
 
-if(flags == RUN_BACKGROUND) {				/* run batch file in background */
-	if(getvar("COMSPEC",buf) == -1) {			/* get command interpreter */
+if(flags & RUN_BACKGROUND) {				/* run batch file in background */
+	if(GetVariableValue("COMSPEC",buf) == -1) {			/* get command interpreter */
 		kprintf_direct("command: Missing COMSPEC variable\n");
 		return(-1);
 	}
 	
-	/* create arguments to command interpreter */
-
-	strncpy(batchfileargs,filename,MAX_PATH);
-	strncat(batchfileargs," ",MAX_PATH);
-	strncat(batchfileargs,args,MAX_PATH);
+	ksnprintf(batchfileargs,"%s %s",MAX_PATH,filename,args);	/* create arguments to command interpreter */
 
 	return(exec(buf,batchfileargs,flags));
 }
@@ -155,15 +195,15 @@ parsecount=tokenize_line(args,parsebuf," \t");
 /* get name of batch file */
 
 getfullpath(filename,buf);
-setvar("%0",buf);
+SetVariableValue("%0",buf);
 
-for(count=1;count<parsecount;count++) {
+for(count=1;count < parsecount;count++) {
 	bufptr=buf;
 
 	*bufptr++='%';			/* %0 %1 etc */
 	itoa(count,bufptr);
 
-	setvar(buf,parsebuf[count]);
+	SetVariableValue(buf,parsebuf[count]);
 }
 
 filesize=getfilesize(handle);
@@ -188,7 +228,7 @@ while(*batchfileptr != 0) {
 	*bufptr++=*batchfileptr++;
 
 	if(c == 0xA) {			/* if at end of line */
-		doline(buf);
+		ExecuteCommand(buf);
 
 		if(get_batch_mode() == TERMINATING) {	/* batch job was killed */
 			close(handle);

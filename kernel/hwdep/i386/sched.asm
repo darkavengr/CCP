@@ -162,6 +162,8 @@ add	esp,4
 
 ; switch kernel stack
 call	get_kernel_stack_pointer
+
+;xchg	bx,bx
 mov	esp,eax
 
 ; Return directly to process. Does *not* return to the caller

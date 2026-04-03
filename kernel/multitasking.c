@@ -25,9 +25,6 @@
 
 size_t multitaskingenabled=FALSE;
 
-void switch_to_next_task(size_t *savedcontext);
-void switch_task_process_descriptor(size_t *savedcontext,PROCESS *descriptor);
-
 /*
  * Disable multitasking
  *
@@ -136,9 +133,10 @@ return(TRUE);
 void switch_to_next_task(size_t *savedcontext) {
 PROCESS *nextprocess;
 
-if(get_processes_pointer() == NULL) return;	/* no processes */
-
+if((get_processes_pointer() == NULL)|| (get_current_process_pointer() == NULL)) return;	/* no processes */
 if(is_multitasking_enabled() == FALSE) return;	/* return if multitasking is disabled */
+
+//kprintf_direct("current=%X\n",get_current_process_pointer());
 
 /* If process is marked for deletion, remove it */
 
@@ -182,8 +180,7 @@ if(get_processes_pointer == NULL) return;	/* no processes */
 SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
 descriptor->flags |= PROCESS_RUNNING;	/* set process running flag for next process */
 
-RemoveProcess(GetPreviousProcessPointer(),get_current_process_pointer(),get_next_process_pointer());			/* remove process */
-
+asm("xchg %bx,%bx");
 switch_task(savedcontext,descriptor);	/* switch to task */
 
 /* should never be here */

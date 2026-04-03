@@ -39,14 +39,14 @@
  * 
  */
 
-unsigned long setvar(char *name,char *val) {
+size_t SetVariableValue(char *name,char *val) {
 char *varptr=getenv();
 size_t diff;
-char *b;
+char *bufptr;
 char *buffer[MAX_PATH];
 
 while((size_t) *varptr != NULL) {
-	b=varptr;
+	bufptr=varptr;
 
 	/* copy variable and val */
 
@@ -56,7 +56,7 @@ while((size_t) *varptr != NULL) {
 	  		break;
 	  	}
 
-	  	*b++=*varptr++;
+	  	*bufptr++=*varptr++;
 	}
 
 	if(strncmpi(buffer,name,MAX_PATH) == 0) {	/* variable found */
@@ -101,7 +101,7 @@ return(0);
 }
 
 /*
- * Get variable
+ * Get variable value
  *
  * In: name	Variable name
  *     buf	Buffer for value
@@ -110,14 +110,14 @@ return(0);
  * 
  */
 
-unsigned long getvar(char *name,char *buf) {
+size_t  GetVariableValue(char *name,char *buf) {
 char *varptr=getenv();
 char *varname[MAX_PATH];
 char *nameptr;
 
 while((size_t) *varptr != NULL) {
 
- /* copy variable and val */
+ /* copy variable and value7 */
 
 nameptr=varname;
 

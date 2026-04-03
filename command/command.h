@@ -38,12 +38,13 @@
 #define stdout			1
 #define stderr			2
 
-unsigned long doline(char *buf);
-unsigned long copyfile(char *source,char *destination);
-unsigned long getvar(char *name,char *buf);
-unsigned long runcommand(char *fname,char *args,unsigned long backg);
-unsigned long setvar(char *name,char *val);
-unsigned long doline(char *buf);
+size_t ExecuteCommand(char *command);
+size_t copyfile(char *source,char *destination);
+size_t GetVariableValue(char *name,char *buf);
+size_t runcommand(char *fname,char *args,size_t backg);
+size_t run_command_path(char *fname,char *args,size_t backg);
+size_t SetVariableValue(char *name,char *val);
+size_t ExecuteCommand(char *buf);
 size_t set_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 size_t if_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 size_t cd_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
@@ -60,14 +61,16 @@ size_t dir_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 size_t ps_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 size_t kill_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 size_t goto_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+size_t backg_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
+size_t ver_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 size_t critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
 size_t rem_command(size_t tc,char *parsebuf[MAX_PATH][MAX_PATH]);
 void signal_handler(size_t signalno);
 size_t critical_error_handler(char *name,size_t drive,size_t flags,size_t error);
 void write_error(void);
-unsigned long runcommand(char *filename,char *args,unsigned long backg);
 char *get_buf_pointer(void);
 size_t get_batch_mode(void);
 void set_batch_mode(size_t bm);
 void set_current_batchfile_pointer(char *b);
+size_t run_batch_file(char *filename,char *args,size_t flags);
 

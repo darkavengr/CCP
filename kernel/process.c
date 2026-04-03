@@ -259,7 +259,7 @@ ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
 
-switch_address_space(getppid());
+switch_address_space(getppid());		/* switch back to parent process addres space */
 
 if(oldprocess != NULL) currentprocess=oldprocess;	/* restore current process pointer */
 reset_current_process_ticks();		/* force new process to run */
@@ -307,7 +307,7 @@ next=blockedprocesses;
 	
 while(next != NULL) {
 	if(next->pid == process) {		/* found process */	
-		RemoveProcess(GetPreviousProcessPointer(),get_current_process_pointer(),get_next_process_pointer());			/* remove process */
+		RemoveProcess(get_current_process_pointer());			/* remove process */
 		unlock_mutex(&process_mutex);			/* unlock mutex */
 		return(0);
 	}
@@ -1163,69 +1163,61 @@ initialize_mutex(&process_mutex);
 
 size_t blockprocess(size_t pid) {
 PROCESS *next;
-PROCESS *blockednext;
-PROCESS *last;
+PROCESS *savenext;
+
+lock_mutex(&process_mutex);			/* lock mutex */
 
 next=processes;
 	
 while(next != NULL) {
-	last=next;
-
 	if(next->pid == pid) {			/* found process */
 		/* add to list of blocked processes */
 
 		if(blockedprocesses == NULL) {
 			blockedprocesses=kernelalloc(sizeof(PROCESS));
 			if(blockedprocesses == NULL) {
+				unlock_mutex(&process_mutex);			/* unlock mutex */
+
 				setlasterror(NO_MEM);
 				return(-1);
 			}
 
-			blockednext=blockedprocesses;
 			blockedprocesses_end=blockedprocesses;
+
+			memcpy(blockedprocesses_end,next,sizeof(PROCESS));	/* copy to blocked process list */
+			blockedprocesses_end->prev=NULL;			/* adjust prev pointer */
+			blockedprocesses_end->next=NULL;
 		}
 		else
 		{
 			blockedprocesses_end->next=kernelalloc(sizeof(PROCESS));
 			if(blockedprocesses_end->next == NULL) {
+				unlock_mutex(&process_mutex);			/* unlock mutex */
+
 				setlasterror(NO_MEM);
 				return(-1);
 			}
 
+			memcpy(blockedprocesses_end->next,next,sizeof(PROCESS));	/* copy to blocked process list */
+			blockedprocesses_end->next->prev=blockedprocesses_end;			/* adjust prev pointer */
+
 			blockedprocesses_end=blockedprocesses_end->next;
+
+			blockedprocesses_end->next=NULL;
 		}
 
-		memcpy(blockedprocesses_end,next,sizeof(PROCESS));	/* copy to blocked process list */
+		RemoveProcess(currentprocess);	/* remove process from processes list */
 
-		/* remove process from processes list */
-
-		if(next == processes) {			/* at start of list */
-			processes=processes->next;
-
-			currentprocess=processes->next;
-		}
-		else if(next->next == NULL) {		/* at end of list */
-			kernelfree(last->next);
-
-			last->next=NULL;
-
-			currentprocess=last;
-		}
-		else {
-			last->next=next->next;
-			kernelfree(next);
-
-			currentprocess=last->next;
-		}
+		unlock_mutex(&process_mutex);			/* unlock mutex */
 
 		setlasterror(NO_ERROR);
-	
-		if(pid == getpid()) yield();		/* switch to next process if blocking current process */
 		return(0);
 	}
 	
 	next=next->next;
 }
+
+unlock_mutex(&process_mutex);			/* unlock mutex */
 
 setlasterror(INVALID_PROCESS);		/* invalid process */
 return(-1);
@@ -1242,38 +1234,60 @@ return(-1);
 
 size_t unblockprocess(size_t pid) {
 PROCESS *next;
-PROCESS *last;
+
+lock_mutex(&process_mutex);			/* lock mutex */
 
 next=blockedprocesses;
 	
 while(next != NULL) {
-	last=next;
-
-	if(next->pid == pid) {			/* found process */
+	if(next->pid == pid) {			/* found process */		
 		/* copy to end of processes list */
 
-		processes_end->next=kernelalloc(sizeof(PROCESS));
-		if(processes_end->next == NULL) {
-			setlasterror(NO_MEM);
-			return(-1);
+		if(processes == NULL) {
+			processes=kernelalloc(sizeof(PROCESS));
+			if(processes == NULL) {
+				unlock_mutex(&process_mutex);			/* lock mutex */
+
+				setlasterror(NO_MEM);
+				return(-1);
+			}
+
+			memcpy(processes,next,sizeof(PROCESS));	/* copy to blocked process list */
+		
+			processes_end=processes;
+			processes_end->prev=NULL;		/* adjust prev pointer */
+			processes_end->next=NULL;
+		}
+		else
+		{
+			processes_end->next=kernelalloc(sizeof(PROCESS));
+			if(processes_end->next == NULL) {
+				unlock_mutex(&process_mutex);			/* unlock mutex */
+
+				setlasterror(NO_MEM);
+				return(-1);
+			}
+
+			memcpy(processes_end->next,next,sizeof(PROCESS));	/* copy to blocked process list */
+			processes_end->next->prev=processes_end;		/* adjust prev pointer */
+
+			processes_end=processes_end->next;
+			processes_end->next=NULL;
 		}
 
-		processes_end=processes_end->next;
-	
-		memcpy(processes_end,next,sizeof(PROCESS));	/* copy to blocked process list */
+		unlock_mutex(&process_mutex);			/* unlock mutex */
 
-		/* remove process from processes list */
-		last->next=next->next;
-		kernelfree(next);
-	
+		RemoveProcess(next);		/* remove process from processes list */
+
+		if(currentprocess == NULL) currentprocess=processes;
 		setlasterror(NO_ERROR);	
-
-		//switch_task_process_descriptor(processes_end);		/* switch to unblocked process */
 		return(0);
 	}
 	
 	next=next->next;
 }
+
+unlock_mutex(&process_mutex);			/* unlock mutex */
 
 setlasterror(INVALID_PROCESS);		/* invalid process */
 return(-1);
@@ -1281,7 +1295,7 @@ return(-1);
 
 
 /*
-* Get enviroment variables address
+* Get environment variables address
 *
 * In:  Nothing
 *
@@ -1708,17 +1722,16 @@ return(currentprocess->prev);
 * Returns: Nothing
 *
 */
-void RemoveProcess(PROCESS *prev,PROCESS *current,PROCESS *next) {
-if(current == get_processes_pointer()) {			/* start */
-	set_processes_pointer(next);
+void RemoveProcess(PROCESS *current) {
+if(current == processes) {			/* start */
+	processes=processes->next;
 }
-else if(next == NULL) {		/* end */
-	current->next=NULL;
+else if(current->next == NULL) {		/* end */
+	current->prev=NULL;
 }
-else						/* middle */
-{
-	prev->next=next->next;	
-}		
+else {						/* middle */
+	current->prev=current->next;
+}
 
 return;
 }
