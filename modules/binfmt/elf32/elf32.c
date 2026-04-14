@@ -37,6 +37,7 @@ size_t handle;
 uint32_t entry;
 size_t type;
 Elf32_Phdr *phbuf;
+Elf32_Phdr *phptr;
 char *fullname[MAX_PATH];
 size_t count;
 Elf32_Ehdr elf_header;
@@ -94,13 +95,15 @@ if(read(handle,phbuf,(elf_header.e_phentsize*elf_header.e_phnum)) == -1) {
 	return(-1);
 }
 
+phptr=phbuf;
+
 /*
  * go through program headers and load them if they are PT_LOAD */
 
-for(count=0;count<elf_header.e_phnum;count++) {
-	if(phbuf->p_type == PT_LOAD) {			/* if segment is loadable */
+for(count=0;count < elf_header.e_phnum;count++) {
+	if(phptr->p_type == PT_LOAD) {			/* if segment is loadable */
 
-		if(phbuf->p_vaddr >= KERNEL_HIGH) {		/* invalid address */
+		if(phptr->p_vaddr >= KERNEL_HIGH) {		/* invalid address */
 			setlasterror(INVALID_EXECUTABLE);
 
 			kernelfree(phbuf);
@@ -110,9 +113,9 @@ for(count=0;count<elf_header.e_phnum;count++) {
 
 		seek(handle,phbuf->p_offset,SEEK_SET);			/* seek to position */
 
-		alloc_int(ALLOC_NORMAL,getpid(),phbuf->p_memsz,phbuf->p_vaddr);
+		alloc_int(ALLOC_NORMAL,getpid(),phptr->p_memsz,phptr->p_vaddr);
 
-		if(read(handle,phbuf->p_vaddr,phbuf->p_filesz) == -1) {	/* read error */
+		if(read(handle,phptr->p_vaddr,phptr->p_filesz) == -1) {	/* read error */
 			if(getlasterror() != END_OF_FILE) {		
 				kernelfree(phbuf);
 	  
@@ -123,7 +126,7 @@ for(count=0;count<elf_header.e_phnum;count++) {
 
 	}
 
-	phbuf++;		/* point to next */
+	phptr++;		/* point to next */
 }
 
 close(handle);

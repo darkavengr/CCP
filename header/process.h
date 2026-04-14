@@ -1,7 +1,5 @@
 #include "pagesize.h"
-
-#ifndef PROCESS_H
-#define PROCESS_H
+#include "memorymanager.h"
 
 #define PROCESS_NEW		2
 #define PROCESS_RUNNING		4
@@ -22,43 +20,48 @@
 
 #define ENVIROMENT_SIZE 32768
 
-typedef struct PROCESS { 
-	size_t pid;
-	size_t ticks;	
-	size_t maxticks;
-	struct PROCESS *blockedprocess;		
-	uint8_t filename[MAX_PATH];		
-	uint8_t args[MAX_PATH];		
-	size_t parentprocess;
-	size_t (*errorhandler)(char *,size_t,size_t,size_t);
-	size_t (*signalhandler)(size_t);
-	uint8_t currentdirectory[MAX_PATH];		
-	size_t childprocessreturncode;			
-	size_t flags;
-	size_t kernelstackpointer;
-	size_t kernelstacktop;
-	size_t kernelstackbase;
-	size_t stackpointer;
-	size_t stackbase;
-	size_t lasterror;
-	char *envptr;	
-	struct PROCESS *prev;
-	struct PROCESS *next;
-}  __attribute__((packed)) PROCESS;
+#ifndef PROCESS_H
+	#define PROCESS_H
 
-typedef struct {
-	uint8_t slack[127]; 
-	uint8_t cmdlinesize;
-	uint8_t commandline[127];			/* command line */
-} __attribute__((packed)) PSP;
+	typedef struct PROCESS { 
+		size_t pid;
+		size_t ticks;	
+		size_t maxticks;
+		struct PROCESS *blockedprocess;		
+		uint8_t filename[MAX_PATH];		
+		uint8_t args[MAX_PATH];		
+		size_t parentprocess;
+		size_t (*errorhandler)(char *,size_t,size_t,size_t);
+		size_t (*signalhandler)(size_t);
+		uint8_t currentdirectory[MAX_PATH];		
+		size_t childprocessreturncode;			
+		size_t flags;
+		size_t kernelstackpointer;
+		size_t kernelstacktop;
+		size_t kernelstackbase;
+		size_t stackpointer;
+		size_t stackbase;
+		size_t lasterror;
+		char *envptr;
+		HEAPENTRY *heapaddress;
+		HEAPENTRY *heapend;
+		struct PROCESS *prev;
+		struct PROCESS *next;
+	}  __attribute__((packed)) PROCESS;
 
-typedef struct {
-	 uint8_t name[MAX_PATH];
-	 uint8_t magic[MAX_PATH];
-	 size_t magicsize;
-	 size_t (*callexec)(char *);
-	 struct EXECUTABLEFORMAT *next;
-} EXECUTABLEFORMAT;
+	typedef struct {
+		uint8_t slack[127]; 
+		uint8_t cmdlinesize;
+		uint8_t commandline[127];			/* command line */
+	} __attribute__((packed)) PSP;
+	
+	typedef struct {
+		 uint8_t name[MAX_PATH];
+		 uint8_t magic[MAX_PATH];
+		 size_t magicsize;
+		 size_t (*callexec)(char *);
+		 struct EXECUTABLEFORMAT *next;
+	} EXECUTABLEFORMAT;
 #endif
 
 size_t exec(char *filename,char *argsx,size_t flags);

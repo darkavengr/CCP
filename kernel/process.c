@@ -131,8 +131,8 @@ next->next=NULL;
 
 /* Create kernel stack for process */
 
-next->kernelstacktop=kernelalloc(DEFAULT_KERNEL_STACK_SIZE);	/* allocate stack */
-if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
+next->kernelstackbase=kernelalloc(DEFAULT_KERNEL_STACK_SIZE);	/* allocate stack */
+if(next->kernelstackbase == NULL) {	/* return if unable to allocate */
 	currentprocess=oldprocess;	/* restore current process pointer */
 
 	switch_address_space(getppid());
@@ -145,8 +145,7 @@ if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
 	return(-1);
 }
 
-next->kernelstackbase=next->kernelstacktop;
-next->kernelstacktop += DEFAULT_KERNEL_STACK_SIZE;			/* top of kernel stack */
+next->kernelstacktop=next->kernelstackbase+DEFAULT_KERNEL_STACK_SIZE;			/* top of kernel stack */
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -209,7 +208,7 @@ if(saveenv != NULL) {
 stackp=alloc_int(ALLOC_NORMAL,getpid(),DEFAULT_USER_STACK_SIZE,(END_OF_LOWER_HALF-DEFAULT_USER_STACK_SIZE-ENVIROMENT_SIZE));
 if(stackp == NULL) {
 	currentprocess=oldprocess;	/* restore current process pointer */
-	kernelfree(next->kernelstacktop);	/* free kernel stack */
+	kernelfree(next->kernelstackbase);	/* free kernel stack */
 
 	if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
 
@@ -232,7 +231,10 @@ entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
 if(entrypoint == -1) {					/* can't load executable */
-	kernelfree(next->kernelstacktop);	/* free kernel stack */
+	kprintf_direct("exec() kernelfree=%X\n",next->kernelstacktop);
+	asm("xchg %bx,%bx");
+
+	kernelfree(next->kernelstackbase);	/* free kernel stack */
 
 	if(lastprocess != NULL) {
 		kernelfree(lastprocess->next);	/* remove process from list */
@@ -249,6 +251,30 @@ if(entrypoint == -1) {					/* can't load executable */
 
 	return(-1);
 }
+
+/* create process heap */
+
+currentprocess->heapaddress=alloc_int(ALLOC_NORMAL,getpid(),INITIAL_HEAP_SIZE,-1);	/* allocate process heap */
+if(currentprocess->heapaddress == NULL) {		/* can't allocate */
+	kernelfree(next->kernelstackbase);	/* free kernel stack */
+
+	if(lastprocess != NULL) {
+		kernelfree(lastprocess->next);	/* remove process from list */
+
+		lastprocess->next=NULL;		/* remove process */
+	}
+
+	processes_end=lastprocess;
+	currentprocess=lastprocess;	/* restore current process */
+
+	switch_address_space(getppid());
+
+	freepages(highest_pid_used);
+
+	return(-1);
+}
+
+currentprocess->heapend=currentprocess->heapaddress+INITIAL_HEAP_SIZE;		/* end of process's heap */
 
 /* initialize kernel stack */
 initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->stackpointer-DEFAULT_KERNEL_STACK_SIZE,next->stackpointer);
@@ -1734,5 +1760,59 @@ else {						/* middle */
 }
 
 return;
+}
+
+
+/*
+* Get heap address
+*
+* In: nothing
+*
+* Returns: Heap address
+*
+*/
+
+HEAPENTRY *GetUserHeapAddress(void) {
+return(currentprocess->heapaddress);
+}
+
+
+/*
+* Get user heap end
+*
+* In: nothing
+*
+* Returns: Heap size
+*
+*/
+
+HEAPENTRY *GetUserHeapEnd(void) {
+return(currentprocess->heapend);
+}
+
+/*
+* Set user heap end
+*
+* In: User heap end
+*
+* Returns: Nothing
+*
+*/
+
+void SetUserHeapEnd(HEAPENTRY *end) {
+currentprocess->heapend=end;
+}
+
+/*
+* Set user heap address
+*
+* In: User heap address
+*
+* Returns: Nothing
+*
+*/
+
+void SetUserHeapAddress(HEAPENTRY *heap) {
+currentprocess->heapaddress=heap;
 }
 
