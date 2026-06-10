@@ -195,7 +195,6 @@ if(getpid() != 0) {
  *
  * allocate enviroment block at the highest user program address minus enviroment size
  */
-
 currentprocess->envptr=alloc_int(ALLOC_NORMAL,getpid(),ENVIROMENT_SIZE,END_OF_LOWER_HALF-ENVIROMENT_SIZE);
 
 if(saveenv != NULL) {
@@ -231,9 +230,6 @@ entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
 if(entrypoint == -1) {					/* can't load executable */
-	kprintf_direct("exec() kernelfree=%X\n",next->kernelstacktop);
-	asm("xchg %bx,%bx");
-
 	kernelfree(next->kernelstackbase);	/* free kernel stack */
 
 	if(lastprocess != NULL) {
@@ -252,29 +248,8 @@ if(entrypoint == -1) {					/* can't load executable */
 	return(-1);
 }
 
-/* create process heap */
-
-currentprocess->heapaddress=alloc_int(ALLOC_NORMAL,getpid(),INITIAL_HEAP_SIZE,-1);	/* allocate process heap */
-if(currentprocess->heapaddress == NULL) {		/* can't allocate */
-	kernelfree(next->kernelstackbase);	/* free kernel stack */
-
-	if(lastprocess != NULL) {
-		kernelfree(lastprocess->next);	/* remove process from list */
-
-		lastprocess->next=NULL;		/* remove process */
-	}
-
-	processes_end=lastprocess;
-	currentprocess=lastprocess;	/* restore current process */
-
-	switch_address_space(getppid());
-
-	freepages(highest_pid_used);
-
-	return(-1);
-}
-
-currentprocess->heapend=currentprocess->heapaddress+INITIAL_HEAP_SIZE;		/* end of process's heap */
+currentprocess->heapaddress=NULL;
+currentprocess->heapend=NULL;
 
 /* initialize kernel stack */
 initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->stackpointer-DEFAULT_KERNEL_STACK_SIZE,next->stackpointer);
@@ -302,7 +277,7 @@ return(0);
 *
 * In: process	Process ID
 *
-* Returns -1 on error. Doesn't return on sucess
+* Returns -1 on error. Doesn't return on success
 *
 */
 
@@ -1088,6 +1063,11 @@ size_t sendsignal(size_t process,size_t signal) {
 PROCESS *next;
 size_t multitasking_was_disabled;
 
+if(processes == NULL) {			/* no processes */
+	setlasterror(INVALID_PROCESS);
+	return(-1);
+}
+
 next=processes;
 
 do {
@@ -1169,7 +1149,6 @@ return(currentprocess->errorhandler(name,drive,flags,error));
 */
 
 void processmanager_init(void) {
-processes=NULL;
 currentprocess=NULL;
 executableformats=NULL;
 highest_pid_used=0;
@@ -1236,8 +1215,11 @@ while(next != NULL) {
 
 		unlock_mutex(&process_mutex);			/* unlock mutex */
 
-		setlasterror(NO_ERROR);
-		return(0);
+		enablemultitasking();
+		enable_interrupts();
+
+		yield();			/* switch to next process */
+		halt();				/* halt if no processes to switch to */
 	}
 	
 	next=next->next;
@@ -1303,10 +1285,11 @@ while(next != NULL) {
 
 		unlock_mutex(&process_mutex);			/* unlock mutex */
 
-		RemoveProcess(next);		/* remove process from processes list */
+		RemoveProcess(next);		/* remove process from blocked processes list */
 
 		if(currentprocess == NULL) currentprocess=processes;
-		setlasterror(NO_ERROR);	
+
+		setlasterror(NO_ERROR);
 		return(0);
 	}
 	
@@ -1486,7 +1469,7 @@ processes=newprocess;
 size_t findfirstprocess(PROCESS *processbuf) {
 if(processes == NULL) return(-1);
 
-memcpy(processbuf,processes,sizeof(PROCESS));		/* get first process */
+memcpy(processbuf,processes,sizeof(PROCESS) - 1);		/* get first process */
 
 return(0);
 }
@@ -1772,7 +1755,7 @@ return;
 *
 */
 
-HEAPENTRY *GetUserHeapAddress(void) {
+void *GetUserHeapAddress(void) {
 return(currentprocess->heapaddress);
 }
 
@@ -1786,7 +1769,7 @@ return(currentprocess->heapaddress);
 *
 */
 
-HEAPENTRY *GetUserHeapEnd(void) {
+void *GetUserHeapEnd(void) {
 return(currentprocess->heapend);
 }
 
@@ -1799,12 +1782,12 @@ return(currentprocess->heapend);
 *
 */
 
-void SetUserHeapEnd(HEAPENTRY *end) {
+void SetUserHeapEnd(void *end) {
 currentprocess->heapend=end;
 }
 
 /*
-* Set user heap address
+* Set user heap start address
 *
 * In: User heap address
 *
@@ -1812,7 +1795,33 @@ currentprocess->heapend=end;
 *
 */
 
-void SetUserHeapAddress(HEAPENTRY *heap) {
+void SetUserHeapAddress(void *heap) {
 currentprocess->heapaddress=heap;
+}
+
+/*
+* Get current user heap address
+*
+* In: nothing
+*
+* Returns: Heap size
+*
+*/
+
+void *GetCurrentUserHeapAddress(void) {
+return(currentprocess->heapcurrent);
+}
+
+/*
+* Set user heap start address
+*
+* In: User heap address
+*
+* Returns: Nothing
+*
+*/
+
+void SetCurrentUserHeapAddress(void *heap) {
+currentprocess->heapcurrent=heap;
 }
 

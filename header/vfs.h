@@ -26,7 +26,7 @@
 #define O_RDWR 			O_RDONLY | O_WRONLY
 
 #define MAX_PATH		255
-#define VFS_MAX 		10
+#define VFS_MAX 		512
 
 #define stdin			0
 #define stdout			1
@@ -42,86 +42,86 @@
 #define DEFAULT_CONSOLE_OUTPUT_DEVICE "CONOUT"
 
 #ifndef VFS_H
-#define VFS_H
-typedef struct {
-	uint8_t magicnumber[MAX_PATH];
-	size_t size;
-	size_t location;
-} MAGIC;
+	#define VFS_H
+	typedef struct {
+		uint8_t magicnumber[MAX_PATH];
+		size_t size;
+		size_t location;
+	} __attribute__((packed)) MAGIC;
 	
-typedef struct {
-	uint8_t name[MAX_PATH];
-	size_t (*findfirst)(char *name,void *);	/* handlers */
-	size_t (*findnext)(char *name,void *);
-	size_t (*read)(size_t,void *,size_t);
-	size_t (*write)(size_t,void *,size_t);
-	size_t (*rename)(char *,char *);
-	size_t (*unlink)(char *);
-	size_t (*mkdir)(char *);
-	size_t (*rmdir)(char *);
-	size_t (*create)(char *);
-	size_t (*chmod)(char *,size_t);
-	size_t (*touch)(char *,TIME *,TIME *,TIME *);
-	size_t (*getstartblock)(char *);
-	struct FILESYSTEM *next;
-	size_t magic_count;
-	MAGIC magicbytes[VFS_MAX];
-} FILESYSTEM;
+	typedef struct {
+		uint8_t name[MAX_PATH];
+		size_t (*findfirst)(char *name,void *);	/* handlers */
+		size_t (*findnext)(char *name,void *);
+		size_t (*read)(size_t,void *,size_t);
+		size_t (*write)(size_t,void *,size_t);
+		size_t (*rename)(char *,char *);
+		size_t (*unlink)(char *);
+		size_t (*mkdir)(char *);
+		size_t (*rmdir)(char *);
+		size_t (*create)(char *);
+		size_t (*chmod)(char *,size_t);
+		size_t (*touch)(char *,TIME *,TIME *,TIME *);
+		size_t (*getstartblock)(char *);
+		struct FILESYSTEM *next;
+		size_t magic_count;
+		MAGIC magicbytes[10];
+	} __attribute__((packed)) FILESYSTEM;
 
-typedef struct {
-	uint8_t filename[MAX_PATH];
-	uint8_t dirname[MAX_PATH];
-	size_t drive;
-} SPLITBUF;
+	typedef struct {
+		uint8_t filename[MAX_PATH];
+		uint8_t dirname[MAX_PATH];
+		size_t drive;
+	} __attribute__((packed)) SPLITBUF;
 
-typedef struct {
-	char *buffer;
-	char *bufptr;
-	size_t size;
-	MUTEX mutex;
-	struct PIPE *next;
-} PIPE;
+	typedef struct {
+		char *buffer;
+		char *bufptr;
+		size_t size;
+		MUTEX mutex;
+		struct PIPE *next;
+	} __attribute__((packed)) PIPE;
 
-typedef struct FILELOCK {
-	size_t start;
-	size_t end;
-	size_t ownerprocess;
-	struct FILELOCK *next;
-} FILELOCK;
+	typedef struct FILELOCK {
+		size_t start;
+		size_t end;
+		size_t ownerprocess;
+		struct FILELOCK *next;
+	} __attribute__((packed)) FILELOCK;
+
+	typedef struct {
+		uint8_t filename[MAX_PATH];
+		size_t attribs;
+		TIME create_time_date;
+		TIME last_written_time_date;
+		TIME last_accessed_time_date;
+		uint64_t filesize;
+		uint64_t startblock;
+		size_t drive;
+		uint64_t currentblock;
+		uint64_t previousblock;
+		size_t dirent;
+		size_t access;
+		size_t currentpos;
+		size_t previouspos;
+		size_t flags;
+		size_t handle;
+		BLOCKDEVICE blockdevice;
+		size_t (*charioread)(size_t,void *);
+		size_t (*chariowrite)(size_t,void *);	
+		size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
+		uint64_t findlastblock;
+		size_t findentry;
+		size_t owner_process;
+		uint8_t searchfilename[MAX_PATH];
+		PIPE *pipe;
+		PIPE *pipereadprevious;
+		PIPE *pipelast;
+		PIPE *pipereadptr;
+		FILELOCK *filelocklist;
+		struct FILERECORD *next;		
+	} __attribute__((packed)) FILERECORD;
 #endif
-
-typedef struct {
-	uint8_t filename[MAX_PATH];
-	size_t attribs;
-	TIME create_time_date;
-	TIME last_written_time_date;
-	TIME last_accessed_time_date;
-	uint64_t filesize;
-	uint64_t startblock;
-	size_t drive;
-	uint64_t currentblock;
-	uint64_t previousblock;
-	size_t dirent;
-	size_t access;
-	size_t currentpos;
-	size_t previouspos;
-	size_t flags;
-	size_t handle;
-	BLOCKDEVICE blockdevice;
-	size_t (*charioread)(size_t,void *);
-	size_t (*chariowrite)(size_t,void *);	
-	size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
-	uint64_t findlastblock;
-	size_t findentry;
-	size_t owner_process;
-	uint8_t searchfilename[MAX_PATH];
-	PIPE *pipe;
-	PIPE *pipereadprevious;
-	PIPE *pipelast;
-	PIPE *pipereadptr;
-	FILELOCK *filelocklist;
-	struct FILERECORD *next;		
-} __attribute__((packed)) FILERECORD;
 
 
 size_t findfirst(char *name,FILERECORD *buf);

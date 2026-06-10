@@ -174,6 +174,7 @@ use32
 
 pmode:
 cli
+
 ;****************************************************
 ; 32 bit protected mode
 ;****************************************************
@@ -225,13 +226,13 @@ mov	ebp,eax
 ;
 ; from here, don't need to subtract KERNEL_HIGH
 ;
+
 call	unmap_lower_half		; unmap lower half of memory
 
-lgdt	[gdt_high]			; load high gdt
+lgdt	[gdt_high]			; load high GDT
 
 call	initialize_interrupts		; initialize interrupts
 call	load_idt			; set exception interrupts and syscall and load IDT
-
 call	processmanager_init		; intialize process manager
 call	devicemanager_init		; intialize device manager
 call	filemanager_init		; initialize file manager
@@ -264,7 +265,6 @@ push	edx				; memory map start address
 call	initialize_memory_map		; initialize memory map
 
 mov	edx,[MEMBUF_START]
-
 call	memorymanager_init		; initalize memory manager
 
 ; This block of code is a copy of the
@@ -328,6 +328,7 @@ call	driver_init				; initialize built-in modules
 call	initrd_init				; intialize initrd
 call	load_modules_from_initrd		; load modules from initrd
 call	initialize_tss				; initialize TSS
+call	initialize_abstract_timer		; intialize abstract timer
 call	init_multitasking			; initialize multitasking
 
 call	get_initial_kernel_stack_top

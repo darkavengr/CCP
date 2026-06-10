@@ -175,7 +175,7 @@ switch_task(savedcontext,nextprocess);	/* switch to task */
  */
 
 void switch_task_process_descriptor(size_t *savedcontext,PROCESS *descriptor) {
-if(get_processes_pointer == NULL) return;	/* no processes */
+if(get_processes_pointer() == NULL) return;	/* no processes */
 
 SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
 descriptor->flags |= PROCESS_RUNNING;	/* set process running flag for next process */

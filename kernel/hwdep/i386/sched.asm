@@ -46,7 +46,6 @@ PROCESS_RUNNING	equ 8
 ; Returns: Nothing
 ;
 yield:
-cli
 
 ;
 ; Stack format:
@@ -77,19 +76,27 @@ pop	eax
 pushf						; eflags
 push	dword KERNEL_CODE_SELECTOR		; cs
 push	dword [save_eip]			; eip
+
 push	ds					; save segment selector registers
 push	es
 push	gs
+
 push	fs
 pusha						; save registers
 mov	[OldContextPointer],esp
 
 call	find_next_process_to_switch_to
+test	eax,eax					; no processes
+jz	no_processes
+
 push	eax
 push	dword [OldContextPointer]
 call	switch_task				; switch to next task
 
-; shouldn't be here
+; never reaches here
+no_processes:
+add	esp,15*4				; move stack back to where it was before the fake interrupt return stack was created
+ret
 
 ;
 ; Switch task

@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
+#include "vfs.h"
 
-#define MAX_SIZE	256
 #define TRUE	1
 #define FALSE	0
 
@@ -27,7 +27,7 @@ size_t wildcard_rename(char *name,char *mask,char *out);
 size_t atoi(char *numstr,size_t base);
 size_t ksnprintf(char *buf,char *format,size_t size, ...);
 void tohex(size_t hex,char *buf);
-size_t tokenize_line(char *linebuf,char *tokens[MAX_SIZE][MAX_SIZE],char *delim);
+size_t tokenize_line(char *linebuf,char *tokens[MAX_PATH][MAX_PATH],char *delim);
 size_t signextend(size_t num,size_t bitnum);
 void tolowercase(char *string,char *out);
 char *strtrunc(char *str,int newsize);
