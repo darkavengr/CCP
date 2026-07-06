@@ -26,7 +26,7 @@
 
 * | Points to 1024 page tables  | ->  | 1024 4kb page entries |-> | 4k page |	
 
-/* add page */
+*/
 
 #include <stdint.h>
 #include <stddef.h>
@@ -41,14 +41,8 @@
 
 size_t paging_type=1;
 
-struct ppt {
-	uint32_t pagedir[1024];
-	uint32_t pagedirphys;
-	size_t process; 
-	struct ppt *next;
-} *processpaging=PAGE_DIRECTORY_LOCATION+KERNEL_HIGH;
-
-struct ppt *processpaging_end;  
+PAGING *processpaging=PAGE_DIRECTORY_LOCATION+KERNEL_HIGH;
+PAGING *processpaging_end=PAGE_DIRECTORY_LOCATION+KERNEL_HIGH;
 
 /*
 * Map virtual address to physical address
@@ -61,14 +55,14 @@ struct ppt *processpaging_end;
 * Returns 0 on success or -1 on error
 * 
 */
-size_t map_page_internal(size_t page_flags,size_t process,uint32_t virtual_address,void *physical_address) { 
-struct ppt *next;
+size_t map_page_internal(size_t page_flags,size_t process,size_t virtual_address,void *physical_address) { 
+PAGING *next;
 uint32_t pagedir_entry_number;
 uint32_t pagetable_entry_number;
 uint32_t *pagetableptr;
 uint32_t newpagedirentry;
-struct ppt *current_page_mapping=NULL;
-struct ppt *update=NULL;
+PAGING *current_page_mapping=NULL;
+PAGING *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -99,7 +93,7 @@ if((process != getpid()) && (virtual_address < KERNEL_HIGH)) {
 	current_page_mapping->pagedir[1023]=update->pagedir[1023];		/* update mapping */
 }
 
-if(update->pagedir[pagedir_entry_number] == 0) {				/* if page directory entry is empty */	
+if(update->pagedir[pagedir_entry_number] == 0) {				/* if page directory entry is empty */
 	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
 	if(newpagedirentry == NULL) {
 		if(process != getpid()) current_page_mapping->pagedir[1023]=savemapping;	/* restore original mapping */
@@ -109,7 +103,8 @@ if(update->pagedir[pagedir_entry_number] == 0) {				/* if page directory entry i
 	update->pagedir[pagedir_entry_number]=(uint32_t) newpagedirentry | PAGE_USER | PAGE_RW | PAGE_PRESENT;	/* page directory entry */
 
 	pagetableptr=(uint32_t *) 0xffc00000 + (pagedir_entry_number*1024);
-	memset(pagetableptr,0,PAGE_SIZE);
+
+//	memset(pagetableptr,0,PAGE_SIZE);	
 }
 
 /* if it's a user page, either map it into the current process page tables or another process page table */
@@ -166,7 +161,7 @@ if(process == 0) return(0);
 
 /* get a physical address and manually map it to a virtual address, the physical addres of p->pagedir is needed to fill cr3 */
 
-size=(sizeof(struct ppt) & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round up size to multiple of PAGE_SIZE */
+size=(sizeof(PAGING) & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round up size to multiple of PAGE_SIZE */
 
 pagingentryptr_phys=kernelalloc_nopaging(size);					/* get the physical address of the new paging entry */
 if(pagingentryptr_phys == NULL) return(-1);
@@ -211,7 +206,7 @@ return(0);
 * Returns NULL
 * 
 */
-size_t unmap_page(uint32_t page,size_t process) {
+size_t unmap_page(size_t page,size_t process) {
 return(map_page_internal(0,process,page,0));						/* clear page */
 }
 
@@ -222,14 +217,14 @@ return(map_page_internal(0,process,page,0));						/* clear page */
 *
 */
 size_t freepages(size_t process) {
-struct ppt *next;
-struct ppt *previous;
+PAGING *next;
+PAGING *previous;
 size_t pagecount;
 size_t entrycount;
 size_t *pagetableptr;
 size_t physaddress=0;
-struct ppt *current_page_mapping=NULL;
-struct ppt *update=NULL;
+PAGING *current_page_mapping=NULL;
+PAGING *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -306,9 +301,9 @@ size_t pagetablecount;
 uint32_t *pagetableptr;
 size_t sz;
 size_t last;
-struct ppt *next=NULL;
-struct ppt *current_page_mapping=NULL;
-struct ppt *update=NULL;
+PAGING *next=NULL;
+PAGING *current_page_mapping=NULL;
+PAGING *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -382,7 +377,7 @@ s=0;
 
 for(pagedircount=start;pagedircount < 1022;pagedircount++) {			/* page directories */
 	if(update->pagedir[pagedircount] == 0) {
-		s=s+(1024*1024)*4;						/* found 4Mb */
+		s += (1024*1024)*4;						/* found 4Mb */
 		if(s >= size)  return((pagedircount << 22));	
 	}
 }
@@ -400,7 +395,7 @@ return(-1);
 * 
 */
 size_t switch_address_space(size_t process) {
-struct ppt *next; 
+PAGING *next; 
 
 next=processpaging;
 
@@ -426,14 +421,140 @@ return(-1);
 * Returns physical address or -1 on error
 * 
 */
-size_t get_pagetable_entry(size_t process,uint32_t virtual_address) {
+size_t get_pagetable_entry(size_t process,size_t virtual_address) {
 uint32_t pagedir_entry_number;
 uint32_t pagetable_entry_number;
 uint32_t *pagetableptr;
-struct ppt *next;
-struct ppt *current_page_mapping;
-struct ppt *update;
+PAGING *next=NULL;
+PAGING *current_page_mapping=NULL;
+PAGING *update=NULL;
 size_t retval;
+size_t savemapping;
+
+next=processpaging;
+
+while(next != NULL) {					/* find process */	
+	if(next->process == process) update=next;		
+	if(next->process == getpid()) current_page_mapping=next;	
+
+	if((update != NULL) && (current_page_mapping != NULL)) break;	/* found mappings */
+
+	next=next->next;
+}
+
+if((update == NULL) || (current_page_mapping == NULL)) {
+	kprintf_direct("PID ERROR PAGING 3\n");
+	asm("xchg %bx,%bx");
+
+	setlasterror(INVALID_PROCESS);
+	return(-1);
+}
+
+pagedir_entry_number=(virtual_address >> 22) & 0x3ff;				/* page directory offset */
+pagetable_entry_number=(virtual_address >> 12) & 0x3ff;				/* page table offset */
+
+if(update->pagedir[pagedir_entry_number] == 0) return(-1);		/* not mapped in */
+
+if((process != getpid()) && (virtual_address < KERNEL_HIGH)) {	/* map process recursively for access */
+	savemapping=current_page_mapping->pagedir[1023];
+	current_page_mapping->pagedir[1023]=update->pagedir[1023];
+}
+
+pagetableptr=(uint32_t *) 0xffc00000 + (pagedir_entry_number*1024);
+
+retval=pagetableptr[pagetable_entry_number];
+
+if((process != getpid()) && (virtual_address < KERNEL_HIGH)) current_page_mapping->pagedir[1023]=savemapping;	/* Restore mappings */
+
+return(retval);
+}
+
+/*
+* Get physical address from virtual address
+*
+* In:  process		Process ID
+       virtual_address	Virtual address
+*
+* Returns physical address or -1 on error
+* 
+*/
+size_t getphysicaladdress(size_t process,size_t virtual_address) {
+size_t entry=get_pagetable_entry(process,virtual_address);
+
+if(entry == -1) return(-1);
+
+return(entry & 0xfffff000);				/* return physical address */
+}
+
+/*
+* Get page flags from virtual address
+*
+* In:  process		Process ID
+       virtual_address	Virtual address
+*
+* Returns physical address or -1 on error
+* 
+*/
+size_t get_page_flags(size_t process,size_t virtual_address) {
+size_t entry=get_pagetable_entry(process,virtual_address);
+
+if(entry == -1) return(-1);
+
+return(entry & 0xfff);				/* return page flags */
+}
+
+/*
+* Add user page
+*
+* In: page		Virtual address       
+      process		Process ID
+      physical_address	Physical address
+
+* Returns 0 on success or -1 on error
+* 
+*/
+size_t map_user_page(size_t virtual_address,size_t process,void *physical_address) {
+return(map_page_internal(PAGE_USER+PAGE_RW+PAGE_PRESENT,process,virtual_address,physical_address));
+}
+
+/*
+* Add system page
+*
+* In: virtual_address  Virtual address       
+      process	       Process ID
+      physical_address Physical address
+
+* Returns 0 on success or -1 on error
+* 
+*/
+size_t map_system_page(size_t virtual_address,size_t process,void *physical_address) { 
+return(map_page_internal(PAGE_SYSTEM | PAGE_RW | PAGE_PRESENT,process,virtual_address,physical_address));
+}
+
+size_t get_paging_type(void) {
+return(PAGING_TYPE_LEGACY);
+}
+
+PAGING *GetProcessPagingPointer(void) {
+return(processpaging);
+}
+
+/*
+* Swap page entry
+*
+* In: process		Process ID
+      virtual_address	Virtual address
+*
+* Returns 0 on success or -1 on error
+* 
+*/
+size_t swap_page_entry(size_t process,size_t virtual_address,size_t entry) {
+uint32_t pagedir_entry_number;
+uint32_t pagetable_entry_number;
+uint32_t *pagetableptr;
+PAGING *next=NULL;
+PAGING *current_page_mapping=NULL;
+PAGING *update=NULL;
 size_t savemapping;
 
 next=processpaging;
@@ -462,65 +583,10 @@ if((process != getpid()) && (virtual_address < KERNEL_HIGH)) {	/* map process re
 
 pagetableptr=(uint32_t *) 0xffc00000 + (pagedir_entry_number*1024);
 
-if((pagetableptr[pagetable_entry_number] & PAGE_PRESENT) == 0) {
-	retval=-1;	/* page not present */
-}
-else
-{
-	retval=pagetableptr[pagetable_entry_number];
-}
+pagetableptr[pagetable_entry_number]=entry;
 
 if((process != getpid()) && (virtual_address < KERNEL_HIGH)) current_page_mapping->pagedir[1023]=savemapping;	/* Restore mappings */
 
-return(retval);
-}
-
-/*
-* Get physical address from virtual address
-*
-* In:  process		Process ID
-       virtual_address	Virtual address
-*
-* Returns physical address or -1 on error
-* 
-*/
-size_t getphysicaladdress(size_t process,uint32_t virtual_address) {
-size_t entry=get_pagetable_entry(process,virtual_address);
-
-if(entry == -1) return(-1);
-
-return(entry & 0xfffff000);				/* return physical address */
-}
-
-/*
-* Add user page
-*
-* In: page		Virtual address       
-      process		Process ID
-      physical_address	Physical address
-
-* Returns 0 on success or -1 on error
-* 
-*/
-size_t map_user_page(uint32_t virtual_address,size_t process,void *physical_address) {
-return(map_page_internal(PAGE_USER+PAGE_RW+PAGE_PRESENT,process,virtual_address,physical_address));
-}
-
-/*
-* Add system page
-*
-* In: virtual_address  Virtual address       
-      process	       Process ID
-      physical_address Physical address
-
-* Returns 0 on success or -1 on error
-* 
-*/
-size_t map_system_page(uint32_t virtual_address,size_t process,void *physical_address) { 
-return(map_page_internal(PAGE_SYSTEM | PAGE_RW | PAGE_PRESENT,process,virtual_address,physical_address));
-}
-
-size_t get_paging_type(void) {
-return(PAGING_TYPE_LEGACY);
+return(0);
 }
 

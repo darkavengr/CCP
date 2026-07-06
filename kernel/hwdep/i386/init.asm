@@ -53,6 +53,8 @@ extern get_initial_kernel_stack_base				; get initial kernel stack base
 extern get_initial_kernel_stack_top				; get initial kernel stack top
 extern get_kernel_stack_size					; get kernel stack size
 extern initialize_abstract_timer				; initialize abstract timer
+extern InitializeSwapManager					; intialize swap manager
+extern PageFrameReclaimInit					; intialize page frame reclamation
 
 ;
 ; globals
@@ -74,10 +76,10 @@ _asm_init:
 ; 16-bit initialisation code
 ;
 ; Here the computer is still in real mode.
-; Hhe kernel will enable the a20 line, detect memory
-; load gdt and idt and jump to protected mode
+; The kernel will enable the A20 line, detect memory
+; load the GDT and IDT and jump to protected mode
 ;
-; From here to jump_high, the code is located in the lower half of memory
+; From here to jump_high the code is located in the lower half of memory
 ; and addresses should have KERNEL_HIGH subtracted from them.
 			
 %macro a20wait 0
@@ -164,10 +166,10 @@ mov 	eax,cr0   			; switch to protected mode
 or	al,1
 mov  	cr0,eax
 
-db	0x66				; jmp dword 0x8:pmode
+db	0x66				; jmp dword KERNEL_CODE_SELECTOR:pmode
 db	0xEA
 dd	pmode-KERNEL_HIGH
-dw	8
+dw	KERNEL_CODE_SELECTOR
 
 [BITS 32]
 use32
@@ -323,13 +325,23 @@ call	initialize_tss				; initialize TSS
 push	esp
 call	set_tss_esp0				; set TSS ESP0 to top of initial kernel stack
 
-call	tty_init				; initialize TTY
-call	driver_init				; initialize built-in modules
-call	initrd_init				; intialize initrd
-call	load_modules_from_initrd		; load modules from initrd
-call	initialize_tss				; initialize TSS
+call	tty_init				; initialize TTYs
+
 call	initialize_abstract_timer		; intialize abstract timer
+
+sti
+call	driver_init				; initialize built-in modules
+
+call	initrd_init				; intialize initrd
+cli
+
+sti
+call	load_modules_from_initrd		; load modules from initrd
+cli
+
+call	initialize_tss				; initialize TSS
 call	init_multitasking			; initialize multitasking
+call	InitializeSwapManager			; initialize swap manager
 
 call	get_initial_kernel_stack_top
 
@@ -339,8 +351,7 @@ mov	esp,eax					; temporary stack
 call	load_modules_from_initrd		; load modules from initial RAM disk
 
 sti
-jmp	kernel					; jump to highlevel code
-
+jmp	kernel					; jump to high level code
 
 ; GDT
 

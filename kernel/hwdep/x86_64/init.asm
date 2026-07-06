@@ -35,6 +35,8 @@ GDT_LIMIT equ 10
 
 PAGE_PRESENT equ 1
 PAGE_RW equ 2
+PAGE_ACCESSED		equ	32
+
 PAGE_SIZE equ 4096
 
 %define TRUE 1
@@ -216,20 +218,20 @@ mov	ecx,1024
 rep	stosd
 
 mov	edi,ROOT_PML4
-mov	eax,ROOT_PDPT+PAGE_RW+PAGE_PRESENT
+mov	eax,ROOT_PDPT | PAGE_RW | PAGE_PRESENT
 
 mov	[edi],eax			; map lower half
 mov	[edi+(510*8)],eax		; map higher half
 
-mov	eax,ROOT_PML4+PAGE_RW+PAGE_PRESENT	; map pml4 to itself
+mov	eax,ROOT_PML4 | PAGE_RW | PAGE_PRESENT	; map pml4 to itself
 mov	[edi+(511*8)],eax
 
 mov	edi,ROOT_PDPT			; create pdpt
-mov	eax,ROOT_PAGEDIR+PAGE_RW+PAGE_PRESENT
+mov	eax,ROOT_PAGEDIR | PAGE_RW | PAGE_PRESENT
 mov	[edi],eax
 
 mov	edi,ROOT_PAGEDIR			; create page directory
-mov	eax,ROOT_PAGETABLE+PAGE_RW+PAGE_PRESENT
+mov	eax,ROOT_PAGETABLE | PAGE_RW | PAGE_PRESENT
 mov	[edi],eax
 
 mov	eax,ROOT_PML4			; set pml4phys
@@ -262,7 +264,7 @@ add	ecx,eax
 shr	ecx,12					; number of page table entries
 
 mov	edi,ROOT_PAGETABLE
-mov	eax,0 | PAGE_PRESENT | PAGE_RW	; page+flags
+mov	eax,0 | PAGE_PRESENT | PAGE_RW | PAGE_ACCESSED	; page and flags
 
 cld
 
@@ -461,9 +463,19 @@ mov	dx,0xA1
 out	dx,al
 
 call	tty_init				; initialize TTY
+
+call	initialize_abstract_timer		; intialize abstract timer
+
+sti
 call	driver_init				; initialize built-in modules
+cli
+
 call	initrd_init				; intialize initrd
+
+sti
 call	load_modules_from_initrd		; load modules from initrd
+cli
+
 call	initialize_tss				; initialize TSS
 call	init_multitasking			; initialize multitasking
 

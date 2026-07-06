@@ -30,6 +30,8 @@ global get_interrupt					; get interrupt
 global load_idt
 global initialize_interrupts
 global int_common
+global get_interrupts_enabled
+
 extern exception					; exception handler
 extern exit
 extern dispatchhandler					; high-level dispatcher
@@ -228,7 +230,19 @@ push	1
 call	set_interrupt
 add	esp,16
 
-;
+mov	edx,19
+next_null_interrupt:
+push	edx
+push	null_handler
+push	KERNEL_CODE_SELECTOR
+push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
+call	set_interrupt
+add	esp,16
+
+inc	edx
+cmp	edx,256
+jne	next_null_interrupt
+
 ; Set syscall interrupt
 ;
 push	0x21
@@ -557,6 +571,25 @@ pop	fs
 pop	es
 pop	ds
 iret  
+
+;
+; Get if interrupts are enabled
+;
+; In: Nothing
+;
+; Returns: CPU flags register
+;
+
+get_interrupts_enabled:
+pushf					; get flags
+pop	eax
+
+and	eax,0x200			; get interrupts flag
+shr	eax,9
+ret
+
+null_handler:
+iret
 
 idt:
 dw 0x3FFF				; limit

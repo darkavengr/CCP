@@ -79,6 +79,8 @@ if(processes == NULL) {  					/* first process */
 	if(processes == NULL) {					/* return if can't allocate */
 		switch_address_space(getppid());
 		freepages(highest_pid_used);
+
+		kprintf_direct("exec() 1\n");
 		return(-1);
 	}
 
@@ -133,6 +135,9 @@ next->next=NULL;
 
 next->kernelstackbase=kernelalloc(DEFAULT_KERNEL_STACK_SIZE);	/* allocate stack */
 if(next->kernelstackbase == NULL) {	/* return if unable to allocate */
+
+	if((currentprocess == processes) && (currentprocess->next == NULL)) last_error_no_process=currentprocess->lasterror; /* copy error if only process */
+
 	currentprocess=oldprocess;	/* restore current process pointer */
 
 	switch_address_space(getppid());
@@ -142,6 +147,7 @@ if(next->kernelstackbase == NULL) {	/* return if unable to allocate */
 
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
+	kprintf_direct("exec() 2\n");
 	return(-1);
 }
 
@@ -158,6 +164,8 @@ saveenv=NULL;
 if(currentprocess != NULL) {
 	saveenv=kernelalloc(ENVIROMENT_SIZE);		/* allocate a buffer to save enviroment variables in */
 	if(saveenv == NULL) {
+		if((currentprocess == processes) && (currentprocess->next == NULL)) last_error_no_process=currentprocess->lasterror; /* copy error if only process */
+
 		currentprocess=oldprocess;	/* restore current process pointer */
 
 		switch_address_space(getppid());
@@ -167,6 +175,8 @@ if(currentprocess != NULL) {
 
 		lastprocess->next=NULL;		/* remove process */
 		processes_end=lastprocess;
+
+		kprintf_direct("exec() 3\n");
 		return(-1);
 	}
 
@@ -206,6 +216,8 @@ if(saveenv != NULL) {
 
 stackp=alloc_int(ALLOC_NORMAL,getpid(),DEFAULT_USER_STACK_SIZE,(END_OF_LOWER_HALF-DEFAULT_USER_STACK_SIZE-ENVIROMENT_SIZE));
 if(stackp == NULL) {
+	if((currentprocess == processes) && (currentprocess->next == NULL)) last_error_no_process=currentprocess->lasterror; /* copy error if only process */
+
 	currentprocess=oldprocess;	/* restore current process pointer */
 	kernelfree(next->kernelstackbase);	/* free kernel stack */
 
@@ -215,7 +227,9 @@ if(stackp == NULL) {
 	processes_end=lastprocess;
 
 	switch_address_space(getppid());
-	freepages(highest_pid_used);
+	freepages(highest_pid_used - 1);
+
+	kprintf_direct("exec() 3\n");
 	return(-1);
 }
 
@@ -230,6 +244,8 @@ entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
 if(entrypoint == -1) {					/* can't load executable */
+	if((currentprocess == processes) && (currentprocess->next == NULL)) last_error_no_process=currentprocess->lasterror; /* copy error if only process */
+
 	kernelfree(next->kernelstackbase);	/* free kernel stack */
 
 	if(lastprocess != NULL) {
@@ -243,8 +259,9 @@ if(entrypoint == -1) {					/* can't load executable */
 
 	switch_address_space(getppid());
 
-	freepages(highest_pid_used);
+	freepages(highest_pid_used - 1);
 
+	kprintf_direct("exec() 4\n");
 	return(-1);
 }
 
@@ -263,6 +280,7 @@ psp->cmdlinesize=strlen(psp->commandline);
 switch_address_space(getppid());		/* switch back to parent process addres space */
 
 if(oldprocess != NULL) currentprocess=oldprocess;	/* restore current process pointer */
+
 reset_current_process_ticks();		/* force new process to run */
 
 enablemultitasking();
@@ -317,7 +335,6 @@ while(next != NULL) {
 }
 
 setlasterror(INVALID_PROCESS);
-
 unlock_mutex(&process_mutex);			/* unlock mutex */
 return(-1);
 }
@@ -1596,7 +1613,11 @@ char *buffer[MAX_PATH];
 size_t handle;
 
 handle=open(filename,O_RDONLY);		/* open file */
-if(handle == -1) return(-1);		/* can't open file */
+if(handle == -1) {
+	kprintf_direct("load_executable() 1\n");
+
+	return(-1);		/* can't open file */
+}
 
 if(read(handle,buffer,MAX_PATH) == -1) {	/* read magic number */
 	close(handle);
@@ -1614,6 +1635,8 @@ while(next != NULL) {
 	
 	next=next->next;
 }
+
+kprintf_direct("load_executable() 2\n");
 
 setlasterror(NOT_IMPLEMENTED);
 return(-1);

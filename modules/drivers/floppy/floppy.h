@@ -1,5 +1,5 @@
 #define	FLOPPY_RETRY_COUNT	    3
-#define FLOPPY_IRQ_TIMEOUT	    300	   /* milliseconds to wait for IRQ 6 to arrive */
+#define FLOPPY_IRQ_TIMEOUT	    3000	   /* milliseconds to wait for IRQ 6 to arrive */
 
 #define READ_TRACK                  2	     /* generates IRQ 6 */
 #define SPECIFY                     3      /* set drive parameters */
@@ -40,9 +40,9 @@
 #define ACTB				0x2
 #define ACTA				0x1
 
-#define	IMPLIED_SEEK		  	0
-#define FIFO_DISABLED			0
-#define DRIVE_POLLING_DISABLE		1
+#define FIFO_DISABLED			(0 << 6)
+#define	IMPLIED_SEEK		  	(0 << 5)
+#define DRIVE_POLLING_DISABLE		(1 << 4)
 #define THRESHOLD			15
 
 #define BIT_MT				0x80
@@ -76,12 +76,13 @@ size_t floppy_init(char *init);
 void floppy_motor_on(size_t drive);
 void floppy_motor_off(size_t drive);
 size_t initialize_floppy(size_t drive);
-size_t floppy_getstatus(size_t drive);
+void floppy_get_status(void);
 size_t floppy_sector_io(size_t op,size_t drive,uint16_t head,uint16_t cyl,uint16_t sector,size_t blocksize,char *buf);
 size_t floppy_io(size_t op,size_t drive,uint64_t block,char *buf);
 void irq6_handler(void);
-void floppy_reset_controller(size_t drive);
-void floppy_send_command(size_t drive,uint8_t c);
+size_t floppy_reset_controller(size_t drive);
+void floppy_send_command(uint8_t command);
 size_t wait_for_irq6(void); 
 size_t floppy_check_status(void);
+uint8_t floppy_read_data(void);
 

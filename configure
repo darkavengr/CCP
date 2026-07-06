@@ -184,6 +184,7 @@ for f in `find \modules/drivers/* \modules/binfmt/* \modules/filesystems/* -type
 		DESCRIPTION=""
 		COMPILE_DEFAULT_OPT=""
 		REQUIRED=""
+		PRIORITY=""
 
 		while IFS= read -r var			# read lines from file
 		do
@@ -207,6 +208,9 @@ for f in `find \modules/drivers/* \modules/binfmt/* \modules/filesystems/* -type
 	  				REQUIRED=$varval
 	  				;;
 
+				priority)			# Must be first in the list of modules
+	  				PRIORITY=$varval
+	  				;;
 	 		esac
 	  
 		done < $f/config
@@ -238,6 +242,10 @@ for f in `find \modules/drivers/* \modules/binfmt/* \modules/filesystems/* -type
 
 				read response
 
+				if [ -z "$rsesponse" ]; then
+					break
+				fi
+
 				if [[ $response != "y"  && $response != "Y" ]] && [[ $response != "n" &&  [$response != "N" ]] && [[ $response != "m"  && $response != "M" ]]; then
 					echo Invalid option
 					response=""
@@ -248,32 +256,39 @@ for f in `find \modules/drivers/* \modules/binfmt/* \modules/filesystems/* -type
 			done
 
 			if [  ${#response} == 0 ]; then		# use default response
-				
-					if [ "$COMPILE_OPT" == "y" ] || [ "$COMPILE_OPT" == "Y" ]; then	# prompt if module is built-in
-						module_list="$module_list $BUILDROOT/$f"	# add to list
-						module_names="$module_names $DRIVERNAME"	# add to list     
-						response="y"
+				response=$COMPILE_OPT
+			fi
 
-					elif [ "$COMPILE_OPT" == "m" ] || [ "$COMPILE_OPT" == "M" ]; then	# initrd module
-						initrd_module_list="$initrd_module_list $BUILDROOT/$f"	# add to list
-						initrd_obj_list="$initrd_obj_list $BUILDROOT/$f.o"
-						module_names="$module_names $DRIVERNAME"	# add to list     
+			echo response=$response
 
-						response="m"
-					fi
-			else
-			   if  [ $response == "y" ] || [ $response == "Y" ] || [ $response == "m" ] || [ $response == "M" ]; then	# do response
+
+			if  [ $response == "y" ] || [ $response == "Y" ] || [ $response == "m" ] || [ $response == "M" ]; then	# do response
 	
 				if  [ $response == "y" ] || [ $response == "Y" ]; then		# built-in module
-					module_list="$module_list $BUILDROOT/$f"	# add to list
-					module_names="$module_names $DRIVERNAME"	# add to list     
+					if  [ "$PRIORITY" == "y" ] || [ "$PRIORITY" == "Y" ]; then		# must be first
+						echo IS PRIORITY
+						module_list="$BUILDROOT/$f $module_list"
+						module_names="$DRIVERNAME $module_names"
+					else
+						module_list="$module_list $BUILDROOT/$f"	# add to list
+						module_names="$module_names $DRIVERNAME"
+					fi
 				fi
 
 				if  [ $response == "m" ] || [ $response == "M" ]; then		# initrd module
-					initrd_module_list="$initrd_module_list $BUILDROOT/$f"	# add to list
-					initrd_obj_list="$initrd_obj_list $BUILDROOT/$f.o"
-					module_names="$module_names $DRIVERNAME"	# add to list     
+					if  [ "$PRIORITY" == "y" ] || [ "$PRIORITY" == "Y" ]; then		# must be first
+						initrd_module_list="$BUILDROOT/$f $initrd_module_list"	# add to list
+						initrd_obj_list="$BUILDROOT/$f.o $initrd_obj_list"
+						module_names="$DRIVERNAME $module_names"
+					else
+
+						initrd_module_list="$initrd_module_list $BUILDROOT/$f"	# add to list
+						initrd_obj_list="$initrd_obj_list $BUILDROOT/$f.o"
+						module_names="$module_names $DRIVERNAME"
+					fi
 				fi		
+
+				echo $module_list
 
 				#
 				# add dependencies
@@ -292,8 +307,8 @@ for f in `find \modules/drivers/* \modules/binfmt/* \modules/filesystems/* -type
 		     				module_names="$module_names $REQUIRED"	# add to list     
 					fi
 	  			fi
-			   fi
 			fi
+			
 
     fi
 fi

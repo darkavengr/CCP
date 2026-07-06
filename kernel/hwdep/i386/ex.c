@@ -35,6 +35,8 @@
 #include "string.h"
 #include "ex.h"
 #include "module.h"
+#include "pfreclaim.h"
+#include "page.h"
 
 /*
  * x86 exception handler
@@ -68,18 +70,30 @@ size_t rowcount;
 size_t faultaddress;
 KERNELMODULE *module=NULL;
 char *FunctionName=NULL;
+size_t pd_entry;
 
 void exception(uint32_t *regs,uint32_t faultnumber,uint32_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
 if(faultnumber == PAGE_FAULT) {
+
+	/* Swap page in if it was swapped out */
+	pd_entry=get_pagetable_entry(getpid(),faultaddress);
+	if(pd_entry != -1) {
+		if( (pd_entry & PAGE_SWAPPED_OUT) && ((pd_entry & PAGE_PRESENT) == 0)) {
+			SwapPageIn(getpid(),faultaddress);
+			return;
+		}
+	}
+
 	/* If there was a page fault, do possible demand paging */
 
-	if(faultaddress <= get_usermode_stack_base()) {		/* user-mode stack overflow */
-		alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
-		return;	
-	}
+//	if((faultaddress < KERNEL_HIGH) && ((get_usermode_stack_base() != NULL) && (faultaddress <= get_usermode_stack_base()))) {		/* user-mode stack overflow */
+//		alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
+//		return;	
+//	}
 }
+
 
 /* If here, it's a fatal exception */
 

@@ -18,7 +18,7 @@
 #define SHUTDOWN_WAIT 10
 #define SIGNAL_COUNT 256
 
-#define ENVIROMENT_SIZE 32768
+#define ENVIROMENT_SIZE 65536
 
 #ifndef PROCESS_H
 	#define PROCESS_H
@@ -43,8 +43,9 @@
 		size_t stackbase;
 		size_t lasterror;
 		char *envptr;
-		HEAPENTRY *heapaddress;
-		HEAPENTRY *heapend;
+		void *heapaddress;
+		void *heapend;
+		void *heapcurrent;
 		struct PROCESS *prev;
 		struct PROCESS *next;
 	}  __attribute__((packed)) PROCESS;
@@ -111,4 +112,7 @@ void set_usermode_stack_base(void *base);
 size_t GetCurrentProcessFlags(void);
 void SetCurrentProcessFlags(size_t flags);
 PROCESS *GetPreviousProcessPointer(void);
+void *GetCurrentUserHeapAddress(void);
+void SetCurrentUserHeapAddress(void *heap);
+void initialize_idle_task(void);
 
