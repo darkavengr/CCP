@@ -79,8 +79,6 @@ if(processes == NULL) {  					/* first process */
 	if(processes == NULL) {					/* return if can't allocate */
 		switch_address_space(getppid());
 		freepages(highest_pid_used);
-
-		kprintf_direct("exec() 1\n");
 		return(-1);
 	}
 
@@ -147,7 +145,6 @@ if(next->kernelstackbase == NULL) {	/* return if unable to allocate */
 
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
-	kprintf_direct("exec() 2\n");
 	return(-1);
 }
 
@@ -175,8 +172,6 @@ if(currentprocess != NULL) {
 
 		lastprocess->next=NULL;		/* remove process */
 		processes_end=lastprocess;
-
-		kprintf_direct("exec() 3\n");
 		return(-1);
 	}
 
@@ -228,8 +223,6 @@ if(stackp == NULL) {
 
 	switch_address_space(getppid());
 	freepages(highest_pid_used - 1);
-
-	kprintf_direct("exec() 3\n");
 	return(-1);
 }
 
@@ -260,8 +253,6 @@ if(entrypoint == -1) {					/* can't load executable */
 	switch_address_space(getppid());
 
 	freepages(highest_pid_used - 1);
-
-	kprintf_direct("exec() 4\n");
 	return(-1);
 }
 
@@ -302,6 +293,8 @@ return(0);
 size_t kill(size_t process) {
 PROCESS *next;
 PROCESS *last;
+size_t destroyprocess;
+PROCESS *thisprocess=get_current_process_pointer();
 
 lock_mutex(&process_mutex);			/* lock mutex */
 
@@ -311,10 +304,26 @@ next=processes;
 	
 while(next != NULL) {
 	if(next->pid == process) {		/* found process */
-		next->flags=PROCESS_TERMINATED;
+		destroyprocess=getpid();
+
+		RemoveProcess(thisprocess);			/* remove process */
+
+		if(GetPreviousProcessPointer()->prev == NULL) {
+			update_current_process_pointer(get_processes_pointer());
+		}
+		else
+		{
+			update_current_process_pointer(GetPreviousProcessPointer()->prev);
+		}
+
+		switch_address_space(getpid());
+
+		freepages(destroyprocess);
 
 		unlock_mutex(&process_mutex);			/* unlock mutex */
+
 		yield();			/* switch to next process */
+		break;
 	}
 
 	next=next->next;
@@ -1614,6 +1623,7 @@ size_t handle;
 
 handle=open(filename,O_RDONLY);		/* open file */
 if(handle == -1) {
+	kprintf_direct("filename=%s\n",filename);
 	kprintf_direct("load_executable() 1\n");
 
 	return(-1);		/* can't open file */
@@ -1759,10 +1769,18 @@ if(current == processes) {			/* start */
 	processes=processes->next;
 }
 else if(current->next == NULL) {		/* end */
-	current->prev=NULL;
+	current->prev->next=NULL;
 }
 else {						/* middle */
-	current->prev=current->next;
+	current->prev->next=current->next;
+}
+
+PROCESS *next=processes;
+
+while(next != NULL) {
+	kprintf_direct("process=%X %s\n",next->pid,next->filename);
+
+	next=next->next;
 }
 
 return;

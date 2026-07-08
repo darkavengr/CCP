@@ -32,6 +32,7 @@ extern GetCurrentProcessFlags
 extern SetCurrentProcessFlags
 extern find_next_process_to_switch_to
 extern update_current_process_pointer
+extern switch_to_next_task
 
 PROCESS_NEW	equ 2
 PROCESS_RUNNING	equ 8
@@ -83,15 +84,9 @@ push	gs
 
 push	fs
 pusha						; save registers
-mov	[OldContextPointer],esp
 
-call	find_next_process_to_switch_to
-test	eax,eax					; no processes
-jz	no_processes
-
-push	eax
-push	dword [OldContextPointer]
-call	switch_task				; switch to next task
+push	esp
+call	switch_to_next_task			; switch to next task
 
 ; never reaches here
 no_processes:

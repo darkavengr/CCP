@@ -133,31 +133,25 @@ return(TRUE);
 void switch_to_next_task(size_t *savedcontext) {
 PROCESS *nextprocess;
 
+disable_interrupts();
+
 if((get_processes_pointer() == NULL)|| (get_current_process_pointer() == NULL)) return;	/* no processes */
 if(is_multitasking_enabled() == FALSE) return;	/* return if multitasking is disabled */
 
 //kprintf_direct("current=%X\n",get_current_process_pointer());
 
-/* If process is marked for deletion, remove it */
+if(timer_increment() < get_process_max_tick_count()) return;
 
-if(GetCurrentProcessFlags() & PROCESS_TERMINATED) {
-	RemoveProcess(GetPreviousProcessPointer(),get_current_process_pointer(),get_next_process_pointer());			/* remove process */
+if(is_current_process_ready_to_switch() == FALSE) return; /* return if process is not ready to switch */
 
-	nextprocess=GetPreviousProcessPointer()->next;
-}
-else
-{
-	if(timer_increment() < get_process_max_tick_count()) return;
+nextprocess=find_next_process_to_switch_to();	/* find next process */
 
-	if(is_current_process_ready_to_switch() == FALSE) return; /* return if process is not ready to switch */
+SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
+nextprocess->flags |= PROCESS_RUNNING;	/* set process running flag for next process */
 
-	nextprocess=find_next_process_to_switch_to();	/* find next process */
+reset_current_process_ticks();			/* reset number of process quantum ticks */
 
-	SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
-	nextprocess->flags |= PROCESS_RUNNING;	/* set process running flag for next process */
-
-	reset_current_process_ticks();			/* reset number of process quantum ticks */
-}
+enable_interrupts();
 
 switch_task(savedcontext,nextprocess);	/* switch to task */
 
@@ -180,7 +174,6 @@ if(get_processes_pointer() == NULL) return;	/* no processes */
 SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
 descriptor->flags |= PROCESS_RUNNING;	/* set process running flag for next process */
 
-asm("xchg %bx,%bx");
 switch_task(savedcontext,descriptor);	/* switch to task */
 
 /* should never be here */
