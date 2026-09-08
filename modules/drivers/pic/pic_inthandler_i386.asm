@@ -26,6 +26,8 @@ global irq
 ; IRQ handlers
 ;
 irq0:
+inc	byte [0x800b8000]
+
 mov	dword [irqnumber],0
 jmp	irq
 

@@ -28,9 +28,6 @@
 #define O_TRUNC			32
 #define O_RDWR 			O_RDONLY | O_WRONLY
 
-#define MAX_PATH		255
-#define VFS_MAX 		1024
-
 #define	_READ 			0
 #define _WRITE 			1
 

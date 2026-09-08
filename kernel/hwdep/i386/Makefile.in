@@ -46,4 +46,6 @@ page.o:
 paepage.o:
 	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ paepage.c -o @buildroot@/obj/@arch@/paepage.o
 
+pfreclaim-i386.o:
+	$(CC) @cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@ pfreclaim-i386.c -o @buildroot@/obj/@arch@/pfreclaim-i386.o
 

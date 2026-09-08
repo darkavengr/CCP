@@ -247,6 +247,18 @@ mov	rdx,qword int18_handler		; handler
 mov	rcx,qword 18			; interrupt number
 call	set_interrupt
 
+mov	r11,19
+next_null_interrupt:
+mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
+mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
+mov	rdx,qword null_handler		; handler
+mov	rcx,qword r11			; interrupt number
+call	set_interrupt
+
+inc	r11
+cmp	r11,256
+jne	next_null_interrupt
+
 ;
 ; Set syscall interrupt
 ;
@@ -488,6 +500,26 @@ mov	rax,[r11]				; then return old rax
 iretq_error:
 iretq  
 
+null_handler:
+iretq
+
+;
+; Get if interrupts are enabled
+;
+; In: Nothing
+;
+; Returns: CPU flags register
+;
+
+get_interrupts_enabled:
+pushfq					; get flags
+pop	rax
+
+and	rax,0x200			; get interrupts flag
+shr	rax,9
+ret
+
+
 idt:
 dw 0x3FFF					; limit
 dq idttable				; base
@@ -495,16 +527,6 @@ dq idttable				; base
 idttable:
 times 256 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 idt_end:
-mov	al,PIC_EOI			        ; reset PIC
-out	PIC_MASTER_COMMAND,al			; reset PIC master
-
-mov	ebx,[rel irqnumber]		        ; get IRQ number
-cmp	ebx,7			     	        ; if slave IRQ
-jle	nslave				        ; continue if not
-			     
-out	PIC_SLAVE_COMMAND,al			; reset PIC slave
-
-nslave:
 
 error_number_exceptions dq 8,10,11,12,13,14,17,21,29,30
 end_error_number_exceptions:

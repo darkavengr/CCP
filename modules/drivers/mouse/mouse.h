@@ -1,3 +1,6 @@
+#include <stdint.h>
+#include <stddef.h>
+
 #define MOUSE_GET_COMPAQ_STATUS			0x20
 #define MOUSE_SET_COMPAQ_STATUS 		0x60
 #define MOUSE_ENABLE_AUXILARY_DEVICE 		0xA8

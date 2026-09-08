@@ -86,7 +86,7 @@ readmouse();
 
 /* no ack */
 
-strncpy(&device.dname,"MOUSE",MAX_PATH);			/* add character device */
+strncpy(&device.name,"MOUSE",MAX_PATH);			/* add character device */
 
 device.charioread=&mouseio_read;
 device.chariowrite=NULL;
@@ -108,7 +108,7 @@ if(init != NULL) {			/* args found */
 		tokenize_line(tokens[count],op,"=");	/* tokenize line */
 
 	  	if(strncmp(op[0],"resolution",MAX_PATH) == 0) {		/* mouse resolution */
-			mr=atoi(op[1]);
+			mr=atoi(op[1],10);
 
 			if(mr < 3) {
 				kprintf_direct("mouse: Invalid resolution. Must be 0,1,2 or 3\n");
@@ -119,7 +119,7 @@ if(init != NULL) {			/* args found */
 		}
 
 		if(strncmp(op[0],"samplerate",MAX_PATH) == 0) {
-			mr=atoi(op[1]);	/* sample rate */
+			mr=atoi(op[1],10);	/* sample rate */
 			mouse_set_sample_rate(mr);
 		}
 	

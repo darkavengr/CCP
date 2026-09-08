@@ -182,10 +182,10 @@ return(0);
 *
 * In: Nothing
 *
-* Returns: -1 on error, 0 on success
+* Returns: Nothing
 *
 */
-size_t ACPIPowerOff(void) {
+void ACPIPowerOff(void) {
 shutdown(_SHUTDOWN);
 }
 
@@ -194,10 +194,10 @@ shutdown(_SHUTDOWN);
 *
 * In: Nothing
 *
-* Returns: -1 on error, 0 on success
+* Returns: Nothing
 *
 */
-size_t ACPIRestart(void) {
+void ACPIRestart(void) {
 shutdown(_RESET);
 }
 

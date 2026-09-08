@@ -21,7 +21,7 @@ typedef struct _port {
 	size_t databits;
 	size_t stopbits;
 	size_t parity;
-	size_t size_terrupts;
+	size_t interrupts;
 	void (*readhandler)(size_t,size_t,size_t,size_t,void *);
 	void (*writehandler)(size_t,size_t,size_t,size_t,void *);
 	char *buffer;

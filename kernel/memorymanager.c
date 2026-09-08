@@ -37,22 +37,24 @@ void *dmabuf=NULL;
 void *dmaptr=NULL;
 size_t dmabufsize=0;
 MUTEX memmanager_mutex;
+void *KernelHeapEnd=NULL;
+void *KernelHeapPointer=NULL;
+void *KernelCurrentHeapAddress=NULL;
 
 /*
 * Internal allocator function
 *
 * In: flags		Allocation flags(ALLOC_NORMAL,ALLOC_KERNEL or ALLOC_GLOBAL)
-      process		Process ID of process to allocate memory to
       size		Number of bytes to allocate
       overrideaddress	Address to force allocation to. If -1, use first available address
 *
 * Returns start address of allocated memory on success,NULL otherwise
 * 
 */
-void *alloc_int(size_t flags,size_t process,size_t size,size_t overrideaddress) {
+void *alloc_int(size_t flags,size_t size,size_t overrideaddress) {
 size_t count;
 size_t *memory_map_entry_ptr=NULL;
-size_t page_count;
+size_t page_count=0;
 size_t virtual_address=0;
 size_t physical_address=0;
 size_t first_virtual_address=0;
@@ -68,9 +70,7 @@ if(size >= bootinfo->memorysize) {				/* sanity check */
 
 if(size < PAGE_SIZE) size=PAGE_SIZE;				/* if size is less than a page, round up to page size */
 
-if((size % PAGE_SIZE) != 0) {
-	size=(size & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round up size to PAGE_SIZE */
-}
+round_up(size,PAGE_SIZE);		/* round up to PAGE _SIZE */
 
 lock_mutex(&memmanager_mutex);
 
@@ -79,7 +79,7 @@ memory_map_entry_ptr=MEMBUF_START;
 
 /* check if enough free memory, find start of free chain and starting physical address */
 
-for(count=0;count<(bootinfo->memorysize/PAGE_SIZE);count++) {	
+for(count=0;count < (bootinfo->memorysize / PAGE_SIZE);count++) {	
 	if(*memory_map_entry_ptr == 0) {
 		if(start_of_chain == NULL) start_of_chain=memory_map_entry_ptr;		/* save start of chain */
 
@@ -90,18 +90,16 @@ for(count=0;count<(bootinfo->memorysize/PAGE_SIZE);count++) {
 	memory_map_entry_ptr++;
 }
 
-if((page_count < (size/PAGE_SIZE)) || (count == (bootinfo->memorysize/PAGE_SIZE)-1)) {					/* out of memory */
-	unlock_mutex(&memmanager_mutex);
-
-	 setlasterror(NO_MEM);
-	 return(NULL);
+if((page_count < (size / PAGE_SIZE)) || (count == (bootinfo->memorysize / PAGE_SIZE)-1)) {		/* out of memory */
+	setlasterror(NO_MEM);
+	return(NULL);
 }
 
 if((flags & ALLOC_NOPAGING) == 0) {
 	/* find start virtual address */
 
 	if(overrideaddress == -1) { 					/* find first free virtual address */
-		first_virtual_address=findfreevirtualpage(size,flags,process); 
+		first_virtual_address=findfreevirtualpage(size,flags); 
 
 		if(first_virtual_address == -1) {
 			unlock_mutex(&memmanager_mutex);
@@ -113,7 +111,7 @@ if((flags & ALLOC_NOPAGING) == 0) {
 	  	virtual_address=first_virtual_address;
 	}
 	else
-	{					/* use override address */
+	{				/* use override address */
 		virtual_address=overrideaddress;
 		first_virtual_address=overrideaddress;
 	 }
@@ -125,68 +123,54 @@ else
 }
 
 /* create new chain in buffer */
-
+	
 memory_map_entry_ptr=start_of_chain;			/* point to start of new chain */
-
+	
 page_count=0;
 	
-while(count != (bootinfo->memorysize/PAGE_SIZE)+1) {
-
-	if(*memory_map_entry_ptr == 0) {
-		page_count++;
-
-	/* find next in memory map */
+while(count != (bootinfo->memorysize/PAGE_SIZE)) {
+	if((size_t) *memory_map_entry_ptr == 0) {
+		/* find next in memory map */
 
 		next_memory_map_ptr=memory_map_entry_ptr;
 		next_memory_map_ptr++;
-
+	
 		for(next_free_entry_count=count+1;next_free_entry_count<(bootinfo->memorysize/PAGE_SIZE)+1;next_free_entry_count++) {
-	  		if(*next_memory_map_ptr == 0) break;
+	  		if((size_t) *next_memory_map_ptr == 0) break;
 
 			next_memory_map_ptr++;
 	     	}
-
+	
 	     	*memory_map_entry_ptr=(size_t *) next_memory_map_ptr;
 	  
-/* link physical addresses to virtual addresses */
-
-	     	if((flags & ALLOC_NOPAGING) == 0) {	
+		/* link physical addresses to virtual addresses */
 	
+	     	if((flags & ALLOC_NOPAGING) == 0) {	
 	     		if(flags & ALLOC_NORMAL) {				/* add user-mode page */
-	 			map_user_page(virtual_address,process,physical_address);
-	        		if(process == getpid()) switch_address_space(process);
+	 			map_user_page(virtual_address,physical_address);
 			}
 			else if(flags & ALLOC_KERNEL) {				/* add kernel page */
-				map_system_page(virtual_address,process,physical_address); 
-
-	        		if(process == getpid()) switch_address_space(process);
+				map_system_page(virtual_address,physical_address); 
 	        	}
 			else if(flags & ALLOC_GLOBAL) {				 /* add global page */
-	 			map_system_page(virtual_address,process,physical_address);
-
-	        		if(process == getpid()) switch_address_space(process);	    
+	 			map_system_page(virtual_address,physical_address);
 	       		}
-
+	
 			virtual_address += PAGE_SIZE;
 	     	}
+		
+		if( (page_count == 0) && ((size / PAGE_SIZE) == 1) || (page_count++ == (size / PAGE_SIZE))) break;			/* found enough */
 	}
-
+	
 	memory_map_entry_ptr++;
 	physical_address += PAGE_SIZE;
-	
-	if(page_count > (size/PAGE_SIZE)) break;			/* found enough */
-
+		
 	count++;
 }
-
+	
 *memory_map_entry_ptr=(size_t *) -1;							/* mark end of chain */
-
-//if(flags & ALLOC_GUARDPAGE) {		/* place a non-present guard page at the end of the allocated memory */
-//	virtual_address -= PAGE_SIZE;
-//	map_page_internal(0,process,virtual_address,0);		
-//}
-
-if((flags & ALLOC_NOPAGING) == 0) memset(first_virtual_address,0,size-1);
+	
+if((flags & ALLOC_NOPAGING) == 0) memset(first_virtual_address,0,size - 1);
 
 unlock_mutex(&memmanager_mutex);
 
@@ -194,17 +178,17 @@ setlasterror(NO_ERROR);
 return((void *) first_virtual_address);
 }
 
+
 /*
 * Internal free memory function
 *
-* In: 	process		Process ID
-*	b		Start address of memory area
+* In:	address		Start address of memory area
 *	flags		Flags (1=free physical address)
 *
 * Returns 0 on success, -1 otherwise
 * 
 */
-size_t free_internal(size_t process,void *address,size_t flags) {
+size_t free_internal(void *address,size_t flags) {
 size_t pc;
 size_t count;
 size_t p;
@@ -220,8 +204,10 @@ if((flags & FREE_PHYSICAL)) {			/* freeing physical address */
 }
 else
 {
-	c=getphysicaladdress(process,address);
+	c=getphysicaladdress(address);
 	if(c == -1) {
+		setlasterror(INVALID_ADDRESS);
+
 		unlock_mutex(&memmanager_mutex);
 		return(-1);					/* bad address */
 	 }
@@ -243,15 +229,13 @@ do {
 	*z=0;							/* remove from allocation table */
 	z=p;
 
-	if((p != -1) || (p == 0)) unmap_page(pc,process);				/* remove page from page table */
+	if((p != -1) || (p == 0)) unmap_page(pc);				/* remove page from page table */
 	pc=pc+PAGE_SIZE;
 }  while(p != -1);
 
 
 if(c == NULL) {						
 	unlock_mutex(&memmanager_mutex);
-
-	setlasterror(NO_MEM);
 	return(-1);
 }
 
@@ -272,7 +256,7 @@ return(NO_ERROR);
 * 
 */
 void *alloc(size_t size) {
-return(alloc_int(ALLOC_NORMAL,getpid(),size,-1));
+return(heapalloc_int(ALLOC_NORMAL,size));
 }
 
 /*
@@ -283,8 +267,32 @@ return(alloc_int(ALLOC_NORMAL,getpid(),size,-1));
 * Returns 0 on success, -1 otherwise
 * 
 */
-size_t free(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-return(free_internal(getpid(),b,0));
+size_t free(void *address) {
+return(heapfree(ALLOC_NORMAL,address));
+}
+
+/*
+* Allocate to memory to kernel
+*
+* In: size	Number of bytes to allocate
+*
+* Returns start address on success, NULL otherwise
+* 
+*/
+void *kernelalloc(size_t size) {
+return(heapalloc_int(ALLOC_KERNEL,size));
+}
+
+/*
+* Free memory from kernel
+*
+* In: b	Start address of memory area
+*
+* Returns 0 on success, -1 otherwise
+* 
+*/
+size_t kernelfree(void *address) {
+return(heapfree(ALLOC_KERNEL,address));
 }
 
 /*
@@ -296,32 +304,8 @@ return(free_internal(getpid(),b,0));
 * Returns 0 on success, -1 otherwise
 * 
 */
-size_t free_physical(void *b) {					/* free memory (0x00000000 - 0x7fffffff) */
-return(free_internal(getpid(),b,FREE_PHYSICAL));
-}
-
-/*
-* Allocate to memory to kernel
-*
-* In: size	Number of bytes to allocate
-*
-* Returns start address on success, NULL otherwise
-* 
-*/
-void *kernelalloc(size_t size) {				/* allocate kernel memory (0 - 0x80000000) */
-return(alloc_int(ALLOC_KERNEL | ALLOC_GUARDPAGE,getpid(),size,-1));
-}
-
-/*
-* Free memory from kernel
-*
-* In: b	Start address of memory area
-*
-* Returns 0 on success, -1 otherwise
-* 
-*/
-size_t kernelfree(void *b) {
-return(free_internal(getpid(),b,0));
+size_t free_physical(void *address) {
+return(free_internal(address,FREE_PHYSICAL));
 }
 
 /*
@@ -333,7 +317,7 @@ return(free_internal(getpid(),b,0));
 * 
 */
 void *kernelalloc_nopaging(size_t size) {
-return(alloc_int(ALLOC_NOPAGING,getpid(),size,-1));
+return(alloc_int(ALLOC_NOPAGING,size,-1));
 }
 
 /*
@@ -366,13 +350,17 @@ return(newptr);
 */
 
 size_t memorymanager_init(void) {
-initialize_mutex(&memmanager_mutex);		/* intialize mutex */
+initialize_mutex(&memmanager_mutex);		/* initialize mutex */
 
 if(initialize_dma_buffer(DMA_BUFFER_SIZE) == -1) {		/* inititalize DMA buffer */
 	 kprintf_direct("kernel: Unable to allocate DMA buffer\n");
 	 return(-1);
 }
- 
+
+KernelHeapEnd=NULL;
+KernelHeapPointer=NULL;
+KernelCurrentHeapAddress=NULL;
+
 return(0);
 }
 
@@ -402,8 +390,8 @@ dmaptr=dmabuf;
 
 dmap=dmabuf;
 
-for(count=0;count<dmasize/PAGE_SIZE;count++) {
-	  map_system_page(dmap+KERNEL_HIGH,0,dmap);
+for(count=0;count < dmasize / PAGE_SIZE;count++) {
+	  map_system_page(dmap+KERNEL_HIGH,dmap);
 
 	  dmap += PAGE_SIZE;
 }
@@ -424,7 +412,7 @@ return(0);
 */
 
 void *realloc_kernel(void *address,size_t size) {
-return(realloc_int(ALLOC_KERNEL,getpid(),address,size));
+return(realloc_int(ALLOC_KERNEL,address,size));
 }
 
 /*
@@ -438,7 +426,7 @@ return(realloc_int(ALLOC_KERNEL,getpid(),address,size));
 */
 
 void *realloc_user(void *address,size_t size) {
-return(realloc_int(ALLOC_NORMAL,getpid(),address,size));
+return(realloc_int(ALLOC_NORMAL,address,size));
 }
 
 
@@ -446,7 +434,6 @@ return(realloc_int(ALLOC_NORMAL,getpid(),address,size));
 * Resize memory internal function
 *
 * In: flags		Allocation flags(ALLOC_NORMAL or ALLOC_KERNEL)
-      process		Process ID
       address		Address of previously allocated memory
       size		New allocation size
 * 
@@ -454,8 +441,7 @@ return(realloc_int(ALLOC_NORMAL,getpid(),address,size));
 *
 */	
 
-
-void *realloc_int(size_t flags,size_t process,void *address,size_t size) {
+void *realloc_int(size_t flags,void *address,size_t size) {
 char *tempbuf;
 char *newbuf;
 size_t pc;
@@ -477,7 +463,7 @@ if((flags & ALLOC_NOPAGING) || (size == 0)) {
 }
 else
 {
-	c=getphysicaladdress(process,address);
+	c=getphysicaladdress(address);
 	if(c == -1) {	
 		unlock_mutex(&memmanager_mutex);
 
@@ -488,9 +474,7 @@ else
 
 if(size < PAGE_SIZE) size=PAGE_SIZE;		/* if size is less than a page, round up to page size */
 
-if((size % PAGE_SIZE) != 0) {
-	size=(size & ((0-1)-(PAGE_SIZE-1)))+PAGE_SIZE;		/* round */
-}
+round_up(size,PAGE_SIZE);	/* round up to PAGE _SIZE */
 
 c=(c / PAGE_SIZE) * sizeof(size_t);
 z=MEMBUF_START+c;
@@ -504,7 +488,7 @@ do {
 	p=*z;				/* get next */
 
 	if((count*PAGE_SIZE) == size) {		 /* shrinking memory */
-		if(free_internal(process,(address+size),0) == -1) {
+		if(free_internal((address+size),0) == -1) {
 			unlock_mutex(&memmanager_mutex);
 			return(NULL);
 		}
@@ -523,7 +507,7 @@ do {
 			/* check for sufficient contiguous virtual address pages */
 			
 			for(extendcount=1;extendcount != (size-(count*PAGE_SIZE));extendcount++) {
-				if(getphysicaladdress(process,(address+(extendcount*PAGE_SIZE))) == -1) break;
+				if(getphysicaladdress(address+(extendcount*PAGE_SIZE)) == -1) break;
 			}
 
 			if((extendcount*PAGE_SIZE) != (size-(count*PAGE_SIZE))) {		/* no contiguous address space found */
@@ -537,7 +521,7 @@ do {
 
 				memcpy(newbuf,address,(count*PAGE_SIZE));		/* copy data */
 			
-				if(free_internal(process,(address+size),0) == -1) {
+				if(free_internal((address+size),0) == -1) {
 					kernelfree(newbuf);
 					unlock_mutex(&memmanager_mutex);
 					return(NULL);
@@ -549,7 +533,7 @@ do {
 
 			/* contiguous address space found */
 
-			if(alloc_int(flags,process,(count*PAGE_SIZE),address+(count*PAGE_SIZE)) == NULL) {
+			if(alloc_int(flags,(count*PAGE_SIZE),address+(count*PAGE_SIZE)) == NULL) {
 				unlock_mutex(&memmanager_mutex);
 				return(NULL);
 			}
@@ -567,3 +551,180 @@ do {
 unlock_mutex(&memmanager_mutex);
 return(NULL);
 }
+
+/*
+* Allocate from heap
+*
+* In: 	type	Allocation type=ALLOC KERNEL or ALLOC_NORMAL
+*	process	Process ID
+*	size	Number of bytes to allocate	
+*
+* Returns: start address on success, NULL otherwise
+* 
+*/	
+void *heapalloc_int(size_t type,size_t size) {
+size_t rounded_up_size;
+size_t oldsize;
+size_t startaddress;
+void *heap_pointer;
+void *heapend;
+void *new;
+size_t * heapptr;
+HEAPHEADER *heapheader;
+
+lock_mutex(&memmanager_mutex);
+
+rounded_up_size=round_up(size + sizeof(HEAPHEADER),PAGE_SIZE);	/* round up to PAGE _SIZE */
+
+if(((type == ALLOC_KERNEL) && (KernelHeapPointer == NULL)) || ((type == ALLOC_NORMAL) && (GetUserHeapAddress() == NULL))) {							/* if there is no heap allocate it */
+
+	/* create heap after memory map */
+
+	startaddress=(size_t) (dmabuf+dmabufsize)+KERNEL_HIGH;
+	startaddress=round_up(startaddress,PAGE_SIZE);
+
+	if(type == ALLOC_KERNEL) {
+		heap_pointer=alloc_int(type,rounded_up_size,startaddress);
+		if(heap_pointer == NULL) {
+			unlock_mutex(&memmanager_mutex);
+			return(NULL);
+		}
+	}
+	else
+	{
+		heap_pointer=alloc_int(type,rounded_up_size,-1);
+		if(heap_pointer == NULL) {
+			unlock_mutex(&memmanager_mutex);
+			return(NULL);
+		}
+	}
+
+	heapheader=heap_pointer;
+
+	/* put heap header */
+	heapheader->magic='HEAP';
+	heapheader->size=size;
+														
+	/* set heap end */
+
+	heapend=heap_pointer;
+	heapend += rounded_up_size;
+
+	if(type == ALLOC_NORMAL) {
+		SetUserHeapAddress(heap_pointer);
+		SetUserHeapEnd(heapend);
+		SetCurrentUserHeapAddress(heap_pointer + size + sizeof(HEAPHEADER));
+	}
+	else
+	{
+		KernelHeapPointer=heap_pointer;
+		KernelHeapEnd=heapend;
+		KernelCurrentHeapAddress=heap_pointer + size + sizeof(HEAPHEADER);
+	}
+
+	unlock_mutex(&memmanager_mutex);
+	return((void *) heap_pointer + sizeof(HEAPHEADER));
+}
+
+if(type == ALLOC_NORMAL) {
+	heapend=GetUserHeapEnd();
+}
+else
+{
+	heapend=KernelHeapEnd;
+}
+if(((size_t) KernelCurrentHeapAddress + size + sizeof(HEAPHEADER)) > heapend) {		/* extend heap */
+	if(alloc_int(type,rounded_up_size,heapend) == NULL) return(NULL);
+
+	/* set heap end */
+
+	heapend += rounded_up_size;
+
+	if(type == ALLOC_NORMAL) {
+		SetUserHeapEnd(heapend);
+	}
+	else
+	{
+		KernelHeapEnd=heapend;
+	}
+}
+
+if(type == ALLOC_KERNEL) {
+	new=KernelCurrentHeapAddress;
+	KernelCurrentHeapAddress += (size + sizeof(HEAPHEADER));
+}
+else
+{
+	new=GetCurrentUserHeapAddress();
+	SetCurrentUserHeapAddress(GetCurrentUserHeapAddress() + size + sizeof(HEAPHEADER));
+}
+
+heapheader=(HEAPHEADER *) new;
+
+/* put heap header */
+heapheader->magic='HEAP';
+heapheader->size=size;
+
+unlock_mutex(&memmanager_mutex);
+return(new + sizeof(HEAPHEADER));
+}
+
+size_t heapfree(size_t type,void *address) {
+HEAPHEADER *heapheader;
+void *heapend;
+void *current;
+void *start;
+
+lock_mutex(&memmanager_mutex);
+
+heapheader=address - sizeof(HEAPHEADER);
+
+if(heapheader->magic != 'HEAP') {			/* missing heap magic number */
+	kprintf_direct("heapfree(): Missing heap magic number at address %X\n",heapheader);
+	asm("xchg %bx,%bx");
+
+	if(type == ALLOC_NORMAL) {
+		unlock_mutex(&memmanager_mutex);
+
+		exit(0);
+	}
+	else
+	{
+		shutdown(0);
+	}
+}
+
+if(type == ALLOC_NORMAL) {
+	heapend=GetUserHeapEnd();
+	current=GetCurrentUserHeapAddress();
+	start=GetUserHeapAddress();
+}
+else
+{
+	heapend=KernelHeapEnd;
+	current=KernelCurrentHeapAddress;
+	start=KernelHeapPointer;
+}
+
+if((address + heapheader->size) >= heapend) {	/* release heap if at the end of the heap */
+	free_internal(address,type);
+
+	heapend -= heapheader->size - sizeof(HEAPHEADER);
+	current -= heapheader->size - sizeof(HEAPHEADER);
+
+	if(type == ALLOC_NORMAL) {
+		if(heapend > start) SetUserHeapEnd(heapend);
+		if(current > start) SetCurrentUserHeapAddress(current);
+	}
+	else
+	{
+		if(heapend > start) KernelHeapEnd=heapend;
+		if(current > start) KernelCurrentHeapAddress=current;
+	}
+}
+
+unlock_mutex(&memmanager_mutex);
+
+return(0);
+}
+

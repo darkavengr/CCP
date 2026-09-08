@@ -198,25 +198,27 @@ getfullpath(filename,buf);
 SetVariableValue("%0",buf);
 
 for(count=1;count < parsecount;count++) {
-	bufptr=buf;
-
-	*bufptr++='%';			/* %0 %1 etc */
-	itoa(count,bufptr);
-
 	SetVariableValue(buf,parsebuf[count]);
+
+	ksnprintf(buf,"%%%d",MAX_PATH,count);	/* %0 ... %9 */
 }
 
 filesize=getfilesize(handle);
 
 batchfilebuf=alloc(filesize);		/* allocate buffer for batchfile */
 if(batchfilebuf == NULL) {
+	close(handle);
+
 	set_batch_mode(FALSE);			/* set batch mode */
 	return(-1);
 }
 
 batchfileptr=batchfilebuf;
 
-if(read(handle,batchfilebuf,filesize) == -1) return(-1);	/* read batchfile to buffer */
+if(read(handle,batchfilebuf,filesize) == -1) {
+	close(handle);
+	return(-1);	/* read batchfile to buffer */
+}
 
 memset(buf,0,MAX_PATH);
 bufptr=buf;
@@ -242,6 +244,8 @@ while(*batchfileptr != 0) {
 	}
 
 }
+
+close(handle);
 
 set_batch_mode(FALSE);			/* set batch mode */
 return(NO_ERROR);

@@ -6,7 +6,7 @@
 #define FAT_ATTRIB_ARCHIVE	32
 
 #define FAT_ENTRY_SIZE 	32
-#define MAX_BLOCK_SIZE 32768
+#define MAX_BLOCK_SIZE 32768 / 2
 
 typedef struct {
 	uint8_t filename[11]; 			// 0

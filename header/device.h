@@ -20,42 +20,43 @@
 #define MAX_PATH	255
 
 #ifndef DEVICE_H
-#define DEVICE_H
-typedef struct {
-	char *name[MAX_PATH];
-	size_t (*charioread)(void *,size_t);			/* function pointer */
-	size_t (*chariowrite)(void *,size_t);			/* function pointer */
-	size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
-	size_t flags;
-	void *data;
-	struct CHARACTERDEVICE *next;
-} CHARACTERDEVICE;
+	#define DEVICE_H
 
-typedef struct {
-	uint8_t name[MAX_PATH];
-	void *dbuf;
-	size_t (*blockio)(size_t,size_t,uint64_t,void *);			/* function pointers */
-	size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
-	size_t flags;
-	size_t drive;
-	uint64_t startblock;
-	size_t physicaldrive; 
-	size_t sectorsperblock;
-	size_t sectorsize;
-	size_t sectorspertrack;
-	size_t numberofheads;
-	size_t numberofsectors;
-	void *superblock;
-	MUTEX mutex;
-	struct BLOCKDEVICE *next;
-}  BLOCKDEVICE;
+	typedef struct {
+		char *name[MAX_PATH];
+		size_t (*charioread)(void *,size_t);			/* function pointer */
+		size_t (*chariowrite)(void *,size_t);			/* function pointer */
+		size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
+		size_t flags;
+		void *data;
+		struct CHARACTERDEVICE *next;
+	} CHARACTERDEVICE;
 
-typedef struct {
-	size_t (*handler)(size_t *);
-	size_t irqnumber;	/* can have multiple entries for the same IRQ number */
-	size_t refnumber;		/* to distinguish between IRQs */
-	struct IRQ_HANDLER *next;
-} IRQ_HANDLER;
+	typedef struct {
+		uint8_t name[MAX_PATH];
+		void *dbuf;
+		size_t (*blockio)(size_t,size_t,uint64_t,void *);			/* function pointers */
+		size_t (*ioctl)(size_t handle,unsigned long request,void *buffer);
+		size_t flags;
+		size_t drive;
+		uint64_t startblock;
+		size_t physicaldrive; 
+		size_t sectorsperblock;
+		size_t sectorsize;
+		size_t sectorspertrack;
+		size_t numberofheads;
+		size_t numberofsectors;
+		void *superblock;
+		MUTEX mutex;
+		struct BLOCKDEVICE *next;
+	}  BLOCKDEVICE;
+
+	typedef struct {
+		size_t (*handler)(size_t *);
+		size_t irqnumber;	/* can have multiple entries for the same IRQ number */
+		size_t refnumber;		/* to distinguish between IRQs */
+		struct IRQ_HANDLER *next;
+	} IRQ_HANDLER;
 #endif
 
 size_t add_block_device(BLOCKDEVICE *driver);

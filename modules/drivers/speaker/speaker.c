@@ -22,6 +22,7 @@
 #include "vfs.h"
 #include "string.h"
 #include "speaker.h"
+#include "../pit/pit.h"
 
 #define MODULE_INIT speaker_io
 
@@ -36,7 +37,7 @@
 size_t speaker_init(char *initstring) {
 CHARACTERDEVICE bd;
 
-strncpy(bd.dname,"SPEAKER",MAX_PATH);		/* add char device */
+strncpy(bd.name,"SPEAKER",MAX_PATH);		/* add char device */
 bd.chariowrite=&speaker_io_write;
 bd.charioread=NULL;
 bd.ioctl=NULL;
@@ -94,5 +95,4 @@ for(count=0;count<len;count++) {
 
 return(len);
 }
-
 

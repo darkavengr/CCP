@@ -38,7 +38,7 @@ char *s;
 char *ptr;
 size_t num;
 double d;
-char *tempbuffer[MAX_SIZE];
+char *tempbuffer[MAX_PATH];
 size_t flags=0;
 size_t count;
 size_t width;

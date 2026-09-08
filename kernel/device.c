@@ -190,7 +190,7 @@ return(NO_ERROR);
 
 size_t blockio(size_t op,size_t drive,uint64_t block,void *buf) {
 BLOCKDEVICE *next;
-char *b;
+char *blockptr;
 size_t count;
 size_t error;
 size_t lasterr;
@@ -212,7 +212,7 @@ if(next == NULL) {					/* bad drive */
 	 return(-1);
 }
 
-b=buf;
+blockptr=buf;
 
 if(next->sectorsperblock == 0) next->sectorsperblock=1;
 
@@ -228,14 +228,13 @@ if(next->blockio == NULL) {				/* no I/O handler defined */
 
 
 for(count=0;count < next->sectorsperblock;count++) {
-	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,b) == -1) {		/* call I/O handler */
+	if(next->blockio(op,next->physicaldrive,(uint64_t) (next->startblock+block)+count,blockptr) == -1) {		/* call I/O handler */
 		lasterr=getlasterror();
 
 		/* handle any critical errors */
 
 		if((lasterr == WRITE_PROTECT_ERROR) || (lasterr == DRIVE_NOT_READY) || (lasterr == INVALID_CRC) \
 		|| (lasterr == GENERAL_FAILURE) || (lasterr == READ_FAULT) || (lasterr == WRITE_FAULT)) { 
-	
 	  		error=call_critical_error_handler(next->name,drive,(op | 0x80000000),lasterr);	/* call exception handler */
 
 	  		if(error == CRITICAL_ERROR_ABORT) {			/* abort */
@@ -246,7 +245,7 @@ for(count=0;count < next->sectorsperblock;count++) {
 				continue;
 	  		}
 	  		else if((error == CRITICAL_ERROR_FAIL) || (error == -1)) {	/* fail */
-	   			next->flags ^= DEVICE_LOCKED;			/* unlock drive */
+	   			next->flags |= ~DEVICE_LOCKED;			/* unlock drive */
 
 	   			unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 	   			return(-1);
@@ -259,7 +258,7 @@ for(count=0;count < next->sectorsperblock;count++) {
 		}
 	}
 
-	b=b+next->sectorsize;
+	blockptr += next->sectorsize;
 }
 
 
@@ -655,6 +654,8 @@ IRQ_HANDLER *next;
 next=irq_handlers;
 
 while(next != NULL) {
+//	kprintf_direct("callirqhandlers() IRQ=%X refnumber=%X address=%X\n",next->irqnumber,next->refnumber,next->handler);
+
 	if((next->irqnumber == irqnumber) && (next->handler != NULL)) next->handler(stackparams);		/* call handler */
 	
 	next=next->next;

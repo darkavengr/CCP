@@ -28,22 +28,6 @@ AMLOPCODE *GetAMLOpcodeInformation(size_t) opcode);
 
 #ifndef AML_H
 	#define AML_H
-	typedef struct {
-		size_t type;
-		uint8_t ByteData;
-		uint16_t WordData;
-		uint32_t DwordData;
-		uint64_t QwordData;
-		char *string[ACPI_NAME_MAX];	
-	} AMLTREEVALUE;
-
-	typedef struct {
-		size_t NumberOfSubnodes;
-		AMLTREEVALUE data;
-		size_t MethodSize;
-		void *MethodPtr;
-		struct ACPINode *subnodes[MAX_ACPI_SUBNODES];
-	} ACPINodeTree;
 
 	typedef struct {
 		uint8_t *buffer;
@@ -51,24 +35,42 @@ AMLOPCODE *GetAMLOpcodeInformation(size_t) opcode);
 	} AMLBUFFER;
 
 	typedef struct {
-		size_t size;
-		AMLTREEVALUE value;
-	} AMLPACKAGE;
-		
-	typedef struct {
 		size_t integer;
 		char *string[ACPI_NAME_MAX];
 		AMLBUFFER buffer;
-		AMLPACKAGE package;
-		AMLFIELDUNIT fieldunit;
-	} AMLTYPE;
+		struct AMLPACKAGE package;
+	} AMLPACKAGE;
 
 	typedef struct {
-		uint8_t opcode;
-		size_t NumberOfParameters;
-		size_t FirstParameterType;
-		size_t SecondParameterType;
-		size_t ResultParameterType;
-	} AMLOPCODE;
+		size_t type;
+		uint8_t ByteData;
+		uint16_t WordData;
+		uint32_t DwordData;
+		uint64_t QwordData;
+		char *string[ACPI_NAME_MAX];
+		AMLBUFFER buffer;
+		AMLPACKAGE package;
+		struct AMLTREEVALUE *prev;
+		struct AMLTREEVALUE *next;
+	} AMLTREEVALUE;
+
+	typedef struct {
+		char *name[ACPI_NAME_MAX];
+		size_t NumberOfSubnodes;
+		AMLTREEVALUE data;
+		size_t MethodSize;
+		void *MethodPtr;
+		struct ACPINodeTree *subnodes[MAX_ACPI_SUBNODES];
+	} ACPINodeTree;
+
+	typedef struct AMLMETHODCALLSTACK {
+		char *name[ACPI_NAME_MAX];
+		AMLTREEVALUE local[7];
+		AMLTREEVALUE arg[7];
+		uint8_t *methodptr;
+		struct AMLMETHODCALLSTACK *prev;
+		struct AMLMETHODCALLSTACK *next;
+	} AMLMETHODCALLSTACK;
+
 #endif
 

@@ -6,4 +6,6 @@ Makefile
 command/*.o
 mapfiles/*
 kernel/drive.c
+kernel/Makefile
+out
 

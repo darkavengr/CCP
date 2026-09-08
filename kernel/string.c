@@ -144,7 +144,6 @@ char *sourceptr=source;
 char *destptr=dest;
 
 while(count-- > 0) *destptr++=*sourceptr++;
-	
 return(dest);
 }
 
@@ -202,8 +201,8 @@ return((char) *dest - (char) *source);
  *
  */
 size_t strncmpi(char *source,char *dest,size_t size) {
-char *sourcetemp[MAX_SIZE];
-char *desttemp[MAX_SIZE];
+char *sourcetemp[MAX_PATH];
+char *desttemp[MAX_PATH];
 
 touppercase(source,sourcetemp);
 touppercase(dest,desttemp);
@@ -222,8 +221,9 @@ return(strncmp(sourcetemp,desttemp,size));
  *
  */
 
-void *memset(void *buf,char fillchar,size_t count) {
+void *memset(void *buf,char fillchar,size_t size) {
 char *bufptr=buf;
+size_t count=size;
 
 while(count-- > 0) *bufptr++=fillchar;				/* put byte */
 
@@ -289,12 +289,12 @@ for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
 size_t wildcard(char *wildcard,char *str) {
 char *wildcardptr=wildcard;
 char *strptr=str;
-char *buf[MAX_SIZE];
+char *buf[MAX_PATH];
 char *bufptr;
 size_t IsFound=FALSE;
 char *startofmultichars;
 
-memset(buf,0,MAX_SIZE);				/* clear buffer */
+memset(buf,0,MAX_PATH);				/* clear buffer */
  
 wildcardptr=wildcard;
 strptr=str;
@@ -426,9 +426,9 @@ char *n;
 char *o;
 char c;
 size_t countx;
-char *newmask[MAX_SIZE];
-char *mmask[MAX_SIZE];
-char *nname[MAX_SIZE];
+char *newmask[MAX_PATH];
+char *mmask[MAX_PATH];
+char *nname[MAX_PATH];
 
 touppercase(mask,mmask);					/* convert to uppercase */
 touppercase(name,nname);
@@ -583,10 +583,10 @@ for(count=0;count<(sizeof(size_t)*2);count++) {
 	shiftamount -= 4;
 	mask=mask >> 4;  			/* shift mask */
 
-	if(found_start == TRUE) strncpy(b++,hexbuf[h],MAX_SIZE);	/* copy hex digit */
+	if(found_start == TRUE) strncpy(b++,hexbuf[h],MAX_PATH);	/* copy hex digit */
 }
 
-if(found_start == FALSE) strncpy(buf,hexbuf[0],MAX_SIZE);		/* all zeroes */
+if(found_start == FALSE) strncpy(buf,hexbuf[0],MAX_PATH);		/* all zeroes */
 
 return;
 }
@@ -624,11 +624,11 @@ mask=07 << shiftvalue;			/* bit mask */
 for(count=shiftvalue;count != 0;count -= 3) {
 	if((oct & mask) >> shiftvalue) foundstart=TRUE;	/* don't include trailing zeroes */
 
-	if(foundstart == TRUE) strncat(out,digits[(oct & mask) >> count],MAX_SIZE);
+	if(foundstart == TRUE) strncat(out,digits[(oct & mask) >> count],MAX_PATH);
 	mask=mask >> 3;
 }
 
-if(foundstart == FALSE) strncpy(out,digits[0],MAX_SIZE);		/* all zeroes */
+if(foundstart == FALSE) strncpy(out,digits[0],MAX_PATH);		/* all zeroes */
 
 return;
 }
@@ -637,45 +637,38 @@ return;
  * Tokenize string into array
  *
  * In: linebuf				String to tokenize
-       tokens[MAX_SIZE][MAX_SIZE]	Array to hold tokens
+       tokens[MAX_PATH][MAX_PATH]	Array to hold tokens
        delim				Character delimiter
  *
  * Returns: Number of tokens
  */
 
-size_t tokenize_line(char *linebuf,char *tokens[MAX_SIZE][MAX_SIZE],char *delim) {
+size_t tokenize_line(char *linebuf,char *tokens[MAX_PATH][MAX_PATH],char *delim) {
 char *token;
 size_t tokencount=0;
 char *tokenptr;
 char *delimptr;
 
-memset(tokens,0,MAX_SIZE);
-
 token=linebuf;
-
 tokenptr=tokens[0];
 
-while(*token != 0) {
-	delimptr=delim;			/* point to delimiter characters */
+while((char) *token != 0) {
+	delimptr=delim;
 
-	while(*delimptr != 0) {
-
-		if(*token == *delimptr++) {	/* end of token */
+	do {
+		if((char) *token == (char) *delimptr) {
+			tokenptr=tokens[++tokencount];
 			token++;
-			tokencount++;
-
-			*tokenptr=0;		/* put null at end of token */
-
-			delimptr=tokens[tokencount];
 			break;
    		}
- 	 }	
+
+		delimptr++;
+ 	 } while((char) *delimptr != 0);	
 
 	 *tokenptr++=*token++;
- }
+}
 
 tokencount++;
-*tokens[tokencount]=0;
 
 return(tokencount);
 }
@@ -728,9 +721,7 @@ return((size_t) num);
  */
 
 size_t round_up(size_t num,size_t multiple) {
-if(num < multiple) return(multiple);
-
-return(num+(multiple-(num % multiple)));
+return((num & (~(multiple-1))) + multiple);
 }
 
 /*
@@ -741,9 +732,7 @@ return(num+(multiple-(num % multiple)));
  */
 
 size_t round_down(size_t num,size_t multiple) {
-if(num < multiple) return(num);
-
-return((num / multiple)*multiple);
+return(num & (~(multiple-1)));
 }
 
 /*
@@ -762,7 +751,7 @@ char c;
 char *strptr;
 int int_num;
 double double_num;
-char *temp_buf[MAX_SIZE];
+char *temp_buf[MAX_PATH];
 char *bufptr;
 size_t count=0;
 
@@ -784,7 +773,7 @@ while(*formatptr != 0) {
 				count += strlen(strptr);	/* add number of bytes put in output buffer */
 				if(count >= size) return(count);
 
-				strncat(bufptr,strptr,MAX_SIZE);	/* copy to end of buffer */
+				strncat(bufptr,strptr,MAX_PATH);	/* copy to end of buffer */
 
 				bufptr += strlen(strptr);
 
@@ -794,7 +783,7 @@ while(*formatptr != 0) {
 			case 'd':				/* signed decimal */
 				int_num=va_arg(args,int);
 
-				if((int_num >> ((sizeof(int)*8)-1)) == 1)  strncat(bufptr,"-",MAX_SIZE);	/* add negative sign */
+				if((int_num >> ((sizeof(int)*8)-1)) == 1)  strncat(bufptr,"-",MAX_PATH);	/* add negative sign */
   
 				itoa(int_num,temp_buf);
 	

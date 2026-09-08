@@ -35,6 +35,7 @@
 #include "string.h"
 #include "ex.h"
 #include "module.h"
+#include "page.h"
 
 /*
  * x86 exception handler
@@ -68,6 +69,7 @@ size_t rowcount;
 size_t faultaddress;
 KERNELMODULE *module=NULL;
 char *FunctionName=NULL;
+size_t pd_entry;
 
 void exception(uint32_t *regs,uint32_t faultnumber,uint32_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
@@ -75,11 +77,12 @@ asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 if(faultnumber == PAGE_FAULT) {
 	/* If there was a page fault, do possible demand paging */
 
-	if(faultaddress <= get_usermode_stack_base()) {		/* user-mode stack overflow */
-		alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
+	if((faultaddress < KERNEL_HIGH) && ((get_usermode_stack_base() != NULL) && (faultaddress <= get_usermode_stack_base()))) {		/* user-mode stack overflow */
+		alloc_int(ALLOC_NORMAL,get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
 		return;	
 	}
 }
+
 
 /* If here, it's a fatal exception */
 

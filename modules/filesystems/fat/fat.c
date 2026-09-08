@@ -939,7 +939,6 @@ size_t nextblock;
 BPB *bpb;
 char *blockbuf;
 size_t read_size;
-size_t pos_mod;
 
 if(gethandle(handle,&read_file_record) == -1) {		/* bad handle */
 	setlasterror(INVALID_HANDLE);
@@ -1019,8 +1018,6 @@ if(blockio(DEVICE_READ,read_file_record.drive,(uint64_t) blockno,iobuf) == -1) {
 }
 
 while(read_size > 0) {
-//	kprintf_direct("read_size=%X\n",read_size);
-
 	blockoffset=read_file_record.currentpos % (bpb->sectorsperblock*bpb->sectorsize);	/* distance inside the block */
 
 	/* adjust copy size */
@@ -1028,26 +1025,12 @@ while(read_size > 0) {
 	if(read_size >= (bpb->sectorsperblock*bpb->sectorsize)) {
 		count=(bpb->sectorsperblock*bpb->sectorsize)-blockoffset;	/* adjust size */
 
-	//	kprintf_direct("EVIL count=%X\n",count);
-
 		/* the remainder of the data will be read on the next cycle */
 	}
 	else
 	{
 		count=read_size;
-
-	//	kprintf_direct("NICE count=%X\n",count);
 	}
-
-	//kprintf_direct("filename=%s\n",read_file_record.filename);
-	//kprintf_direct("addr=%X\n",addr);
-	//kprintf_direct("iobuf=%X\n",iobuf);
-	//kprintf_direct("blockoffset=%X\n",blockoffset);
-	//kprintf_direct("iobuf+blockoffset=%X\n",iobuf+blockoffset);
-	//kprintf_direct("count=%X\n",count);
-	//kprintf_direct("block size=%X\n",bpb->sectorsperblock*bpb->sectorsize);
-	//kprintf_direct("read_file_record.currentpos=%X\n",read_file_record.currentpos);
-	//asm("xchg %bx,%bx");
 
 	memcpy(addr,iobuf+blockoffset,count);			/* copy from to buffer */
 

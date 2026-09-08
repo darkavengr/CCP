@@ -39,8 +39,11 @@
 #define IS_DIRECTORY		0x26
 #define FILE_EXISTS		0x50
 #define DIR_ENTRY_CREATE_ERROR	0x52
+#define SWAP_IS_ENABLED		0x53
+#define SWAP_ERROR		0x54
+#define SWAP_NOT_ENABLED	0x55
 
-#define LAST_ERROR_NUMBER	0x52
+#define LAST_ERROR_NUMBER	0x55
 
 #define TRUE	1
 #define FALSE	0

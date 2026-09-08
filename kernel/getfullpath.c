@@ -17,10 +17,10 @@
  * Returns: -1 on error, 0 on success
  *
  */
-
-size_t getfullpath(char *filename,char *buf) {
 char *token[10][MAX_PATH];
 char *dottoken[10][MAX_PATH];
+
+size_t getfullpath(char *filename,char *buf) {
 int tc=0;
 int dottc=0;
 int count;
@@ -71,7 +71,6 @@ else if(d != ':') {               /* filename only */
 
 tc=tokenize_line(cwd,token,"\\");		/* tokenize line */
 dottc=tokenize_line(filename,dottoken,"\\");		/* tokenize line */
-
 
 for(countx=0;countx<dottc-1;countx++) {
 	if(strncmp(dottoken[countx],"..",MAX_PATH) == 0 ||  strncmp(dottoken[countx],".",MAX_PATH) == 0) {

@@ -35,6 +35,7 @@ ROOT_EMPTY		equ	0x4000
 
 PAGE_PRESENT		equ	1
 PAGE_RW			equ	2
+PAGE_ACCESSED		equ	32
 
 PAGE_SIZE		equ	4096
 
@@ -108,11 +109,14 @@ mov	eax,ROOT_PAGEDIR | PAGE_PRESENT
 xor	edx,edx
 mov	[edi],eax
 mov	[edi+4],edx
+
 mov	[edi+16],eax			; map higher half
 mov	[edi+16+4],edx
 
-mov	eax,ROOT_PDPT		; set pdptphys and processid
+mov	eax,ROOT_PDPT		; set pdptphys
 mov	[edi+36],eax
+
+; set process id=0
 
 xor	eax,eax
 mov	[edi+44],eax
@@ -125,9 +129,19 @@ rep	stosd
 mov	edi,ROOT_PAGEDIR
 mov	eax,ROOT_PAGETABLE | PAGE_RW | PAGE_PRESENT
 xor	edx,edx
+
+;
+; Pre-allocate kernel page directories. These will be cloned on process creation to point to global memory.
+;
+mov	ecx,255
+add	edi,256*8			; point to higher half
+
+next_pagedir_legacy:
 mov	[edi],eax
 mov	[edi+4],edx
-mov	cr3,edi
+
+add	eax,PAGE_SIZE
+loop	next_pagedir_legacy
 
 ; create page table
 
@@ -142,14 +156,14 @@ mov	ecx,(1024*1024)*4			; map first 4mb
 shr	ecx,12					; number of page table entries
 
 mov	edi,ROOT_PAGETABLE
-mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
+mov	eax,0 | (PAGE_PRESENT | PAGE_RW) & PAGE_ACCESSED;	; page and flags
 
 map_next_page:
 or	eax,PAGE_PRESENT
 mov	[edi],eax
 mov	dword [edi+4],0
 
-add	eax,1000h
+add	eax,PAGE_SIZE
 add	edi,8
 
 sub	ecx,1
@@ -160,15 +174,15 @@ add	ebx,edx
 test	ebx,ebx
 jnz	map_next_page
 
-mov	eax,cr4				; enable pae paging
+mov	eax,cr4				; enable PAE paging
 bts	eax,5
 mov	cr4,eax
 
-mov	eax,ROOT_PDPT			; create pdpt
+mov	eax,ROOT_PDPT			; create PDPT
 mov	cr3,eax
 
 mov	eax,cr0
-or	eax,80000000h			; enable paging
+or	eax,0x80000000			; enable paging
 mov	cr0,eax
 ret
 
@@ -213,7 +227,7 @@ add	ecx,PAGE_SIZE
 
 shr	ecx,12					; number of page table entries
 mov	edi,ROOT_PAGETABLE
-mov	eax,0+PAGE_PRESENT+PAGE_RW	; page+flags
+mov	eax,0 | PAGE_PRESENT | PAGE_RW	; page and flags
 
 cld
 map_next_page_legacy:
@@ -222,16 +236,29 @@ add	eax,PAGE_SIZE			; point to next page
 loop	map_next_page_legacy
 
 mov	edi,ROOT_PAGEDIR
-mov	eax,ROOT_PAGETABLE+PAGE_RW+PAGE_PRESENT
+mov	eax,ROOT_PAGETABLE | PAGE_RW | PAGE_PRESENT
 mov	[edi],eax			; map lower half
-mov	[edi+(512*4)],eax			; map higher half
+
+;
+; Pre-allocate kernel page directories. These will be cloned on process creation to point to global memory.
+;
+mov	ecx,511
+add	edi,512*4			; point to higher half
+next_pagedir_pae:
+stosd
+
+add	eax,PAGE_SIZE
+loop	next_pagedir_pae
+
+mov	edi,ROOT_PAGEDIR
+mov	eax,ROOT_PAGETABLE | PAGE_RW | PAGE_PRESENT
 
 ; store physical address of the page directory
 
 mov	[edi+PAGE_SIZE],edi		; pagedirphys
 
 mov	edi,ROOT_PAGEDIR+(1023*4)	; map last entry to page directory - page tables will be present at 0xfc000000 - 0xfffff000
-mov	eax,ROOT_PAGEDIR+PAGE_RW+PAGE_PRESENT
+mov	eax,ROOT_PAGEDIR | PAGE_RW | PAGE_PRESENT | PAGE_ACCESSED;
 mov	[edi],eax
 
 mov	eax,ROOT_PAGEDIR		; load cr3
@@ -278,6 +305,7 @@ mov	edi,ROOT_PAGEDIR
 xor	eax,eax
 
 mov	[edi],eax
+
 endunmap:
 ret
 

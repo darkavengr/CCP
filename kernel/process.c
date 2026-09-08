@@ -54,7 +54,7 @@ PROCESS *oldprocess;
 * In: filename	Filename
       argsx	Arguments
       flags	Flags
-*
+	*
 * Returns -1 on error, 0 on success
 *
 */
@@ -77,8 +77,11 @@ if(processes == NULL) {  					/* first process */
 	processes=kernelalloc(sizeof(PROCESS));			/* add entry to beginning of list */
 
 	if(processes == NULL) {					/* return if can't allocate */
-		switch_address_space(getppid());
 		freepages(highest_pid_used);
+
+		switch_address_space(getppid());
+
+		enablemultitasking();
 		return(-1);
 	}
 
@@ -93,10 +96,12 @@ else								/* not first process */
 {
 	processes_end->next=kernelalloc(sizeof(PROCESS));	/* add entry to end of list */
 	if(processes_end->next == NULL) {			/* return error if can't allocate */
-		switch_address_space(getppid());
 		freepages(highest_pid_used);
+		switch_address_space(getppid());
 
 		setlasterror(NO_MEM);
+
+		enablemultitasking();
 		return(-1);
 	}
 
@@ -131,22 +136,26 @@ next->next=NULL;
 
 /* Create kernel stack for process */
 
-next->kernelstacktop=kernelalloc(DEFAULT_KERNEL_STACK_SIZE);	/* allocate stack */
-if(next->kernelstacktop == NULL) {	/* return if unable to allocate */
+next->kernelstackbase=kernelalloc(DEFAULT_KERNEL_STACK_SIZE);	/* allocate stack */
+if(next->kernelstackbase == NULL) {	/* return if unable to allocate */
+
+	if((currentprocess == processes) && (currentprocess->next == NULL)) last_error_no_process=currentprocess->lasterror; /* copy error if only process */
+
 	currentprocess=oldprocess;	/* restore current process pointer */
 
-	switch_address_space(getppid());
 	freepages(highest_pid_used);
+	switch_address_space(getppid());
 
 	kernelfree(lastprocess->next);	/* remove process from list */
 
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
+
+	enablemultitasking();
 	return(-1);
 }
 
-next->kernelstackbase=next->kernelstacktop;
-next->kernelstacktop += DEFAULT_KERNEL_STACK_SIZE;			/* top of kernel stack */
+next->kernelstacktop=next->kernelstackbase+DEFAULT_KERNEL_STACK_SIZE;			/* top of kernel stack */
 
 /* Enviroment variables are inherited
 * Part one of enviroment variables duplication
@@ -159,15 +168,19 @@ saveenv=NULL;
 if(currentprocess != NULL) {
 	saveenv=kernelalloc(ENVIROMENT_SIZE);		/* allocate a buffer to save enviroment variables in */
 	if(saveenv == NULL) {
+		if((currentprocess == processes) && (currentprocess->next == NULL)) last_error_no_process=currentprocess->lasterror; /* copy error if only process */
+
 		currentprocess=oldprocess;	/* restore current process pointer */
 
-		switch_address_space(getppid());
 		freepages(highest_pid_used);
+		switch_address_space(getppid());
 
 		if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
 
 		lastprocess->next=NULL;		/* remove process */
 		processes_end=lastprocess;
+
+		enablemultitasking();
 		return(-1);
 	}
 
@@ -196,8 +209,7 @@ if(getpid() != 0) {
  *
  * allocate enviroment block at the highest user program address minus enviroment size
  */
-
-currentprocess->envptr=alloc_int(ALLOC_NORMAL,getpid(),ENVIROMENT_SIZE,END_OF_LOWER_HALF-ENVIROMENT_SIZE);
+currentprocess->envptr=alloc_int(ALLOC_NORMAL,ENVIROMENT_SIZE,END_OF_LOWER_HALF-ENVIROMENT_SIZE);
 
 if(saveenv != NULL) {
 	memcpy(currentprocess->envptr,saveenv,ENVIROMENT_SIZE);		/* copy from saved enviroment buffer */
@@ -206,18 +218,26 @@ if(saveenv != NULL) {
 
 /* allocate user mode stack below enviroment variables */
 
-stackp=alloc_int(ALLOC_NORMAL,getpid(),DEFAULT_USER_STACK_SIZE,(END_OF_LOWER_HALF-DEFAULT_USER_STACK_SIZE-ENVIROMENT_SIZE));
+stackp=alloc_int(ALLOC_NORMAL,DEFAULT_USER_STACK_SIZE,(END_OF_LOWER_HALF-DEFAULT_USER_STACK_SIZE-ENVIROMENT_SIZE));
 if(stackp == NULL) {
+	if((currentprocess == processes) && (currentprocess->next == NULL)) last_error_no_process=currentprocess->lasterror; /* copy error if only process */
+
 	currentprocess=oldprocess;	/* restore current process pointer */
-	kernelfree(next->kernelstacktop);	/* free kernel stack */
+	kernelfree(next->kernelstackbase);	/* free kernel stack */
 
 	if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
 
 	lastprocess->next=NULL;		/* remove process */
 	processes_end=lastprocess;
 
+	close(stdin);		/* close stdin, stdout and stderr for failed process */
+	close(stdout);
+	close(stderr);
+
+	freepages(highest_pid_used - 1);
 	switch_address_space(getppid());
-	freepages(highest_pid_used);
+
+	enablemultitasking();
 	return(-1);
 }
 
@@ -232,7 +252,9 @@ entrypoint=load_executable(tempfilename);			/* load executable */
 disable_interrupts();
 
 if(entrypoint == -1) {					/* can't load executable */
-	kernelfree(next->kernelstacktop);	/* free kernel stack */
+	if((currentprocess == processes) && (currentprocess->next == NULL)) last_error_no_process=currentprocess->lasterror; /* copy error if only process */
+
+	kernelfree(next->kernelstackbase);	/* free kernel stack */
 
 	if(lastprocess != NULL) {
 		kernelfree(lastprocess->next);	/* remove process from list */
@@ -240,15 +262,23 @@ if(entrypoint == -1) {					/* can't load executable */
 		lastprocess->next=NULL;		/* remove process */
 	}
 
+	close(stdin);		/* close stdin, stdout and stderr for failed process */
+	close(stdout);
+	close(stderr);
+
 	processes_end=lastprocess;
 	currentprocess=lastprocess;	/* restore current process */
 
+	freepages(highest_pid_used);
 	switch_address_space(getppid());
 
-	freepages(highest_pid_used);
-
+	enablemultitasking();
+	enable_interrupts();
 	return(-1);
 }
+
+currentprocess->heapaddress=NULL;
+currentprocess->heapend=NULL;
 
 /* initialize kernel stack */
 initialize_current_process_kernel_stack(next->kernelstacktop,entrypoint,next->stackpointer-DEFAULT_KERNEL_STACK_SIZE,next->stackpointer);
@@ -259,15 +289,17 @@ ksnprintf(psp->commandline,"%s %s",MAX_PATH,next->filename,next->args);
 
 psp->cmdlinesize=strlen(psp->commandline);
 
-switch_address_space(getppid());		/* switch back to parent process addres space */
+switch_address_space(getppid());		/* switch back to parent process address space */
 
 if(oldprocess != NULL) currentprocess=oldprocess;	/* restore current process pointer */
+
 reset_current_process_ticks();		/* force new process to run */
+
+setlasterror(NO_ERROR);
 
 enablemultitasking();
 enable_interrupts();
 
-setlasterror(NO_ERROR);
 return(0);
 }
 
@@ -276,13 +308,15 @@ return(0);
 *
 * In: process	Process ID
 *
-* Returns -1 on error. Doesn't return on sucess
+* Returns -1 on error. Doesn't return on success
 *
 */
 
 size_t kill(size_t process) {
 PROCESS *next;
 PROCESS *last;
+size_t destroyprocess;
+PROCESS *thisprocess=get_current_process_pointer();
 
 lock_mutex(&process_mutex);			/* lock mutex */
 
@@ -292,10 +326,26 @@ next=processes;
 	
 while(next != NULL) {
 	if(next->pid == process) {		/* found process */
-		next->flags=PROCESS_TERMINATED;
+		destroyprocess=getpid();
+
+		RemoveProcess(thisprocess);			/* remove process */
+
+		if(GetPreviousProcessPointer()->prev == NULL) {
+			update_current_process_pointer(get_processes_pointer());
+		}
+		else
+		{
+			update_current_process_pointer(GetPreviousProcessPointer()->prev);
+		}
+
+		switch_address_space(getpid());
+
+		freepages(destroyprocess);
 
 		unlock_mutex(&process_mutex);			/* unlock mutex */
+
 		yield();			/* switch to next process */
+		break;
 	}
 
 	next=next->next;
@@ -316,7 +366,6 @@ while(next != NULL) {
 }
 
 setlasterror(INVALID_PROCESS);
-
 unlock_mutex(&process_mutex);			/* unlock mutex */
 return(-1);
 }
@@ -644,7 +693,7 @@ switch(argone) {
 			setlasterror(INVALID_ADDRESS);
 			return(-1);
 		}
-
+	
 		return(exec(argfour,argtwo,FALSE));
 	 
 	case 0x4b01:
@@ -1062,6 +1111,11 @@ size_t sendsignal(size_t process,size_t signal) {
 PROCESS *next;
 size_t multitasking_was_disabled;
 
+if(processes == NULL) {			/* no processes */
+	setlasterror(INVALID_PROCESS);
+	return(-1);
+}
+
 next=processes;
 
 do {
@@ -1143,7 +1197,6 @@ return(currentprocess->errorhandler(name,drive,flags,error));
 */
 
 void processmanager_init(void) {
-processes=NULL;
 currentprocess=NULL;
 executableformats=NULL;
 highest_pid_used=0;
@@ -1210,8 +1263,11 @@ while(next != NULL) {
 
 		unlock_mutex(&process_mutex);			/* unlock mutex */
 
-		setlasterror(NO_ERROR);
-		return(0);
+		enablemultitasking();
+		enable_interrupts();
+
+		yield();			/* switch to next process */
+		halt();				/* halt if no processes to switch to */
 	}
 	
 	next=next->next;
@@ -1277,10 +1333,11 @@ while(next != NULL) {
 
 		unlock_mutex(&process_mutex);			/* unlock mutex */
 
-		RemoveProcess(next);		/* remove process from processes list */
+		RemoveProcess(next);		/* remove process from blocked processes list */
 
 		if(currentprocess == NULL) currentprocess=processes;
-		setlasterror(NO_ERROR);	
+
+		setlasterror(NO_ERROR);
 		return(0);
 	}
 	
@@ -1727,12 +1784,100 @@ if(current == processes) {			/* start */
 	processes=processes->next;
 }
 else if(current->next == NULL) {		/* end */
-	current->prev=NULL;
+	current->prev->next=NULL;
 }
 else {						/* middle */
-	current->prev=current->next;
+	current->prev->next=current->next;
+}
+
+PROCESS *next=processes;
+
+while(next != NULL) {
+	kprintf_direct("process=%X %s\n",next->pid,next->filename);
+
+	next=next->next;
 }
 
 return;
+}
+
+
+/*
+* Get heap address
+*
+* In: nothing
+*
+* Returns: Heap address
+*
+*/
+
+void *GetUserHeapAddress(void) {
+return(currentprocess->heapaddress);
+}
+
+
+/*
+* Get user heap end
+*
+* In: nothing
+*
+* Returns: Heap size
+*
+*/
+
+void *GetUserHeapEnd(void) {
+return(currentprocess->heapend);
+}
+
+/*
+* Set user heap end
+*
+* In: User heap end
+*
+* Returns: Nothing
+*
+*/
+
+void SetUserHeapEnd(void *end) {
+currentprocess->heapend=end;
+}
+
+/*
+* Set user heap start address
+*
+* In: User heap address
+*
+* Returns: Nothing
+*
+*/
+
+void SetUserHeapAddress(void *heap) {
+currentprocess->heapaddress=heap;
+}
+
+/*
+* Get current user heap address
+*
+* In: nothing
+*
+* Returns: Heap size
+*
+*/
+
+void *GetCurrentUserHeapAddress(void) {
+return(currentprocess->heapcurrent);
+}
+
+/*
+* Set user heap start address
+*
+* In: User heap address
+*
+* Returns: Nothing
+*
+*/
+
+void SetCurrentUserHeapAddress(void *heap) {
+currentprocess->heapcurrent=heap;
 }
 

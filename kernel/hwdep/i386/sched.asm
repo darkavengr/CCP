@@ -32,6 +32,7 @@ extern GetCurrentProcessFlags
 extern SetCurrentProcessFlags
 extern find_next_process_to_switch_to
 extern update_current_process_pointer
+extern switch_to_next_task
 
 PROCESS_NEW	equ 2
 PROCESS_RUNNING	equ 8
@@ -46,7 +47,6 @@ PROCESS_RUNNING	equ 8
 ; Returns: Nothing
 ;
 yield:
-cli
 
 ;
 ; Stack format:
@@ -77,19 +77,21 @@ pop	eax
 pushf						; eflags
 push	dword KERNEL_CODE_SELECTOR		; cs
 push	dword [save_eip]			; eip
+
 push	ds					; save segment selector registers
 push	es
 push	gs
+
 push	fs
 pusha						; save registers
-mov	[OldContextPointer],esp
 
-call	find_next_process_to_switch_to
-push	eax
-push	dword [OldContextPointer]
-call	switch_task				; switch to next task
+push	esp
+call	switch_to_next_task			; switch to next task
 
-; shouldn't be here
+; never reaches here
+no_processes:
+add	esp,15*4				; move stack back to where it was before the fake interrupt return stack was created
+ret
 
 ;
 ; Switch task
@@ -104,8 +106,6 @@ mov	eax,[esp+4]
 mov	[OldContextPointer],eax
 mov	eax,[esp+8]
 mov	[NextProcessPointer],eax
-
-inc	byte [0x800b8000]
 
 call	getpid
 test	eax,eax

@@ -132,32 +132,44 @@ return(TRUE);
 
 void switch_to_next_task(size_t *savedcontext) {
 PROCESS *nextprocess;
+size_t interrupts_were_enabled=get_interrupts_enabled();
 
-if((get_processes_pointer() == NULL)|| (get_current_process_pointer() == NULL)) return;	/* no processes */
-if(is_multitasking_enabled() == FALSE) return;	/* return if multitasking is disabled */
+if(interrupts_were_enabled) disable_interrupts();
+
+if((get_processes_pointer() == NULL)|| (get_current_process_pointer() == NULL)) {	/* no processes */
+	if(interrupts_were_enabled) enable_interrupts();
+	
+	return;
+}
+
+if(is_multitasking_enabled() == FALSE) {	/* return if multitasking is disabled */
+	if(interrupts_were_enabled) enable_interrupts();
+	
+	return;
+}
 
 //kprintf_direct("current=%X\n",get_current_process_pointer());
 
-/* If process is marked for deletion, remove it */
-
-if(GetCurrentProcessFlags() & PROCESS_TERMINATED) {
-	RemoveProcess(GetPreviousProcessPointer(),get_current_process_pointer(),get_next_process_pointer());			/* remove process */
-
-	nextprocess=GetPreviousProcessPointer()->next;
+if(timer_increment() < get_process_max_tick_count()) {
+	if(interrupts_were_enabled) enable_interrupts();
+	
+	return;
 }
-else
-{
-	if(timer_increment() < get_process_max_tick_count()) return;
 
-	if(is_current_process_ready_to_switch() == FALSE) return; /* return if process is not ready to switch */
-
-	nextprocess=find_next_process_to_switch_to();	/* find next process */
-
-	SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
-	nextprocess->flags |= PROCESS_RUNNING;	/* set process running flag for next process */
-
-	reset_current_process_ticks();			/* reset number of process quantum ticks */
+if(is_current_process_ready_to_switch() == FALSE) {	/* return if process is not ready to switch */
+	if(interrupts_were_enabled) enable_interrupts();
+	
+	return;
 }
+
+nextprocess=find_next_process_to_switch_to();	/* find next process */
+
+SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
+nextprocess->flags |= PROCESS_RUNNING;	/* set process running flag for next process */
+
+reset_current_process_ticks();			/* reset number of process quantum ticks */
+
+if(interrupts_were_enabled) enable_interrupts();
 
 switch_task(savedcontext,nextprocess);	/* switch to task */
 
@@ -175,12 +187,11 @@ switch_task(savedcontext,nextprocess);	/* switch to task */
  */
 
 void switch_task_process_descriptor(size_t *savedcontext,PROCESS *descriptor) {
-if(get_processes_pointer == NULL) return;	/* no processes */
+if(get_processes_pointer() == NULL) return;	/* no processes */
 
 SetCurrentProcessFlags(GetCurrentProcessFlags() & ~PROCESS_RUNNING);	/* clear process running flag for previous process */
 descriptor->flags |= PROCESS_RUNNING;	/* set process running flag for next process */
 
-asm("xchg %bx,%bx");
 switch_task(savedcontext,descriptor);	/* switch to task */
 
 /* should never be here */

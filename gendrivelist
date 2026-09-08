@@ -36,13 +36,7 @@ for f in $*; do
 		echo strncpy\(kernelmodule.filename,\"$name.o\",MAX_PATH\)\;>>drive.c
 		echo kernelmodule.startaddress=\&$initname\;>>drive.c
 
-		#             Extract symbols	            | Get function| Remove top | Convert multiple | Extract symbol  | Convert  | Convert +
-		#				            | symbols     |	       | spaces to spaces | sizes           |	newlines | to + with
-		#															to +	 | space									
-		export add=$(readelf -s ~/programs/ccp/obj/i386/keyb.o | grep "FUNC" | sed 's/ \+ / /g' | cut -d ' ' -f 4 | tr \\n + | sed s/+/" + "/g)
-		export add=`echo $add | sed s/.$//`		# remove trailing +
-
-		echo kernelmodule.size=`expr $add`\;>>drive.c
+		echo kernelmodule.size=`stat -c %s ../obj/$arch/$name.o`\;>>drive.c
 		echo AddModule\(\&kernelmodule\)\;>>drive.c
 		echo $initname\(NULL\)\;>>drive.c
 	fi

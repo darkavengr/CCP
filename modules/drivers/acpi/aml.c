@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
+#include "vfs.h"
+#include "string.h"
 #include "acpi.h"
 #include "aml.h"
 
@@ -9,7 +11,9 @@ ACPITreeNode *ACPIParentScope=NULL;
 char *InvalidNestedTerm="acpi: Invalid nested term %s in %s block\n";
 char *ACPITermOutsideBlock="acpi: %s term outside of DEVICE or SCOPE block\n";
 char *ACPITerms[] = { "Device","Scope","Processor","ThermalZone","PowerResource","Method" };
-uint8_t *methodptr;
+char *AMLMethodExecError="acpi: %s Executing AML method %s\n";
+AMLMETHODCALLSTACK *AMLMethodCallStack=NULL;
+AMLMETHODCALLSTACK *AMLMethodCallStack_end=NULL;
 
 /*
 * Get root node
@@ -33,18 +37,32 @@ return(ACPIRoot);
 * Returns: Pointer to node or NULL on error
 *
 */
-ACPITreeNode *FindACPINode(char *name,ACPITreeNode *node) {
+ACPITreeNode *FindACPINode(char *name) {
 size_t NodeCount=0;
-bool IsFound=FALSE;
-ACPITreeNode *FoundNode;
+char *tokens[MAX_PATH][MAX_PATH];
+int tokencount;
+int tc;
+ACPITreeNode *node;
+
+if((char) *name == '\\') {	/* starting from root */
+	node=ACPIRoot;
+}
+else
+{
+	node=ACPICurrentScope;	/* starting from current scope */
+}
+
+tc=tokenize_line(name,tokens,"\\");	/* tokenize line */
 
 /* search through nodes */
 
-for(NodeCount=0;NodeCount < node->NumberOfSubNodes;NodeCount++) {
-	if((node->data != NULL) && (strncmp(node->data,name) == 0) return(node);
-	
-	FoundNode=FindACPIDevice(name,&node->subnode[NodeCount]);	/* find sub-node */
-	if(FoundNode != NULL) return(FoundNode);			/* found sub-node */
+for(tokencount=0;tokencount < tc;tokencount++) { 
+	for(NodeCount=0;NodeCount < node->NumberOfSubNodes;NodeCount++) {
+		if(strncmp(node->subnode[NodeCount]->name,tokens[tokencount]) == 0) {
+
+			node=node->subnode[NodeCount];
+			if(node != NULL) return(NULL);
+		}
 }
 			
 return(NULL);
@@ -85,10 +103,10 @@ return(FieldLength);
 * In: amlbuf	Pointer to AML data
       buf	Buffer
 
-*  Returns: Nothing
+*  Returns: Updated pointer to AML data
 *
 */
-void GetAMLString(uint8_t *amlbuf,char *buf) {
+char *GetAMLString(uint8_t *amlbuf,char *buf) {
 char *bufptr=buf;
 uint8_t *amlptr=amlbuf;
 uint8_t NumberOfSegments;
@@ -103,29 +121,24 @@ if((uint8_t) *amlptr == '\\') {		/* root character */
 	amlptr++;
 }
 
-if(((uint8_t) *amlptr++ == 0x2e) || (uint8_t) *amlptr++ == 0x2f)) {		/* DualNamePrefix or MultiNamePrefix */
-	if((uint8_t) *amlptr++ == 0x2e) {
-		NumberOfSegments=2;
-	}
-	else
-	{
-		NumberOfSegments=*amlptr++;
-	}
-
-	
-	do {
-		memcpy(bufptr,amlptr,AML_STRING_SEGMENT_SIZE);		/* copy data */
-
-		bufptr += AML_STRING_SEGMENT_SIZE;
-		
-	} while(NumberOfSegments-- > 0);
+if((uint8_t) *amlptr++ == 0x2e) {		/* DualNamePrefix */
+	NumberOfSegments=2;
+}
+if((uint8_t) *amlptr == 0x2f) {		/* MultiNamePrefix */
+	NumberOfSegments=(uint8_t) *++amlptr;
 }
 else			/* single segment */
 {
-	memcpy(bufptr,amlptr,AML_STRING_SEGMENT_SIZE);		/* copy data */
+	NumberOfSegments=1;
 }
 
-return;
+do {
+	memcpy(bufptr,amlptr,AML_STRING_SEGMENT_SIZE);		/* copy data */
+
+	bufptr += AML_STRING_SEGMENT_SIZE;
+} while(NumberOfSegments-- > 0);
+
+return(amlptr);
 }
 
 /*
@@ -133,12 +146,12 @@ return;
 *
 * In: Type	Node type
       dataptr	Pointer to data copy, NULL if none
-      datalen	Length of data
-
+*
 *  Returns: NULL on error, pointer to next AML term on success
 *
 */
-size_t ACPIAddSubnode(size_t type,AMLTREEVALUE NodeData) {
+
+size_t ACPIAddSubnode(size_t type,char *name,AMLTREEVALUE *NodeData) {
 if(ACPICurrentScope == NULL) {		/* first node in list */
 
 	/* create root node */
@@ -189,7 +202,7 @@ if(((uint8_t) *amlptr == ACPI_DEVICE_BLOCK) ||
    ((uint8_t) *amlptr == ACPI_THERMALZONE_BLOCK) ||
    ((uint8_t) *amlptr == ACPI_POWERRESOURCE_BLOCK)) {
 
-	if(*amlptr == ACPI_THERMAL_ZONE) {
+	if((uint8_t) *amlptr == ACPI_THERMAL_ZONE) {
 		if((ACPIParentScope->type != ACPI_METHOD_BLOCK) && 
 		   (ACPIParentScope->type != ACPI_NAME) &&
 		   (ACPIParentScope->type != ACPI_SCOPE_BLOCK) &&
@@ -197,7 +210,7 @@ if(((uint8_t) *amlptr == ACPI_DEVICE_BLOCK) ||
 			kprintf_direct(InvalidNestedTerm,ACPIBlockTerms[(size_t) *amlptr],ACPIBlockTerms[ACPIParentScope->type]);
 			return(NULL);
 		}
-	else if(*amlptr == ACPI_POWERRESOURCE_ZONE) {
+	else if((uint8_t) *amlptr == ACPI_POWERRESOURCE_ZONE) {
 		if((ACPIParentScope->type != ACPI_METHOD_BLOCK) && 
 		   (ACPIParentScope->type != ACPI_NAME) &&
 		   (ACPIParentScope->type != ACPI_SCOPE_BLOCK) &&
@@ -225,10 +238,10 @@ if(((uint8_t) *amlptr == ACPI_DEVICE_BLOCK) ||
 	/* Add new node for scope or device block */
 
 	if((uint8_t) *amlptr == ACPI_DEVICE_BLOCK) {
-		ACPIAddSubnode(ACPI_DEVICE_BLOCK,AMLName,strlen(AMLName));
+		ACPIAddSubnode(ACPI_DEVICE_BLOCK,AMLName,NULL);
 	}
 	else if((uint8_t) *amlptr == ACPI_SCOPE_BLOCK) {
-		ACPIAddSubnode(ACPI_SCOPE_BLOCK,AMLName,strlen(AMLName));
+		ACPIAddSubnode(ACPI_SCOPE_BLOCK,AMLName,NULL);
 	}
 
 	/* add tree nodes underneath device or scope node */
@@ -278,81 +291,65 @@ else if((uint8_t) *++amlptr == ACPI_NAME_OP) {	/* name */
 		NodeData.type=AML_WORD;
 		NodeData.WordData=(uint16_t) *amlptr++;
 
-		ACPIAddSubnode(NodeData.type,&NodeData);
-	
-		FieldLength -= (amlptr-oldamlptr);		/* subtract size of name segments */
-	}
-	else if((uint8_t) *++amlptr == AML_ZERO_OP) {		/* byte 0 constant */
-		NodeData.type=AML_BYTE;
-		NodeData.ByteData=0;
+		if((uint8_t) *++amlptr == AML_ZERO_OP) {		/* byte 0 constant */
+			NodeData.type=AML_BYTE;
+			NodeData.ByteData=0;
 
-		ACPIAddSubnode(NodeData.type,&NodeData);
+			FieldLength--;
+		}
+		else if((uint8_t) *++amlptr == AML_ONE_OP) {		/* byte 1 constant */
+			NodeData.type=AML_BYTE;
+			NodeData.ByteData=0;
 
-		FieldLength--;
-	}
-	else if((uint8_t) *++amlptr == AML_ONE_OP) {		/* byte 1 constant */
-		NodeData.type=AML_BYTE;
-		NodeData.ByteData=0;
+			FieldLength--;
+		}
+		else if((uint8_t) *++amlptr == AML_BYTE_PREFIX) {	/* byte */
+			NodeData.type=AML_BYTE;
+			NodeData.ByteData=*amlptr++;
 
-		ACPIAddSubnode(NodeData.type,&NodeData);
+			FieldLength--;
+		}
+		else if((uint8_t) *++amlptr == AML_WORD_PREFIX) {	/* word */
+			NodeData.type=AML_WORD;
+			NodeData.WordData=(uint16_t) *amlptr;
 
-		FieldLength--;
-	}
-	else if((uint8_t) *++amlptr == AML_BYTE_PREFIX) {	/* byte */
-		NodeData.type=AML_BYTE;
-		NodeData.ByteData=*amlptr++;
+			amlptr += 2;
+			FieldLength -= 2;
+		}
+		else if((uint8_t) *++amlptr == AML_DWORD_PREFIX) {	/* dword */
+			NodeData.type=AML_DWORD;
+			NodeData.WordData=(uint32_t) *amlptr;
 
-		ACPIAddSubnode(NodeData.type,&NodeData);
+			amlptr += 4;
+			FieldLength -= 4;
+		}
+		else if((uint8_t) *++amlptr == AML_QWORD_PREFIX) {	/* qword */
+			NodeData.type=AML_QWORD;
+			NodeData.QwordData=(uint64_t) *amlptr;
 
-		FieldLength--;
-	}
-	else if((uint8_t) *++amlptr == AML_WORD_PREFIX) {	/* word */
-		NodeData.type=AML_WORD;
-		NodeData.WordData=(uint16_t) *amlptr++;
+			amlptr += 8;
+			FieldLength -= 8;
+		}
 
-		ACPIAddSubnode(NodeData.type,&NodeData);
-
-		FieldLength -= 2;
-	}
-	else if((uint8_t) *++amlptr == AML_DWORD_PREFIX) {	/* dword */
-		NodeData.type=AML_DWORD;
-		NodeData.WordData=(uint32_t) *amlptr++;
-
-		ACPIAddSubnode(NodeData.type,&NodeData);
-
-		FieldLength -= 4;
-	}
-	else if((uint8_t) *++amlptr == AML_QWORD_PREFIX) {	/* qword */
-		NodeData.type=AML_QWORD;
-		NodeData.QwordData=(uint64_t) *amlptr++;
-
-		ACPIAddSubnode(NodeData.type,&NodeData);
-
-		FieldLength -= 8;
+		ACPIAddSubnode(NodeData.type,AMLName,&NodeData);	
 	}
 }
 
 return(amlptr);
 }
 
-AMLOPCODE *GetAMLOpcodeInformation(uint8_t opcode) {
-AMLOPCODE *next;
+/*
+* Execute AML Method
+*
+* In: MethodName		Method name
+*	args			Arguments
 
-next=OpcodeInformation;
-
-do {
-	if(next->opcode == opcode) return(next);		/* found entry */
-
-	next=next->next;
-} while(next->name != NULL) {
-
-return(NULL);
-}
-
+* Returns: Nothing
+*
+*/
 size_t ExecuteAMLMethod(char *MethodName,AMLVALUE *args[6]) {
 ACPITreeNode *MethodNode;
 AMLVALUE local[7];
-AMLOPCODE *OpcodeInformation;
 
 MethodNode=FindACPINode(MethodNode,GetACPIRootNode());	/* Find method node */
 if(MethodNode == NULL) {		/* not found */
@@ -360,12 +357,47 @@ if(MethodNode == NULL) {		/* not found */
 	return(-1);
 }
 
-methodptr=MethodNode->MethodPtr;		/* point to method data */
+/* push method call information onto call stack */
+
+if(AMLMethodCallStack == NULL) {
+	AMLMethodCallStack=kernelalloc(sizeof(AMLMETHODCALLSTACK));
+	if(AMLMethodCallStack == NULL) {
+		kprintf_direct(AMLMethodExecError,kstrerr(getlasterror()),MethodName);
+		return(-1);
+	}
+
+	AMLMethodCallStack_end->prev=NULL;
+}
+else
+{
+	AMLMethodCallStack_end->next=kernelalloc(sizeof(AMLMETHODCALLSTACK));
+	if(AMLMethodCallStack_end->next == NULL) {
+		kprintf_direct(AMLMethodExecError,kstrerr(getlasterror()),MethodName);
+		return(-1);
+	}
+
+	AMLMethodCallStack_end->next->prev=AMLMethodCallStack_end;
+	AMLMethodCallStack_end=AMLMethodCallStack_end->next;
+}
+
+strcpy(AMLMethodCallStack_end->name,MethodName);
+AMLMethodCallStack_end->methodptr=MethodNode->MethodPtr;		/* point to method data */
+
+memcpy(AMLMethodCallStack_end->args,args,sizeof(AMLVALUE) * 7);		/* copy args */
+
+ACPIParentScope=ACPICurrentScope;
+ACPICurrentScope=MethodNode;
+
 
 do {
 	ExecuteAMLInstruction(methodptr);	/* execute AML instruction */
 } while(methodptr != (methodptr + MethodNode->MethodSize));
 
+AMLMethodCallStack_end->prev->next=AMLMethodCallStack_end->next;	/* remove from call stack */
+
+kernelfree(AMLMethodCallStack_end);
+
+ACPICurrentScope=ACPIParentScope;
 return(0);
 }
 
@@ -383,7 +415,7 @@ size_t ExecuteAMLInstruction(uint8_t *methodptr) {
 
 		case 0x74:			/* subtract */
 			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) - ParseTermArg(methodptr++));
-7			break;
+			break;
 
 		case 0x75:			/* increment */
 			break;
@@ -438,7 +470,7 @@ size_t ExecuteAMLInstruction(uint8_t *methodptr) {
 			break;
 
 		case 0x9D:			/* copy object */
-			WriteSimpleName(ParseTermArg(methodptr++));
+			WriteTarget(ParseTermArg(methodptr++));
 			break;
 
 		case 0xA0:			/* if */
@@ -458,10 +490,11 @@ size_t ExecuteAMLInstruction(uint8_t *methodptr) {
 
 	}
 
+
 /*
-* Recursively find ACPI node
+* AML if operation
 *
-* In: methodptr	pointer to current AML address
+* In: methodptr		Pointer to current AML address
 *
 * Returns: Nothing
 *
@@ -523,9 +556,71 @@ while(EvaluatePredicate(predicate) == TRUE) {	/* if predicate is true */
 return;
 }
 
-size_t ParseTarget(uint8_t *methodptr) {
-uint8_t target;
+/*
+* Update target with value
+*
+* In: amlptr		Pointer to current AML address
+	value		Value
+*
+* Returns: Nothing
+*
+*/
 
-target=(uint8_t) *methodptr;		/* get target */
+void WriteTarget(uint8_t *amlptr,size_t value) {
+ACPITreeNode *node;
 
-if(target >
+if(((uint8_t) *amlptr >= 0x60) && ((uint8_t) *amlptr <= 0x67)	{ /* local0 ... local7 */
+	AMLMethodCallStack_end->local[target]=value;
+	
+	return;
+}
+else if(((uint8_t) *amlptr >= 0x68) && ((uint8_t) *amlptr <= 0x6E)	{ /* arg0 ... arg7 */
+	AMLMethodCallStack_end->arg[target]=value;
+	
+	return;
+}
+else if((uint8_t) *amlptr == 0x8) {		/* name */
+	amlptr++;
+
+	amlptr=GetAMLString(amlptr,AMLName);	/* get target name */
+	node=FindACPINode(AMLNAME);		/* find ACPI node */
+
+	if((uint8_t) *++amlptr == AML_ZERO_OP) {		/* byte 0 constant */
+		node->ByteData=0;
+	}
+	else if((uint8_t) *++amlptr == AML_ONE_OP) {		/* byte 1 constant */
+		node->ByteData=1;
+	}
+	else if((uint8_t) *++amlptr == AML_BYTE_PREFIX) {	/* byte */
+		node->ByteData=*amlptr++;
+	}
+	else if((uint8_t) *++amlptr == AML_WORD_PREFIX) {	/* word */
+		node->WordData=(uint16_t) *amlptr;
+
+		amlptr += 2;
+	}
+	else if((uint8_t) *++amlptr == AML_DWORD_PREFIX) {	/* dword */
+		node->WordData=(uint32_t) *amlptr;
+
+		amlptr += 4;
+	}
+	else if((uint8_t) *++amlptr == AML_QWORD_PREFIX) {	/* qword */
+		node->QwordData=(uint64_t) *amlptr++;
+
+		amlptr += 8;
+	}
+}
+
+return;
+}
+
+size_t ParseTermArg(uint8_t *amlptr) {
+ACPITreeNode *node;
+
+if(((uint8_t) *methodptr >= 0x60) && ((uint8_t) *methodptr <= 0x67)) {		/* local0 - local7 */
+	return(currentlocalptr[(size_t) termbyte]);
+}
+else if((uint8_t) *methodptr == 0x8) {		/* name */
+	amlptr=GetAMLString(amlptr,AMLName);	/* get target name */
+	node=FindACPINode(AMLNAME);		/* find ACPI node */
+

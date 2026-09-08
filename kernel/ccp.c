@@ -35,8 +35,6 @@
 
 void halt(void);
 
-extern FILESYSTEM *filesystems;
-
 /*
  * High-level kernel initalization
  *

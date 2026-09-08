@@ -125,7 +125,9 @@ FILE *handle;
 size_t count;
 Elf64_Ehdr elf_header;
 Elf64_Phdr *phbuf;
+Elf64_Phdr *phptr;
 Elf64_Shdr *shbuf;
+Elf64_Shdr *shptr;
 Elf64_Sym *symtab;
 Elf64_Sym *symptr;
 char *strtab;
@@ -134,7 +136,7 @@ size_t symtabsize;
 
 handle=fopen(filename,"rb");		/* open file */
 if(!handle) {
-	lasterror=INVALID_EXECUTABLE;
+	lasterror=FILE_NOT_FOUND;
 	return(-1);
 }
 
@@ -145,7 +147,7 @@ if(fread(&elf_header,sizeof(Elf64_Ehdr),1,handle) != sizeof(Elf64_Ehdr)) {
 	return(-1); /* read error */
 }
 
-/* check magic number, elf type and number of program headers */
+/* check magic number, executable type and number of program headers */
 
 if(elf_header.e_ident[0] != 0x7F && elf_header.e_ident[1] != 0x45 && elf_header.e_ident[2] != 0x4C && elf_header.e_ident[3] != 0x46) {	/*  elf */
 	fclose(handle);
@@ -229,7 +231,7 @@ bootinfo->symbol_start=bootinfo->kernel_start+bootinfo->kernel_size;		/* symbols
 
 /* allocate buffer for program headers */
 
-shbuf=malloc((elf_header.e_shentsize*elf_header.e_shnum));
+shbuf=malloc((elf_header.e_shentsize*elf_header.e_shnum));	
 if(shbuf == NULL) {
 	fclose(handle);
 
@@ -313,7 +315,8 @@ while(symtabsize > 0) {
 	strtabptr += (strlen(strptr)+1);	/* point to end of symbol name */
 
 	size_t valptr=strtabptr;
-	*valptr=symtabptr->st_value;		/* copy value */
+	*valptr++=symtabptr->st_value;		/* copy start address */
+	*valptr=symtabptr->st_value+symtabptr->st_size; /* copy end address */
 
 	symtabsize -= sizeof(Elf64_Sym);
 }

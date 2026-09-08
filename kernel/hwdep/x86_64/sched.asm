@@ -73,7 +73,8 @@ pop	rax
 ; create fake interrupt return stack
 pushf						; eflags
 push	qword KERNEL_CODE_SELECTOR		; cs
-push	qword [rel save_rip]			; eip
+
+push	qword [rel save_rip]			; rip
 push	rax					; save registers
 push	rcx
 push	rdx
@@ -85,19 +86,16 @@ push	rdi
 mov	[rel OldContextPointer],rsp
 
 call	find_next_process_to_switch_to
+test	rax,rax					; no processes
+jz	no_processes
 
 mov	rdi,rax
 mov	rsi,[rel OldContextPointer]
 call	switch_task				; switch to next task
 
-pop	rdi					; restore registers
-pop	rsi
-pop	rbp
-pop	rsp
-pop	rbx
-pop	rdx
-pop	rcx
-pop	rax
+; never reaches here
+no_processes:
+add	rsp,12*8				; move stack back to where it was before the fake interrupt return stack was created
 iret
 
 ;

@@ -71,12 +71,22 @@ size_t shiftcount;
 size_t rowcount;
 uint64_t faultaddress;
 uint64_t stackbase;
+size_t pd_entry;
 
 void exception(uint64_t *regs,uint64_t faultnumber,uint64_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
 if(faultnumber == PAGE_FAULT) {
 	/* If there was a page fault, do possible demand paging */
+
+	/* Swap page in if it was swapped out */
+	pd_entry=get_pagetable_entry(getpid(),faultaddress);
+	if(pd_entry != -1) {
+		if( (pd_entry & PAGE_SWAPPED_OUT) && ((pd_entry & PAGE_PRESENT) == 0)) {
+			SwapPageIn(getpid(),faultaddress);
+			return;
+		}
+	}
 
 	if(faultaddress <= get_usermode_stack_base()) {		/* user-mode stack overflow */
 		alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */

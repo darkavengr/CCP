@@ -23,13 +23,37 @@
 
 %include "kernelselectors.inc"
 
-global disable_interrupts				; disable interrupts
-global enable_interrupts				; enable interrupts
-global set_interrupt					; set interrupt
-global get_interrupt					; get interrupt
-global load_idt
 global initialize_interrupts
+global enable_interrupts
+global disable_interrupts
+global load_idt
+global set_interrupt
+global get_interrupt
+global int0_handler
+global int1_handler
+global int2_handler
+global int3_handler
+global int4_handler
+global int5_handler
+global int6_handler
+global int7_handler
+global int8_handler
+global int9_handler
+global int10_handler
+global int11_handler
+global int12_handler
+global int13_handler
+global int14_handler
+global int15_handler
+global int16_handler
+global int17_handler
+global int18_handler
 global int_common
+global get_stack_base_pointer
+global d_lowlevel
+global get_interrupts_enabled
+global null_handler
+
 extern exception					; exception handler
 extern exit
 extern dispatchhandler					; high-level dispatcher
@@ -228,7 +252,19 @@ push	1
 call	set_interrupt
 add	esp,16
 
-;
+mov	edx,19
+next_null_interrupt:
+push	edx
+push	null_handler
+push	KERNEL_CODE_SELECTOR
+push	IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE
+call	set_interrupt
+add	esp,16
+
+inc	edx
+cmp	edx,256
+jne	next_null_interrupt
+
 ; Set syscall interrupt
 ;
 push	0x21
@@ -305,7 +341,7 @@ mov	eax,0xffffffff
 jmp	end_set_interrupt
 
 set_interrupt_number_is_ok:
-shl	edx,3				; each interrupt is eight bytes long
+shl	edx,3				; each IDT entry is eight bytes long
 mov	edi,edx
 add	edi,IDT_table
 
@@ -351,14 +387,14 @@ nop
 mov	ecx,[esp+32]			; get address of interrupt handler
 mov	ebx,[esp+28]			; get interrupt number
 
-cmp	ebx,256				; check if valid
+cmp	ebx,256				; check if valid INTE
 jl	get_interrupt_number_is_ok
 
 mov	eax,0xffffffff			; return error
 ret
 
 get_interrupt_number_is_ok:
-mov	eax,8				; each interrupt is eight bytes long
+mov	eax,8				; each IDT entry is eight bytes long
 mul	ebx
 
 add	ebx,IDT_table
@@ -443,12 +479,10 @@ push	12
 jmp	int_common	
 
 int13_handler:
-xchg	bx,bx
 push	13
 jmp	int_common	
 
 int14_handler:
-;xchg	bx,bx
 push	14
 jmp	int_common	
 
@@ -488,8 +522,8 @@ mov	[regbuf],eax			; save it
 mov	eax,[esp+12]			; get flags
 mov	[regbuf+40],eax			; save flags
 
-push	regbuf			; call exception handler
-call	exception
+push	regbuf
+call	exception			; call exception handler
 add	esp,12
 
 exit_exception:
@@ -503,7 +537,7 @@ mov	ebp,[regbuf+32]
 iret
 
 end_process:
-call exit
+call	exit
 iret
 
 ;
@@ -557,6 +591,25 @@ pop	fs
 pop	es
 pop	ds
 iret  
+
+;
+; Get if interrupts are enabled
+;
+; In: Nothing
+;
+; Returns: CPU flags register
+;
+
+get_interrupts_enabled:
+pushf					; get flags
+pop	eax
+
+and	eax,0x200			; get interrupts flag
+shr	eax,9
+ret
+
+null_handler:
+iret
 
 idt:
 dw 0x3FFF				; limit

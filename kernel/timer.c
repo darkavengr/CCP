@@ -22,11 +22,7 @@ timer_internal=0;
  * 
  */
 size_t timer_increment(void) {
-if(++timer_internal % TIMER_PERIOD) {
-	++timer_count;
-
-	//kprintf_direct("Timer: %d\n",timer_count);
-}
+if(++timer_internal % TIMER_PERIOD) ++timer_count;
 
 return(timer_count);
 }

@@ -76,11 +76,11 @@ if(init != NULL) {			/* args found */
 		tokenize_line(tokens[count],op,"=");	/* tokenize line */
 
 		if(strncmp(op[0],"buffersize",MAX_PATH) == 0) {		/* set buffer size */
-			sb_dma_buffer_size=atoi(op[1]);  
+			sb_dma_buffer_size=atoi(op[1],10);  
 	 	}
 
 		if(strncmp(op[0],"irq",MAX_PATH) == 0) {		/* set irq */
-			sb_irq_number=atoi(op[1]);
+			sb_irq_number=atoi(op[1],10);
 		}
 
 		if(sb_irq_number > 15) {
@@ -89,11 +89,11 @@ if(init != NULL) {			/* args found */
 	  	}
 
 		if(strncmp(op[0],"samplerate",MAX_PATH) == 0) {		/* set sample rate */
-			sb_sample_rate=atoi(op[1]);
+			sb_sample_rate=atoi(op[1],10);
 		}
 
 		if(strncmp(op[0],"channel",MAX_PATH) == 0) {		/* set channel */
-			sb_channel=atoi(op[1]);
+			sb_channel=atoi(op[1],10);
 
 			if((sb_channel == 0) || (sb_channel > 3)) {
 				kprintf_direct("sb16: Invalid channel\n");
@@ -103,13 +103,13 @@ if(init != NULL) {			/* args found */
 
 		if(strncmp(op[0],"volume",MAX_PATH) == 0) {		/* set volume */
 
-	  		if(atoi(op[1]) > 0xff) {
+	  		if(atoi(op[1],10) > 0xff) {
 				kprintf_direct("sb16: Invalid volume value\n");
 	   			return(-1);
 			}
 
 			outb(DSP_MIXER_PORT,SB_SET_VOLUME);
-			outb(DSP_MIXER_DATA_PORT,(uint8_t) atoi(op[1]));
+			outb(DSP_MIXER_DATA_PORT,(uint8_t) atoi(op[1],10));
 	 	}
 
 	}
@@ -135,7 +135,7 @@ if(add_char_device(&bd) == -1) {
 	return(-1);
 }
 
-setirqhandler(sb_irq_number,&sb_irq_handler);		/* set irq handler */
+setirqhandler(sb_irq_number,'SB16',&sb_irq_handler);		/* set irq handler */
 
 #ifdef SB16_DEBUG
 kprintf_direct("sb irq number=%d\n",sb_irq_number);
@@ -264,7 +264,7 @@ switch(request) {
 		outb(DSP_MIXER_PORT,0x80);		/* set irq */
 		outb(DSP_MIXER_DATA_PORT,sb_irq_number);
 
-		setirqhandler(sb_irq_number,&sb_irq_handler);		/* set irq handler */
+		setirqhandler(sb_irq_number,'SB16',&sb_irq_handler);		/* set irq handler */
 
 		return(0);
 
