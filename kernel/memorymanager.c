@@ -90,7 +90,7 @@ for(count=0;count < (bootinfo->memorysize / PAGE_SIZE);count++) {
 	memory_map_entry_ptr++;
 }
 
-if((page_count < (size / PAGE_SIZE)) || (count == (bootinfo->memorysize / PAGE_SIZE)-1)) {		/* out of memory */
+if((page_count < (size / PAGE_SIZE)) || (count == (bootinfo->memorysize / PAGE_SIZE) - 1)) {		/* out of memory */
 	setlasterror(NO_MEM);
 	return(NULL);
 }
@@ -112,6 +112,8 @@ if((flags & ALLOC_NOPAGING) == 0) {
 	}
 	else
 	{				/* use override address */
+//		kprintf_direct("override virtual address=%X\n",overrideaddress);
+
 		virtual_address=overrideaddress;
 		first_virtual_address=overrideaddress;
 	 }
@@ -135,7 +137,7 @@ while(count != (bootinfo->memorysize/PAGE_SIZE)) {
 		next_memory_map_ptr=memory_map_entry_ptr;
 		next_memory_map_ptr++;
 	
-		for(next_free_entry_count=count+1;next_free_entry_count<(bootinfo->memorysize/PAGE_SIZE)+1;next_free_entry_count++) {
+		for(next_free_entry_count=count + 1;next_free_entry_count < (bootinfo->memorysize/PAGE_SIZE) + 1;next_free_entry_count++) {
 	  		if((size_t) *next_memory_map_ptr == 0) break;
 
 			next_memory_map_ptr++;
@@ -145,7 +147,9 @@ while(count != (bootinfo->memorysize/PAGE_SIZE)) {
 	  
 		/* link physical addresses to virtual addresses */
 	
-	     	if((flags & ALLOC_NOPAGING) == 0) {	
+	     	if((flags & ALLOC_NOPAGING) == 0) {
+//			kprintf_direct("alloc=%X %X\n",virtual_address,physical_address);
+
 	     		if(flags & ALLOC_NORMAL) {				/* add user-mode page */
 	 			map_user_page(virtual_address,physical_address);
 			}
@@ -169,7 +173,9 @@ while(count != (bootinfo->memorysize/PAGE_SIZE)) {
 }
 	
 *memory_map_entry_ptr=(size_t *) -1;							/* mark end of chain */
-	
+
+//kprintf_direct("first_virtual_address=%X\n",first_virtual_address);
+
 if((flags & ALLOC_NOPAGING) == 0) memset(first_virtual_address,0,size - 1);
 
 unlock_mutex(&memmanager_mutex);
@@ -189,23 +195,21 @@ return((void *) first_virtual_address);
 * 
 */
 size_t free_internal(void *address,size_t flags) {
-size_t pc;
-size_t count;
-size_t p;
-size_t c;
-size_t *z;
+size_t mementry;
+size_t *memorymap;
+size_t real_address;
 
 lock_mutex(&memmanager_mutex);
 
 /* Get start of memory chain */
 
 if((flags & FREE_PHYSICAL)) {			/* freeing physical address */
-	c=(size_t) address;
+	real_address=(size_t) address;
 }
 else
 {
-	c=getphysicaladdress(address);
-	if(c == -1) {
+	real_address=getphysicaladdress(address);
+	if(real_address == -1) {
 		setlasterror(INVALID_ADDRESS);
 
 		unlock_mutex(&memmanager_mutex);
@@ -213,31 +217,30 @@ else
 	 }
 }
 
-c=(c / PAGE_SIZE) * sizeof(size_t);
-z=MEMBUF_START+c;
+memorymap=(size_t) MEMBUF_START+(real_address / PAGE_SIZE) * sizeof(size_t);
 
-pc=address;
-pc &= ((size_t) 0-1)-(PAGE_SIZE-1);
+if((size_t) *memorymap == 0) {						
+	setlasterror(INVALID_ADDRESS);
+
+	unlock_mutex(&memmanager_mutex);
+	return(-1);
+}
+
+real_address=round_down(real_address,PAGE_SIZE);
+
 
 /* follow chain, removing entries */
 
 do {
-	p=*z;				/* get next */
+	mementry=*memorymap;				/* get next */
 
-	if(p == 0) break;
+	*memorymap=0;					/* remove from allocation table */
+	memorymap=mementry;				/* point to next entry */
 
-	*z=0;							/* remove from allocation table */
-	z=p;
+	if((mementry != -1) || (mementry == 0)) unmap_page(real_address);	/* unmap map */
 
-	if((p != -1) || (p == 0)) unmap_page(pc);				/* remove page from page table */
-	pc=pc+PAGE_SIZE;
-}  while(p != -1);
-
-
-if(c == NULL) {						
-	unlock_mutex(&memmanager_mutex);
-	return(-1);
-}
+	real_address += PAGE_SIZE;
+}  while(mementry != -1);
 
 unlock_mutex(&memmanager_mutex);
 
@@ -444,13 +447,12 @@ return(realloc_int(ALLOC_NORMAL,address,size));
 void *realloc_int(size_t flags,void *address,size_t size) {
 char *tempbuf;
 char *newbuf;
-size_t pc;
 size_t count;
-size_t p=0;
-size_t c;
-size_t *z;
+size_t memorymap_entry=0;
+size_t *memorymap;
 size_t *saveptr;
 size_t extendcount;
+size_t physical_address;
 
 lock_mutex(&memmanager_mutex);
 
@@ -463,8 +465,8 @@ if((flags & ALLOC_NOPAGING) || (size == 0)) {
 }
 else
 {
-	c=getphysicaladdress(address);
-	if(c == -1) {	
+	physical_address=getphysicaladdress(address);
+	if(physical_address == -1) {	
 		unlock_mutex(&memmanager_mutex);
 
 		setlasterror(INVALID_ADDRESS);
@@ -472,36 +474,29 @@ else
 	 }
 }
 
-if(size < PAGE_SIZE) size=PAGE_SIZE;		/* if size is less than a page, round up to page size */
-
 round_up(size,PAGE_SIZE);	/* round up to PAGE _SIZE */
 
-c=(c / PAGE_SIZE) * sizeof(size_t);
-z=MEMBUF_START+c;
-
-pc=address;
-pc &= ((size_t) 0-1)-(PAGE_SIZE-1);
+memorymap=MEMBUF_START+(physical_address / PAGE_SIZE) * sizeof(size_t);		/* point to first entry in memory map */
 
 count=0;
 
 do {
-	p=*z;				/* get next */
+	memorymap_entry=*memorymap;				/* get next */
 
-	if((count*PAGE_SIZE) == size) {		 /* shrinking memory */
-		if(free_internal((address+size),0) == -1) {
+	if((count * PAGE_SIZE) == size) {		 /* shrinking memory */
+		if(free_internal((address + size),0) == -1) {
 			unlock_mutex(&memmanager_mutex);
 			return(NULL);
 		}
 
-		z=(address+count);
-		*z=-1;			/* put new end of chain marker */
+		memorymap=(address+count);
+		*memorymap=-1;			/* put new end of chain marker */
 		
 		unlock_mutex(&memmanager_mutex);
 		return(address);
 	}
 
-	if(p == -1) {			/* at end of chain */
-		z=p;			/* point to next in chain */
+	if(memorymap_entry == -1) {			/* at end of chain */
 
 		if(size > (count*PAGE_SIZE)) {		/* extending memory */
 			/* check for sufficient contiguous virtual address pages */
@@ -544,9 +539,9 @@ do {
 	}	
 
 	count++;		
-	z=p;				/* get next entry in chain */
+	memorymap=memorymap_entry;				/* get next entry in chain */
 
-}  while(p != -1);
+}  while(memorymap_entry != -1);
 
 unlock_mutex(&memmanager_mutex);
 return(NULL);
@@ -668,6 +663,17 @@ heapheader->size=size;
 unlock_mutex(&memmanager_mutex);
 return(new + sizeof(HEAPHEADER));
 }
+
+size_t kernelalloc_page_aligned(size_t size) {
+size_t newend=round_up(KernelHeapEnd,PAGE_SIZE);
+
+if(alloc_int(ALLOC_KERNEL,size,newend) == NULL) return(NULL);
+
+KernelHeapEnd=newend;
+return(KernelHeapEnd);
+}
+
+
 
 size_t heapfree(size_t type,void *address) {
 HEAPHEADER *heapheader;

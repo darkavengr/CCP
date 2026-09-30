@@ -148,8 +148,6 @@ if(is_multitasking_enabled() == FALSE) {	/* return if multitasking is disabled *
 	return;
 }
 
-//kprintf_direct("current=%X\n",get_current_process_pointer());
-
 if(timer_increment() < get_process_max_tick_count()) {
 	if(interrupts_were_enabled) enable_interrupts();
 	

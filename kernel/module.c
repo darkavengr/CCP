@@ -37,7 +37,7 @@
 SYMBOL_TABLE_ENTRY *externalmodulesymbols=NULL;
 KERNELMODULE *kernelmodules=NULL;
 KERNELMODULE *kernelmodules_end=NULL;
-KERNELMODULE *kernelmodulelast;
+KERNELMODULE *kernelmodulelast=NULL;
 
 /*
  * Load and execute kernel module
@@ -743,7 +743,7 @@ return(-1);
 }
 
 /*
- * Find symbol from addrtess
+ * Find symbol from address
  *
  * In:  address		Address
  *
@@ -767,15 +767,14 @@ for(count=0;count < bootinfo->number_of_symbols;count++) {
 	nameptr=symptr;
 
 	symptr += (strlen(symptr)+1);		/* skip over name */
-	valptr=symptr;			/* cast pointer to size_t */
+	valptr=symptr;			/* cast pointer to size_t * */
 	
-	symboladdress=(size_t) *valptr;	/* get address */
-	valptr++;
-	symbolsize=(size_t) *valptr;		/* get size */
+	symboladdress=(size_t) *valptr++;	/* get address */
+	symbolsize=(size_t) *valptr++;		/* get size */
 
 	if((address >= symboladdress) &&  (address <= (symboladdress+symbolsize))) return(nameptr);	/* found address */
 
-	symptr += (sizeof(size_t)*2);	/* point to next */
+	symptr += (sizeof(size_t)*2);
 }
 
 next=externalmodulesymbols;
@@ -996,13 +995,21 @@ KERNELMODULE *kernelmodulenext;
 kernelmodulenext=kernelmodules;
 
 while(kernelmodulenext != NULL) {
-	//kprintf_direct("%s %X %X %X\n",kernelmodulenext->filename,kernelmodulenext->startaddress,kernelmodulenext->size,address);
+//	kprintf_direct("%s %X %X %X\n",kernelmodulenext->filename,kernelmodulenext->startaddress,kernelmodulenext->startaddress+kernelmodulenext->size,address);
 
 	/* found module */
-	if((address >= kernelmodulenext->startaddress) && (address <= (kernelmodulenext->startaddress+kernelmodulenext->size))) return(kernelmodulenext);
+	if((address >= kernelmodulenext->startaddress) && (address < ((size_t)kernelmodulenext->startaddress+kernelmodulenext->size))) return(kernelmodulenext);
 
 	kernelmodulenext=kernelmodulenext->next;
 }
 
 return(NULL);
 }
+
+void module_manager_init(void) {
+externalmodulesymbols=NULL;
+kernelmodules=NULL;
+kernelmodules_end=NULL;
+kernelmodulelast=NULL;
+}
+

@@ -62,65 +62,49 @@ jmp	r11					; return without using stack
 ;
 ; Initialize kernel-mode stack
 ;
-; In:	rdi=Kenrel stack pointer top
-;	rsi=Stack bottom
-;	rdx=Entry point
+; In:	rdi=Kernel stack pointer top
+;	rsi=entry point
+;	rdx=Kernel stack bottom
 ;	rcx=User-mode stack top
 
 ; Returns: Nothing
 ;
 initialize_current_process_kernel_stack:
-sub	rsi,17*8
+sub	rdi,19*8
 
-mov	qword [rsi],USER_DATA_SELECTOR			; user ss
-mov	qword [rsi-8],ecx				; user esp
-mov	qword [rsi-16],0x200			; user eflags; enable interrupts on iret
-mov	qword [rsi-32],USER_CODE_SELECTOR	; user cs
-mov	qword [rsi-40],rdx			; user eip
+mov	qword [rdi],USER_DATA_SELECTOR			; user ss
+mov	qword [rdi-8],rcx				; user rsp
+mov	qword [rdi-16],0x200			; user rflags; enable interrupts on iret
+mov	qword [rdi-24],USER_CODE_SELECTOR	; user cs
+mov	qword [rdi-32],rsi			; user rip
 
-mov	qword [rsi-48],USER_DATA_SELECTOR	; ds
-mov	qword [rsi-56],USER_DATA_SELECTOR	; es
-mov	qword [rsi-64],USER_DATA_SELECTOR	; fs
-mov	qword [rsi-72],USER_DATA_SELECTOR	; gs
-mov	qword [rsi-80],0xFFFFFFFFFFFFFFFF	; eax
-mov	qword [rsi-88],0xEEEEEEEEEEEEEEEE	; ecx
-mov	qword [rsi-96],0xDDDDDDDDDDDDDDDD	; edx
-mov	qword [rsi-104],0xCCCCCCCCCCCCCCCC	; ebx
-mov	[rsi-112],rdi				; esp
-mov	[rsi-120],rsi				; ebp
-mov	qword [rsi-128],0xBBBBBBBBBBBBBBBB	; esi
-mov	qword [rsi-134],0xAAAAAAAAAAAAAAAA	; edi
+mov	qword [rdi-40],0xFFFFFFFFFFFFFFFF	; rax
+mov	qword [rdi-48],0xEEEEEEEEEEEEEEEE	; rbx
+mov	qword [rdi-56],0xDDDDDDDDDDDDDDDD	; rcx
+mov	qword [rdi-64],0xCCCCCCCCCCCCCCCC	; rdx
+mov	qword [rdi-72],0xBBBBBBBBBBBBBBBB	; rsi
+mov	qword [rdi-80],0xAAAAAAAAAAAAAAAA	; rdi 
+mov	qword [rdi-88],0x9999999999999999	; r15
+mov	qword [rdi-96],0x8888888888888888	; r14
+mov	qword [rdi-104],0x7777777777777777	; r13
+mov	qword [rdi-112],0x6666666666666666	; r12
+mov	qword [rdi-120],0x5555555555555555	; r11
+mov	qword [rdi-128],0x4444444444444444	; r10
+mov	qword [rdi-136],0x3333333333333333	; r9
+mov	qword [rdi-144],0x2222222222222222	; r8
+mov	[rdi-152],rdx				; rbp
 
-;
-; Adjust kernel stack pointer
-; so it points to intial values
-;
-call	get_kernel_stack_top
-sub	rax,17*8
+; Adjust kernel stack pointer to point to intial values
+sub	rdi,19*8
+mov	r11,rdi
 
-mov	rdi,rax
 call	save_kernel_stack_pointer
 
-; Set TSS ESP0 to ensure that the kernel stack is switched to next time the cpu switches to ring 0.
+; Set TSS RSP0 to ensure that the kernel stack is switched to next time the cpu switches to ring 0.
 
-mov	rdi,rax
+mov	rdi,r11
 call	set_tss_rsp0
 ret
-
-initial_exit:
-pop	r15
-pop	r14
-pop	r13
-pop	r12
-pop	r11
-pop	r10
-pop	rdi
-pop	rsi
-pop	rdx
-pop	rcx
-pop	rbx
-pop	rax
-iretq
 
 get_initial_kernel_stack_base:
 mov	rax,INITIAL_KERNEL_STACK_ADDRESS

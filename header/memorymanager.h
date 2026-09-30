@@ -27,6 +27,7 @@ size_t GetHeapSize(void);
 void *heapalloc_int(size_t type,size_t size);
 size_t heapfree(size_t type,void *address);
 size_t kernelfree(void *address);
+size_t kernelalloc_page_aligned(size_t size);
 
 #ifndef MEMORYMANAGER_H
 	#define MEMORYMANAGER_H

@@ -217,9 +217,6 @@ blockptr=buf;
 if(next->sectorsperblock == 0) next->sectorsperblock=1;
 
 if(next->blockio == NULL) {				/* no I/O handler defined */
-	kprintf_direct("debug: No blockio() handler defined\n");
-	asm("xchg %bx,%bx");
-
 	unlock_mutex(&blockdevice_mutex);			/* unlock mutex */
 
 	setlasterror(NOT_IMPLEMENTED);
@@ -654,8 +651,6 @@ IRQ_HANDLER *next;
 next=irq_handlers;
 
 while(next != NULL) {
-//	kprintf_direct("callirqhandlers() IRQ=%X refnumber=%X address=%X\n",next->irqnumber,next->refnumber,next->handler);
-
 	if((next->irqnumber == irqnumber) && (next->handler != NULL)) next->handler(stackparams);		/* call handler */
 	
 	next=next->next;

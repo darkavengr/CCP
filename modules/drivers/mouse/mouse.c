@@ -223,8 +223,6 @@ return(inb(MOUSE_PORT));
  */
 
 void wait_for_mouse_read(void) {
-//kprintf_direct("mouse read\n");
-
 while((inb(MOUSE_STATUS) & MOUSE_DATA_READY_READ) != 1) ;;
 
 return;
@@ -241,12 +239,8 @@ return;
 void wait_for_mouse_write(void) {
 uint8_t readmouse=0;
 
-//kprin|tf("mouse write\n");
-
 do {
 	readmouse=inb(MOUSE_STATUS);
-	// kprintf_direct("mouse status=%X\n",readmouse);
-
 } while((readmouse & MOUSE_DATA_READY_WRITE) != 0);
 
 return;

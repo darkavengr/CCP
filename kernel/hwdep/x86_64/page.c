@@ -66,10 +66,13 @@ uint64_t newpagedirentry;
 uint64_t addr;
 uint64_t *pageptr;
 
-pml4_number=((virtual_address & 0xFF8000000000) >> 39);
-pdpt_number=((virtual_address & 0x7FC0000000) >> 30);
-page_directory_number=((virtual_address & 0x3FE00000) >> 21);
-page_table_number=((virtual_address & 0x1FF000) >> 12);
+//kprintf_direct("***\n");
+//kprintf_direct("paging=%X %X\n",virtual_address,physical_address);
+
+pml4_number=(virtual_address >> 39) & 0x1FF;
+pdpt_number=(virtual_address >> 30) & 0x1FF;
+page_directory_number=(virtual_address >> 21) & 0x1FF;
+page_table_number=(virtual_address >> 12) & 0x1FF;
 
 pml4ptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) 0x1ff << 12),47);
 pdptptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) pml4_number << 12),47);
@@ -139,18 +142,20 @@ if(process == 0) return(0);		/* don't need to intialize if process 0 */
 
 /* Get a physical address and manually map it to a virtual address. The physical addres of p->pagedir is needed to fill cr3 */
 
-size=round_up(size,PAGE_SIZE);	/* round up to PAGE _SIZE */
+size=round_up(sizeof(PAGING),PAGE_SIZE);	/* round up to PAGE _SIZE */
 
-pp=kernelalloc_nopaging(size);					/* add link */
+virtual_address=kernelalloc_page_aligned(size);
+if(virtual_address == NULL) return(-1);
+
+pp=getphysicaladdress(virtual_address);
 if(pp == NULL) return(-1);
 
-virtual_addressess=findfreevirtualpage(size,ALLOC_KERNEL,0);		/* find free virtual address */
 
 oldvirtual_address=virtual_address;
 oldpp=pp;
 
-for(count=0;count<(size/PAGE_SIZE)+1;count++) {
-	map_system_page(virtual_address,0,(void *) pp);
+for(count=0;count < (size/PAGE_SIZE)+1;count++) {
+	map_system_page(virtual_address,(void *) pp);
 
 	pp += PAGE_SIZE;
 	virtual_address += PAGE_SIZE;
@@ -159,7 +164,7 @@ for(count=0;count<(size/PAGE_SIZE)+1;count++) {
 /* Important: make sure that is processpaging_end == processpaging. This most be done in the paging intialization code */
 if(processpaging_end == NULL) processpaging_end=processpaging; /* do it anyway */
 
-processpaging_end->next=oldvirtual_addressess;					/* add link to list */
+processpaging_end->next=oldvirtual_address;					/* add link to list */
 processpaging_end=processpaging_end->next;		/* point to end */
 
 processpaging_end->pml4phys=oldpp;			/* physical address of PML4 */
@@ -173,14 +178,13 @@ for(count=0;count != 256;count++) {
 
 	processpaging_end->pml4[count]=pp | PAGE_PRESENT;
 
-	map_system_page(pp+KERNEL_HIGH,0,(void *) pp);
+	map_system_page(pp+KERNEL_HIGH,(void *) pp);
 }
 
 processpaging_end->pml4[510]=processpaging->pml4[510];		/* copy top-half PML4 */
 processpaging_end->pml4[511]=oldpp | PAGE_PRESENT;		/* map last PML4 to PML4 */
 processpaging_end->next=NULL;
 
-//kprintf_direct("end of page_init()\n");
 return(0);
 }
 
@@ -217,9 +221,8 @@ size_t pdcount;
 size_t ptcount;
 uint64_t *pagedirptr=NULL;
 uint64_t *pagetableptr=NULL;
-PAGING *current_page_mapping=NULL;
-PAGING *update=NULL;
-size_t savemapping;
+PAGING *savenext;
+PAGING *last;
 
 next=processpaging;
 
@@ -237,7 +240,7 @@ while(next != NULL) {
 						for(ptcount=0;ptcount < 511;ptcount++) {
 							if(pageptr[ptcount] != 0) {					/* free page table  */
 							     kernelfree(pageptr[ptcount] & 0xfffffffffffff000);
-								     unmap_page(pageptr[ptcount] & 0xfffffffffffff000,getpid());
+								     unmap_page(pageptr[ptcount] & 0xfffffffffffff000);
 							}
 						}	 
 				  	}
@@ -317,44 +320,38 @@ else
 last=0;
 
 for(pml4count=start;pml4count != end;pml4count++) {
+	pdptptr=signextend((uint64_t) (((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) pml4count << 12)),47);
 
-	pdptptr=PML4_ADDRESS;
+	for(pdptcount=0;pdptcount < 511;pdptcount++) {
+		if(pdptptr[pdptcount] != 0) {
+			pagedirptr=signextend(((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) pml4count << 21) | ((uint64_t) pdptcount << 12)),47);
 
-	if(pml4[pml4count] != 0) {
-		pdptptr=signextend((uint64_t) (((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) 0x1ff << 21) | ((uint64_t) pml4count << 12)),47);
+			for(pdcount=0;pdcount < 511;pdcount++) {
+		  		if(pagedirptr[pdcount] != 0) {
+					pagetableptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) pml4count << 30) | ((uint64_t) pdptcount << 21) | ((uint64_t) pdcount << 12),47);
 
-		for(pdptcount=0;pdptcount < 511;pdptcount++) {
-			if(pdptptr[pdptcount] != 0) {
-				pagedirptr=signextend(((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff << 30) | ((uint64_t) pml4count << 21) | ((uint64_t) pdptcount << 12)),47);
+					s=0;
 
-				for(pdcount=0;pdcount < 511;pdcount++) {
-			  		if(pagedirptr[pdcount] != 0) {
-						pagetableptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) pml4count << 30) | ((uint64_t) pdptcount << 21) | ((uint64_t) pdcount << 12),47);
+					for(ptcount=0;ptcount < 511;ptcount++) {   
+						if(pagetableptr[ptcount] == 0) {
 
-						s=0;
+        						if(s == 0) last=ptcount;
 
-						for(ptcount=0;ptcount < 511;ptcount++) {   
-							if(pagetableptr[ptcount] == 0) {
-
-	        						if(s == 0) last=ptcount;
-
-								if(s >= size) {
-									address=signextend(((uint64_t) ((uint64_t) pml4count << 39)+((uint64_t) pdptcount << 30)+((uint64_t) pdcount << 21)+((uint64_t) last << 12)),47);
-									return((uint64_t) address);
-								}
+							if(s >= size) {
+								address=signextend(((uint64_t) ((uint64_t) pml4count << 39)+((uint64_t) pdptcount << 30)+((uint64_t) pdcount << 21)+((uint64_t) last << 12)),47);
+								return((uint64_t) address);
+							}
 	 	  					
-								s += PAGE_SIZE;		
-	     						}
-	    						else
-	    						{
-	     							last=ptcount;
-	     							s=0;				/* must be contiguous */
-	    						}
-	  					}
-
-					}				
-		 		}
-			}
+							s += PAGE_SIZE;		
+						}
+						else
+						{
+							last=ptcount;
+							s=0;				/* must be contiguous */
+	    					}
+	  				}
+				}				
+		 	}
 		}
 	}
 }
@@ -370,10 +367,7 @@ for(pml4count=start;pml4count<end;pml4count++) {
 	
 			address=signextend((uint64_t) ((uint64_t) pml4count << 39) | ((uint64_t) pdptcount << 30),47);
 
-		       	if(s >= size) {
-				if((process != getpid()) && (alloc == ALLOC_NORMAL)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
-				return(address);	 /* found enough */
-			}
+		       	if(s >= size) return(address);	 /* found enough */
 	 	}
 	}
 }
@@ -388,16 +382,10 @@ for(pml4count=0;pml4count<511;pml4count++) {
 	
 		address=signextend(((uint64_t) pml4count << 39),47);		/* + 256TB */
 
-	       	if(s >= size) {
-			if((process != getpid()) && (alloc == ALLOC_NORMAL)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
-
-			return(address); /* found enough */	         
-		}
+	       	if(s >= size) return(address); /* found enough */	         
  	}
 	
 }
-
-if((process != getpid()) && (alloc == ALLOC_NORMAL)) current_page_mapping->pml4[511]=savemapping;	/* Restore mappings */
 
 setlasterror(NO_MEM);
 return(-1);

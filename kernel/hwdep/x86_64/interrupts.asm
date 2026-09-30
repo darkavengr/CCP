@@ -41,12 +41,14 @@ global load_idt
 global initialize_interrupts
 global int_common
 global d_lowlevel
+global get_interrupts_enabled
 
 extern exception					; exception handler
 extern exit
 extern dispatchhandler					; high-level dispatcher
 extern enablemultitasking
 extern disablemultitasking
+extern is_multitasking_enabled
 
 [BITS 64]
 use64
@@ -78,11 +80,11 @@ mov	rax,%1				; exception number
 mov	[rbx],rax
 
 mov	rbx,qword error_code
-mov	rax,[rsp+24+32]			; save error code
+mov	rax,[rsp+24]			; save error code
 mov	[rbx],rax
 
 mov	rax,[rsp+24+8]		; get rip from stack
-mov	rbx,[rsp+24+24]		; get rflags from stack
+mov	rbx,[rsp+24+16]		; get rflags from stack
 
 jmp	int_common
 %endmacro
@@ -247,7 +249,7 @@ mov	rdx,qword int18_handler		; handler
 mov	rcx,qword 18			; interrupt number
 call	set_interrupt
 
-mov	r11,19
+			mov	r11,19
 next_null_interrupt:
 mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
 mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
@@ -421,6 +423,9 @@ mov	rdi,qword regbuf
 
 mov	r11,qword exception_number
 mov	rsi,[r11]			; exception number
+
+mov	r11,qword error_code
+mov	rdx,[r11]			; fault information
 call	exception			; call exception handler
 
 ;  exceptions 8, 10, 11, 12, 13,14,17,21,29 and 30 push an error code
@@ -470,34 +475,49 @@ iretq
 ; Returns: Nothing
 ;
 d_lowlevel:
-mov	r9,rax
-mov	r8,rbx
-; rcx and rdx are unchanged
-mov	rsi,rbx
-mov	rdi,rax
-
 push	rax
 push	rbx
 push	rcx
 push	rdx
 push	rsi
 push	rdi
+push	r8
+push	r9
+push	r10
+push	r11
+push	r12
+push	r13
+push	r14
+push	r15
+
+mov	r9,rax
+mov	r8,rbx
+; rcx and rdx are unchanged
+mov	rsi,rbx
+mov	rdi,rax
+
+call	disablemultitasking
 
 sti
 call	dispatchhandler
 cli
 
-mov	r11,qword tempone
-mov	[r11],rax
+call	enablemultitasking
 
-mov	r11,qword 0xffffffffffffffff
-cmp	rdx,r11					; if error ocurred
-je	iretq_error
-
-mov	r11,qword tempone
-mov	rax,[r11]				; then return old rax
-
-iretq_error:
+pop	r15			; restore registers
+pop	r14
+pop	r13
+pop	r12
+pop	r11
+pop	r10
+pop	r9
+pop	r8
+pop	rdi
+pop	rsi
+pop	rdx
+pop	rcx
+pop	rbx
+add	rsp,8			; skip rax without popping it
 iretq  
 
 null_handler:
@@ -519,7 +539,6 @@ and	rax,0x200			; get interrupts flag
 shr	rax,9
 ret
 
-
 idt:
 dw 0x3FFF					; limit
 dq idttable				; base
@@ -535,5 +554,6 @@ temptwo dq 0
 intnumber dq 0
 exception_number dq 0
 error_code dq 0
+multitasking_was_enabled dq 0
 regbuf times 120 dq 0
 

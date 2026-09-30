@@ -45,9 +45,7 @@ size_t initrd_io(size_t op,size_t drive,uint64_t block,char *buf);
  *
  */
 size_t initrd_findfirst(char *filename,FILERECORD *buf) {
-//	asm("xchg %bx,%bx");
-
-	return(initrd_find(FALSE,filename,buf));
+return(initrd_find(FALSE,filename,buf));
 }
 
 /*
@@ -60,7 +58,7 @@ size_t initrd_findfirst(char *filename,FILERECORD *buf) {
  *
  */
 size_t initrd_findnext(char *filename,FILERECORD *buf) {
-	return(initrd_find(TRUE,filename,buf));
+return(initrd_find(TRUE,filename,buf));
 }
 
 /*

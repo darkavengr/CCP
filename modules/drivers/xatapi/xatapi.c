@@ -276,12 +276,7 @@ atapi_clear_irq_flag(controller);		/* clear IRQ flag */
 atapi_wait_for_irq(controller);		/* wait for IRQ even though it may be PIO or DMA. An IRQ will be received */
 
 if(isdma == TRUE) {			/* for DMA transfers */
-	kprintf_direct("dma buf=%X\n",prdt_virtual->address+KERNEL_HIGH);	
-	kprintf_direct("buf=%X\n",buf);
-
 	memcpy(buf,prdt_virtual->address+KERNEL_HIGH,prdt_virtual->size);
-	asm("xchg %bx,%bx");
-
 	setlasterror(NO_ERROR);
 	return(0);
 }

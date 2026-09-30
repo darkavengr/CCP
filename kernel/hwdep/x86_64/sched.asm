@@ -26,7 +26,7 @@ extern save_kernel_stack_pointer
 extern getpid
 extern switch_address_space
 extern get_kernel_stack_pointer
-extern set_tss_esp0
+extern set_tss_rsp0
 extern get_kernel_stack_top
 extern GetCurrentProcessFlags
 extern SetCurrentProcessFlags
@@ -55,34 +55,49 @@ cli
 ; CS
 ; RFLAGS
 ; RAX	
+; RBX
 ; RCX
 ; RDX
-; RBX
-; Useless RSP
-; RBP
 ; RSI
 ; RDI
+; R8
+; R9
+; R10
+; R11
+; R12
+; R13
+; R14
+; R15
+; RBP
 
 ; save rip, cs and rflags in the same way as an interrupt call
 
 push	rax
-mov	rax,[rsp+8]				; get eip
-mov	[save_rip],rax				; save it
+mov	rax,[rsp+8]				; get rip
+mov	[rel save_rip],rax				; save it
 pop	rax
 
 ; create fake interrupt return stack
 pushf						; eflags
 push	qword KERNEL_CODE_SELECTOR		; cs
-
 push	qword [rel save_rip]			; rip
-push	rax					; save registers
+
+push	rax				; save registers
+push	rbx
 push	rcx
 push	rdx
-push	rbx
-push	rsp
-push	rbp
 push	rsi
 push	rdi
+push	r8
+push	r9
+push	r10
+push	r11
+push	r12
+push	r13
+push	r14
+push	r15
+push	rbp
+
 mov	[rel OldContextPointer],rsp
 
 call	find_next_process_to_switch_to
@@ -95,15 +110,16 @@ call	switch_task				; switch to next task
 
 ; never reaches here
 no_processes:
-add	rsp,12*8				; move stack back to where it was before the fake interrupt return stack was created
-iret
+add	rsp,19*8				; move stack back to where it was before the fake interrupt return stack was created
+xchg	bx,bx
+iretq
 
 ;
 ; Switch task
 ;
 switch_task:
-mov	[OldContextPointer],rdi
-mov	[NextProcessPointer],rsi
+mov	[rel OldContextPointer],rdi
+mov	[rel NextProcessPointer],rsi
 
 call	getpid
 test	rax,rax
@@ -135,13 +151,6 @@ call	SetCurrentProcessFlags
 mov	rdi,[rel NextProcessPointer]		; update current process pointer
 call	update_current_process_pointer
 
-call	getpid
-test	rax,rax
-jz	no_debug
-
-xchg	bx,bx
-no_debug:
-
 ; switch address space
 
 call	getpid
@@ -156,26 +165,30 @@ mov	rdi,rax
 call	set_tss_rsp0
 
 call	get_kernel_stack_pointer
-
 mov	rsp,rax					; switch kernel stack
 
 ;
 ; Return directly to process. Does *not* return to the caller
 ;
-pop	rdi					; restore registers
+
+pop	rbp				; restore registers
+pop	r15
+pop	r14
+pop	r13
+pop	r12
+pop	r11
+pop	r10
+pop	r9
+pop	r8
+pop	rdi
 pop	rsi
-pop	rbp
-pop	rsp
-pop	rbx
 pop	rdx
 pop	rcx
+pop	rbx
 pop	rax
-
-pop	gs
-pop	fs
-pop	es
-pop	ds
-iret
+iretq
+nop
+nop
 
 OldContextPointer dq 0
 NextProcessPointer dq 0

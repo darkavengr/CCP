@@ -18,6 +18,7 @@ KERNEL_HIGH		equ 0x80000000
 BASE_OF_SECTION 	equ 0x1000
 
 RETRY_COUNT	equ	3
+
 ; 32-bit table indexes
 
 ELF32_MAGIC 	equ 0
@@ -114,9 +115,11 @@ SH64_ENTSIZE	equ 56
 SYM64_NAME	equ 0
 SYM64_INFO	equ 4
 SYM64_OTHER	equ 5
-SYM64_SECTION	equ 6	
-SYM64_VALUE	equ 14
-SYM64_SIZE	equ 24
+SYM64_SECTION	equ 6
+SYM64_VALUE	equ 8
+SYM64_SIZE	equ 16
+
+SYM64_ENTRY_SIZE equ 24
 
 PROG_LOADABLE	equ 1
 PROG_EXECUTABLE equ 2
@@ -430,7 +433,7 @@ je	save_strtab
 jmp	not_section
 
 save_symtab:
-mov	eax,[esi+SH32_OFFSET]				; get
+mov	eax,[esi+SH32_OFFSET]
 add	eax,[loadbuf]
 add	eax,16						; skip first
 
@@ -446,7 +449,7 @@ mov	[BOOT_INFO_NUM_SYMBOLS],edx
 jmp	not_section
 
 save_strtab:
-mov	eax,[esi+SH32_OFFSET]				; get
+mov	eax,[esi+SH32_OFFSET]
 add	eax,[loadbuf]
 inc	eax
 
@@ -600,15 +603,14 @@ je	save_strtab64
 jmp	not_section64
 
 save_symtab64:
-mov	edx,[esi+SH64_OFFSET]				; get
+mov	edx,[esi+SH64_OFFSET]
 add	edx,[loadbuf]
-add	edx,SYM64_SIZE					; skip first
 mov	[symtab],edx
 
 mov	eax,[esi+SH64_SIZE]				; size of section data
 xor	edx,edx
 
-mov	ebx,SYM64_SIZE					; divide by SYM64_SIZE
+mov	ebx,SYM64_ENTRY_SIZE				; divide by SYM64_SIZE
 div	ebx
 dec	eax
 
@@ -649,7 +651,7 @@ mov	ebx,[symtab]					; point to symbol table
 next_symbol64:
 mov	esi,[strtab]					; point to string table
 
-mov	al,[ebx+SYM32_INFO]				; get symbol information
+mov	al,[ebx+SYM64_INFO]				; get symbol information
 and	al,0xf						; get symbol type
 
 ; skip STT_SECTION and STT_FILE symbols
@@ -659,10 +661,9 @@ je	symbol_end64
 
 cmp	al,STT_FILE
 je	symbol_end64
-
-add	esi,[ebx+SYM64_NAME]				; point to string
-
-inc	esi
+																																															
+mov	eax,[ebx+SYM64_NAME]
+add	esi,[ebx+SYM64_NAME]				; point to name
 
 next_string64:
 a32	movsb
@@ -683,7 +684,7 @@ mov	[edi+4],eax
 add	edi,8						; point to next
 
 symbol_end64:
-add	ebx,SYM64_SIZE
+add	ebx,SYM64_ENTRY_SIZE
 
 mov	eax,[number_of_symbols]
 dec	eax
@@ -1258,7 +1259,6 @@ pop	ebx						; restore es:bx
 pop	es
 
 mov	eax,[read_block]						; save block number
-;xchg	bx,bx
 
 and	cx,0000000000111111b				; get sectors per track
 

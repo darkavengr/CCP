@@ -32,11 +32,13 @@ for f in $*; do
 
 		echo Including driver $name
 		echo extern $initname\(\)\;>>drive.c
+		echo kprintf_direct\(\"$initname\\n\"\)\; >> drive.c
 
 		echo strncpy\(kernelmodule.filename,\"$name.o\",MAX_PATH\)\;>>drive.c
-		echo kernelmodule.startaddress=\&$initname\;>>drive.c
+		echo kernelmodule.startaddress=`grep ".text" ../mapfiles/ccp.map | grep "$name.o" | cut -f 12 -d ' '`\; >> drive.c
 
-		echo kernelmodule.size=`stat -c %s ../obj/$arch/$name.o`\;>>drive.c
+		echo kernelmodule.size=`grep ".text" ../mapfiles/ccp.map | grep "serialio.o" | cut -f 17 -d ' '`\;>>drive.c
+#		echo asm\(\"xchg %bx,%bx\"\)\;>>drive.c
 		echo AddModule\(\&kernelmodule\)\;>>drive.c
 		echo $initname\(NULL\)\;>>drive.c
 	fi

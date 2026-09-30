@@ -66,7 +66,8 @@ extern get_initial_kernel_stack_top				; get initial kernel stack top
 extern get_kernel_stack_size					; get kernel stack size
 extern set_initial_process_paging_end				; set initial process paging end
 extern tty_init							; initialize TTY
-
+extern initialize_abstract_timer				; initialize abstract timer
+extern module_manager_init					; initialize module manager
 ;
 ; globals
 ;
@@ -246,7 +247,7 @@ mov	ecx,(1024*1024)				; map first 1MB
 mov	esi,BOOT_INFO_KERNEL_SIZE
 add	ecx,[esi]
 
-mov	esi,BOOT_INFO_INITRD_START
+mov	esi,BOOT_INFO_INITRD_SIZE
 add	ecx,[esi]
 
 mov	esi,BOOT_INFO_SYMBOL_SIZE
@@ -254,20 +255,19 @@ add	ecx,[esi]
 
 mov	esi,BOOT_INFO_MEMORY_SIZE			; memory map size
 mov	eax,[esi]
-and	eax,0xfffff000
-
-shr	eax,12
-shl	eax,8
-
+;shr	eax,12					; find number of pages
+;shl	eax,3					; multiple by size of each memory map entry, 8 bytes
 add	ecx,eax
+
+add	ecx,PAGE_SIZE
+and	ecx,0xfffff000
 
 shr	ecx,12					; number of page table entries
 
 mov	edi,ROOT_PAGETABLE
-mov	eax,0 | PAGE_PRESENT | PAGE_RW | PAGE_ACCESSED	; page and flags
+mov	eax,0 | PAGE_PRESENT | PAGE_RW		; physical address and flags
 
 cld
-
 mov	edx,PAGE_SIZE
 xor	ebx,ebx
 
@@ -276,7 +276,7 @@ mov	[edi],eax			; low dword
 mov	[edi+4],ebx			; high dword
 
 add	edi,8
-add	eax,edx				; point to next page
+add	eax,PAGE_SIZE			; point to next page
 loop	map_next_page
 
 mov	eax,cr4				; enable PAE paging
@@ -328,6 +328,8 @@ lgdt	[rax]				; load higher-half GDT
 
 call	get_initial_kernel_stack_top
 add	rax,KERNEL_HIGH
+
+and	rax,0xFFFFFFFFFFFFFFF0				; align to 16 bytes
 mov	rsp,rax					; temporary stack
 
 call	get_initial_kernel_stack_base
@@ -363,6 +365,7 @@ mov	[rdi],rdx
 call	get_initial_kernel_stack_top
 mov	rcx,qword KERNEL_HIGH
 add	rax,rcx
+and	rax,0xFFFFFFFFFFFFFFF0				; align to 16 bytes
 mov	rsp,rax					; temporary stack
 
 call	get_initial_kernel_stack_base
@@ -378,9 +381,7 @@ mov	[rsi],rax
 
 call	initialize_interrupts		; initialize interrupts
 call	load_idt			; load interrupts
-
 call	set_initial_process_paging_end ; set initial processpaging end to
-
 call	processmanager_init		; intialize process manager
 call	devicemanager_init		; intialize device manager
 
@@ -466,6 +467,8 @@ call	tty_init				; initialize TTY
 
 call	initialize_abstract_timer		; intialize abstract timer
 
+call	module_manager_init			; intialize module manager
+
 sti
 call	driver_init				; initialize built-in modules
 cli
@@ -484,6 +487,7 @@ call	get_initial_kernel_stack_top
 
 mov	rcx,qword KERNEL_HIGH
 add	rax,rcx
+and	rax,~16					; align to 16 bytes
 mov	rdi,rax
 call	set_tss_rsp0
 

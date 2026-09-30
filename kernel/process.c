@@ -157,10 +157,9 @@ if(next->kernelstackbase == NULL) {	/* return if unable to allocate */
 
 next->kernelstacktop=next->kernelstackbase+DEFAULT_KERNEL_STACK_SIZE;			/* top of kernel stack */
 
-/* Enviroment variables are inherited
-* Part one of enviroment variables duplication
+/* Enviroment variables are inherited from the parent process
 *
-* copy the variables to a buffer in kernel memory where it is visible to both parent and child process
+* Part one of enviroment variables duplication - copy the variables to a buffer in kernel memory where it is visible to both parent and child process
 */
 
 saveenv=NULL;
@@ -210,6 +209,27 @@ if(getpid() != 0) {
  * allocate enviroment block at the highest user program address minus enviroment size
  */
 currentprocess->envptr=alloc_int(ALLOC_NORMAL,ENVIROMENT_SIZE,END_OF_LOWER_HALF-ENVIROMENT_SIZE);
+if(currentprocess->envptr == NULL) {
+	if((currentprocess == processes) && (currentprocess->next == NULL)) last_error_no_process=currentprocess->lasterror; /* copy error if only process */
+
+	currentprocess=oldprocess;	/* restore current process pointer */
+	kernelfree(next->kernelstackbase);	/* free kernel stack */
+
+	if(lastprocess->next != NULL) kernelfree(lastprocess->next);	/* remove process from list */
+
+	lastprocess->next=NULL;		/* remove process */
+	processes_end=lastprocess;
+
+	close(stdin);		/* close stdin, stdout and stderr for failed process */
+	close(stdout);
+	close(stderr);
+
+	freepages(highest_pid_used);
+	switch_address_space(getppid());
+
+	enablemultitasking();
+	return(-1);
+}
 
 if(saveenv != NULL) {
 	memcpy(currentprocess->envptr,saveenv,ENVIROMENT_SIZE);		/* copy from saved enviroment buffer */
@@ -234,7 +254,7 @@ if(stackp == NULL) {
 	close(stdout);
 	close(stderr);
 
-	freepages(highest_pid_used - 1);
+	freepages(highest_pid_used);
 	switch_address_space(getppid());
 
 	enablemultitasking();
@@ -1201,6 +1221,7 @@ currentprocess=NULL;
 executableformats=NULL;
 highest_pid_used=0;
 last_error_no_process=0;
+processes=NULL;
 
 initialize_mutex(&process_mutex);
 }
@@ -1374,8 +1395,6 @@ return(currentprocess->envptr);
 void save_kernel_stack_pointer(size_t new_stack_pointer) {
 if(currentprocess == NULL) return;
 
-//kprintf_direct("save stack [%X]=%X\n",currentprocess->pid,new_stack_pointer);
-
 currentprocess->kernelstackpointer=new_stack_pointer;
 }
 
@@ -1389,8 +1408,6 @@ currentprocess->kernelstackpointer=new_stack_pointer;
 */
 size_t get_kernel_stack_pointer(void) {
 if(currentprocess == NULL) return(NULL);
-
-//kprintf_direct("get stack [%X]=%X\n",currentprocess->pid,currentprocess->kernelstackpointer);
 
 return(currentprocess->kernelstackpointer);
 }
@@ -1788,14 +1805,6 @@ else if(current->next == NULL) {		/* end */
 }
 else {						/* middle */
 	current->prev->next=current->next;
-}
-
-PROCESS *next=processes;
-
-while(next != NULL) {
-	kprintf_direct("process=%X %s\n",next->pid,next->filename);
-
-	next=next->next;
 }
 
 return;

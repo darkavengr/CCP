@@ -21,7 +21,7 @@ size_t map_system_page(uint64_t page,void *physaddr);
 size_t signextend(size_t num,size_t bitnum);
 void remove_processpaging_entry(size_t virtaddress);
 
-#ifdef PAGING_H
+#ifndef PAGING_H
 	#define PAGING_H
 
 	typedef struct PAGING {

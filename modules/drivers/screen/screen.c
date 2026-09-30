@@ -114,8 +114,6 @@ if((size_t) screenpos % 2 == 1) screenpos++;
 			dataptr++;
 		}
 		else if((char) *dataptr == TTY_CHAR_BACK) {			/* backspace */
-			asm("xchg %bx,%bx");
-
 			if((bootinfo->cursor_col-1) > 0) bootinfo->cursor_col--;
 			
 			*screenpos--=0;		/* erase backspace character */

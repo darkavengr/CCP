@@ -52,16 +52,19 @@ void enable_interrupts(void);
 
 
 uint64_t flags;
-char *exp[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception","Into detected overflow",
+char *exceptions[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception","Into detected overflow",
 		"Out of bounds exception","Invalid opcode exception","No coprocessor exception","Double Fault","Coprocessor segment overrun",
 		"Bad TSS","Segment not present","Stack fault","General protection fault","Page fault","Unknown interrupt exception",
 		"Coprocessor fault","Alignment check exception","Machine check exception","SIMD Floating-Point Exception",
 		"Virtualization Exception","Control Protection Exception","Reserved #1","Reserved #2","Reserved #3","Reserved #4","Reserved #5",
 		"Hypervisor Injection Exception","VMM Communication Exception","Security Exception","Reserved #5" };
 
-char *regnames[] = { "RIP","RSP","RAX","RBX","RCX","RDX","RSI","RDI","RBP","R10","R11","R12","R13","R14","R15",NULL};
+char *registernames[] = { "RIP","RSP","RAX","RBX","RCX","RDX","RSI","RDI","RBP","R10","R11","R12","R13","R14","R15",NULL};
 
-char *flagsname[]= { "","Overflow"," Direction"," Interrupt"," Trap"," Sign"," Zero",NULL," Adjust",NULL,NULL,NULL," Carry","$" };
+char *flagsnames[]= { "","Overflow"," Direction"," Interrupt"," Trap"," Sign"," Zero",NULL," Adjust",NULL,NULL,NULL," Carry","$" };
+
+char *ReadingWriting[] = { "Reading","Writing" };
+char *KernelUserMode[] = { "kernel","user-mode" };
 
 size_t count;
 uint64_t flagsmask;
@@ -72,6 +75,8 @@ size_t rowcount;
 uint64_t faultaddress;
 uint64_t stackbase;
 size_t pd_entry;
+KERNELMODULE *module;
+char *FunctionName;
 
 void exception(uint64_t *regs,uint64_t faultnumber,uint64_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
@@ -79,17 +84,13 @@ asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 if(faultnumber == PAGE_FAULT) {
 	/* If there was a page fault, do possible demand paging */
 
-	/* Swap page in if it was swapped out */
-	pd_entry=get_pagetable_entry(getpid(),faultaddress);
-	if(pd_entry != -1) {
-		if( (pd_entry & PAGE_SWAPPED_OUT) && ((pd_entry & PAGE_PRESENT) == 0)) {
-			SwapPageIn(getpid(),faultaddress);
-			return;
-		}
-	}
+	if((faultaddress < KERNEL_HIGH) && ((get_usermode_stack_base() != NULL) && (faultaddress <= get_usermode_stack_base()))) {		/* user-mode stack overflow */
+		kprintf_direct("extend=%X %X %X\n",get_usermode_stack_base(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress));
+		asm("xchg %bx,%bx");
 
-	if(faultaddress <= get_usermode_stack_base()) {		/* user-mode stack overflow */
-		alloc_int(ALLOC_NORMAL,getpid(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
+		alloc_int(ALLOC_NORMAL,get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
+
+		asm("xchg %bx,%bx");
 		return;	
 	}	
 }
@@ -108,6 +109,7 @@ if(regs[0] >= KERNEL_HIGH) {		/* kernel or kernel module */
 	}
 
 	/* display function name */
+
 	FunctionName=FindSymbolFromAddress(regs[0]);
 	if(FunctionName != NULL) {		/* found function name */
 		kprintf_direct(" in function %s:\n",FunctionName);
@@ -121,7 +123,7 @@ else					/* application exception */
 {
 	getprocessfilename(processname);
  
-	kprintf_direct("\n%s at address %016X in %s:\n",exp[faultnumber],regs[0],processname);
+	kprintf_direct("\n%s at address %016X in %s:\n",exceptions[faultnumber],regs[0],processname);
 }
 
 if((faultnumber == DOUBLE_FAULT) || (faultnumber == INVALID_TSS) || (faultnumber == SEGMENT_NOT_PRESENT) || \
@@ -129,21 +131,7 @@ if((faultnumber == DOUBLE_FAULT) || (faultnumber == INVALID_TSS) || (faultnumber
 	kprintf_direct("When accessing GDT selector %X\n\n",faultinfo);
 }
 else if(faultnumber == PAGE_FAULT) {
-	if(faultinfo & PAGEFAULT_WRITE) {
-		kprintf_direct("Error writing page at address %X",faultaddress);
-	}
-	else
-	{
-		kprintf_direct("Error reading page at address %X",faultaddress);
-	}
-
-	if(faultinfo & PAGEFAULT_USERMODE) {		/* user mode */
-		kprintf_direct(" in user-mode");
-	}
-	else
-	{
-		kprintf_direct(" in kernel mode");
-	}
+	kprintf_direct("%s %s page at address %X",ReadingWriting[(faultinfo & PAGEFAULT_WRITE) >> 1],KernelUserMode[(faultinfo & PAGEFAULT_USERMODE) >> 2],faultaddress);
 
 	if(faultinfo & PAGEFAULT_INSTRUCTION_FETCH) kprintf_direct(" on instruction fetch");
 	
@@ -169,10 +157,10 @@ else if(faultnumber == PAGE_FAULT) {
 count=0;
 rowcount=0;
 
-while(regnames[count] != NULL) {							/* dump registers */
-	if(regnames[count] == NULL) break;
+while(registernames[count] != NULL) {							/* dump registers */
+	if(registernames[count] == NULL) break;
 
-	kprintf_direct("%s=%016X ",regnames[count],regs[count]);
+	kprintf_direct("%s=%016X ",registernames[count],regs[count]);
 
 	if(++rowcount == 3) {				/* at end of row */
 		kprintf_direct("\n");
@@ -194,10 +182,10 @@ rowcount=0;
 /* dump flags */
 
 do {
-	if(flagsname[count] == "$") break;
+	if(flagsnames[count] == "$") break;
 
-	if(flagsname[count] != NULL) {
-		kprintf_direct("%s=%d",flagsname[count],(((uint64_t) regs[10] & flagsmask) >> shiftcount));
+	if(flagsnames[count] != NULL) {
+		kprintf_direct("%s=%d",flagsnames[count],(((uint64_t) regs[10] & flagsmask) >> shiftcount));
 		rowcount++;
 
 		if(rowcount == 5) {			/* at end of row */
@@ -214,14 +202,15 @@ flagsmask=flagsmask >> 1;
 	shiftcount--;
 	count++;
 
-} while(flagsname[count] != "$");
+} while(flagsnames[count] != "$");
+
+asm("xchg %bx,%bx");
 
 if((get_current_process_pointer() == NULL) || (regs[0] >= KERNEL_HIGH)) {		/* kernel or kernel module */
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);
 }
 
-asm("xchg %bx,%bx");
 enable_interrupts();
 
 /* terminate process */

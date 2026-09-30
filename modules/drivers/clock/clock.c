@@ -84,8 +84,6 @@ do {
 
 		kprintf_direct("%X: %X\n",cmos_rtc_offsets[count],*bufptr);
 		bufptr++;
-
-	//	asm("xchg %bx,%bx");
 	}
 	else
 	{
@@ -94,9 +92,6 @@ do {
 
 	count++;
 } while(cmos_rtc_offsets[count] != 0xFFFF);
-
-
-//asm("xchg %bx,%bx");
 
 setlasterror(NO_ERROR);
 return(CMOS_TIMEDATE_SIZE);
@@ -112,7 +107,7 @@ return(CMOS_TIMEDATE_SIZE);
  *
  */
 size_t clockio_read(void *buf,size_t ignored) {
-	return(clock_io_internal(DEVICE_READ,buf));
+return(clock_io_internal(DEVICE_READ,buf));
 }
 
 /*
@@ -125,6 +120,6 @@ size_t clockio_read(void *buf,size_t ignored) {
  *
  */
 size_t clockio_write(void *buf,size_t ignored) {
-	return(clock_io_internal(DEVICE_WRITE,buf));
+return(clock_io_internal(DEVICE_WRITE,buf));
 }
 

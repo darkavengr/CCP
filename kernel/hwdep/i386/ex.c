@@ -61,6 +61,9 @@ char *regnames[] = { "EIP", "ESP", "EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EB
 
 char *flagsname[]= { NULL,"Overflow", "Direction","Interrupt","Trap","Sign","Zero",NULL,"Adjust",NULL,NULL,NULL,"Carry","$" };
 
+char *ReadingWriting[] = { "Reading","Writing" };
+char *KernelUserMode[] = { "kernel","user-mode" };
+
 size_t count;
 uint32_t flagsmask;
 char *processname[MAX_PATH];
@@ -118,22 +121,8 @@ if((faultnumber == DOUBLE_FAULT) || (faultnumber == INVALID_TSS) || (faultnumber
    (faultnumber == STACK_FAULT) || (faultnumber == GENERAL_PROTECTION_FAULT) || (faultnumber == ALIGN_CHECK)) {
 	kprintf_direct("When accessing GDT selector %X\n\n",faultinfo);
 }
-else if(faultnumber == PAGE_FAULT) {
-	if(faultinfo & PAGEFAULT_WRITE) {
-		kprintf_direct("Error writing page at address %X",faultaddress);
-	}
-	else
-	{
-		kprintf_direct("Error reading page at address %X",faultaddress);
-	}
-
-	if(faultinfo & PAGEFAULT_USERMODE) {		/* user mode */
-		kprintf_direct(" in user-mode");
-	}
-	else
-	{
-		kprintf_direct(" in kernel mode");
-	}
+else f(faultnumber == PAGE_FAULT) {
+	kprintf_direct("%s %s page at address %X",ReadingWriting[(faultinfo & PAGEFAULT_WRITE) >> 1],KernelUserMode[(faultinfo & PAGEFAULT_USERMODE) >> 2],faultaddress);
 
 	if(faultinfo & PAGEFAULT_INSTRUCTION_FETCH) kprintf_direct(" on instruction fetch");
 	
@@ -208,15 +197,12 @@ flagsmask=flagsmask >> 1;
 
 } while(flagsname[count] != "$");
 
-asm("xchg %bx,%bx");
-
 if((get_current_process_pointer() == NULL) || (regs[0] >= KERNEL_HIGH)) {		/* kernel or kernel module */
 	kprintf_direct("\nThe system will now shut down\n");
 	shutdown(0);
 }
 else
 {
-	asm("xchg %bx,%bx");
 	enable_interrupts();
 
 	kill(getpid());

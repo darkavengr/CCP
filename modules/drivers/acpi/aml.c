@@ -90,7 +90,7 @@ FieldLength=amlbyte & 0xC0;
 /* add additional bytes to length */
 
 do {
-	FieldLength += (*amlbuf << ShiftCount);
+	FieldLength += (uint32_t) (*amlbuf << ShiftCount);
 	ShiftCount += 8;
 while(NumberOfLengthBytes-- > 0);
 
@@ -401,95 +401,77 @@ ACPICurrentScope=ACPIParentScope;
 return(0);
 }
 
-size_t ExecuteAMLInstruction(uint8_t *methodptr) {
-	/* execute AML method opcode */
+size_t ExecuteAMLInstruction(uint8_t *method) {
+size_t returnvalue;
+uint8_t AMLOp;
+uint8_t ExtendedAMLOp=0;
+uint8_t *methodptr;
 
-	switch((uint8_t) *methodptr++) {
-		case 0x70:		/* store */
-			WriteTarget(ParseTarget(methodptr++),ParseSuperName());
-			break;
+methodptr=method;
 
-		case 0x72:		/* add */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) + ParseTermArg(methodptr++));
-			break;
+if(IsTermArg((uint8_t) *methodptr)) {		/* is a TermArg */
+	WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++));
+}
+else if((uint8_t) *methodptr) == 0xA0) {
+	IfStatement(methodptr);
+}
+else if((uint8_t) *methodptr) == 0xA1) {	/* else */
+	ElseStatement(methodptr);
+}
+else if((uint8_t) *methodptr) == 0xA2) {	/* while */
+	WhileOp(methodptr);
+}
+else if((uint8_t) *methodptr) == 0xA3) {	/* no-op */
+	break;
+}
 
-		case 0x74:			/* subtract */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) - ParseTermArg(methodptr++));
-			break;
+return;
+}
 
-		case 0x75:			/* increment */
-			break;
+size_t IsTermArg(uint8_t *method) {
+uint8_t *methodptr;
+uint8_t AMLOp;
+uint8_t AMLExtendedOp;
 
-		case 0x76:			/* decrement */
-			break;
-			
-		case 0x77:			/* multiply */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) * ParseTermArg(methodptr++));
-			break;
+methodptr=method;
 
-		case 0x78:			/* divide */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) / ParseTermArg(methodptr++));
-			break;
+AMLOp=(uint8_t) *methodptr++);			/* get AML operation */
+if(AMLOp == 0x5B) {		/* extended AML operation */
+	ExtendedAMLOp=AMLOp;																							
+	AMLOp=(uint8_t) *methodptr++);			/* get AML operation */
+}
 
-		case 0x79:			/* shift left */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) << ParseTermArg(methodptr++));
-			break;
+if(((AMLOp >= 0x72) && (AMLOp <= 0x80)) return(TRUE);  	/* and, nand, or, nor, exclusive or, bitwise not */
+if(AMLOp == 0x86) return(TRUE); 	/* modulus */
+if((AMLOp >= 0x92) && (AMLOp <= 0x95)) return(TRUE); /* logical not, equals, greater than, less than */
+if((ExtendedAMLOp == 0x53) && (AMLOp == 0x29)) return(TRUE);	/* ToBCDOp */
+if((ExtendedAMLOp == 0x53) && (AMLOp == 0x28)) return(TRUE);	/* FromBCDOp */
+if((AMLOp >= 0x96) && (AMLOp <= 0x9C)) return(TRUE);	/* ToBuffer, ToDecimalString, ToHexString, ToInteger, ToString */
+if(AMLOp == 0x73) return(TRUE); 	/* concat */
+if(AMLOp == 0x84) return(TRUE); 	/* concatres */
+if(AMLOp == 0x87) return(TRUE); 	/* sizeof */
+if(AMLOp == 0x8e) return(TRUE); 	/* ObjectType */
+if(AMLOp == 0x89) return(TRUE); 	/* match */
+if(AMLOp == 0x9e) return(TRUE); 	/* mid */						
+if((ExtendedAMLOp == 0x53) && (AMLOp == 0x12)) return(TRUE);	/* condref */
+if(AMLOp == 0x71) return(TRUE); 	/* refof */
+if(AMLOp == 0x83) return(TRUE); 	/* derefof */
+if(AMLOp == 0x88) return(TRUE); 	/* index */
+if(AMLOp == 0) return(TRUE); 	/* zero */
+if(AMLOp == 1) return(TRUE); 	/* one */
+if(AMLOp == 0xFF) return(TRUE); 	/* ones */
+if((ExtendedAMLOp == 0x53) && (AMLOp == 0x30)) return(TRUE);	/* revision */
+if(AMLOp == AML_BYTE_PREFIX) return(TRUE);
+if(AMLOp == AML_WORD_PREFIX) return(TRUE);
+if(AMLOp == AML_DWORD_PREFIX) return(TRUE);
+if(AMLOp == AML_QWORD_PREFIX) return(TRUE);
+if((ExtendedAMLOp == 0x53) && (AMLOp == 0x23)) return(TRUE);	/* acquire */
+if((ExtendedAMLOp == 0x53) && (AMLOp == 0x25)) return(TRUE);	/* wait */
+if(AMLOp == 0x70) return(TRUE);		/* store */
+if(AMLOp == 0x14) return(TRUE);		/* method */
 
-		case 0x7A:			/* shift right */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) >> ParseTermArg(methodptr++));
-			break;
-
-		case 0x7B:			/* logical and */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) & ParseTermArg(methodptr++));
-			break;
-
-		case 0x7C:			/* logical nand */
-			WriteTarget(ParseTarget(methodptr++),~(ParseTermArg(methodptr++) & ParseTermArg(methodptr++)));
-			break;
-
-		case 0x7D:			/* logical or */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) | ParseTermArg(methodptr++));
-			break;
-
-		case 0x7E:			/* logical nor */
-			WriteTarget(ParseTarget(methodptr++),~(ParseTermArg(methodptr++) | ParseTermArg(methodptr++)));
-			break;
-
-		case 0x7F:			/* logical exclusive or */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) ^ ParseTermArg(methodptr++));
-			break;
-
-		case 0x80:			/* logical not */
-			count -= 2;
-
-			WriteTarget(ParseTarget(methodptr++),~ParseTermArg(methodptr++));
-			break;
-
-		case 0x86:			/* modulus */
-			WriteTarget(ParseTarget(methodptr++),ParseTermArg(methodptr++) % ParseTermArg(methodptr++));
-			break;
-
-		case 0x9D:			/* copy object */
-			WriteTarget(ParseTermArg(methodptr++));
-			break;
-
-		case 0xA0:			/* if */
-			IfStatement(methodptr);
-			break;
-
-		case 0xA1:			/* else */
-			ElseStatement(methodptr);
-			break;
-
-		case 0xA2:			/* while */
-			WhileOp(methodptr);
-			break;
-
-		case 0xA3:			/* no-op */
-			break;
-
-	}
-
+return(FALSE);
+}
 
 /*
 * AML if operation
@@ -617,10 +599,88 @@ return;
 size_t ParseTermArg(uint8_t *amlptr) {
 ACPITreeNode *node;
 
-if(((uint8_t) *methodptr >= 0x60) && ((uint8_t) *methodptr <= 0x67)) {		/* local0 - local7 */
-	return(currentlocalptr[(size_t) termbyte]);
+if(((uint8_t) *amlptr >= 0x60) && ((uint8_t) *amlptr <= 0x67)) {		/* local0 - local7 */
+	return(AMLMethodCallStack_end->local[(size_t) termbyte]);
 }
-else if((uint8_t) *methodptr == 0x8) {		/* name */
+else if((uint8_t) *amlptr == 0x8) {		/* name */
 	amlptr=GetAMLString(amlptr,AMLName);	/* get target name */
 	node=FindACPINode(AMLNAME);		/* find ACPI node */
+}
+else if((uint8_t) *amlptr == 0x70) {	/* store */
+	ParseTermArg(++amlptr);
+}
+else if((uint8_t) *amlptr == 0x72) {	/* add */
+	return(ParseTarget(amlptr++),ParseTermArg(++amlptr) + ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x74) {		/* subtract */
+	return(ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x75) {		/* increment */
+	returnvalue=ParseTermArg(++amlptr);
+
+	return(++returnvalue);
+}
+else if((uint8_t) *amlptr == 0x76) {		/* decrement */
+	returnvalue=ParseTermArg(++amlptr);
+
+	return(--returnvalue);
+}
+else if((uint8_t) *amlptr == 0x77) {		/* multiply */
+	return(ParseTermArg(++amlptr) * ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x78) {		/* divide */
+	return(ParseTermArg(++amlptr) / ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x79) {		/* shift left */
+	return(ParseTermArg(++amlptr) << ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x7A) {		/* shift right */
+	return(ParseTermArg(++amlptr) >> ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x7B) {		/* logical and */
+	return(ParseTermArg(++amlptr) & ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x7C) {		/* logical nand */
+	return(~(ParseTermArg(++amlptr) & ParseTermArg(++amlptr)));
+}
+else if((uint8_t) *amlptr == 0x7D) {		/* logical or */
+	return(ParseTermArg(++amlptr) | ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x7E) {		/* logical nor */
+	ParseTermArg(++amlptr),~(ParseTermArg(++amlptr) | ParseTermArg(++amlptr)));
+}
+else if((uint8_t) *amlptr == 0x7F) {		/* logical exclusive or */
+	return(ParseTermArg(++amlptr) ^ ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x80) {		/* bitwise not */
+	ParseTermArg(++amlptr),~ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x86) {		/* modulus */
+	return(ParseTermArg(++amlptr) % ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x92) {		/* logical not */
+	return(!ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x93) {		/* logical equals */
+	return(ParseTermArg(++amlptr) == ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x94) {		/* logical greater than */
+	return(ParseTermArg(++amlptr) > ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0x95) {		/* logical less than */
+	return(ParseTermArg(++amlptr) < ParseTermArg(++amlptr));
+}
+else if((uint8_t) *amlptr == 0) {		/* zero */
+	return(0);
+}
+else if((uint8_t) *amlptr == 1) {		/* one */
+	return(1);
+}
+else if((uint8_t) *amlptr == 0xFF) {		/* ones */
+	return(0xFF);
+}
+else if((uint8_t) *amlptr == AML_BYTE_PREFIX) {	/* byte */
+	return((uint8_t) *++amlptr);
+}
+
 

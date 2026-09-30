@@ -1057,8 +1057,6 @@ while(read_size > 0) {
 	}
 }
 
-//asm("xchg %bx,%bx");
-
 kernelfree(iobuf);
 
 setlasterror(NO_ERROR);
