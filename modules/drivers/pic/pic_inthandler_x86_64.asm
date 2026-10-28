@@ -19,7 +19,7 @@ global irq12
 global irq13
 global irq14
 global irq15
-global irq_exit
+global irq
 
 ;
 ; IRQ handlers
@@ -116,11 +116,10 @@ out	PIC_SLAVE_COMMAND,al			; reset PIC slave
 
 nslave:
 mov	rdi,qword irqnumber
-mov	rdi,[rdi]				; irq number
+mov	rdi,[rdi]				; IRQ number
 mov	rsi,rsp					; stack parameter pointer
-call	callirqhandlers				; call irq handler
+call	callirqhandlers				; call IRQ handler
 
-irq_exit:
 pop	rbp				; restore registers
 pop	r15
 pop	r14

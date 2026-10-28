@@ -121,7 +121,7 @@ if((faultnumber == DOUBLE_FAULT) || (faultnumber == INVALID_TSS) || (faultnumber
    (faultnumber == STACK_FAULT) || (faultnumber == GENERAL_PROTECTION_FAULT) || (faultnumber == ALIGN_CHECK)) {
 	kprintf_direct("When accessing GDT selector %X\n\n",faultinfo);
 }
-else f(faultnumber == PAGE_FAULT) {
+else if(faultnumber == PAGE_FAULT) {
 	kprintf_direct("%s %s page at address %X",ReadingWriting[(faultinfo & PAGEFAULT_WRITE) >> 1],KernelUserMode[(faultinfo & PAGEFAULT_USERMODE) >> 2],faultaddress);
 
 	if(faultinfo & PAGEFAULT_INSTRUCTION_FETCH) kprintf_direct(" on instruction fetch");

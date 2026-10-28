@@ -186,6 +186,10 @@ if(currentprocess != NULL) {
 	memcpy(saveenv,currentprocess->envptr,ENVIROMENT_SIZE);		/* copy enviroment variables */
 }
 
+//if(highest_pid_used) {
+//	asm("xchg %bx,%bx");
+//}
+
 page_init(highest_pid_used);				/* intialize page directory */	
 switch_address_space(highest_pid_used);			/* load page table */
 
@@ -882,6 +886,14 @@ switch(argone) {
 
 	case 0x7033:				/* unlock file area */
 		return(funlock(argtwo,argtwo,argthree));
+
+	case 0x7034:				/* get architecture */
+		if(argfour >= KERNEL_HIGH) {		/* invalid argument */
+			setlasterror(INVALID_ADDRESS);
+			return(-1);
+		}
+
+		return(get_arch(argfour));
 
 	default:
 		setlasterror(INVALID_FUNCTION);

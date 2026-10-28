@@ -170,7 +170,7 @@ switch(signal) {
 				read(stdin,&yesno,1);
 	
 	 			if((yesno == 'Y') || (yesno == 'y')) {
-					/* set the batch mode to terminating. do_script checks for this flag and terminates if it is present */
+					/* set the batch mode to terminating. do_script() checks for this flag and terminates if it is present */
 
 					set_batch_mode(TERMINATING);
 					return(0);

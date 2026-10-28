@@ -438,7 +438,7 @@ touppercase(name,nname);
 n=newmask;
 m=mask;
 
-for(count=0;count<strlen(mmask);count++) {
+for(count=0;count < strlen(mmask);count++) {
 	c=*m;						/* get character from mask */
 
 	if(c == '*') {					/* match many characters */
@@ -654,6 +654,8 @@ tokenptr=tokens[0];
 
 while((char) *token != 0) {
 	delimptr=delim;
+
+//	kprintf_direct("tokenptr=%X\n",tokenptr);
 
 	do {
 		if((char) *token == (char) *delimptr) {

@@ -6,8 +6,23 @@ CCOPTS=@cc_opts@ -I@buildroot@/header -I@buildroot@/kernel/hwdep/@arch@
 LDOPTS=@ldopts@ -Wl,-Map -Wl,@buildroot@/mapfiles/ccp.map
 OBJFILES=$(addsuffix .o,$(basename $(notdir $(FILES))))
 
+#
+# NOTE: Generation of the drive.c file requires a map file created by the linker.
+# The kernel is linked twice; first with a dummy drive.c file to create a map file, then
+# the real drive.c is created and the kernel is linked a second time with the real drive.c.
+#
 all: modules ccp hwdep
+	# link first time with dummy drive.c
 	$(CC) -T hwdep/@arch@/ld.script -o @buildroot@/bin/@arch@/CCP.SYS @buildroot@/obj/@arch@/*.o $(LDOPTS)
+	@buildroot@/gendrivelist @arch@ @driver_list@		# generate real drive.c
+
+	# Recompile drive.c
+	$(CC) -c -w -ffreestanding -nostdlib -mcmodel=large -mno-red-zone -I@buildroot@/header -I@buildroot@/kernel/hwdep/x86_64  @buildroot@/kernel/drive.c -o @buildroot@/obj/@arch@/drive.o
+
+	# link second time with real drive.c
+	$(CC) -T hwdep/@arch@/ld.script -o @buildroot@/bin/@arch@/CCP.SYS @buildroot@/obj/@arch@/*.o $(LDOPTS)
+
+
 	@buildroot@/gensym @buildroot@/bin/@arch@/CCP.SYS @buildroot@/mapfiles/ccp.sym
 
 #
@@ -31,7 +46,7 @@ hwdep:
 modules:
 	for f in @driver_list@; do make -C $$f;done
 	for f in @initrd_driver_list@; do make -C $$f;done
-	@buildroot@/gendrivelist @arch@ @driver_list@
+	@buildroot@/gendrivelist		# generate empty drive.c to allow for first linking
 
 #
 # Recipe to make modules

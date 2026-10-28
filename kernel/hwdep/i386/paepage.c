@@ -64,6 +64,8 @@ size_t pagedir_entry_number;
 size_t pagetable_entry_number;
 uint64_t *pagetableptr;
 uint64_t newpagedirentry;
+uint64_t newpagedirentry_phys;
+uint64_t newpdptentry_phys;
 uint32_t addr;
 uint64_t *pdptptr;
 
@@ -79,28 +81,27 @@ pdptptr=PDPT_ADDRESS;
 
 /* if pdpt empty, add page directory to it, the page tables in the page directory will appear at PDPT_LOCATION+(pagedir_entry_number*512) */
 
-if(pdptptr[pdpt_entry_number] == 0) {			/* if pdpt empty */
-	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
-	if(newpagedirentry == NULL) {					/* allocation error */
-		setlasterror(NO_MEM);
-		return(-1);
-	}
+if(pdptptr[pdpt_entry_number] == 0)		/* if pdpt empty */
+	newpdptentry=heap_alloc_page_aligned(PAGE_SIZE);
+	if(newpdptentry == NULL) return(-1);
+
+	newpdptentry_phys=getphysicaladdress(newpdptentry);
+	if(newpdptentry_phys == -1) return(-1);
 
 
-	pdptptr[pdpt_entry_number]=(newpagedirentry & 0xfffff000) | PAGE_PRESENT;
+	pdptptr[pdpt_entry_number]=(newpdptentry_phys & 0xfffff000) | PAGE_PRESENT;
 }
 
 pagetableptr=KERNEL_HIGH+(pdptptr[pdpt_entry_number] & 0xfffff000);
 
 if(pagetableptr[pagedir_entry_number] == 0) {				/* if page directory empty */
-	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
+	newpagedirentry=heap_alloc_page_aligned(PAGE_SIZE);
+	if(newpagedirentry == NULL) return(-1);
 
-	if(newpagedirentry == NULL) {					/* allocation error */
-		setlasterror(NO_MEM);
-		return(-1);
-	}
+	newpagedirentry_phys=getphysicaladdress(newpagedirentry);
+	if(newpagedirentry_phys == -1) return(-1);
 
-	pagetableptr[pagedir_entry_number]=newpagedirentry | PAGE_USER | PAGE_RW | PAGE_PRESENT;
+	pagetableptr[pagedir_entry_number]=newpagedirentry_phys | PAGE_USER | PAGE_RW | PAGE_PRESENT;
 }
 	
 /* page tables are mapped at PDPT_LOCATION via recursive paging */
@@ -124,60 +125,39 @@ return(0);
 */
 
 size_t page_init(size_t process) {
-PAEPAGING *p;
-PAEPAGING *last;
-uint32_t oldvirtaddress;
-uint32_t virtaddress;
-uint32_t oldpp;
-uint32_t pp;
+uint32_t virtual_address;
 size_t count;
-size_t size;
 
 if(process == 0) return;		/* don't need to intialize if process 0 */
 
-/* Get a physical address and manually map it to a virtual address. The physical addres of p->pagedir is needed to fill cr3 */
+virtual_address=heap_alloc_page_aligned(round_up(sizeof(PAGING),PAGE_SIZE));
+if(virtual_address == NULL) return(-1);
 
-size=round_up(size,PAGE_SIZE);	/* round up to PAGE _SIZE */
-
-pp=kernelalloc_nopaging(size);					/* add link */
-if(pp == NULL) return(-1);
-
-virtaddress=findfreevirtualpage(size,ALLOC_KERNEL,0);		/* find free virtual address */
-
-oldvirtaddress=virtaddress;
-oldpp=pp;
-
-for(count=0;count<(size/PAGE_SIZE)+1;count++) {
-	map_system_page(virtaddress,0,(void *) pp);
-
-	pp += PAGE_SIZE;
-	virtaddress += PAGE_SIZE;
-}
+pdpt_phys=getphysicaladdress(virtaddress);
+if(pdpt_phys == NULL) return(-1);
 
 /* Important: make sure that is processpaging_end == processpaging. This most be done in the paging intialization code */
 
 if(processpaging_end == NULL) processpaging_end=processpaging; /* do it anyway */
 
-processpaging_end->next=oldvirtaddress;					/* add link to list */
+processpaging_end->next=virtual_address;					/* add link to list */
 processpaging_end=processpaging_end->next;		/* point to end */
-processpaging_end->pagedirphys=oldpp;						/* physical address of page directory */
+processpaging_end->pdptdirphys=getphysicaladdress(virtual_address);				/* physical address of page directory */
 processpaging_end->process=process;
 
 /* add bottom half PDPTs */
 
-for(count=0;count != 2;count++) {
-	pp=kernelalloc_nopaging(PAGE_SIZE);
-	if(pp == NULL) return(-1);
+for(count=0;count != 4;count++) {
+	virtual_address=heap_alloc_page_aligned(PAGE_SIZE);
+	if(virtual_address == NULL) return(-1);
 
-	last->pdpt[count]=pp | PAGE_PRESENT;
-
-	map_system_page(pp+KERNEL_HIGH,0,(void *) pp);
+	processpaging_end->pdpt[count]=getphysicaladdress(virtual_address) | PAGE_PRESENT;
 }
 
-last->pdpt[2]=processpaging->pdpt[2];		/* copy top-half PDPT */
-last->pdpt[3]=oldpp | PAGE_PRESENT;		/* map last PDPT to PDPT */
+processpaging_end->pdpt[3]=processpaging->pdpt[3];		/* copy top-half PDPT */
+processpaging_end->pdpt[4]=processpaging_end->pdpt | PAGE_PRESENT;		/* map last PDPT to PDPT */
+processpaging_end->next=NULL;
 
-last->next=NULL;
 return;
 }
 /*

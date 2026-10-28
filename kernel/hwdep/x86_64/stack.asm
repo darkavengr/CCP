@@ -21,7 +21,9 @@
 
 %include "kernelselectors.inc"
 
-KERNEL_STACK_SIZE equ  65536*5			; size of initial kernel stack
+KERNEL_STACK_SIZE equ  65536*2			; size of initial kernel stack
+INITIAL_KERNEL_STACK_SIZE equ 65536
+
 INITIAL_KERNEL_STACK_ADDRESS equ 0x20000		; intial kernel stack address
 
 global initialize_current_process_user_mode_stack
@@ -112,11 +114,11 @@ ret
 
 get_initial_kernel_stack_top:
 mov	rax,INITIAL_KERNEL_STACK_ADDRESS
-add	rax,KERNEL_STACK_SIZE
+add	rax,INITIAL_KERNEL_STACK_SIZE
 ret
 
 get_kernel_stack_size:
-mov	rax,KERNEL_STACK_SIZE
+mov	rax,INITIAL_KERNEL_STACK_SIZE
 ret
 
 temprip dq 0

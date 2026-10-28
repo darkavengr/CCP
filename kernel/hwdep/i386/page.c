@@ -39,7 +39,7 @@
 #include "memorymanager.h"
 #include "string.h"
 
-size_t paging_type=1;
+size_t paging_type=PAGING_TYPE_LEGACY;
 
 PAGING *processpaging=PAGE_DIRECTORY_LOCATION+KERNEL_HIGH;
 PAGING *processpaging_end=PAGE_DIRECTORY_LOCATION+KERNEL_HIGH;
@@ -47,7 +47,7 @@ PAGING *processpaging_end=PAGE_DIRECTORY_LOCATION+KERNEL_HIGH;
 /*
 * Map virtual address to physical address
 *
-* In: page_flags	Allocation mode(ALLOC_KERNEL or ALLOC_NORMAL)
+* In: page_flags	Page flags
       virtual_address	Virtual address
       physical_address	Physical address
 *
@@ -60,6 +60,7 @@ uint32_t pagedir_entry_number;
 uint32_t pagetable_entry_number;
 uint32_t *pagetableptr;
 uint32_t newpagedirentry;
+uint32_t newpagedirentry_phys;
 uint32_t *pagedirptr;
 
 pagedir_entry_number=(virtual_address >> 22) & 0x3ff;				/* page directory offset */
@@ -68,10 +69,13 @@ pagetable_entry_number=(virtual_address >> 12) & 0x3ff;				/* page table offset 
 pagedirptr=PAGEDIR_ADDRESS;			/* point to page directory */
 
 if(pagedirptr[pagedir_entry_number] == 0) {				/* if page directory entry is empty */
-	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
+	newpagedirentry=heap_alloc_page_aligned(PAGE_SIZE);
 	if(newpagedirentry == NULL) return(-1);
 
-	pagedirptr[pagedir_entry_number]=(uint32_t) newpagedirentry | PAGE_USER | PAGE_RW | PAGE_PRESENT;	/* page directory entry */
+	newpagedirentry_phys=getphysicaladdress(newpagedirentry);
+	if(newpagedirentry_phys == -1) return(-1);
+
+	pagedirptr[pagedir_entry_number]=(uint32_t) newpagedirentry_phys | PAGE_USER | PAGE_RW | PAGE_PRESENT;	/* page directory entry */
 }
 
 /* page tables are mapped at PAGETABLE_ADDRESS via recursive paging */
@@ -91,41 +95,25 @@ return(0);
 * 
 */
 size_t page_init(size_t process) {
-uint32_t oldvirtaddress;
 uint32_t virtaddress;
-uint32_t old_pagingentryptr_phys;
 uint32_t pagingentryptr_phys;
 size_t count;
-size_t size;
 
 if(process == 0) return(0);
 
-/* get a physical address and manually map it to a virtual address, the physical addres of p->pagedir is needed to fill cr3 */
+virtaddress=heap_alloc_page_aligned(round_up(sizeof(PAGING),PAGE_SIZE));
+if(virtaddress == NULL) return(-1);
 
-size=round_up(sizeof(PAGING),PAGE_SIZE);	/* round up to PAGE _SIZE */
-
-pagingentryptr_phys=kernelalloc_nopaging(size);					/* get the physical address of the new paging entry */
+pagingentryptr_phys=getphysicaladdress(virtaddress);
 if(pagingentryptr_phys == NULL) return(-1);
 
-virtaddress=findfreevirtualpage(size,ALLOC_KERNEL);		/* find free virtual address */
-
-oldvirtaddress=virtaddress;
-old_pagingentryptr_phys=pagingentryptr_phys;
-
-for(count=0;count < (size / PAGE_SIZE) + 1;count++) {
-	map_system_page(virtaddress,(void *) pagingentryptr_phys);
-
-	pagingentryptr_phys += PAGE_SIZE;
-	virtaddress += PAGE_SIZE;
-}
-
-/* Important: make sure that is processpaging_end == processpaging. */
+/* Important: make sure that processpaging_end == processpaging. */
 
 if(processpaging_end == NULL) processpaging_end=processpaging;
 
-processpaging_end->next=oldvirtaddress;					/* add link to list */
+processpaging_end->next=virtaddress;					/* add link to list */
 processpaging_end=processpaging_end->next;		/* point to end */
-processpaging_end->pagedirphys=old_pagingentryptr_phys;						/* physical address of page directory */
+processpaging_end->pagedirphys=pagingentryptr_phys;						/* physical address of page directory */
 processpaging_end->process=process;
 
 memset(processpaging_end->pagedir,0,PAGE_SIZE);

@@ -47,14 +47,14 @@ getfullpath(filename,fullname);
 handle=open(fullname,O_RDONLY | O_EXCLUSIVE);		/* open file */
 if(handle == -1) return(-1);		/* can't open */
 
-if(read(handle,&elf_header,sizeof(Elf32_Ehdr)) == -1) {
+if(read(handle,&elf_header,sizeof(Elf32_Ehdr)) == -1) {		/* read header */
 	close(handle);
 	return(-1); /* read error */
 }
 
 /* check magic number, elf type and number of program headers */
 
-if(elf_header.e_ident[0] != 0x7F && elf_header.e_ident[1] != 0x45 && elf_header.e_ident[2] != 0x4C && elf_header.e_ident[3] != 0x46) {	/*  elf */
+if(elf_header.e_ident[0] != 0x7F && elf_header.e_ident[1] != 0x45 && elf_header.e_ident[2] != 0x4C && elf_header.e_ident[3] != 0x46) {
 	close(handle);
 
 	setlasterror(INVALID_EXECUTABLE);
@@ -104,6 +104,14 @@ for(count=0;count < elf_header.e_phnum;count++) {
 	if(phptr->p_type == PT_LOAD) {			/* if segment is loadable */
 
 		if(phptr->p_vaddr >= KERNEL_HIGH) {		/* invalid address */
+			setlasterror(INVALID_ADDRESS);
+
+			kernelfree(phbuf);
+			close(handle);
+			return(-1);
+		}
+
+		if(seek(handle,phbuf->p_offset,SEEK_SET) == -1) {			/* seek to position */
 			setlasterror(INVALID_EXECUTABLE);
 
 			kernelfree(phbuf);
@@ -111,11 +119,9 @@ for(count=0;count < elf_header.e_phnum;count++) {
 			return(-1);
 		}
 
-		seek(handle,phbuf->p_offset,SEEK_SET);			/* seek to position */
+		alloc_int(ALLOC_NORMAL,phptr->p_memsz,phbuf->p_vaddr);
 
-		alloc_int(ALLOC_NORMAL,phptr->p_memsz,phptr->p_vaddr);
-
-		if(read(handle,phptr->p_vaddr,phptr->p_filesz) == -1) {	/* read error */
+		if(read(handle,phptr->p_vaddr,phptr->p_filesz) == -1) {	/* read segment */
 			if(getlasterror() != END_OF_FILE) {		
 				kernelfree(phbuf);
 	  
@@ -126,7 +132,7 @@ for(count=0;count < elf_header.e_phnum;count++) {
 
 	}
 
-	phptr++;		/* point to next */
+	phptr++;		/* point to next program header */
 }
 
 close(handle);

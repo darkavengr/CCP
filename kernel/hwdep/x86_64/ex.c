@@ -39,17 +39,6 @@
 
 void enable_interrupts(void);
 
-/*
- * x86 exception handler
- *
- * In: regs	Registers
-       faultnumber	Error number
-       dummy	Dummy value
- *
- * Returns nothing
- * 
- */
-
 
 uint64_t flags;
 char *exceptions[] = { "Division by zero exception","Debug exception","Non maskable interrupt","Breakpoint exception","Into detected overflow",
@@ -61,14 +50,13 @@ char *exceptions[] = { "Division by zero exception","Debug exception","Non maska
 
 char *registernames[] = { "RIP","RSP","RAX","RBX","RCX","RDX","RSI","RDI","RBP","R10","R11","R12","R13","R14","R15",NULL};
 
-char *flagsnames[]= { "","Overflow"," Direction"," Interrupt"," Trap"," Sign"," Zero",NULL," Adjust",NULL,NULL,NULL," Carry","$" };
+char *flagsnames[]= { NULL,"Overflow"," Direction"," Interrupt"," Trap"," Sign"," Zero",NULL," Adjust",NULL,NULL,NULL," Carry","$" };
 
 char *ReadingWriting[] = { "Reading","Writing" };
 char *KernelUserMode[] = { "kernel","user-mode" };
 
 size_t count;
 uint64_t flagsmask;
-char *b;
 char processname[MAX_PATH];
 size_t shiftcount;
 size_t rowcount;
@@ -78,22 +66,35 @@ size_t pd_entry;
 KERNELMODULE *module;
 char *FunctionName;
 
+/*
+ * x86_64 exception handler
+ *
+ * In: regs		Registers
+       faultnumber	Error number
+       faultinfo	Fault information
+ *
+ * Returns nothing
+ * 
+ */
 void exception(uint64_t *regs,uint64_t faultnumber,uint64_t faultinfo) {
 asm volatile ( "mov %%cr2, %0" : "=r"(faultaddress));	/* get fault address */
 
-if(faultnumber == PAGE_FAULT) {
+//if(faultnumber == PAGE_FAULT) {
 	/* If there was a page fault, do possible demand paging */
 
-	if((faultaddress < KERNEL_HIGH) && ((get_usermode_stack_base() != NULL) && (faultaddress <= get_usermode_stack_base()))) {		/* user-mode stack overflow */
-		kprintf_direct("extend=%X %X %X\n",get_usermode_stack_base(),get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress));
-		asm("xchg %bx,%bx");
+	/* user-mode stack overflow */
+//	if((faultaddress < KERNEL_HIGH) && 
+//	   ((get_usermode_stack_base() != NULL) && (faultaddress < get_usermode_stack_base())) &&
+//	   (faultaddress > GetUserHeapEnd())) {
+//		faultaddress &= ~(PAGE_SIZE-1);		/* round down to PAGE_SIZE */
 
-		alloc_int(ALLOC_NORMAL,get_usermode_stack_base()-faultaddress,faultaddress-(get_usermode_stack_base()-faultaddress)); /* extend stack downwards */
+//		kprintf_direct("demand paging faultaddress=%X\n",faultaddress);
+//		asm("xchg %bx,%bx");
 
-		asm("xchg %bx,%bx");
-		return;	
-	}	
-}
+//		alloc_int(ALLOC_NORMAL,PAGE_SIZE,faultaddress); /* extend stack downwards */
+//		return;	
+//	}
+//}
 
 /* If here, it's a fatal exception */
 
@@ -101,7 +102,7 @@ if(regs[0] >= KERNEL_HIGH) {		/* kernel or kernel module */
 	module=FindModuleFromAddress(regs[0]);		/* get module associated with address */
 
 	if(module != NULL) {		/* exception in module */
-		kprintf_direct("%s at address %016X in kernel module %s",exceptions[faultnumber],regs[0],module->filename); 
+		kprintf_direct("\n%s at address %016X in kernel module %s",exceptions[faultnumber],regs[0],module->filename); 
 	}
 	else
 	{
@@ -131,7 +132,7 @@ if((faultnumber == DOUBLE_FAULT) || (faultnumber == INVALID_TSS) || (faultnumber
 	kprintf_direct("When accessing GDT selector %X\n\n",faultinfo);
 }
 else if(faultnumber == PAGE_FAULT) {
-	kprintf_direct("%s %s page at address %X",ReadingWriting[(faultinfo & PAGEFAULT_WRITE) >> 1],KernelUserMode[(faultinfo & PAGEFAULT_USERMODE) >> 2],faultaddress);
+	kprintf_direct("%s %s page at address %X\n",ReadingWriting[(faultinfo & PAGEFAULT_WRITE) >> 1],KernelUserMode[(faultinfo & PAGEFAULT_USERMODE) >> 2],faultaddress);
 
 	if(faultinfo & PAGEFAULT_INSTRUCTION_FETCH) kprintf_direct(" on instruction fetch");
 	

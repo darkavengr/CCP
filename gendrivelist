@@ -13,6 +13,13 @@ echo extern size_t AddModule\(KERNELMODULE *entry\)\;>>drive.c
 echo void driver_init\(void\) {>>drive.c
 echo KERNELMODULE kernelmodule\;>>drive.c
 
+#echo asm\(\"xchg %bx,%bx\"\)\;>>drive.c
+
+if [ $# == 0 ] ; then
+	echo }>>drive.c
+	exit 0
+fi
+
 export arch=$1
 shift
 for f in $*; do
@@ -32,13 +39,12 @@ for f in $*; do
 
 		echo Including driver $name
 		echo extern $initname\(\)\;>>drive.c
-		echo kprintf_direct\(\"$initname\\n\"\)\; >> drive.c
+#		echo kprintf_direct\(\"$initname\\n\"\)\; >> drive.c
 
 		echo strncpy\(kernelmodule.filename,\"$name.o\",MAX_PATH\)\;>>drive.c
-		echo kernelmodule.startaddress=`grep ".text" ../mapfiles/ccp.map | grep "$name.o" | cut -f 12 -d ' '`\; >> drive.c
+		echo kernelmodule.startaddress=`cat ../mapfiles/ccp.map | tr -s " " | grep ".text" | grep "$name.o" | cut -f3 -d ' '`\; >> drive.c
 
-		echo kernelmodule.size=`grep ".text" ../mapfiles/ccp.map | grep "serialio.o" | cut -f 17 -d ' '`\;>>drive.c
-#		echo asm\(\"xchg %bx,%bx\"\)\;>>drive.c
+		echo kernelmodule.size=`cat ../mapfiles/ccp.map | tr -s " " | grep ".text" | grep "$name.o" | cut -f4 -d ' '`\;>>drive.c
 		echo AddModule\(\&kernelmodule\)\;>>drive.c
 		echo $initname\(NULL\)\;>>drive.c
 	fi

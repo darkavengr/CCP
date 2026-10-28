@@ -30,6 +30,7 @@ along with CCP.  If not, see <https://www.gnu.org/licenses/>.
 #include "debug.h"
 #include "page.h"
 #include "string.h"
+#include "process.h"
 
 extern size_t MEMBUF_START;
 
@@ -51,7 +52,7 @@ void *KernelCurrentHeapAddress=NULL;
 * Returns start address of allocated memory on success,NULL otherwise
 * 
 */
-void *alloc_int(size_t flags,size_t size,size_t overrideaddress) {
+size_t alloc_int(size_t flags,size_t size,size_t overrideaddress) {
 size_t count;
 size_t *memory_map_entry_ptr=NULL;
 size_t page_count=0;
@@ -77,12 +78,12 @@ lock_mutex(&memmanager_mutex);
 page_count=0;
 memory_map_entry_ptr=MEMBUF_START;
 
-/* check if enough free memory, find start of free chain and starting physical address */
+/* find start of free chain and starting physical address */
 
 for(count=0;count < (bootinfo->memorysize / PAGE_SIZE);count++) {	
-	if(*memory_map_entry_ptr == 0) {
+	if((size_t) *memory_map_entry_ptr == 0) {
 		if(start_of_chain == NULL) start_of_chain=memory_map_entry_ptr;		/* save start of chain */
-
+		
 		if(++page_count == (size / PAGE_SIZE)) break;			/* found enough */
 	}
 
@@ -90,7 +91,7 @@ for(count=0;count < (bootinfo->memorysize / PAGE_SIZE);count++) {
 	memory_map_entry_ptr++;
 }
 
-if((page_count < (size / PAGE_SIZE)) || (count == (bootinfo->memorysize / PAGE_SIZE) - 1)) {		/* out of memory */
+if((page_count < (size / PAGE_SIZE)) || (count == (bootinfo->memorysize / PAGE_SIZE))) {		/* out of memory */
 	setlasterror(NO_MEM);
 	return(NULL);
 }
@@ -112,8 +113,6 @@ if((flags & ALLOC_NOPAGING) == 0) {
 	}
 	else
 	{				/* use override address */
-//		kprintf_direct("override virtual address=%X\n",overrideaddress);
-
 		virtual_address=overrideaddress;
 		first_virtual_address=overrideaddress;
 	 }
@@ -126,30 +125,26 @@ else
 
 /* create new chain in buffer */
 	
-memory_map_entry_ptr=start_of_chain;			/* point to start of new chain */
-	
 page_count=0;
-	
+
 while(count != (bootinfo->memorysize/PAGE_SIZE)) {
 	if((size_t) *memory_map_entry_ptr == 0) {
 		/* find next in memory map */
 
 		next_memory_map_ptr=memory_map_entry_ptr;
 		next_memory_map_ptr++;
-	
-		for(next_free_entry_count=count + 1;next_free_entry_count < (bootinfo->memorysize/PAGE_SIZE) + 1;next_free_entry_count++) {
+
+		for(next_free_entry_count=count + 1;next_free_entry_count < (bootinfo->memorysize/PAGE_SIZE);next_free_entry_count++) {
 	  		if((size_t) *next_memory_map_ptr == 0) break;
 
 			next_memory_map_ptr++;
 	     	}
-	
-	     	*memory_map_entry_ptr=(size_t *) next_memory_map_ptr;
-	  
-		/* link physical addresses to virtual addresses */
-	
-	     	if((flags & ALLOC_NOPAGING) == 0) {
-//			kprintf_direct("alloc=%X %X\n",virtual_address,physical_address);
 
+	     	*memory_map_entry_ptr=(size_t *) next_memory_map_ptr;
+
+		/* link physical addresses to virtual addresses */
+
+	     	if((flags & ALLOC_NOPAGING) == 0) {
 	     		if(flags & ALLOC_NORMAL) {				/* add user-mode page */
 	 			map_user_page(virtual_address,physical_address);
 			}
@@ -164,17 +159,16 @@ while(count != (bootinfo->memorysize/PAGE_SIZE)) {
 	     	}
 		
 		if( (page_count == 0) && ((size / PAGE_SIZE) == 1) || (page_count++ == (size / PAGE_SIZE))) break;			/* found enough */
-	}
 	
+	}
+
 	memory_map_entry_ptr++;
 	physical_address += PAGE_SIZE;
-		
+	
 	count++;
 }
 	
 *memory_map_entry_ptr=(size_t *) -1;							/* mark end of chain */
-
-//kprintf_direct("first_virtual_address=%X\n",first_virtual_address);
 
 if((flags & ALLOC_NOPAGING) == 0) memset(first_virtual_address,0,size - 1);
 
@@ -520,7 +514,7 @@ do {
 					kernelfree(newbuf);
 					unlock_mutex(&memmanager_mutex);
 					return(NULL);
-				}
+					}
 
 				setlasterror(NO_ERROR);
 				return(newbuf);
@@ -564,7 +558,7 @@ size_t startaddress;
 void *heap_pointer;
 void *heapend;
 void *new;
-size_t * heapptr;
+size_t *heapptr;
 HEAPHEADER *heapheader;
 
 lock_mutex(&memmanager_mutex);
@@ -664,16 +658,16 @@ unlock_mutex(&memmanager_mutex);
 return(new + sizeof(HEAPHEADER));
 }
 
-size_t kernelalloc_page_aligned(size_t size) {
-size_t newend=round_up(KernelHeapEnd,PAGE_SIZE);
+void *heap_alloc_page_aligned(size_t size) {
+size_t newsize;
+size_t addr;
 
-if(alloc_int(ALLOC_KERNEL,size,newend) == NULL) return(NULL);
+newsize=round_up(size,PAGE_SIZE);
 
-KernelHeapEnd=newend;
-return(KernelHeapEnd);
+addr=heapalloc_int(ALLOC_KERNEL,newsize);
+addr=round_up(addr,PAGE_SIZE);
+return(addr);
 }
-
-
 
 size_t heapfree(size_t type,void *address) {
 HEAPHEADER *heapheader;

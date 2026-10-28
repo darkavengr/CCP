@@ -62,6 +62,8 @@ uint64_t *pml4ptr;
 uint64_t *pdptptr;
 uint64_t *pagedirptr;
 uint64_t *pagetableptr;
+uint64_t newpml4entry;
+uint64_t newpdptentry;
 uint64_t newpagedirentry;
 uint64_t addr;
 uint64_t *pageptr;
@@ -80,24 +82,24 @@ pagedirptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) 0x1ff <<
 pagetableptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) pml4_number << 30) | ((uint64_t) pdpt_number << 21) | ((uint64_t) page_directory_number << 12),47);
 
 if(pml4ptr[pml4_number] == 0) {			/* if PML4 empty */
-	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
-	if(newpagedirentry == NULL) {					/* allocation error */
+	newpml4entry=kernelalloc_nopaging(PAGE_SIZE);
+	if(newpml4entry == NULL) {					/* allocation error */
 		setlasterror(NO_MEM);
 		return(-1);
 	}
 	
-	pml4ptr[pml4_number]=(newpagedirentry & 0xfffffffffffff000) | PAGE_RW | PAGE_USER | PAGE_PRESENT;
+	pml4ptr[pml4_number]=(newpml4entry & 0xfffffffffffff000) | PAGE_RW | PAGE_USER | PAGE_PRESENT;
 }
 
 if(pdptptr[pdpt_number] == 0) {					/* if PDPT empty */
-	newpagedirentry=kernelalloc_nopaging(PAGE_SIZE);
+	newpdptentry=kernelalloc_nopaging(PAGE_SIZE);
 
-	if(newpagedirentry == NULL) {					/* allocation error */
+	if(newpdptentry == NULL) {					/* allocation error */
 		setlasterror(NO_MEM);
 		return(-1);
 	}
 
-	pdptptr[pdpt_number]=newpagedirentry | PAGE_USER | PAGE_RW | PAGE_PRESENT;
+	pdptptr[pdpt_number]=newpdptentry | PAGE_USER | PAGE_RW | PAGE_PRESENT;
 }
 
 if(pagedirptr[page_directory_number] == 0) {				/* if page directory empty */
@@ -131,58 +133,39 @@ return(0);
 */
 
 size_t page_init(size_t process) {
-uint64_t oldvirtual_address;
-uint64_t virtual_address;
-uint64_t oldpp;
-uint64_t pp;
+size_t virtual_address;
+size_t pp;
 size_t count;
-size_t size;
 
 if(process == 0) return(0);		/* don't need to intialize if process 0 */
 
-/* Get a physical address and manually map it to a virtual address. The physical addres of p->pagedir is needed to fill cr3 */
+/* Get a physical address and manually map it to a virtual address. The physical addres of p->pagedir is used to fill cr3 */
 
-size=round_up(sizeof(PAGING),PAGE_SIZE);	/* round up to PAGE _SIZE */
-
-virtual_address=kernelalloc_page_aligned(size);
+virtual_address=heap_alloc_page_aligned(round_up(sizeof(PAGING),PAGE_SIZE));
 if(virtual_address == NULL) return(-1);
+
+//kprintf_direct("sizeof(size_t)=%X\n",sizeof(size_t));
+
+//kprintf_direct("virtual_address=%X\n",virtual_address);
+//asm("xchg %bx,%bx");
 
 pp=getphysicaladdress(virtual_address);
 if(pp == NULL) return(-1);
 
+//kprintf_direct("pp=%X\n",pp);
+//asm("xchg %bx,%bx");
 
-oldvirtual_address=virtual_address;
-oldpp=pp;
+/* Important: make sure that is processpaging_end == processpaging */
+if(processpaging_end == NULL) processpaging_end=processpaging;
 
-for(count=0;count < (size/PAGE_SIZE)+1;count++) {
-	map_system_page(virtual_address,(void *) pp);
-
-	pp += PAGE_SIZE;
-	virtual_address += PAGE_SIZE;
-}
-
-/* Important: make sure that is processpaging_end == processpaging. This most be done in the paging intialization code */
-if(processpaging_end == NULL) processpaging_end=processpaging; /* do it anyway */
-
-processpaging_end->next=oldvirtual_address;					/* add link to list */
+processpaging_end->next=virtual_address;					/* add link to list */
 processpaging_end=processpaging_end->next;		/* point to end */
 
-processpaging_end->pml4phys=oldpp;			/* physical address of PML4 */
+processpaging_end->pml4phys=pp;			/* physical address of PML4 */
 processpaging_end->process=process;
 
-/* add bottom half PML4s */
-
-for(count=0;count != 256;count++) {
-	pp=kernelalloc_nopaging(PAGE_SIZE);
-	if(pp == NULL) return(-1);
-
-	processpaging_end->pml4[count]=pp | PAGE_PRESENT;
-
-	map_system_page(pp+KERNEL_HIGH,(void *) pp);
-}
-
 processpaging_end->pml4[510]=processpaging->pml4[510];		/* copy top-half PML4 */
-processpaging_end->pml4[511]=oldpp | PAGE_PRESENT;		/* map last PML4 to PML4 */
+processpaging_end->pml4[511]=processpaging_end->pml4phys | PAGE_PRESENT;		/* map last PML4 to PML4 */
 processpaging_end->next=NULL;
 
 return(0);
@@ -193,7 +176,7 @@ return(0);
 *
 * In: page	Page to remove
 *
-* Returns NULL
+* Returns 0 on success or -1 on failure
 * 
 */
 
@@ -402,10 +385,12 @@ return(-1);
 
 size_t switch_address_space(size_t process) {
 PAGING *next; 
+
 next=processpaging;
-size_t count;
 
 while(next != NULL) {
+//	kprintf_direct("switch_address_space() %X %X %X\n",next,next->process,process);
+
 	if(next->process == process) {
 		asm volatile("mov %0, %%cr3":: "b"(next->pml4phys));		/* load cr3 with PML4 */
 		return(0);
@@ -416,23 +401,21 @@ while(next != NULL) {
 
 return(-1);
 }	
-
 /*
 * Get page table entry for virtual address
+
 *
 * In: virtual_address   Virtual address
 *
-* Returns 0 on success or -1 on failutr
+* Returns 0 on success or -1 on failure
 * 
 */
 size_t get_pagetable_entry(size_t virtual_address) {
-PAGING *next;
 size_t pml4_number;
 size_t pdpt_number;
 size_t page_directory_number;
 size_t page_table_number;
 uint64_t *pagetableptr;
-uint64_t *pageptr;
 
 pml4_number=((virtual_address & 0xFF8000000000) >> 39);
 pdpt_number=((virtual_address & 0x7FC0000000) >> 30);
@@ -440,9 +423,8 @@ page_directory_number=((virtual_address & 0x3FE00000) >> 21);
 page_table_number=((virtual_address & 0x1FF000) >> 12);
 
 pagetableptr=signextend((uint64_t) ((uint64_t) 0x1ff << 39) | ((uint64_t) pml4_number << 30) | ((uint64_t) pdpt_number << 21) | ((uint64_t) page_directory_number << 12),47);
-pageptr=((size_t) pagetableptr | (pml4_number << 30) | (pdpt_number << 21) | (page_directory_number << 12));
 
-return(pageptr[page_table_number]);				/* return page table entry */
+return(pagetableptr[page_table_number]);				/* return page table entry */
 }
 
 /*
@@ -455,8 +437,9 @@ return(pageptr[page_table_number]);				/* return page table entry */
 * 
 */
 uint64_t getphysicaladdress(size_t virtual_address) {
-size_t entry=get_pagetable_entry(virtual_address);
+size_t entry;
 
+entry=get_pagetable_entry(virtual_address);
 if(entry == -1) return(-1);
 
 return(entry & 0xfffffffffffff000);				/* return physical address */
@@ -465,8 +448,7 @@ return(entry & 0xfffffffffffff000);				/* return physical address */
 /*
 * Map user page
 *
-* In: page		Virtual address       
-      process		Process ID
+* In: page		Virtual address
       physaddr		Physical address
 
 * Returns 0 on success, -1 on error

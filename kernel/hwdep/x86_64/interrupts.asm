@@ -63,6 +63,7 @@ mov	rbx,qword exception_number	; save exception number
 mov	rax,%1				; exception number
 mov	[rbx],rax
 
+xchg	bx,bx
 mov	rax,[rsp+24]		; get rip from stack
 mov	rbx,[rsp+24+16]		; get rflags from stack
 
@@ -84,11 +85,124 @@ mov	rax,[rsp+24]			; save error code
 mov	[rbx],rax
 
 mov	rax,[rsp+24+8]		; get rip from stack
-mov	rbx,[rsp+24+16]		; get rflags from stack
+mov	rbx,[rsp+24+24]		; get rflags from stack
 
 jmp	int_common
 %endmacro
 
+;
+;
+; Interrupt handlers
+;
+
+inthandler_noerr 0
+inthandler_noerr 1
+inthandler_noerr 2
+inthandler_noerr 3
+inthandler_noerr 4
+inthandler_noerr 5
+inthandler_noerr 6
+inthandler_noerr 7
+inthandler_err 8
+inthandler_noerr 9
+inthandler_err 10
+inthandler_err 11
+inthandler_err 12
+inthandler_err 13
+inthandler_err 14
+inthandler_noerr 15
+inthandler_noerr 16
+inthandler_err 17
+inthandler_noerr 18
+inthandler_noerr 19
+inthandler_noerr 20
+inthandler_err 21
+inthandler_noerr 22
+inthandler_noerr 23
+inthandler_noerr 24
+inthandler_noerr 25
+inthandler_noerr 26
+inthandler_noerr 27
+inthandler_noerr 28
+inthandler_err 29
+inthandler_err 30
+inthandler_noerr 31
+
+int_common:
+; save other registers into buffer to pass to exception handler
+
+mov	rdi,qword regbuf
+
+mov	[rdi],rax			; save eip
+mov	[rdi+8],rsp
+mov	[rdi+32],rcx
+mov	[rdi+40],rdx
+mov	[rdi+48],rsi
+mov	[rdi+64],rbp
+mov	[rdi+72],r10
+mov	[rdi+80],r11
+mov	[rdi+88],r12
+mov	[rdi+96],r13
+mov	[rdi+104],r14
+mov	[rdi+112],r15
+mov	[rdi+120],rbx			; save flags
+
+pop	rbx				; get rbx from stack
+mov	[rdi+24],rbx
+pop	rax				; get rax from stack
+mov	[rdi+16],rax
+pop	rax				; get rdi from stack
+mov	[rdi+56],rax
+
+mov	rdi,qword regbuf
+
+mov	r11,qword exception_number
+mov	rsi,[r11]			; exception number
+
+mov	r11,qword error_code
+mov	rdx,[r11]			; fault information
+call	exception			; call exception handler
+
+;  exceptions 8, 10, 11, 12, 13,14,17,21,29 and 30 push an error code
+
+mov	rdx,qword exception_number
+mov	rdx,[rdx]
+
+mov	rsi,qword error_number_exceptions
+mov	rcx,10
+
+next_check_exeception_number:
+lodsq
+
+cmp	rax,rdx
+je	found_pushed_error_number
+
+loop	next_check_exeception_number
+
+jmp	exit_exception
+
+found_pushed_error_number:
+add	rsp,8
+
+exit_exception:
+mov	rdi,qword regbuf
+
+xchg	bx,bx
+mov	rax,[rdi+16]			; restore registers
+mov	rbx,[rdi+24]
+mov	rcx,[rdi+32]
+mov	rdx,[rdi+40]
+mov	rsi,[rdi+48]
+mov	r11,[rdi+64]
+mov	r12,[rdi+72]
+mov	r13,[rdi+80]
+mov	r14,[rdi+88]
+mov	r15,[rdi+96]
+mov	rbp,[rdi+64]
+mov	rdi,[rdi+56]
+
+;xchg	bx,bx
+iretq
 
 ;
 ; Initialize interrupts
@@ -356,117 +470,6 @@ end_set_interrupt:
 ret
 
 ;
-;
-; Interrupt handlers
-;
-
-inthandler_noerr 0
-inthandler_noerr 1
-inthandler_noerr 2
-inthandler_noerr 3
-inthandler_noerr 4
-inthandler_noerr 5
-inthandler_noerr 6
-inthandler_noerr 7
-inthandler_err 8
-inthandler_noerr 9
-inthandler_err 10
-inthandler_err 11
-inthandler_err 12
-inthandler_err 13
-inthandler_err 14
-inthandler_noerr 15
-inthandler_noerr 16
-inthandler_err 17
-inthandler_noerr 18
-inthandler_noerr 19
-inthandler_noerr 20
-inthandler_err 21
-inthandler_noerr 22
-inthandler_noerr 23
-inthandler_noerr 24
-inthandler_noerr 25
-inthandler_noerr 26
-inthandler_noerr 27
-inthandler_noerr 28
-inthandler_err 29
-inthandler_err 30
-inthandler_noerr 31
-
-int_common:
-; save other registers into buffer to pass to exception handler
-
-mov	rdi,qword regbuf
-
-mov	[rdi],rax			; save eip
-mov	[rdi+8],rsp
-mov	[rdi+32],rcx
-mov	[rdi+40],rdx
-mov	[rdi+48],rsi
-mov	[rdi+64],rbp
-mov	[rdi+72],r10
-mov	[rdi+80],r11
-mov	[rdi+88],r12
-mov	[rdi+96],r13
-mov	[rdi+104],r14
-mov	[rdi+112],r15
-mov	[rdi+120],rbx			; save flags
-
-pop	rax				; get rax from stack
-mov	[rdi+16],rax
-pop	rax				; get rbx from stack
-mov	[rdi+24],rax
-pop	rax				; get rdi from stack
-mov	[rdi+56],rax
-
-mov	rdi,qword regbuf
-
-mov	r11,qword exception_number
-mov	rsi,[r11]			; exception number
-
-mov	r11,qword error_code
-mov	rdx,[r11]			; fault information
-call	exception			; call exception handler
-
-;  exceptions 8, 10, 11, 12, 13,14,17,21,29 and 30 push an error code
-
-mov	rdx,qword exception_number
-mov	rdx,[rdx]
-
-mov	rsi,qword error_number_exceptions
-mov	rcx,10
-
-next_check_exeception_number:
-lodsq
-
-cmp	rax,rdx
-je	found_pushed_error_number
-
-jmp	short next_check_exeception_number
-
-jmp	exit_exception
-
-found_pushed_error_number:
-add	rsp,8
-
-exit_exception:
-mov	rdi,qword regbuf
-
-mov	rax,[rdi+16]			; restore registers
-mov	rbx,[rdi+24]
-mov	rcx,[rdi+32]
-mov	rdx,[rdi+40]
-mov	rsi,[rdi+48]
-mov	r11,[rdi+64]
-mov	r12,[rdi+72]
-mov	r13,[rdi+80]
-mov	r14,[rdi+88]
-mov	r15,[rdi+96]
-mov	rbp,[rdi+64]
-mov	rdi,[rdi+56]
-iretq
-
-;
 ; low level dispatcher
 ;
 ;
@@ -496,13 +499,13 @@ mov	r8,rbx
 mov	rsi,rbx
 mov	rdi,rax
 
-call	disablemultitasking
+;call	disablemultitasking
 
 sti
 call	dispatchhandler
 cli
 
-call	enablemultitasking
+;call	enablemultitasking
 
 pop	r15			; restore registers
 pop	r14
@@ -548,7 +551,6 @@ times 256 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 idt_end:
 
 error_number_exceptions dq 8,10,11,12,13,14,17,21,29,30
-end_error_number_exceptions:
 tempone dq 0
 temptwo dq 0
 intnumber dq 0
