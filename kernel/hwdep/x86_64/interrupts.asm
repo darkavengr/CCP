@@ -63,7 +63,6 @@ mov	rbx,qword exception_number	; save exception number
 mov	rax,%1				; exception number
 mov	[rbx],rax
 
-xchg	bx,bx
 mov	rax,[rsp+24]		; get rip from stack
 mov	rbx,[rsp+24+16]		; get rflags from stack
 
@@ -133,7 +132,7 @@ int_common:
 
 mov	rdi,qword regbuf
 
-mov	[rdi],rax			; save eip
+mov	[rdi],rax			; save rip
 mov	[rdi+8],rsp
 mov	[rdi+32],rcx
 mov	[rdi+40],rdx
@@ -147,8 +146,8 @@ mov	[rdi+104],r14
 mov	[rdi+112],r15
 mov	[rdi+120],rbx			; save flags
 
-pop	rbx				; get rbx from stack
-mov	[rdi+24],rbx
+pop	rax				; get rbx from stack
+mov	[rdi+24],rax
 pop	rax				; get rax from stack
 mov	[rdi+16],rax
 pop	rax				; get rdi from stack
@@ -363,7 +362,8 @@ mov	rdx,qword int18_handler		; handler
 mov	rcx,qword 18			; interrupt number
 call	set_interrupt
 
-			mov	r11,19
+mov	r11,19
+
 next_null_interrupt:
 mov	rdi,qword IDT_ENTRY_PRESENT | IDT_RING0 | IDT_32BIT_64BIT_INTERRUPT_GATE	; flags
 mov	rsi,qword KERNEL_CODE_SELECTOR	; selector
@@ -416,7 +416,7 @@ ret
 ; Returns: Nothing
 ;
 load_idt:
-mov	rax,qword idt
+mov	rax,qword IDT
 lidt	[rax]					; load interrupts
 ret
 
@@ -443,7 +443,7 @@ set_interrupt_number_is_ok:
 mov	rax,rcx				; point to entry in the IDT
 shl	rax,4				; each interrupt is 16 bytes long
 
-mov	rbx,qword idttable		; point to IDT
+mov	rbx,qword IDT_table		; point to IDT
 add	rax,rbx				; point to IDT entry
 
 xor	ebx,ebx
@@ -499,13 +499,9 @@ mov	r8,rbx
 mov	rsi,rbx
 mov	rdi,rax
 
-;call	disablemultitasking
-
 sti
 call	dispatchhandler
 cli
-
-;call	enablemultitasking
 
 pop	r15			; restore registers
 pop	r14
@@ -531,7 +527,7 @@ iretq
 ;
 ; In: Nothing
 ;
-; Returns: CPU flags register
+; Returns: Interrupt flag in bit 0
 ;
 
 get_interrupts_enabled:
@@ -542,20 +538,16 @@ and	rax,0x200			; get interrupts flag
 shr	rax,9
 ret
 
-idt:
+IDT:
 dw 0x3FFF					; limit
-dq idttable				; base
+dq IDT_table				; base
 
-idttable:
+IDT_table:
 times 256 db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-idt_end:
+IDT_end:
 
 error_number_exceptions dq 8,10,11,12,13,14,17,21,29,30
-tempone dq 0
-temptwo dq 0
-intnumber dq 0
 exception_number dq 0
 error_code dq 0
-multitasking_was_enabled dq 0
 regbuf times 120 dq 0
 

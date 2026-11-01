@@ -616,13 +616,17 @@ if(((type == ALLOC_KERNEL) && (KernelHeapPointer == NULL)) || ((type == ALLOC_NO
 }
 
 if(type == ALLOC_NORMAL) {
+	heapheader=GetCurrentUserHeapAddress();
 	heapend=GetUserHeapEnd();
 }
 else
 {
+	heapheader=KernelCurrentHeapAddress;
 	heapend=KernelHeapEnd;
 }
-if(((size_t) KernelCurrentHeapAddress + size + sizeof(HEAPHEADER)) > heapend) {		/* extend heap */
+
+
+if(((size_t) heapheader + size + sizeof(HEAPHEADER)) > heapend) {		/* extend heap */
 	if(alloc_int(type,rounded_up_size,heapend) == NULL) return(NULL);
 
 	/* set heap end */

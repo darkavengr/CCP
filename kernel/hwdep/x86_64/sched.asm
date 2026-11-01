@@ -159,9 +159,6 @@ jz	no_debug
 
 xchg	bx,bx
 no_debug:
-
-call	getpid
-
 mov	rdi,rax
 call	switch_address_space
 

@@ -532,7 +532,7 @@ while(EvaluatePredicate(predicate) == TRUE) {	/* if predicate is true */
 		{
 			ExecuteAMLInstruction(methodptr);
 		}
-	} while(methodptr != (methodptr + pkglengfth));
+	} while(methodptr != (methodptr + pkglength));
 }
 
 return;
